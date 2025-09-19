@@ -12,6 +12,8 @@ jobs:
   check_repo:
     name: "Checks if the repository is clean and void of any unwanted files (temp files, binary files, etc.)"
     runs-on: ubuntu-latest
+    # Skip CI/CD on mirror repository - only run on development repo
+    if: ${{ startsWith(github.repository, 'morgangch') }}
     steps:
       - uses: actions/checkout@v4
       - id: check_repo
@@ -31,6 +33,8 @@ jobs:
     needs: [check_repo]
     name: "Checks if CMake builds and compiles both client and server"
     runs-on: ubuntu-latest
+    # Skip CI/CD on mirror repository - only run on development repo
+    if: ${{ startsWith(github.repository, 'morgangch') }}
     container:
       image: epitechcontent/epitest-docker:latest
     steps:
@@ -72,6 +76,8 @@ jobs:
     needs: [check_program_compilation]
     name: "Runs tests with criterion"
     runs-on: ubuntu-latest
+    # Skip CI/CD on mirror repository - only run on development repo
+    if: ${{ startsWith(github.repository, 'morgangch') }}
     container:
       image: epitechcontent/epitest-docker:latest
 
