@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 3.20)
 # Client executable
 add_executable(client main.cpp)
 
+# Link with ECS library
+target_link_libraries(client PRIVATE ecs)
+
 # Set output directory - handle both single and multi-config generators
 if(CMAKE_CONFIGURATION_TYPES)
     # Multi-config generators (Visual Studio, Xcode)
