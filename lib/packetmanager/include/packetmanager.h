@@ -15,11 +15,28 @@
 class PacketManager {
 public:
     PacketManager();
+
     void clean();
-    bool resendPacket(uint32_t seqid);
-    void handlePacket(packet_t packet);
+
+    /*
+     * Handle incoming raw packet bytes from the socket (including header in data)
+     * Parse the bytes into a packet_t struct and call handlePacket
+     * If the packet is invalid, ignore it
+     * @param data Pointer to the raw packet bytes
+     * @param size Size of the raw packet bytes
+     */
+    void handlePacketBytes(const uint8_t *data, size_t size);
+
+    /*
+     * Prepare a packet to be sent by building the header
+     * @param data Pointer to the data to be sent (will be copied)
+     * @param size Size of the data to be sent
+     */
+    void sendPacketBytes(void **data, size_t *size, uint8_t packet_type);
+
     void ackMissing();
-    std::vector<packet_t> getPacketsToSend();
+
+    std::vector<std::unique_ptr<packet_t> > fetchReceivedPackets();
 
 private:
     uint32_t _send_seqid = 0;
@@ -29,10 +46,12 @@ private:
     std::vector<packet_t> _history_sent;
     std::vector<uint32_t> _missed_packets;
 
-    std::vector<packet_t> _buffer_received;
+    std::vector<std::unique_ptr<packet_t> > _buffer_received;
     std::vector<packet_t> _buffer_send;
 
-    void putToHistory(packet_t packet);
+    bool _resendPacket(uint32_t seqid);
+
+    void _handlePacket(std::unique_ptr<packet_t> packet);
 };
 
 #endif //PACKETMANAGER_H
