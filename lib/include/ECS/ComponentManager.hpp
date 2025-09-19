@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 #include <typeinfo>
+#include <algorithm>
 
 namespace ECS {
     class IComponentArray {
