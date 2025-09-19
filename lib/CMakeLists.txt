@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 3.20)
 # Libraries root CMakeLists.txt
 # This file manages all libraries in the lib directory
 
-# Add ECS library subdirectory
 add_subdirectory(ecs)
+add_subdirectory(packetmanager)
 
 # Future libraries can be added here, for example:
 # add_subdirectory(networking)
