@@ -1,0 +1,130 @@
+name: Cross-Platform Release Build
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            executable_extension: ""
+            archive_format: tar.gz
+          - os: windows-latest
+            platform: windows
+            executable_extension: .exe
+            archive_format: zip
+          - os: macos-latest
+            platform: macos
+            executable_extension: ""
+            archive_format: tar.gz
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential
+
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install cmake
+
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: lukka/get-cmake@latest
+
+      - name: Configure CMake
+        run: |
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build project
+        run: |
+          cd build
+          cmake --build . --config Release
+
+      - name: Create release directory
+        run: |
+          mkdir -p release/rtype-${{ matrix.platform }}
+
+      - name: Copy executables (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cp build/bin/server${{ matrix.executable_extension }} release/rtype-${{ matrix.platform }}/
+          cp build/bin/client${{ matrix.executable_extension }} release/rtype-${{ matrix.platform }}/
+
+      - name: Copy executables (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          copy build\bin\server${{ matrix.executable_extension }} release\rtype-${{ matrix.platform }}\
+          copy build\bin\client${{ matrix.executable_extension }} release\rtype-${{ matrix.platform }}\
+
+      - name: Create README for release
+        run: |
+          echo "# RType - ${{ matrix.platform }} Release" > release/rtype-${{ matrix.platform }}/README.md
+          echo "" >> release/rtype-${{ matrix.platform }}/README.md
+          echo "This package contains the RType client and server executables for ${{ matrix.platform }}." >> release/rtype-${{ matrix.platform }}/README.md
+          echo "" >> release/rtype-${{ matrix.platform }}/README.md
+          echo "## Files included:" >> release/rtype-${{ matrix.platform }}/README.md
+          echo "- server${{ matrix.executable_extension }} - The game server" >> release/rtype-${{ matrix.platform }}/README.md
+          echo "- client${{ matrix.executable_extension }} - The game client" >> release/rtype-${{ matrix.platform }}/README.md
+          echo "" >> release/rtype-${{ matrix.platform }}/README.md
+          echo "## Usage:" >> release/rtype-${{ matrix.platform }}/README.md
+          echo "1. Run the server: ./server${{ matrix.executable_extension }}" >> release/rtype-${{ matrix.platform }}/README.md
+          echo "2. Run the client: ./client${{ matrix.executable_extension }}" >> release/rtype-${{ matrix.platform }}/README.md
+
+      - name: Create archive (Linux/macOS)
+        if: matrix.archive_format == 'tar.gz'
+        run: |
+          cd release
+          tar -czf rtype-${{ matrix.platform }}.tar.gz rtype-${{ matrix.platform }}/
+
+      - name: Create archive (Windows)
+        if: matrix.archive_format == 'zip'
+        run: |
+          cd release
+          powershell Compress-Archive -Path rtype-${{ matrix.platform }} -DestinationPath rtype-${{ matrix.platform }}.zip
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rtype-${{ matrix.platform }}
+          path: release/rtype-${{ matrix.platform }}.*
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            rtype-linux/rtype-linux.tar.gz
+            rtype-windows/rtype-windows.zip
+            rtype-macos/rtype-macos.tar.gz
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
