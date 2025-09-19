@@ -56,5 +56,17 @@ void PacketManager::handlePacket(packet_t packet) {
     _recv_seqid = packet.header.seqid;
     // Acknowledge all missed packets
     ackMissing();
+
+    // Check if this is a ack packet, then resend the asked packet
+    if (packet.header.ack != 0) {
+        resendPacket(packet.header.ack);
+        return;
+    }
+    // Otherwise, store the packet in the received buffer
     _buffer_received.push_back(packet);
+
+    // Sort the received buffer by seqid
+    std::sort(_buffer_received.begin(), _buffer_received.end(), [](const packet_t &a, const packet_t &b) {
+        return a.header.seqid < b.header.seqid;
+    });
 }
