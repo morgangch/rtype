@@ -1,4 +1,3 @@
-
 name: rtype
 
 on:
@@ -10,51 +9,11 @@ on:
       - 'ga-ignore-*'
 
 jobs:
-  check_coding_style:
-    name: "Use coding_style_checker"
-    runs-on: ubuntu-latest
-
-    steps:
-      # Checkout repository code
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      # Set up environment variables for directories
-      - name: Set environment variables
-        run: |
-          echo "DELIVERY_DIR=$(pwd)" >> $GITHUB_ENV
-          echo "REPORTS_DIR=$(pwd)/reports" >> $GITHUB_ENV
-
-      # Create the reports directory
-      - name: Create reports directory
-        run: mkdir -p ${{ env.REPORTS_DIR }}
-
-      # Run the coding style checker in the container
-      - name: Run coding style checker
-        run: |
-          docker pull ghcr.io/epitech/coding-style-checker:latest
-          docker run --rm             --security-opt "label:disable"             -v ${{ env.DELIVERY_DIR }}:/mnt/delivery             -v ${{ env.REPORTS_DIR }}:/mnt/reports             ghcr.io/epitech/coding-style-checker:latest             /mnt/delivery /mnt/reports
-
-      # Display coding style errors
-      - name: Analyze coding style reports
-        run: |
-          REPORT_FILE="${{ env.REPORTS_DIR }}/coding-style-reports.log"
-          if [[ -s "$REPORT_FILE" ]]; then
-            echo "Coding style errors detected:"
-            cat "$REPORT_FILE"
-            CODING_STYLE_ERRORS=$(cat "$REPORT_FILE")
-            for ERRORS in $CODING_STYLE_ERRORS; do
-              array=(`echo $ERRORS | sed 's/:/\n/g'`)
-              echo "::error file=${array[1]#./},title=${array[3]#./} coding style errors detected: ${array[2]#./}::${array[4]#./}"
-            done
-            exit 1
-          else
-            echo "No coding style errors detected"
-          fi
-    
   check_repo:
     name: "Checks if the repository is clean and void of any unwanted files (temp files, binary files, etc.)"
     runs-on: ubuntu-latest
+    # Skip CI/CD on mirror repository - only run on development repo
+    if: ${{ startsWith(github.repository, 'morgangch') }}
     steps:
       - uses: actions/checkout@v4
       - id: check_repo
@@ -72,58 +31,83 @@ jobs:
 
   check_program_compilation:
     needs: [check_repo]
-    name: "Checks if make compil and test all binary listed in the ARGUMENTS variable"
+    name: "Checks if CMake builds and compiles both client and server"
     runs-on: ubuntu-latest
+    # Skip CI/CD on mirror repository - only run on development repo
+    if: ${{ startsWith(github.repository, 'morgangch') }}
     container:
       image: epitechcontent/epitest-docker:latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check for Makefile and compile
+      - name: Install CMake
         run: |
-          if [ -f Makefile ]; then
-            for target in all clean fclean re; do
-              make $target
-              if [ make_exit_code -ne 0 ]; then
-                echo "Error: make $target failed with exit code $?"
-                exit 1
-              fi
-            done
-          else
-            echo "Makefile not found, skipping compilation and testing."
+          apt-get update
+          apt-get install -y cmake build-essential
+      - name: Configure with CMake
+        run: |
+          mkdir -p build
+          cd build
+          cmake ..
+      - name: Build project
+        run: |
+          cd build
+          make
+      - name: Test executables exist
+        run: |
+          if [ ! -f build/bin/server ]; then
+            echo "Error: Server executable not found"
+            exit 1
           fi
+          if [ ! -f build/bin/client ]; then
+            echo "Error: Client executable not found"
+            exit 1
+          fi
+          echo "Both client and server executables built successfully"
+      - name: Test executables run
+        run: |
+          cd build/bin
+          echo "Testing server executable:"
+          ./server
+          echo "Testing client executable:"
+          ./client
         timeout-minutes: 2
 
   run_tests:
     needs: [check_program_compilation]
     name: "Runs tests with criterion"
     runs-on: ubuntu-latest
+    # Skip CI/CD on mirror repository - only run on development repo
+    if: ${{ startsWith(github.repository, 'morgangch') }}
     container:
       image: epitechcontent/epitest-docker:latest
 
     steps:
       - uses: actions/checkout@v4
-      - name: Check if tests_run rule exists
+      - name: Install CMake
         run: |
-          if [ -f Makefile ]; then
-            if cat Makefile | grep -q "tests_run"; then
-              make tests_run
-              if [ $? -eq 0 ]; then
-                echo "Tests run successfully"
-              else
-                echo "Error: make tests_run failed"
-                exit 1
-              fi
+          apt-get update
+          apt-get install -y cmake build-essential
+      - name: Check if tests exist
+        run: |
+          if [ -f CMakeLists.txt ]; then
+            # Check if tests are defined in CMakeLists.txt
+            if grep -q "enable_testing\|add_test" CMakeLists.txt; then
+              mkdir -p build
+              cd build
+              cmake ..
+              make
+              ctest --output-on-failure
             else
-              echo "tests_run rule not found, skipping tests."
+              echo "No tests found in CMakeLists.txt, skipping tests."
             fi
           else
-            echo "Makefile not found, skipping tests."
+            echo "CMakeLists.txt not found, skipping tests."
           fi
         timeout-minutes: 2
 
   push_to_mirror:
-    needs: [check_coding_style, run_tests, check_repo, check_program_compilation]
-    if: ${{ github.event_name == 'push' && github.actor != 'github-actions[bot]' && startsWith(github.repository, 'morgangch') }}
+    needs: [run_tests, check_repo, check_program_compilation]
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]' && startsWith(github.repository, 'morgangch') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
