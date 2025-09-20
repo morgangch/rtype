@@ -34,8 +34,10 @@ public:
      * Prepare a packet to be sent by building the header
      * @param data Pointer to the data to be sent (will be copied)
      * @param size Size of the data to be sent
+     * @param packet_type Type of the packet (user-defined)
+     * @param important If true, the packet will be stored in history for potential retransmission
      */
-    void sendPacketBytes(void **data, size_t *size, uint8_t packet_type);
+    void sendPacketBytes(void **data, size_t *size, uint8_t packet_type, bool important);
 
     void ackMissing();
 

@@ -150,7 +150,7 @@ void testPacketSending(TestRunner& runner) {
     void* data = PacketTestHelper::createPacketData(testPacket);
     size_t data_size = sizeof(super_packet_t);
 
-    manager.sendPacketBytes(&data, &data_size, 1);
+    manager.sendPacketBytes(&data, &data_size, 1, true);
 
     runner.assertEqual("Send buffer size check", 1UL, manager._get_buffer_send()->size(), "Buffer should contain 1 packet");
     runner.assertEqual("Send sequence ID check", 1U, manager._get_send_seqid(), "Sequence ID should be 1");
@@ -164,7 +164,7 @@ void testPacketTransfer(TestRunner& runner) {
     void* data = PacketTestHelper::createPacketData(testPacket);
     size_t data_size = sizeof(super_packet_t);
 
-    sender.sendPacketBytes(&data, &data_size, 1);
+    sender.sendPacketBytes(&data, &data_size, 1, true);
 
     runner.runTest("Packet transfer", [&]() {
         PacketTestHelper::transferPacket(sender, receiver);
@@ -180,7 +180,7 @@ void testPacketReception(TestRunner& runner) {
     size_t data_size = sizeof(super_packet_t);
 
     // Send and transfer packet
-    sender.sendPacketBytes(&data, &data_size, 1);
+    sender.sendPacketBytes(&data, &data_size, 1, true);
     PacketTestHelper::transferPacket(sender, receiver);
 
     // Test reception
@@ -200,7 +200,7 @@ void testPacketData(TestRunner& runner) {
     size_t data_size = sizeof(super_packet_t);
 
     // Send, transfer, and receive packet
-    sender.sendPacketBytes(&data, &data_size, 1);
+    sender.sendPacketBytes(&data, &data_size, 1, true);
     PacketTestHelper::transferPacket(sender, receiver);
     std::vector<std::unique_ptr<packet_t>> mailbox = receiver.fetchReceivedPackets();
 
@@ -239,11 +239,11 @@ void testMissingPacketsAndAck(TestRunner& runner) {
     size_t data_size = sizeof(super_packet_t);
 
     // Send 3 packets
-    sender.sendPacketBytes(&data1, &data_size, 1);
+    sender.sendPacketBytes(&data1, &data_size, 1, true);
     data_size = sizeof(super_packet_t);
-    sender.sendPacketBytes(&data2, &data_size, 1);
+    sender.sendPacketBytes(&data2, &data_size, 1, true);
     data_size = sizeof(super_packet_t);
-    sender.sendPacketBytes(&data3, &data_size, 1);
+    sender.sendPacketBytes(&data3, &data_size, 1, true);
 
     // Get packets to send
     std::vector<std::unique_ptr<packet_t>> packets_to_send = sender.fetchPacketsToSend();
@@ -324,7 +324,7 @@ void testAckPacketRetransmission(TestRunner& runner) {
     void* data = PacketTestHelper::createPacketData(testPacket);
     size_t data_size = sizeof(super_packet_t);
 
-    sender.sendPacketBytes(&data, &data_size, 1);
+    sender.sendPacketBytes(&data, &data_size, 1, true);
 
     // Get the packet to send
     std::vector<std::unique_ptr<packet_t>> packets_to_send = sender.fetchPacketsToSend();
@@ -334,7 +334,7 @@ void testAckPacketRetransmission(TestRunner& runner) {
     // Send packet 2 to trigger missing packet detection
     void* data2 = PacketTestHelper::createPacketData(testPacket);
     data_size = sizeof(super_packet_t);
-    sender.sendPacketBytes(&data2, &data_size, 2);
+    sender.sendPacketBytes(&data2, &data_size, 2, true);
 
     std::vector<std::unique_ptr<packet_t>> second_batch = sender.fetchPacketsToSend();
     if (second_batch.size() > 0) {
@@ -387,7 +387,7 @@ void packetWithInvalidSizeIsRejected(TestRunner& runner) {
     void* data = PacketTestHelper::createPacketData(testPacket);
     size_t data_size = sizeof(super_packet_t);
 
-    sender.sendPacketBytes(&data, &data_size, 1);
+    sender.sendPacketBytes(&data, &data_size, 1, true);
     std::vector<std::unique_ptr<packet_t>> packets_to_send = sender.fetchPacketsToSend();
 
     if (!packets_to_send.empty()) {
@@ -407,7 +407,7 @@ void emptyPacketDataIsHandledCorrectly(TestRunner& runner) {
     void* empty_data = nullptr;
     size_t data_size = 0;
 
-    manager.sendPacketBytes(&empty_data, &data_size, 1);
+    manager.sendPacketBytes(&empty_data, &data_size, 1, true);
 
     runner.assertEqual("Empty packet queued", 1UL, manager._get_buffer_send()->size(), "Empty packets should be allowed");
 
@@ -426,7 +426,7 @@ void veryLargePacketIsHandled(TestRunner& runner) {
     size_t data_size = large_size;
 
     runner.runTest("Large packet handling", [&]() {
-        manager.sendPacketBytes(&large_data, &data_size, 1);
+        manager.sendPacketBytes(&large_data, &data_size, 1, true);
     });
 
     runner.assertEqual("Large packet queued", 1UL, manager._get_buffer_send()->size(), "Large packets should be handled");
@@ -447,7 +447,7 @@ void sequenceIdOverflowIsHandled(TestRunner& runner) {
         void* data = PacketTestHelper::createPacketData(testPacket);
         size_t data_size = sizeof(super_packet_t);
 
-        manager.sendPacketBytes(&data, &data_size, 1);
+        manager.sendPacketBytes(&data, &data_size, 1, true);
         manager.fetchPacketsToSend();
         free(data);
 
@@ -464,7 +464,7 @@ void multipleConsecutiveMissingPacketsAreDetected(TestRunner& runner) {
         super_packet_t packet = PacketTestHelper::createTestPacket(20 + i, true, ("Packet " + std::to_string(i)).c_str());
         void* data = PacketTestHelper::createPacketData(packet);
         size_t data_size = sizeof(super_packet_t);
-        sender.sendPacketBytes(&data, &data_size, 1);
+        sender.sendPacketBytes(&data, &data_size, 1, true);
         free(data);
     }
 
@@ -491,7 +491,7 @@ void duplicatePacketsAreHandledCorrectly(TestRunner& runner) {
     void* data = PacketTestHelper::createPacketData(testPacket);
     size_t data_size = sizeof(super_packet_t);
 
-    sender.sendPacketBytes(&data, &data_size, 1);
+    sender.sendPacketBytes(&data, &data_size, 1, true);
     std::vector<std::unique_ptr<packet_t>> packets_to_send = sender.fetchPacketsToSend();
 
     if (!packets_to_send.empty()) {
@@ -514,7 +514,7 @@ void outOfOrderPacketDeliveryWorks(TestRunner& runner) {
         super_packet_t packet = PacketTestHelper::createTestPacket(i, true, ("Packet " + std::to_string(i)).c_str());
         void* data = PacketTestHelper::createPacketData(packet);
         size_t data_size = sizeof(super_packet_t);
-        sender.sendPacketBytes(&data, &data_size, 1);
+        sender.sendPacketBytes(&data, &data_size, 1, true);
         free(data);
     }
 
@@ -549,7 +549,7 @@ void corruptedDataFieldIsDetected(TestRunner& runner) {
     void* data = PacketTestHelper::createPacketData(testPacket);
     size_t data_size = sizeof(super_packet_t);
 
-    sender.sendPacketBytes(&data, &data_size, 1);
+    sender.sendPacketBytes(&data, &data_size, 1, true);
     std::vector<std::unique_ptr<packet_t>> packets_to_send = sender.fetchPacketsToSend();
 
     if (!packets_to_send.empty()) {
@@ -581,7 +581,7 @@ void packetManagerCleanupWorksCorrectly(TestRunner& runner) {
         super_packet_t packet = PacketTestHelper::createTestPacket(i, true, ("Test " + std::to_string(i)).c_str());
         void* data = PacketTestHelper::createPacketData(packet);
         size_t data_size = sizeof(super_packet_t);
-        manager.sendPacketBytes(&data, &data_size, 1);
+        manager.sendPacketBytes(&data, &data_size, 1, true);
         free(data);
     }
 

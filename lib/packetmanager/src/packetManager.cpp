@@ -63,14 +63,14 @@ void PacketManager::handlePacketBytes(const uint8_t *data, size_t size) {
     }
 }
 
-void PacketManager::sendPacketBytes(void **data, size_t *size, uint8_t packet_type) {
+void PacketManager::sendPacketBytes(void **data, size_t *size, uint8_t packet_type, bool important) {
     packet_header_t header;
     std::unique_ptr<packet_t> packet = std::make_unique<packet_t>();
 
     // Store the original data size before modifying the data pointer
     size_t original_data_size = *size;
 
-    header.seqid = ++_send_seqid;
+    header.seqid = important ? ++_send_seqid : 0;
     header.ack = 0;
     header.type = packet_type;
     header.auth = _auth_key;
@@ -218,6 +218,9 @@ std::vector<std::unique_ptr<packet_t> > PacketManager::fetchPacketsToSend() {
             }
             _history_sent.erase(_history_sent.begin());
         }
+        // Skip if not important
+        if (packet->header.seqid == 0)
+            continue;
         // Create a copy of the packet to store in history
         packet_t packet_copy;
         packet_copy.header = packet->header;
@@ -229,7 +232,6 @@ std::vector<std::unique_ptr<packet_t> > PacketManager::fetchPacketsToSend() {
         } else {
             packet_copy.data = nullptr;
         }
-
         _history_sent.push_back(packet_copy);
     }
     return tmp;
