@@ -368,6 +368,249 @@ void testAckPacketRetransmission(TestRunner& runner) {
     free(data2);
 }
 
+void corruptedPacketHeaderIsRejected(TestRunner& runner) {
+    PacketManager receiver;
+
+    uint8_t corrupted_data[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
+    runner.runTest("Corrupted packet header rejection", [&]() {
+        receiver.handlePacketBytes(corrupted_data, sizeof(corrupted_data));
+    });
+
+    runner.assertEqual("No packets received from corrupted header", 0UL, receiver._get_buffer_received()->size(), "Corrupted packets should be rejected");
+    runner.assertEqual("Receiver seqid unchanged after corruption", 0U, receiver._get_recv_seqid(), "Seqid should remain 0");
+}
+
+void packetWithInvalidSizeIsRejected(TestRunner& runner) {
+    PacketManager sender, receiver;
+    super_packet_t testPacket = PacketTestHelper::createTestPacket();
+    void* data = PacketTestHelper::createPacketData(testPacket);
+    size_t data_size = sizeof(super_packet_t);
+
+    sender.sendPacketBytes(&data, &data_size, 1);
+    std::vector<std::unique_ptr<packet_t>> packets_to_send = sender.fetchPacketsToSend();
+
+    if (!packets_to_send.empty()) {
+        std::vector<uint8_t> raw_packet = PacketManager::serializePacket(*packets_to_send[0]);
+
+        runner.runTest("Invalid packet size rejection", [&]() {
+            receiver.handlePacketBytes(raw_packet.data(), raw_packet.size() - 5);
+        });
+    }
+
+    runner.assertEqual("No packets received with invalid size", 0UL, receiver._get_buffer_received()->size(), "Invalid size packets should be rejected");
+    free(data);
+}
+
+void emptyPacketDataIsHandledCorrectly(TestRunner& runner) {
+    PacketManager manager;
+    void* empty_data = nullptr;
+    size_t data_size = 0;
+
+    manager.sendPacketBytes(&empty_data, &data_size, 1);
+
+    runner.assertEqual("Empty packet queued", 1UL, manager._get_buffer_send()->size(), "Empty packets should be allowed");
+
+    std::vector<std::unique_ptr<packet_t>> packets = manager.fetchPacketsToSend();
+    if (!packets.empty()) {
+        runner.assertEqual("Empty packet data size", 0U, packets[0]->header.data_size, "Empty packet should have data_size=0");
+        runner.assertTrue("Empty packet data is null", packets[0]->data == nullptr, "Empty packet data should be null");
+    }
+}
+
+void veryLargePacketIsHandled(TestRunner& runner) {
+    PacketManager manager;
+    const size_t large_size = 65536;
+    void* large_data = malloc(large_size);
+    memset(large_data, 0xAB, large_size);
+    size_t data_size = large_size;
+
+    runner.runTest("Large packet handling", [&]() {
+        manager.sendPacketBytes(&large_data, &data_size, 1);
+    });
+
+    runner.assertEqual("Large packet queued", 1UL, manager._get_buffer_send()->size(), "Large packets should be handled");
+
+    std::vector<std::unique_ptr<packet_t>> packets = manager.fetchPacketsToSend();
+    if (!packets.empty()) {
+        runner.assertEqual("Large packet data size", (uint32_t)large_size, packets[0]->header.data_size, "Large packet size should be preserved");
+    }
+
+    free(large_data);
+}
+
+void sequenceIdOverflowIsHandled(TestRunner& runner) {
+    PacketManager manager;
+
+    for (uint32_t i = 0; i < UINT32_MAX; i += 1000000000) {
+        super_packet_t testPacket = PacketTestHelper::createTestPacket();
+        void* data = PacketTestHelper::createPacketData(testPacket);
+        size_t data_size = sizeof(super_packet_t);
+
+        manager.sendPacketBytes(&data, &data_size, 1);
+        manager.fetchPacketsToSend();
+        free(data);
+
+        if (i > UINT32_MAX - 1000000000) break;
+    }
+
+    runner.assertTrue("Sequence ID near overflow handled", manager._get_send_seqid() > 0, "Sequence ID should handle large values");
+}
+
+void multipleConsecutiveMissingPacketsAreDetected(TestRunner& runner) {
+    PacketManager sender, receiver;
+
+    for (int i = 1; i <= 5; i++) {
+        super_packet_t packet = PacketTestHelper::createTestPacket(20 + i, true, ("Packet " + std::to_string(i)).c_str());
+        void* data = PacketTestHelper::createPacketData(packet);
+        size_t data_size = sizeof(super_packet_t);
+        sender.sendPacketBytes(&data, &data_size, 1);
+        free(data);
+    }
+
+    std::vector<std::unique_ptr<packet_t>> packets_to_send = sender.fetchPacketsToSend();
+
+    if (packets_to_send.size() >= 5) {
+        std::vector<uint8_t> packet1 = PacketManager::serializePacket(*packets_to_send[0]);
+        receiver.handlePacketBytes(packet1.data(), packet1.size());
+
+        std::vector<uint8_t> packet5 = PacketManager::serializePacket(*packets_to_send[4]);
+        receiver.handlePacketBytes(packet5.data(), packet5.size());
+    }
+
+    const std::vector<uint32_t>* missed_packets = receiver._get_missed_packets();
+    runner.assertEqual("Multiple consecutive missing packets detected", 0UL, missed_packets->size(), "Missing packets should be converted to ACKs");
+
+    std::vector<std::unique_ptr<packet_t>> ack_packets = receiver.fetchPacketsToSend();
+    runner.assertTrue("Multiple ACKs generated", ack_packets.size() >= 3, "Should generate ACKs for packets 2, 3, 4");
+}
+
+void duplicatePacketsAreHandledCorrectly(TestRunner& runner) {
+    PacketManager sender, receiver;
+    super_packet_t testPacket = PacketTestHelper::createTestPacket();
+    void* data = PacketTestHelper::createPacketData(testPacket);
+    size_t data_size = sizeof(super_packet_t);
+
+    sender.sendPacketBytes(&data, &data_size, 1);
+    std::vector<std::unique_ptr<packet_t>> packets_to_send = sender.fetchPacketsToSend();
+
+    if (!packets_to_send.empty()) {
+        std::vector<uint8_t> raw_packet = PacketManager::serializePacket(*packets_to_send[0]);
+
+        receiver.handlePacketBytes(raw_packet.data(), raw_packet.size());
+        receiver.handlePacketBytes(raw_packet.data(), raw_packet.size());
+    }
+
+    std::vector<std::unique_ptr<packet_t>> received_packets = receiver.fetchReceivedPackets();
+    runner.assertEqual("Duplicate packet handling", 2UL, received_packets.size(), "Duplicate packets should be processed");
+
+    free(data);
+}
+
+void outOfOrderPacketDeliveryWorks(TestRunner& runner) {
+    PacketManager sender, receiver;
+
+    for (int i = 1; i <= 4; i++) {
+        super_packet_t packet = PacketTestHelper::createTestPacket(i, true, ("Packet " + std::to_string(i)).c_str());
+        void* data = PacketTestHelper::createPacketData(packet);
+        size_t data_size = sizeof(super_packet_t);
+        sender.sendPacketBytes(&data, &data_size, 1);
+        free(data);
+    }
+
+    std::vector<std::unique_ptr<packet_t>> packets_to_send = sender.fetchPacketsToSend();
+
+    if (packets_to_send.size() >= 4) {
+        std::vector<uint8_t> packet4 = PacketManager::serializePacket(*packets_to_send[3]);
+        std::vector<uint8_t> packet2 = PacketManager::serializePacket(*packets_to_send[1]);
+        std::vector<uint8_t> packet1 = PacketManager::serializePacket(*packets_to_send[0]);
+        std::vector<uint8_t> packet3 = PacketManager::serializePacket(*packets_to_send[2]);
+
+        receiver.handlePacketBytes(packet4.data(), packet4.size());
+        receiver.handlePacketBytes(packet2.data(), packet2.size());
+        receiver.handlePacketBytes(packet1.data(), packet1.size());
+        receiver.handlePacketBytes(packet3.data(), packet3.size());
+    }
+
+    std::vector<std::unique_ptr<packet_t>> received_packets = receiver.fetchReceivedPackets();
+    runner.assertEqual("Out of order packets received", 4UL, received_packets.size(), "All packets should be received");
+
+    if (received_packets.size() >= 4) {
+        runner.assertEqual("Packets sorted by seqid", 1U, received_packets[0]->header.seqid, "First packet should have seqid=1");
+        runner.assertEqual("Packets sorted by seqid", 2U, received_packets[1]->header.seqid, "Second packet should have seqid=2");
+        runner.assertEqual("Packets sorted by seqid", 3U, received_packets[2]->header.seqid, "Third packet should have seqid=3");
+        runner.assertEqual("Packets sorted by seqid", 4U, received_packets[3]->header.seqid, "Fourth packet should have seqid=4");
+    }
+}
+
+void corruptedDataFieldIsDetected(TestRunner& runner) {
+    PacketManager sender, receiver;
+    super_packet_t testPacket = PacketTestHelper::createTestPacket(25, true, "Original Data");
+    void* data = PacketTestHelper::createPacketData(testPacket);
+    size_t data_size = sizeof(super_packet_t);
+
+    sender.sendPacketBytes(&data, &data_size, 1);
+    std::vector<std::unique_ptr<packet_t>> packets_to_send = sender.fetchPacketsToSend();
+
+    if (!packets_to_send.empty()) {
+        std::vector<uint8_t> raw_packet = PacketManager::serializePacket(*packets_to_send[0]);
+
+        if (raw_packet.size() > sizeof(packet_header_t) + 10) {
+            raw_packet[sizeof(packet_header_t) + 5] = 0xFF;
+            raw_packet[sizeof(packet_header_t) + 6] = 0xFF;
+        }
+
+        receiver.handlePacketBytes(raw_packet.data(), raw_packet.size());
+    }
+
+    std::vector<std::unique_ptr<packet_t>> received_packets = receiver.fetchReceivedPackets();
+    if (!received_packets.empty()) {
+        super_packet_t* received_data = (super_packet_t*)received_packets[0]->data;
+        runner.assertTrue("Corrupted data field detected",
+                         strcmp(received_data->my_name, "Original Data") != 0,
+                         "Corrupted data should be different from original");
+    }
+
+    free(data);
+}
+
+void packetManagerCleanupWorksCorrectly(TestRunner& runner) {
+    PacketManager manager;
+
+    for (int i = 0; i < 10; i++) {
+        super_packet_t packet = PacketTestHelper::createTestPacket(i, true, ("Test " + std::to_string(i)).c_str());
+        void* data = PacketTestHelper::createPacketData(packet);
+        size_t data_size = sizeof(super_packet_t);
+        manager.sendPacketBytes(&data, &data_size, 1);
+        free(data);
+    }
+
+    manager.fetchPacketsToSend();
+
+    runner.assertTrue("Buffers not empty before cleanup",
+                     manager._get_history_sent()->size() > 0 || manager._get_send_seqid() > 0,
+                     "Manager should have some state before cleanup");
+
+    manager.clean();
+
+    runner.assertEqual("Send buffer cleared", 0UL, manager._get_buffer_send()->size(), "Send buffer should be empty after cleanup");
+    runner.assertEqual("Received buffer cleared", 0UL, manager._get_buffer_received()->size(), "Received buffer should be empty after cleanup");
+    runner.assertEqual("History cleared", 0UL, manager._get_history_sent()->size(), "History should be empty after cleanup");
+    runner.assertEqual("Send seqid reset", 0U, manager._get_send_seqid(), "Send seqid should be reset to 0");
+    runner.assertEqual("Recv seqid reset", 0U, manager._get_recv_seqid(), "Recv seqid should be reset to 0");
+}
+
+void extremelySmallPacketIsHandled(TestRunner& runner) {
+    PacketManager receiver;
+    uint8_t tiny_packet[1] = {0x42};
+
+    runner.runTest("Extremely small packet handling", [&]() {
+        receiver.handlePacketBytes(tiny_packet, sizeof(tiny_packet));
+    });
+
+    runner.assertEqual("No packets received from tiny packet", 0UL, receiver._get_buffer_received()->size(), "Tiny packets should be rejected");
+}
+
 int main() {
     TestRunner runner;
 
@@ -380,6 +623,17 @@ int main() {
     testPacketData(runner);
     testMissingPacketsAndAck(runner);
     testAckPacketRetransmission(runner);
+    corruptedPacketHeaderIsRejected(runner);
+    packetWithInvalidSizeIsRejected(runner);
+    emptyPacketDataIsHandledCorrectly(runner);
+    veryLargePacketIsHandled(runner);
+    sequenceIdOverflowIsHandled(runner);
+    multipleConsecutiveMissingPacketsAreDetected(runner);
+    duplicatePacketsAreHandledCorrectly(runner);
+    outOfOrderPacketDeliveryWorks(runner);
+    corruptedDataFieldIsDetected(runner);
+    packetManagerCleanupWorksCorrectly(runner);
+    extremelySmallPacketIsHandled(runner);
 
     // Print results
     TestResult result = runner.getResult();

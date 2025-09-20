@@ -127,28 +127,34 @@ bool PacketManager::_resendPacket(uint32_t seqid) {
 
 
 void PacketManager::_handlePacket(std::unique_ptr<packet_t> packet) {
-    // If this is a missed packet, remove it from the missed list
-    bool is_missed = std::find(_missed_packets.begin(), _missed_packets.end(), packet->header.seqid) != _missed_packets.end();
-    _missed_packets.erase(std::remove(_missed_packets.begin(), _missed_packets.end(), packet->header.seqid),
-                          _missed_packets.end());
-    // Declare as missed all previous packets not received
-    for (uint32_t i = _recv_seqid + 1; i < packet->header.seqid; i++) {
-        _missed_packets.push_back(i);
-    }
-
-    if (packet->header.seqid <= _recv_seqid && !is_missed && packet->header.seqid != 0)
-        return; // Duplicate packet, ignore it
-    if (packet->header.seqid != 0)
-        _recv_seqid = packet->header.seqid;
-    // Acknowledge all missed packets
-    ackMissing();
-
-    // Check if this is a ack packet, then resend the asked packet
+    // Check if this is an ACK packet, handle it separately
     if (packet->header.ack != 0) {
         _resendPacket(packet->header.ack);
         return;
     }
-    // Otherwise, store the packet in the received buffer
+
+    // Skip sequence ID 0 (used for ACK packets)
+    if (packet->header.seqid == 0) {
+        return;
+    }
+
+    // If this is a missed packet, remove it from the missed list
+    _missed_packets.erase(std::remove(_missed_packets.begin(), _missed_packets.end(), packet->header.seqid),
+                          _missed_packets.end());
+
+    // Update highest received sequence ID and detect missing packets
+    if (packet->header.seqid > _recv_seqid) {
+        // Declare as missed all packets between last received and this one
+        for (uint32_t i = _recv_seqid + 1; i < packet->header.seqid; i++) {
+            _missed_packets.push_back(i);
+        }
+        _recv_seqid = packet->header.seqid;
+
+        // Acknowledge all missed packets
+        ackMissing();
+    }
+
+    // Always store the packet in the received buffer (allows duplicates and out-of-order)
     _buffer_received.push_back(std::move(packet));
 
     // Sort the received buffer by seqid
