@@ -111,13 +111,14 @@ void PacketManager::ackMissing() {
         packet.data = nullptr;
         _buffer_send.push_back(std::make_unique<packet_t>(packet));
     }
+    _missed_packets.clear();
 }
 
 
 bool PacketManager::_resendPacket(uint32_t seqid) {
-    for (std::unique_ptr<packet_t> &packet: _buffer_send) {
-        if (packet->header.seqid == seqid) {
-            _buffer_send.push_back(std::make_unique<packet_t>(*packet));
+    for (packet_t packet: _history_sent) {
+        if (packet.header.seqid == seqid) {
+            _buffer_send.push_back(std::make_unique<packet_t>(packet));
             return true;
         }
     }
@@ -127,13 +128,18 @@ bool PacketManager::_resendPacket(uint32_t seqid) {
 
 void PacketManager::_handlePacket(std::unique_ptr<packet_t> packet) {
     // If this is a missed packet, remove it from the missed list
+    bool is_missed = std::find(_missed_packets.begin(), _missed_packets.end(), packet->header.seqid) != _missed_packets.end();
     _missed_packets.erase(std::remove(_missed_packets.begin(), _missed_packets.end(), packet->header.seqid),
                           _missed_packets.end());
     // Declare as missed all previous packets not received
     for (uint32_t i = _recv_seqid + 1; i < packet->header.seqid; i++) {
         _missed_packets.push_back(i);
     }
-    _recv_seqid = packet->header.seqid;
+
+    if (packet->header.seqid <= _recv_seqid && !is_missed && packet->header.seqid != 0)
+        return; // Duplicate packet, ignore it
+    if (packet->header.seqid != 0)
+        _recv_seqid = packet->header.seqid;
     // Acknowledge all missed packets
     ackMissing();
 
