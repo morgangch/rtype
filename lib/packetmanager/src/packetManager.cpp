@@ -10,7 +10,7 @@
 PacketManager::PacketManager() : _send_seqid(0), _recv_seqid(0) {
 }
 
-packet_t deserializePacket(const uint8_t *data, size_t size, packet_t &packet) {
+packet_t PacketManager::deserializePacket(const uint8_t *data, size_t size, packet_t &packet) {
     if (size < sizeof(packet_header_t)) {
         throw std::runtime_error("Data size is smaller than packet header size");
     }
@@ -24,7 +24,7 @@ packet_t deserializePacket(const uint8_t *data, size_t size, packet_t &packet) {
     return packet;
 }
 
-std::vector<uint8_t> serializePacket(const packet_t &packet) {
+std::vector<uint8_t> PacketManager::serializePacket(const packet_t &packet) {
     size_t data_size = packet.data ? sizeof(packet.data) : 0;
     std::vector<uint8_t> buffer(sizeof(packet_header_t) + data_size);
     std::memcpy(buffer.data(), &packet.header, sizeof(packet_header_t));
@@ -137,6 +137,12 @@ void PacketManager::_handlePacket(std::unique_ptr<packet_t> packet) {
 std::vector<std::unique_ptr<packet_t> > PacketManager::fetchReceivedPackets() {
     std::vector<std::unique_ptr<packet_t> > tmp = std::move(_buffer_received);
     _buffer_received.clear();
+    return tmp;
+}
+
+std::vector<std::unique_ptr<packet_t> > PacketManager::fetchPacketsToSend() {
+    std::vector<std::unique_ptr<packet_t> > tmp = std::move(_buffer_send);
+    _buffer_send.clear();
 
     // Fill the packets history
     for (auto &packet: tmp) {
@@ -155,6 +161,5 @@ std::vector<std::unique_ptr<packet_t> > PacketManager::fetchReceivedPackets() {
         }
         _history_sent.push_back(*packet_copy);
     }
-
     return tmp;
 }

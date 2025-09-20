@@ -15,7 +15,8 @@
 class PacketManager {
 public:
     PacketManager();
-
+    static packet_t deserializePacket(const uint8_t *data, size_t size, packet_t &packet);
+    static std::vector<uint8_t> serializePacket(const packet_t &packet);
     void clean();
 
     /*
@@ -37,6 +38,7 @@ public:
     void ackMissing();
 
     std::vector<std::unique_ptr<packet_t> > fetchReceivedPackets();
+    std::vector<std::unique_ptr<packet_t> > fetchPacketsToSend();
 
     [[nodiscard]] uint32_t _get_send_seqid() const { return _send_seqid; }
     [[nodiscard]] uint32_t _get_recv_seqid() const { return _recv_seqid; }
