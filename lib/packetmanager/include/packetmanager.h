@@ -15,6 +15,7 @@
 class PacketManager {
 public:
     PacketManager();
+    ~PacketManager(); // Add destructor declaration
     static packet_t deserializePacket(const uint8_t *data, size_t size, packet_t &packet);
     static std::vector<uint8_t> serializePacket(const packet_t &packet);
     void clean();

@@ -14,6 +14,11 @@
 PacketManager::PacketManager() : _send_seqid(0), _recv_seqid(0) {
 }
 
+// Add destructor to clean up memory
+PacketManager::~PacketManager() {
+    clean();
+}
+
 packet_t PacketManager::deserializePacket(const uint8_t *data, size_t size, packet_t &packet) {
     if (size < sizeof(packet_header_t)) {
         throw std::runtime_error("Data size is smaller than packet header size");
@@ -88,6 +93,30 @@ void PacketManager::sendPacketBytes(void **data, size_t *size, uint8_t packet_ty
 
 
 void PacketManager::clean() {
+    // Clean up history data before clearing
+    for (auto& packet : _history_sent) {
+        if (packet.data) {
+            delete[] static_cast<uint8_t*>(packet.data);
+            packet.data = nullptr;
+        }
+    }
+
+    // Clean up received buffer data
+    for (auto& packet : _buffer_received) {
+        if (packet && packet->data) {
+            delete[] static_cast<uint8_t*>(packet->data);
+            packet->data = nullptr;
+        }
+    }
+
+    // Clean up send buffer data
+    for (auto& packet : _buffer_send) {
+        if (packet && packet->data) {
+            delete[] static_cast<uint8_t*>(packet->data);
+            packet->data = nullptr;
+        }
+    }
+
     _history_sent.clear();
     _missed_packets.clear();
     _buffer_received.clear();
@@ -116,9 +145,21 @@ void PacketManager::ackMissing() {
 
 
 bool PacketManager::_resendPacket(uint32_t seqid) {
-    for (packet_t packet: _history_sent) {
+    for (const packet_t& packet: _history_sent) {
         if (packet.header.seqid == seqid) {
-            _buffer_send.push_back(std::make_unique<packet_t>(packet));
+            // Create a proper deep copy of the packet for retransmission
+            std::unique_ptr<packet_t> retrans_packet = std::make_unique<packet_t>();
+            retrans_packet->header = packet.header;
+
+            // Deep copy the data if it exists
+            if (packet.header.data_size > 0 && packet.data) {
+                retrans_packet->data = new uint8_t[packet.header.data_size];
+                std::memcpy(retrans_packet->data, packet.data, packet.header.data_size);
+            } else {
+                retrans_packet->data = nullptr;
+            }
+
+            _buffer_send.push_back(std::move(retrans_packet));
             return true;
         }
     }
@@ -176,6 +217,10 @@ std::vector<std::unique_ptr<packet_t> > PacketManager::fetchPacketsToSend() {
     // Fill the packets history
     for (auto &packet: tmp) {
         if (_history_sent.size() >= PACKET_HISTORY_SIZE) {
+            // Properly clean up the oldest packet before removing it
+            if (_history_sent.front().data) {
+                delete[] static_cast<uint8_t*>(_history_sent.front().data);
+            }
             _history_sent.erase(_history_sent.begin());
         }
         // Create a copy of the packet to store in history
