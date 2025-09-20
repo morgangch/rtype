@@ -6,6 +6,10 @@
 */
 
 #include "packetmanager.h"
+#include <cstring>
+#include <memory>
+#include <stdexcept>
+#include <algorithm>
 
 PacketManager::PacketManager() : _send_seqid(0), _recv_seqid(0) {
 }
@@ -15,9 +19,17 @@ packet_t PacketManager::deserializePacket(const uint8_t *data, size_t size, pack
         throw std::runtime_error("Data size is smaller than packet header size");
     }
     std::memcpy(&packet.header, data, sizeof(packet_header_t));
-    if (size > sizeof(packet_header_t)) {
-        packet.data = new uint8_t[size - sizeof(packet_header_t)];
-        std::memcpy(packet.data, data + sizeof(packet_header_t), size - sizeof(packet_header_t));
+
+    // Validate that the data_size field matches the actual data received
+    size_t expected_total_size = sizeof(packet_header_t) + packet.header.data_size;
+    if (size != expected_total_size) {
+        throw std::runtime_error("Packet size mismatch: expected " + std::to_string(expected_total_size) +
+                                 ", got " + std::to_string(size));
+    }
+
+    if (packet.header.data_size > 0) {
+        packet.data = new uint8_t[packet.header.data_size];
+        std::memcpy(packet.data, data + sizeof(packet_header_t), packet.header.data_size);
     } else {
         packet.data = nullptr;
     }
@@ -25,11 +37,10 @@ packet_t PacketManager::deserializePacket(const uint8_t *data, size_t size, pack
 }
 
 std::vector<uint8_t> PacketManager::serializePacket(const packet_t &packet) {
-    size_t data_size = packet.data ? sizeof(packet.data) : 0;
-    std::vector<uint8_t> buffer(sizeof(packet_header_t) + data_size);
+    std::vector<uint8_t> buffer(sizeof(packet_header_t) + packet.header.data_size);
     std::memcpy(buffer.data(), &packet.header, sizeof(packet_header_t));
-    if (data_size > 0) {
-        std::memcpy(buffer.data() + sizeof(packet_header_t), packet.data, data_size);
+    if (packet.header.data_size > 0 && packet.data) {
+        std::memcpy(buffer.data() + sizeof(packet_header_t), packet.data, packet.header.data_size);
     }
     return buffer;
 }
@@ -51,15 +62,19 @@ void PacketManager::sendPacketBytes(void **data, size_t *size, uint8_t packet_ty
     packet_header_t header;
     std::unique_ptr<packet_t> packet = std::make_unique<packet_t>();
 
+    // Store the original data size before modifying the data pointer
+    size_t original_data_size = *size;
+
     header.seqid = ++_send_seqid;
     header.ack = 0;
     header.type = packet_type;
     header.auth = _auth_key;
+    header.data_size = original_data_size;  // Set the data size in header
 
     packet->header = header;
     packet->data = *data;
 
-    // Serialize the packet
+    // Serialize the packet using the data_size from header
     std::vector<uint8_t> serialized_packet = serializePacket(*packet);
 
     // Prepare the output data
@@ -87,6 +102,8 @@ void PacketManager::ackMissing() {
     header.seqid = 0;
     header.type = 0;
     header.auth = _auth_key;
+    header.ack = 0;
+    header.data_size = 0;  // ACK packets have no data payload
 
     for (auto seqid: _missed_packets) {
         header.ack = seqid;
@@ -150,16 +167,18 @@ std::vector<std::unique_ptr<packet_t> > PacketManager::fetchPacketsToSend() {
             _history_sent.erase(_history_sent.begin());
         }
         // Create a copy of the packet to store in history
-        std::unique_ptr<packet_t> packet_copy = std::make_unique<packet_t>();
-        packet_copy->header = packet->header;
-        if (packet->data) {
-            size_t data_size = sizeof(packet->data);
-            packet_copy->data = new uint8_t[data_size];
-            std::memcpy(packet_copy->data, packet->data, data_size);
+        packet_t packet_copy;
+        packet_copy.header = packet->header;
+
+        // Now we can properly copy the data using the data_size from header
+        if (packet->header.data_size > 0 && packet->data) {
+            packet_copy.data = new uint8_t[packet->header.data_size];
+            std::memcpy(packet_copy.data, packet->data, packet->header.data_size);
         } else {
-            packet_copy->data = nullptr;
+            packet_copy.data = nullptr;
         }
-        _history_sent.push_back(*packet_copy);
+
+        _history_sent.push_back(packet_copy);
     }
     return tmp;
 }

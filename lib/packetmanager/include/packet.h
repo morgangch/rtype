@@ -13,6 +13,7 @@ typedef struct packet_header_s {
     uint32_t ack;
     uint8_t type;
     uint32_t auth;
+    uint32_t data_size;  // Size of the data payload
 } packet_header_t;
 
 typedef struct packet_s {
