@@ -63,33 +63,6 @@ void PacketManager::handlePacketBytes(const uint8_t *data, size_t size) {
     }
 }
 //
-// void PacketManager::sendPacketBytes(void **data, size_t *size, uint8_t packet_type, bool important) {
-//     packet_header_t header;
-//     std::unique_ptr<packet_t> packet = std::make_unique<packet_t>();
-//
-//     // Store the original data size before modifying the data pointer
-//     size_t original_data_size = *size;
-//
-//     header.seqid = important ? ++_send_seqid : 0;
-//     header.ack = 0;
-//     header.type = packet_type;
-//     header.auth = _auth_key;
-//     header.data_size = original_data_size; // Set the data size in header
-//
-//     packet->header = header;
-//     packet->data = *data;
-//
-//     // Serialize the packet using the data_size from header
-//     std::vector<uint8_t> serialized_packet = serializePacket(*packet);
-//
-//     // Prepare the output data
-//     *size = serialized_packet.size();
-//     *data = new uint8_t[*size];
-//     std::memcpy(*data, serialized_packet.data(), *size);
-//
-//     // Store the packet in the send buffer
-//     _buffer_send.push_back(std::move(packet));
-// }
 
 // Add safer version of sendPacketBytes that returns smart pointer
 std::unique_ptr<uint8_t[]> PacketManager::sendPacketBytesSafe(const void *data, size_t data_size, uint8_t packet_type,
