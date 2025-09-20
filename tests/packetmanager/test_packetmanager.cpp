@@ -149,8 +149,9 @@ void testPacketSending(TestRunner& runner) {
     super_packet_t testPacket = PacketTestHelper::createTestPacket();
     void* data = PacketTestHelper::createPacketData(testPacket);
     size_t data_size = sizeof(super_packet_t);
+    size_t output_size;
 
-    manager.sendPacketBytes(&data, &data_size, 1, true);
+    auto packet_data = manager.sendPacketBytesSafe(data, data_size, 1, &output_size, true);
 
     runner.assertEqual("Send buffer size check", 1UL, manager._get_buffer_send()->size(), "Buffer should contain 1 packet");
     runner.assertEqual("Send sequence ID check", 1U, manager._get_send_seqid(), "Sequence ID should be 1");
@@ -163,8 +164,9 @@ void testPacketTransfer(TestRunner& runner) {
     super_packet_t testPacket = PacketTestHelper::createTestPacket();
     void* data = PacketTestHelper::createPacketData(testPacket);
     size_t data_size = sizeof(super_packet_t);
+    size_t output_size;
 
-    sender.sendPacketBytes(&data, &data_size, 1, true);
+    auto packet_data = sender.sendPacketBytesSafe(data, data_size, 1, &output_size, true);
 
     runner.runTest("Packet transfer", [&]() {
         PacketTestHelper::transferPacket(sender, receiver);
@@ -178,9 +180,10 @@ void testPacketReception(TestRunner& runner) {
     super_packet_t testPacket = PacketTestHelper::createTestPacket();
     void* data = PacketTestHelper::createPacketData(testPacket);
     size_t data_size = sizeof(super_packet_t);
+    size_t output_size;
 
     // Send and transfer packet
-    sender.sendPacketBytes(&data, &data_size, 1, true);
+    auto packet_data = sender.sendPacketBytesSafe(data, data_size, 1, &output_size, true);
     PacketTestHelper::transferPacket(sender, receiver);
 
     // Test reception
@@ -198,9 +201,10 @@ void testPacketData(TestRunner& runner) {
     super_packet_t testPacket = PacketTestHelper::createTestPacket(25, true, "John Doe");
     void* data = PacketTestHelper::createPacketData(testPacket);
     size_t data_size = sizeof(super_packet_t);
+    size_t output_size;
 
     // Send, transfer, and receive packet
-    sender.sendPacketBytes(&data, &data_size, 1, true);
+    auto packet_data = sender.sendPacketBytesSafe(data, data_size, 1, &output_size, true);
     PacketTestHelper::transferPacket(sender, receiver);
     std::vector<std::unique_ptr<packet_t>> mailbox = receiver.fetchReceivedPackets();
 
@@ -236,14 +240,15 @@ void testMissingPacketsAndAck(TestRunner& runner) {
     void* data1 = PacketTestHelper::createPacketData(packet1);
     void* data2 = PacketTestHelper::createPacketData(packet2);
     void* data3 = PacketTestHelper::createPacketData(packet3);
-    size_t data_size = sizeof(super_packet_t);
+    size_t data_size1 = sizeof(super_packet_t);
+    size_t data_size2 = sizeof(super_packet_t);
+    size_t data_size3 = sizeof(super_packet_t);
+    size_t output_size1, output_size2, output_size3;
 
-    // Send 3 packets
-    sender.sendPacketBytes(&data1, &data_size, 1, true);
-    data_size = sizeof(super_packet_t);
-    sender.sendPacketBytes(&data2, &data_size, 1, true);
-    data_size = sizeof(super_packet_t);
-    sender.sendPacketBytes(&data3, &data_size, 1, true);
+    // Send 3 packets using the safer method
+    auto packet_data1 = sender.sendPacketBytesSafe(data1, data_size1, 1, &output_size1, true);
+    auto packet_data2 = sender.sendPacketBytesSafe(data2, data_size2, 1, &output_size2, true);
+    auto packet_data3 = sender.sendPacketBytesSafe(data3, data_size3, 1, &output_size3, true);
 
     // Get packets to send
     std::vector<std::unique_ptr<packet_t>> packets_to_send = sender.fetchPacketsToSend();
@@ -322,9 +327,13 @@ void testAckPacketRetransmission(TestRunner& runner) {
     // Create a test packet
     super_packet_t testPacket = PacketTestHelper::createTestPacket(42, true, "Retrans Test");
     void* data = PacketTestHelper::createPacketData(testPacket);
+    void* data2 = PacketTestHelper::createPacketData(testPacket);
     size_t data_size = sizeof(super_packet_t);
+    size_t data_size2 = sizeof(super_packet_t);
+    size_t output_size, output_size2;
 
-    sender.sendPacketBytes(&data, &data_size, 1, true);
+    // Send first packet using the safer method
+    auto packet_data = sender.sendPacketBytesSafe(data, data_size, 1, &output_size, true);
 
     // Get the packet to send
     std::vector<std::unique_ptr<packet_t>> packets_to_send = sender.fetchPacketsToSend();
@@ -332,9 +341,7 @@ void testAckPacketRetransmission(TestRunner& runner) {
 
     // Simulate packet loss - don't deliver packet 1
     // Send packet 2 to trigger missing packet detection
-    void* data2 = PacketTestHelper::createPacketData(testPacket);
-    data_size = sizeof(super_packet_t);
-    sender.sendPacketBytes(&data2, &data_size, 2, true);
+    auto packet_data2 = sender.sendPacketBytesSafe(data2, data_size2, 2, &output_size2, true);
 
     std::vector<std::unique_ptr<packet_t>> second_batch = sender.fetchPacketsToSend();
     if (second_batch.size() > 0) {
@@ -386,8 +393,10 @@ void packetWithInvalidSizeIsRejected(TestRunner& runner) {
     super_packet_t testPacket = PacketTestHelper::createTestPacket();
     void* data = PacketTestHelper::createPacketData(testPacket);
     size_t data_size = sizeof(super_packet_t);
+    size_t output_size;
 
-    sender.sendPacketBytes(&data, &data_size, 1, true);
+    // Use safer method to send the packet
+    auto packet_data = sender.sendPacketBytesSafe(data, data_size, 1, &output_size, true);
     std::vector<std::unique_ptr<packet_t>> packets_to_send = sender.fetchPacketsToSend();
 
     if (!packets_to_send.empty()) {
@@ -404,10 +413,10 @@ void packetWithInvalidSizeIsRejected(TestRunner& runner) {
 
 void emptyPacketDataIsHandledCorrectly(TestRunner& runner) {
     PacketManager manager;
-    void* empty_data = nullptr;
-    size_t data_size = 0;
+    size_t output_size;
 
-    manager.sendPacketBytes(&empty_data, &data_size, 1, true);
+    // Use safer method to send empty packet
+    auto packet_data = manager.sendPacketBytesSafe(nullptr, 0, 1, &output_size, true);
 
     runner.assertEqual("Empty packet queued", 1UL, manager._get_buffer_send()->size(), "Empty packets should be allowed");
 
@@ -424,9 +433,11 @@ void veryLargePacketIsHandled(TestRunner& runner) {
     void* large_data = malloc(large_size);
     memset(large_data, 0xAB, large_size);
     size_t data_size = large_size;
+    size_t output_size;
 
+    // Use safer method to send large packet
     runner.runTest("Large packet handling", [&]() {
-        manager.sendPacketBytes(&large_data, &data_size, 1, true);
+        auto packet_data = manager.sendPacketBytesSafe(large_data, data_size, 1, &output_size, true);
     });
 
     runner.assertEqual("Large packet queued", 1UL, manager._get_buffer_send()->size(), "Large packets should be handled");
@@ -446,8 +457,10 @@ void sequenceIdOverflowIsHandled(TestRunner& runner) {
         super_packet_t testPacket = PacketTestHelper::createTestPacket();
         void* data = PacketTestHelper::createPacketData(testPacket);
         size_t data_size = sizeof(super_packet_t);
+        size_t output_size;
 
-        manager.sendPacketBytes(&data, &data_size, 1, true);
+        // Use safer method to send packets
+        auto packet_data = manager.sendPacketBytesSafe(data, data_size, 1, &output_size, true);
         manager.fetchPacketsToSend();
         free(data);
 
@@ -464,7 +477,10 @@ void multipleConsecutiveMissingPacketsAreDetected(TestRunner& runner) {
         super_packet_t packet = PacketTestHelper::createTestPacket(20 + i, true, ("Packet " + std::to_string(i)).c_str());
         void* data = PacketTestHelper::createPacketData(packet);
         size_t data_size = sizeof(super_packet_t);
-        sender.sendPacketBytes(&data, &data_size, 1, true);
+        size_t output_size;
+
+        // Use safer method to send packets
+        auto packet_data = sender.sendPacketBytesSafe(data, data_size, 1, &output_size, true);
         free(data);
     }
 
@@ -490,8 +506,10 @@ void duplicatePacketsAreHandledCorrectly(TestRunner& runner) {
     super_packet_t testPacket = PacketTestHelper::createTestPacket();
     void* data = PacketTestHelper::createPacketData(testPacket);
     size_t data_size = sizeof(super_packet_t);
+    size_t output_size;
 
-    sender.sendPacketBytes(&data, &data_size, 1, true);
+    // Use safer method to send the packet
+    auto packet_data = sender.sendPacketBytesSafe(data, data_size, 1, &output_size, true);
     std::vector<std::unique_ptr<packet_t>> packets_to_send = sender.fetchPacketsToSend();
 
     if (!packets_to_send.empty()) {
@@ -514,7 +532,10 @@ void outOfOrderPacketDeliveryWorks(TestRunner& runner) {
         super_packet_t packet = PacketTestHelper::createTestPacket(i, true, ("Packet " + std::to_string(i)).c_str());
         void* data = PacketTestHelper::createPacketData(packet);
         size_t data_size = sizeof(super_packet_t);
-        sender.sendPacketBytes(&data, &data_size, 1, true);
+        size_t output_size;
+
+        // Use safer method to send packets
+        auto packet_data = sender.sendPacketBytesSafe(data, data_size, 1, &output_size, true);
         free(data);
     }
 
@@ -548,8 +569,10 @@ void corruptedDataFieldIsDetected(TestRunner& runner) {
     super_packet_t testPacket = PacketTestHelper::createTestPacket(25, true, "Original Data");
     void* data = PacketTestHelper::createPacketData(testPacket);
     size_t data_size = sizeof(super_packet_t);
+    size_t output_size;
 
-    sender.sendPacketBytes(&data, &data_size, 1, true);
+    // Use safer method to send the packet
+    auto packet_data = sender.sendPacketBytesSafe(data, data_size, 1, &output_size, true);
     std::vector<std::unique_ptr<packet_t>> packets_to_send = sender.fetchPacketsToSend();
 
     if (!packets_to_send.empty()) {
@@ -581,7 +604,10 @@ void packetManagerCleanupWorksCorrectly(TestRunner& runner) {
         super_packet_t packet = PacketTestHelper::createTestPacket(i, true, ("Test " + std::to_string(i)).c_str());
         void* data = PacketTestHelper::createPacketData(packet);
         size_t data_size = sizeof(super_packet_t);
-        manager.sendPacketBytes(&data, &data_size, 1, true);
+        size_t output_size;
+
+        // Use safer method to send packets
+        auto packet_data = manager.sendPacketBytesSafe(data, data_size, 1, &output_size, true);
         free(data);
     }
 

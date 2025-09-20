@@ -18,6 +18,7 @@ public:
     PacketManager();
     ~PacketManager(); // Add destructor declaration
     static packet_t deserializePacket(const uint8_t *data, size_t size, packet_t &packet);
+    static std::unique_ptr<packet_t> deserializePacketSafe(const uint8_t *data, size_t size);
     static std::vector<uint8_t> serializePacket(const packet_t &packet);
     void clean();
 
@@ -31,13 +32,14 @@ public:
     void handlePacketBytes(const uint8_t *data, size_t size);
 
     /*
-     * Prepare a packet to be sent by building the header
+     * Safer version of sendPacketBytes that returns a smart pointer to avoid memory leaks
      * @param data Pointer to the data to be sent (will be copied)
      * @param size Size of the data to be sent
-     * @param packet_type Type of the packet (user-defined)
-     * @param important If true, the packet will be stored in history for potential retransmission
+     * @param packet_type Type identifier for the packet
+     * @param important If true, packet gets a sequence ID and is tracked for retransmission
+     * @return Smart pointer to serialized packet data for automatic memory management
      */
-    void sendPacketBytes(void **data, size_t *size, uint8_t packet_type, bool important);
+    std::unique_ptr<uint8_t[]> sendPacketBytesSafe(const void *data, size_t data_size, uint8_t packet_type, size_t *output_size, bool important = true);
 
     void ackMissing();
 

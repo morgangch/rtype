@@ -62,57 +62,116 @@ void PacketManager::handlePacketBytes(const uint8_t *data, size_t size) {
         return;
     }
 }
+//
+// void PacketManager::sendPacketBytes(void **data, size_t *size, uint8_t packet_type, bool important) {
+//     packet_header_t header;
+//     std::unique_ptr<packet_t> packet = std::make_unique<packet_t>();
+//
+//     // Store the original data size before modifying the data pointer
+//     size_t original_data_size = *size;
+//
+//     header.seqid = important ? ++_send_seqid : 0;
+//     header.ack = 0;
+//     header.type = packet_type;
+//     header.auth = _auth_key;
+//     header.data_size = original_data_size; // Set the data size in header
+//
+//     packet->header = header;
+//     packet->data = *data;
+//
+//     // Serialize the packet using the data_size from header
+//     std::vector<uint8_t> serialized_packet = serializePacket(*packet);
+//
+//     // Prepare the output data
+//     *size = serialized_packet.size();
+//     *data = new uint8_t[*size];
+//     std::memcpy(*data, serialized_packet.data(), *size);
+//
+//     // Store the packet in the send buffer
+//     _buffer_send.push_back(std::move(packet));
+// }
 
-void PacketManager::sendPacketBytes(void **data, size_t *size, uint8_t packet_type, bool important) {
+// Add safer version of sendPacketBytes that returns smart pointer
+std::unique_ptr<uint8_t[]> PacketManager::sendPacketBytesSafe(const void *data, size_t data_size, uint8_t packet_type,
+                                                              size_t *output_size, bool important) {
     packet_header_t header;
     std::unique_ptr<packet_t> packet = std::make_unique<packet_t>();
-
-    // Store the original data size before modifying the data pointer
-    size_t original_data_size = *size;
 
     header.seqid = important ? ++_send_seqid : 0;
     header.ack = 0;
     header.type = packet_type;
     header.auth = _auth_key;
-    header.data_size = original_data_size;  // Set the data size in header
+    header.data_size = data_size;
 
     packet->header = header;
-    packet->data = *data;
+    // Make a copy of the input data for the packet
+    if (data_size > 0) {
+        packet->data = new uint8_t[data_size];
+        std::memcpy(packet->data, data, data_size);
+    } else {
+        packet->data = nullptr;
+    }
 
-    // Serialize the packet using the data_size from header
+    // Serialize the packet
     std::vector<uint8_t> serialized_packet = serializePacket(*packet);
 
-    // Prepare the output data
-    *size = serialized_packet.size();
-    *data = new uint8_t[*size];
-    std::memcpy(*data, serialized_packet.data(), *size);
+    // Create smart pointer for output data
+    auto output_data = std::make_unique<uint8_t[]>(serialized_packet.size());
+    std::memcpy(output_data.get(), serialized_packet.data(), serialized_packet.size());
+    *output_size = serialized_packet.size();
 
     // Store the packet in the send buffer
     _buffer_send.push_back(std::move(packet));
+
+    return output_data;
 }
 
+// Add safer deserialize function using smart pointers
+std::unique_ptr<packet_t> PacketManager::deserializePacketSafe(const uint8_t *data, size_t size) {
+    auto packet = std::make_unique<packet_t>();
+
+    if (size < sizeof(packet_header_t)) {
+        throw std::runtime_error("Data size is smaller than packet header size");
+    }
+    std::memcpy(&packet->header, data, sizeof(packet_header_t));
+
+    // Validate that the data_size field matches the actual data received
+    size_t expected_total_size = sizeof(packet_header_t) + packet->header.data_size;
+    if (size != expected_total_size) {
+        throw std::runtime_error("Packet size mismatch: expected " + std::to_string(expected_total_size) +
+                                 ", got " + std::to_string(size));
+    }
+
+    if (packet->header.data_size > 0) {
+        packet->data = new uint8_t[packet->header.data_size];
+        std::memcpy(packet->data, data + sizeof(packet_header_t), packet->header.data_size);
+    } else {
+        packet->data = nullptr;
+    }
+    return packet;
+}
 
 void PacketManager::clean() {
     // Clean up history data before clearing
-    for (auto& packet : _history_sent) {
+    for (auto &packet: _history_sent) {
         if (packet.data) {
-            delete[] static_cast<uint8_t*>(packet.data);
+            delete[] static_cast<uint8_t *>(packet.data);
             packet.data = nullptr;
         }
     }
 
     // Clean up received buffer data
-    for (auto& packet : _buffer_received) {
+    for (auto &packet: _buffer_received) {
         if (packet && packet->data) {
-            delete[] static_cast<uint8_t*>(packet->data);
+            delete[] static_cast<uint8_t *>(packet->data);
             packet->data = nullptr;
         }
     }
 
     // Clean up send buffer data
-    for (auto& packet : _buffer_send) {
+    for (auto &packet: _buffer_send) {
         if (packet && packet->data) {
-            delete[] static_cast<uint8_t*>(packet->data);
+            delete[] static_cast<uint8_t *>(packet->data);
             packet->data = nullptr;
         }
     }
@@ -132,7 +191,7 @@ void PacketManager::ackMissing() {
     header.type = 0;
     header.auth = _auth_key;
     header.ack = 0;
-    header.data_size = 0;  // ACK packets have no data payload
+    header.data_size = 0; // ACK packets have no data payload
 
     for (auto seqid: _missed_packets) {
         header.ack = seqid;
@@ -145,7 +204,7 @@ void PacketManager::ackMissing() {
 
 
 bool PacketManager::_resendPacket(uint32_t seqid) {
-    for (const packet_t& packet: _history_sent) {
+    for (const packet_t &packet: _history_sent) {
         if (packet.header.seqid == seqid) {
             // Create a proper deep copy of the packet for retransmission
             std::unique_ptr<packet_t> retrans_packet = std::make_unique<packet_t>();
@@ -194,9 +253,10 @@ void PacketManager::_handlePacket(std::unique_ptr<packet_t> packet) {
     _buffer_received.push_back(std::move(packet));
 
     // Sort the received buffer by seqid
-    std::sort(_buffer_received.begin(), _buffer_received.end(), [](const std::unique_ptr<packet_t> &a, const std::unique_ptr<packet_t> &b) {
-        return a->header.seqid < b->header.seqid;
-    });
+    std::sort(_buffer_received.begin(), _buffer_received.end(),
+              [](const std::unique_ptr<packet_t> &a, const std::unique_ptr<packet_t> &b) {
+                  return a->header.seqid < b->header.seqid;
+              });
 }
 
 std::vector<std::unique_ptr<packet_t> > PacketManager::fetchReceivedPackets() {
@@ -214,7 +274,7 @@ std::vector<std::unique_ptr<packet_t> > PacketManager::fetchPacketsToSend() {
         if (_history_sent.size() >= PACKET_HISTORY_SIZE) {
             // Properly clean up the oldest packet before removing it
             if (_history_sent.front().data) {
-                delete[] static_cast<uint8_t*>(_history_sent.front().data);
+                delete[] static_cast<uint8_t *>(_history_sent.front().data);
             }
             _history_sent.erase(_history_sent.begin());
         }
