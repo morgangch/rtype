@@ -38,6 +38,17 @@ public:
 
     std::vector<std::unique_ptr<packet_t> > fetchReceivedPackets();
 
+    [[nodiscard]] uint32_t _get_send_seqid() const { return _send_seqid; }
+    [[nodiscard]] uint32_t _get_recv_seqid() const { return _recv_seqid; }
+    [[nodiscard]] uint32_t _get_auth_key() const { return _auth_key; }
+    [[nodiscard]] const std::vector<packet_t> *_get_history_sent() const { return &_history_sent; }
+    [[nodiscard]] const std::vector<uint32_t> *_get_missed_packets() const { return &_missed_packets; }
+    [[nodiscard]] const std::vector<packet_t> *_get_buffer_send() const { return &_buffer_send; }
+
+    [[nodiscard]] const std::vector<std::unique_ptr<packet_s> > *_get_buffer_received() const {
+        return &_buffer_received;
+    }
+
 private:
     uint32_t _send_seqid = 0;
     uint32_t _recv_seqid = 0;
