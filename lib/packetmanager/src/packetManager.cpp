@@ -129,11 +129,11 @@ void PacketManager::_handlePacket(std::unique_ptr<packet_t> packet) {
         return;
     }
     // Otherwise, store the packet in the received buffer
-    _buffer_received.push_back(packet);
+    _buffer_received.push_back(std::move(packet));
 
     // Sort the received buffer by seqid
-    std::sort(_buffer_received.begin(), _buffer_received.end(), [](const packet_t &a, const packet_t &b) {
-        return a.header.seqid < b.header.seqid;
+    std::sort(_buffer_received.begin(), _buffer_received.end(), [](const std::unique_ptr<packet_t> &a, const std::unique_ptr<packet_t> &b) {
+        return a->header.seqid < b->header.seqid;
     });
 }
 
