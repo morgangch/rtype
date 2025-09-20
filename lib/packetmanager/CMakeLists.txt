@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 # PacketManager Library
 add_library(packetmanager STATIC
     src/packetManager.cpp
-    include/packetManager.h
+    include/packetmanager.h
 )
 
 # Include directories
