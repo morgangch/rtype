@@ -71,12 +71,8 @@ if(CRITERION_FOUND)
     add_test(NAME PacketManagerTest COMMAND test_packetmanager)
 
     # Set test output directory for all test executables
-    set_target_properties(test_ecs test_server test_client test_basic PROPERTIES
+    set_target_properties(test_ecs test_server test_client test_basic test_packetmanager PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests
-    )
-
-    set_target_properties(test_packetmanager PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/packetmanager
     )
 else()
     message(STATUS "Criterion library not found, using basic tests only")
