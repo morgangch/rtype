@@ -49,29 +49,26 @@ void PacketManager::handlePacketBytes(const uint8_t *data, size_t size) {
 
 void PacketManager::sendPacketBytes(void **data, size_t *size, uint8_t packet_type) {
     packet_header_t header;
-    packet_t packet;
+    std::unique_ptr<packet_t> packet = std::make_unique<packet_t>();
 
     header.seqid = ++_send_seqid;
     header.ack = 0;
     header.type = packet_type;
     header.auth = _auth_key;
 
-    packet.header = header;
-    packet.data = *data;
-
-    // Store the packet in the history buffer
-    _history_sent.push_back(packet);
-    if (_history_sent.size() > PACKET_HISTORY_SIZE) {
-        _history_sent.erase(_history_sent.begin());
-    }
+    packet->header = header;
+    packet->data = *data;
 
     // Serialize the packet
-    std::vector<uint8_t> serialized_packet = serializePacket(packet);
+    std::vector<uint8_t> serialized_packet = serializePacket(*packet);
 
     // Prepare the output data
     *size = serialized_packet.size();
     *data = new uint8_t[*size];
     std::memcpy(*data, serialized_packet.data(), *size);
+
+    // Store the packet in the send buffer
+    _buffer_send.push_back(std::move(packet));
 }
 
 
@@ -95,15 +92,15 @@ void PacketManager::ackMissing() {
         header.ack = seqid;
         packet.header = header;
         packet.data = nullptr;
-        _buffer_send.push_back(packet);
+        _buffer_send.push_back(std::make_unique<packet_t>(packet));
     }
 }
 
 
 bool PacketManager::_resendPacket(uint32_t seqid) {
-    for (auto &packet: _history_sent) {
-        if (packet.header.seqid == seqid) {
-            _buffer_send.push_back(packet);
+    for (std::unique_ptr<packet_t> &packet: _buffer_send) {
+        if (packet->header.seqid == seqid) {
+            _buffer_send.push_back(std::make_unique<packet_t>(*packet));
             return true;
         }
     }
@@ -140,5 +137,24 @@ void PacketManager::_handlePacket(std::unique_ptr<packet_t> packet) {
 std::vector<std::unique_ptr<packet_t> > PacketManager::fetchReceivedPackets() {
     std::vector<std::unique_ptr<packet_t> > tmp = std::move(_buffer_received);
     _buffer_received.clear();
+
+    // Fill the packets history
+    for (auto &packet: tmp) {
+        if (_history_sent.size() >= PACKET_HISTORY_SIZE) {
+            _history_sent.erase(_history_sent.begin());
+        }
+        // Create a copy of the packet to store in history
+        std::unique_ptr<packet_t> packet_copy = std::make_unique<packet_t>();
+        packet_copy->header = packet->header;
+        if (packet->data) {
+            size_t data_size = sizeof(packet->data);
+            packet_copy->data = new uint8_t[data_size];
+            std::memcpy(packet_copy->data, packet->data, data_size);
+        } else {
+            packet_copy->data = nullptr;
+        }
+        _history_sent.push_back(*packet_copy);
+    }
+
     return tmp;
 }
