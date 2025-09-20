@@ -27,7 +27,7 @@ typedef struct test_result_s {
 
 typedef struct super_packet_s {
     int my_age;
-    float my_height;
+    bool im_gay;
     char my_name[50];
 } super_packet_t;
 
@@ -39,11 +39,11 @@ int main() {
     display_log("INFO", "Starting PacketManager tests...", COLOR_GREEN);
 
 
-    super_packet_t p = {25, 5.9, "John Doe"};
+    super_packet_t p = {25, true, "John Doe"};
     void *data = malloc(sizeof(super_packet_t));
     memcpy(data, &p, sizeof(super_packet_t));
-    size_t size = sizeof(super_packet_t);
-    manager.sendPacketBytes(&data, &size, 1);
+    size_t data_size = sizeof(super_packet_t);
+    manager.sendPacketBytes(&data, &data_size, 1);
 
     display_log("INFO", "Starting PacketManager tests...", COLOR_GREEN);
 
@@ -74,7 +74,7 @@ int main() {
     try {
         std::vector<std::unique_ptr<packet_t> > to_send = manager.fetchPacketsToSend();
         packet_t *packet = to_send[0].get();
-        size_t raw_size = sizeof(packet_header_t) + sizeof(packet->data);
+        size_t raw_size = sizeof(packet_header_t) + packet->header.data_size;
         void *raw_data = malloc(raw_size);
         std::vector<uint8_t> raw_packet = PacketManager::serializePacket(*packet);
         memcpy(raw_data, raw_packet.data(), raw_size);
@@ -127,13 +127,13 @@ int main() {
 
         // Check the packet data
         super_packet_t *received_data = (super_packet_t *) packet->data;
-        if (received_data->my_age != 25 || received_data->my_height != 5.9 || strcmp(received_data->my_name, "John Doe")
+        if (received_data->my_age != 25 || received_data->im_gay != true || strcmp(received_data->my_name, "John Doe")
             != 0) {
             test_result.failed++;
             display_log("FAIL", test_name, COLOR_RED);
             std::cout << COLOR_RED << "-> Bad data. Expected age: 25, Actual age: " << received_data->my_age <<
                     COLOR_RESET << std::endl;
-            std::cout << COLOR_RED << "-> Bad data. Expected height: 5.9, Actual height: " << received_data->my_height
+            std::cout << COLOR_RED << "-> Bad data. Expected im_gay: true, Actual height: " << (received_data->im_gay ? "true" : "false")
                     <<
                     COLOR_RESET << std::endl;
             std::cout << COLOR_RED << "-> Bad data. Expected name: John Doe, Actual name: " << received_data->my_name <<
@@ -144,15 +144,5 @@ int main() {
         display_log("CRASH", test_name, COLOR_RED);
     }
 
-
-    // Display summary
-    std::cout << "\nTest Summary: (" << test_result.passed + test_result.failed + test_result.crashed << " tests)" <<
-            std::endl;
-    if (test_result.passed > 0)
-        std::cout << COLOR_GREEN << "Passed: " << test_result.passed << COLOR_RESET << std::endl;
-    if (test_result.failed > 0)
-        std::cout << COLOR_RED << "Failed: " << test_result.failed << COLOR_RESET << std::endl;
-    if (test_result.crashed > 0)
-        std::cout << COLOR_RED << "Crashed: " << test_result.crashed << COLOR_RESET << std::endl;
     return (test_result.failed + test_result.crashed) == 0 ? 0 : 1;
 }
