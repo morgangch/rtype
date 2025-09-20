@@ -174,17 +174,12 @@ void PacketManager::_handlePacket(std::unique_ptr<packet_t> packet) {
         return;
     }
 
-    // Skip sequence ID 0 (used for ACK packets)
-    if (packet->header.seqid == 0) {
-        return;
-    }
-
     // If this is a missed packet, remove it from the missed list
     _missed_packets.erase(std::remove(_missed_packets.begin(), _missed_packets.end(), packet->header.seqid),
                           _missed_packets.end());
 
     // Update highest received sequence ID and detect missing packets
-    if (packet->header.seqid > _recv_seqid) {
+    if (packet->header.seqid != 0 && packet->header.seqid > _recv_seqid) {
         // Declare as missed all packets between last received and this one
         for (uint32_t i = _recv_seqid + 1; i < packet->header.seqid; i++) {
             _missed_packets.push_back(i);
