@@ -7,142 +7,238 @@
 
 #include <iostream>
 #include <memory>
+#include <functional>
+#include <vector>
+#include <cstring>
+#include <cstdlib>
 #include "packetmanager.h"
-
 
 #define COLOR_RED "\033[31m"
 #define COLOR_GREEN "\033[32m"
+#define COLOR_YELLOW "\033[33m"
+#define COLOR_BLUE "\033[34m"
 #define COLOR_RESET "\033[0m"
 
-void display_log(const std::string &title, const std::string &message, const std::string &color) {
-    std::cout << "[" << color << title << COLOR_RESET << "] " << message << std::endl;
-}
+// Test Framework Classes
+class TestResult {
+public:
+    int passed = 0;
+    int failed = 0;
+    int crashed = 0;
 
-typedef struct test_result_s {
-    int passed;
-    int failed;
-    int crashed;
-    int total;
-} test_result_t;
+    int total() const { return passed + failed + crashed; }
+    bool hasFailures() const { return failed > 0 || crashed > 0; }
 
+    void printSummary() const {
+        std::cout << "\n" << COLOR_BLUE << "=== Test Summary ===" << COLOR_RESET << std::endl;
+        std::cout << COLOR_GREEN << "Passed: " << passed << COLOR_RESET << std::endl;
+        std::cout << COLOR_RED << "Failed: " << failed << COLOR_RESET << std::endl;
+        std::cout << COLOR_YELLOW << "Crashed: " << crashed << COLOR_RESET << std::endl;
+        std::cout << COLOR_BLUE << "Total: " << total() << COLOR_RESET << std::endl;
+
+        if (!hasFailures()) {
+            std::cout << COLOR_GREEN << "All tests passed! ✓" << COLOR_RESET << std::endl;
+        } else {
+            std::cout << COLOR_RED << "Some tests failed! ✗" << COLOR_RESET << std::endl;
+        }
+    }
+};
+
+class TestRunner {
+private:
+    TestResult result;
+
+    void log(const std::string& level, const std::string& message, const std::string& color) {
+        std::cout << "[" << color << level << COLOR_RESET << "] " << message << std::endl;
+    }
+
+public:
+    template<typename T>
+    void assertEqual(const std::string& testName, const T& expected, const T& actual, const std::string& description = "") {
+        if (expected == actual) {
+            result.passed++;
+            log("PASS", testName, COLOR_GREEN);
+        } else {
+            result.failed++;
+            log("FAIL", testName, COLOR_RED);
+            std::cout << COLOR_RED << "-> " << description << " Expected: " << expected
+                      << ", Actual: " << actual << COLOR_RESET << std::endl;
+        }
+    }
+
+    void assertStringEqual(const std::string& testName, const char* expected, const char* actual, const std::string& description = "") {
+        if (strcmp(expected, actual) == 0) {
+            result.passed++;
+            log("PASS", testName, COLOR_GREEN);
+        } else {
+            result.failed++;
+            log("FAIL", testName, COLOR_RED);
+            std::cout << COLOR_RED << "-> " << description << " Expected: '" << expected
+                      << "', Actual: '" << actual << "'" << COLOR_RESET << std::endl;
+        }
+    }
+
+    void assertTrue(const std::string& testName, bool condition, const std::string& description = "") {
+        if (condition) {
+            result.passed++;
+            log("PASS", testName, COLOR_GREEN);
+        } else {
+            result.failed++;
+            log("FAIL", testName, COLOR_RED);
+            std::cout << COLOR_RED << "-> " << description << COLOR_RESET << std::endl;
+        }
+    }
+
+    void runTest(const std::string& testName, std::function<void()> testFunction) {
+        try {
+            testFunction();
+        } catch (const std::exception& e) {
+            result.crashed++;
+            log("CRASH", testName + " - Exception: " + e.what(), COLOR_RED);
+        } catch (...) {
+            result.crashed++;
+            log("CRASH", testName + " - Unknown exception", COLOR_RED);
+        }
+    }
+
+    TestResult getResult() const { return result; }
+
+    void printProgress() const {
+        std::cout << COLOR_BLUE << "Progress: " << result.total() << " tests completed" << COLOR_RESET << std::endl;
+    }
+};
+
+// Test Data Structure
 typedef struct super_packet_s {
     int my_age;
     bool im_gay;
     char my_name[50];
 } super_packet_t;
 
+// Test Helper Functions
+class PacketTestHelper {
+public:
+    static super_packet_t createTestPacket(int age = 25, bool gay = true, const char* name = "John Doe") {
+        super_packet_t packet;
+        packet.my_age = age;
+        packet.im_gay = gay;
+        strncpy(packet.my_name, name, sizeof(packet.my_name) - 1);
+        packet.my_name[sizeof(packet.my_name) - 1] = '\0';
+        return packet;
+    }
 
-int main() {
+    static void* createPacketData(const super_packet_t& packet) {
+        void* data = malloc(sizeof(super_packet_t));
+        memcpy(data, &packet, sizeof(super_packet_t));
+        return data;
+    }
+
+    static void transferPacket(PacketManager& sender, PacketManager& receiver) {
+        std::vector<std::unique_ptr<packet_t>> to_send = sender.fetchPacketsToSend();
+        if (!to_send.empty()) {
+            packet_t* packet = to_send[0].get();
+            std::vector<uint8_t> raw_packet = PacketManager::serializePacket(*packet);
+            receiver.handlePacketBytes(raw_packet.data(), raw_packet.size());
+        }
+    }
+};
+
+// Test Functions
+void testPacketSending(TestRunner& runner) {
     PacketManager manager;
-    test_result_t test_result = {0, 0, 0};
-    std::string test_name;
-    display_log("INFO", "Starting PacketManager tests...", COLOR_GREEN);
-
-
-    super_packet_t p = {25, true, "John Doe"};
-    void *data = malloc(sizeof(super_packet_t));
-    memcpy(data, &p, sizeof(super_packet_t));
+    super_packet_t testPacket = PacketTestHelper::createTestPacket();
+    void* data = PacketTestHelper::createPacketData(testPacket);
     size_t data_size = sizeof(super_packet_t);
+
     manager.sendPacketBytes(&data, &data_size, 1);
 
-    display_log("INFO", "Starting PacketManager tests...", COLOR_GREEN);
+    runner.assertEqual("Send buffer size check", 1UL, manager._get_buffer_send()->size(), "Buffer should contain 1 packet");
+    runner.assertEqual("Send sequence ID check", 1U, manager._get_send_seqid(), "Sequence ID should be 1");
 
-    // First packet will be sent to the peer.
-    test_name = "First packet sent to the queue";
-    try {
-        if (manager._get_buffer_send()->size() == 1 && manager._get_send_seqid() == 1) {
-            test_result.passed++;
-            display_log("PASS", test_name, COLOR_GREEN);
-        } else {
-            test_result.failed++;
-            display_log("FAIL", test_name, COLOR_RED);
-            // Display expected vs actual in red
-            std::cout << COLOR_RED << "-> Expected buffer size: 1, Actual buffer size: " << manager._get_buffer_send()->
-                    size() << COLOR_RESET << std::endl;
-            std::cout << COLOR_RED << "-> Expected send_seqid: 1, Actual send_seqid: " << manager._get_send_seqid() <<
-                    COLOR_RESET << std::endl;
-        }
-    } catch (...) {
-        test_result.crashed++;
-        display_log("CRASH", test_name, COLOR_RED);
+    free(data);
+}
+
+void testPacketTransfer(TestRunner& runner) {
+    PacketManager sender, receiver;
+    super_packet_t testPacket = PacketTestHelper::createTestPacket();
+    void* data = PacketTestHelper::createPacketData(testPacket);
+    size_t data_size = sizeof(super_packet_t);
+
+    sender.sendPacketBytes(&data, &data_size, 1);
+
+    runner.runTest("Packet transfer", [&]() {
+        PacketTestHelper::transferPacket(sender, receiver);
+    });
+
+    free(data);
+}
+
+void testPacketReception(TestRunner& runner) {
+    PacketManager sender, receiver;
+    super_packet_t testPacket = PacketTestHelper::createTestPacket();
+    void* data = PacketTestHelper::createPacketData(testPacket);
+    size_t data_size = sizeof(super_packet_t);
+
+    // Send and transfer packet
+    sender.sendPacketBytes(&data, &data_size, 1);
+    PacketTestHelper::transferPacket(sender, receiver);
+
+    // Test reception
+    runner.assertEqual("Receive sequence ID", 1U, receiver._get_recv_seqid(), "Received sequence ID should be 1");
+
+    std::vector<std::unique_ptr<packet_t>> mailbox = receiver.fetchReceivedPackets();
+    runner.assertEqual("Received packets count", 1UL, mailbox.size(), "Should receive exactly 1 packet");
+    runner.assertEqual("Buffer cleared after fetch", 0UL, receiver._get_buffer_received()->size(), "Buffer should be empty after fetch");
+
+    free(data);
+}
+
+void testPacketData(TestRunner& runner) {
+    PacketManager sender, receiver;
+    super_packet_t testPacket = PacketTestHelper::createTestPacket(25, true, "John Doe");
+    void* data = PacketTestHelper::createPacketData(testPacket);
+    size_t data_size = sizeof(super_packet_t);
+
+    // Send, transfer, and receive packet
+    sender.sendPacketBytes(&data, &data_size, 1);
+    PacketTestHelper::transferPacket(sender, receiver);
+    std::vector<std::unique_ptr<packet_t>> mailbox = receiver.fetchReceivedPackets();
+
+    if (!mailbox.empty()) {
+        packet_t* packet = mailbox[0].get();
+
+        // Test header
+        runner.assertEqual("Packet type", (uint8_t)1, packet->header.type, "Packet type should be 1");
+        runner.assertEqual("Packet sequence ID", 1U, packet->header.seqid, "Packet sequence ID should be 1");
+        runner.assertEqual("Packet ACK", 0U, packet->header.ack, "Packet ACK should be 0");
+        runner.assertEqual("Packet data size", (uint32_t)sizeof(super_packet_t), packet->header.data_size, "Data size should match");
+
+        // Test data
+        super_packet_t* received_data = (super_packet_t*)packet->data;
+        runner.assertEqual("Data age", 25, received_data->my_age, "Age should be 25");
+        runner.assertEqual("Data boolean flag", true, received_data->im_gay, "Boolean flag should be true");
+        runner.assertStringEqual("Data name", "John Doe", received_data->my_name, "Name should be 'John Doe'");
+    } else {
+        runner.assertTrue("Packet data validation", false, "No packet received for data validation");
     }
 
-    // Transfer the packet to the receiver
-    PacketManager receiver;
+    free(data);
+}
 
-    test_name = "Packet transfer to the receiver";
-    try {
-        std::vector<std::unique_ptr<packet_t> > to_send = manager.fetchPacketsToSend();
-        packet_t *packet = to_send[0].get();
-        size_t raw_size = sizeof(packet_header_t) + packet->header.data_size;
-        void *raw_data = malloc(raw_size);
-        std::vector<uint8_t> raw_packet = PacketManager::serializePacket(*packet);
-        memcpy(raw_data, raw_packet.data(), raw_size);
-        receiver.handlePacketBytes((uint8_t *) raw_data, raw_size);
-        free(raw_data);
-        test_result.passed++;
-        display_log("PASS", test_name, COLOR_GREEN);
-    } catch (...) {
-        test_result.crashed++;
-        display_log("CRASH", test_name, COLOR_RED);
-    }
+int main() {
+    TestRunner runner;
 
-    // Check the first packet data reception
-    test_name = "Peer first packet data reception";
-    try {
+    std::cout << COLOR_BLUE << "=== Starting PacketManager Tests ===" << COLOR_RESET << std::endl;
 
-        if (receiver._get_recv_seqid() != 1) {
-            test_result.failed++;
-            display_log("FAIL", test_name, COLOR_RED);
-            std::cout << COLOR_RED << "-> Expected recv_seqid: 1, Actual recv_seqid: " << receiver._get_recv_seqid()
-                    << COLOR_RESET << std::endl;
-        }
+    // Run all tests
+    testPacketSending(runner);
+    testPacketTransfer(runner);
+    testPacketReception(runner);
+    testPacketData(runner);
 
-        std::vector<std::unique_ptr<packet_t> > receiver_mailbox = receiver.fetchReceivedPackets();
-        if (receiver_mailbox.size() != 1 || receiver._get_buffer_received()->size() != 0) {
-            test_result.failed++;
-            display_log("FAIL", test_name, COLOR_RED);
-            std::cout << COLOR_RED << "-> Expected received packets size: 1, Actual received packets size: " <<
-                    receiver_mailbox.size() << COLOR_RESET << std::endl;
-            std::cout << COLOR_RED << "-> Expected buffer received size: 0, Actual buffer received size: " <<
-                    receiver._get_buffer_received()->size() << COLOR_RESET << std::endl;
-        }
+    // Print results
+    TestResult result = runner.getResult();
+    result.printSummary();
 
-
-        // Check the packet header
-        packet_t *packet = receiver_mailbox[0].get();
-        if (packet->header.type != 1 || packet->header.seqid != 1 || packet->header.ack != 0) {
-            test_result.failed++;
-            display_log("FAIL", test_name, COLOR_RED);
-            std::cout << COLOR_RED << "-> Bad header. Expected packet type: 1, Actual packet type: " << (int) packet->
-                    header.type <<
-                    COLOR_RESET << std::endl;
-            std::cout << COLOR_RED << "-> Bad header. Expected packet seqid: 1, Actual packet seqid: " << packet->header
-                    .seqid <<
-                    COLOR_RESET << std::endl;
-            std::cout << COLOR_RED << "-> Bad header.  Expected packet ack: 0, Actual packet ack: " << packet->header.
-                    ack <<
-                    COLOR_RESET << std::endl;
-        }
-
-        // Check the packet data
-        super_packet_t *received_data = (super_packet_t *) packet->data;
-        if (received_data->my_age != 25 || received_data->im_gay != true || strcmp(received_data->my_name, "John Doe")
-            != 0) {
-            test_result.failed++;
-            display_log("FAIL", test_name, COLOR_RED);
-            std::cout << COLOR_RED << "-> Bad data. Expected age: 25, Actual age: " << received_data->my_age <<
-                    COLOR_RESET << std::endl;
-            std::cout << COLOR_RED << "-> Bad data. Expected im_gay: true, Actual height: " << (received_data->im_gay ? "true" : "false")
-                    <<
-                    COLOR_RESET << std::endl;
-            std::cout << COLOR_RED << "-> Bad data. Expected name: John Doe, Actual name: " << received_data->my_name <<
-                    COLOR_RESET << std::endl;
-        }
-    } catch (...) {
-        test_result.crashed++;
-        display_log("CRASH", test_name, COLOR_RED);
-    }
-
-    return (test_result.failed + test_result.crashed) == 0 ? 0 : 1;
+    return result.hasFailures() ? 1 : 0;
 }
