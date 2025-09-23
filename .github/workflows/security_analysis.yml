@@ -101,15 +101,14 @@ jobs:
           
           # Look for potentially dangerous function calls
           echo "### Potentially Dangerous Functions:" >> security_report.md
-          DANGEROUS_FUNCS="strcpy|strcat|sprintf|gets|scanf"
+          DANGEROUS_FUNCS="\\b(strcpy|strcat|sprintf|gets|scanf)\\b"
           if grep -r -n -E "$DANGEROUS_FUNCS" --include="*.cpp" --include="*.hpp" . > dangerous_funcs.txt 2>/dev/null; then
             echo "Found potentially dangerous function usage:" >> security_report.md
             cat dangerous_funcs.txt >> security_report.md
             echo "::warning::Found usage of potentially dangerous functions"
           else
             echo "✅ No dangerous function usage detected" >> security_report.md
-          fi
-          
+          fi          
           echo "" >> security_report.md
           
           # Check for buffer operations without bounds checking

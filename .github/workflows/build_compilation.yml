@@ -34,8 +34,8 @@ jobs:
       
       - name: Install build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build build-essential
+          apt-get update
+          apt-get install -y cmake ninja-build build-essential
       
       - name: Configure CMake project
         run: |
@@ -70,7 +70,7 @@ jobs:
       
       - name: Install cppcheck for static analysis
         run: |
-          sudo apt-get install -y cppcheck
+          apt-get install -y cppcheck
       
       - name: Cppcheck Analysis - Server Code
         run: |

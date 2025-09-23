@@ -45,8 +45,8 @@ jobs:
       
       - name: Install comprehensive dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          apt-get update
+          apt-get install -y \
             cmake build-essential ninja-build pkg-config \
             libcriterion-dev lcov gcovr \
             gcc g++ \

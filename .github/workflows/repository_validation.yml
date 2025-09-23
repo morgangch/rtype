@@ -28,7 +28,7 @@ jobs:
           
           # Define unwanted file patterns
           UNWANTED_FILES=$(find . -type f -not -path "./.git/*" \
-            -wholename "*tmp/*" \
+            -path "*tmp/*" \
             -o -name "*~" \
             -o -name "*.o" \
             -o -name "*.so" \

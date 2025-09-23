@@ -8,27 +8,15 @@ on:
       - 'dev'
 
 jobs:
-  check_repo:
+  repository_validation:
     name: "Repository Validation"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - id: check_repo
-        run: |
-          UNWANTED_FILES=$(find . -type f -not -path "./.git/*" \( -wholename "*tmp/*" -o -name "*~" -o -name "*.o" -o -name "*.so" -o -name "*.gcno" -o -name "*.gcda" -o -name "*#" -o -name "#*" -o -name "*.gcov" \))
-          for FILES in $UNWANTED_FILES; do
-            echo "::error file=${FILES#./},title=Unwanted file detected::${FILES#./}"
-          done
-          if [[ -n $UNWANTED_FILES ]]
-          then
-            exit 1
-          else
-            echo "✅ No unwanted files detected - repository is clean"
-          fi
+    uses: ./.github/workflows/repository_validation.yml
+    with:
+      strict_mode: false
 
   push_to_mirror:
     name: "Mirror Repository"
-    needs: [check_repo]
+    needs: [repository_validation]
     if: ${{ github.event_name == 'push' && github.actor != 'github-actions[bot]' && startsWith(github.repository, 'morgangch') }}
     runs-on: ubuntu-latest
     steps:
