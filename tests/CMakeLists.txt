@@ -61,7 +61,7 @@ if(CRITERION_FOUND)
     target_link_libraries(test_basic ecs)
 
     add_executable(test_packetmanager packetmanager/test_packetmanager.cpp)
-    target_link_libraries(test_packetmanager packetmanager)
+    target_link_libraries(test_packetmanager PRIVATE packetmanager)
 
     # Add tests to CTest
     add_test(NAME ECSTest COMMAND test_ecs)

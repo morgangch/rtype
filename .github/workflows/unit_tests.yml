@@ -39,22 +39,22 @@ jobs:
       
       - name: Install testing dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build build-essential pkg-config
+          apt-get update
+          apt-get install -y cmake build-essential ninja-build pkg-config
       
       - name: Install Criterion testing framework
         if: ${{ inputs.enable_criterion }}
         run: |
           echo "Installing Criterion testing framework..."
-          sudo apt-get install -y libcriterion-dev || {
+          apt-get install -y libcriterion-dev || {
             echo "Criterion not in apt, building from source..."
-            sudo apt-get install -y git meson libffi-dev
+            apt-get install -y git meson libffi-dev
             git clone --depth=1 --branch=v2.4.1 https://github.com/Snaipe/Criterion.git
             cd Criterion
             meson build --buildtype=release -Dtests=false
             ninja -C build
-            sudo ninja -C build install
-            sudo ldconfig
+            ninja -C build install
+            ldconfig
             cd ..
             rm -rf Criterion
           }
@@ -131,7 +131,7 @@ jobs:
           echo "Setting up test coverage..."
           
           # Install coverage tools
-          sudo apt-get install -y gcov lcov
+          apt-get install -y gcov lcov
           
           # Reconfigure with coverage flags
           cmake -B build_coverage \
@@ -203,17 +203,23 @@ jobs:
   integration_tests:
     name: "Integration Tests"
     runs-on: ubuntu-latest
+    container:
+      image: epitechcontent/epitest-docker:latest
     needs: [unit_tests]
     if: always()  # Run even if unit tests fail
     
     steps:
+      - name: Install basic dependencies
+        run: |
+          apt-get update
+          apt-get install -y cmake build-essential
+      
       - name: Checkout code
         uses: actions/checkout@v4
       
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build build-essential
+          apt-get install -y ninja-build
       
       - name: Build project for integration testing
         run: |

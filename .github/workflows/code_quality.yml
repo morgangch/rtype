@@ -23,6 +23,8 @@ jobs:
   static_analysis:
     name: "Clang Static Analysis"
     runs-on: ubuntu-latest
+    container:
+      image: epitechcontent/epitest-docker:latest
     
     steps:
       - name: Restore Docker image cache
@@ -49,8 +51,8 @@ jobs:
       
       - name: Install analysis dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build python3 python3-pip
+          apt-get update
+          apt-get install -y cmake build-essential clang ninja-build python3 python3-pip
           pip3 install CodeChecker
       
       - name: Configure project with CMake (clang)
@@ -99,6 +101,8 @@ jobs:
   coding_style_check:
     name: "Coding Style Validation"
     runs-on: ubuntu-latest
+    container:
+      image: epitechcontent/epitest-docker:latest
     
     steps:
       - name: Restore Docker image cache
@@ -167,6 +171,8 @@ jobs:
   advanced_static_checks:
     name: "Advanced Static Analysis"
     runs-on: ubuntu-latest
+    container:
+      image: epitechcontent/epitest-docker:latest
     
     steps:
       - name: Checkout code
@@ -174,8 +180,8 @@ jobs:
       
       - name: Install advanced analysis tools
         run: |
-          sudo apt-get update
-          sudo apt-get install -y cppcheck clang-tidy cmake ninja-build
+          apt-get update
+          apt-get install -y cmake build-essential cppcheck clang-tidy ninja-build
       
       - name: Configure project for analysis
         run: |
