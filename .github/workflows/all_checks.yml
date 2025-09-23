@@ -1,4 +1,4 @@
-name: All Checks - R-Type Quality Pipeline
+name: All Checks
 
 on:
   push:
@@ -37,6 +37,7 @@ concurrency:
 permissions:
   contents: write
   actions: read
+  packages: read
   security-events: write
   pages: write
   id-token: write
