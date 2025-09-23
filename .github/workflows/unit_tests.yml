@@ -34,6 +34,24 @@ jobs:
       image: epitechcontent/epitest-docker:latest
     
     steps:
+      - name: Restore Docker image cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/docker-image-coding-style-checker.tar
+          key: docker-image-coding-style-checker-latest
+      
+      - name: Load Docker image from cache if available
+        run: |
+          if [ -f /tmp/docker-image-coding-style-checker.tar ]; then
+            docker load -i /tmp/docker-image-coding-style-checker.tar
+          fi
+      
+      - name: Pull Docker image (if not cached)
+        run: |
+          if ! docker image inspect ghcr.io/epitech/coding-style-checker:latest > /dev/null 2>&1; then
+            docker pull ghcr.io/epitech/coding-style-checker:latest
+            docker save ghcr.io/epitech/coding-style-checker:latest -o /tmp/docker-image-coding-style-checker.tar
+          fi
       - name: Checkout code
         uses: actions/checkout@v4
       
@@ -41,23 +59,6 @@ jobs:
         run: |
           apt-get update
           apt-get install -y cmake build-essential ninja-build pkg-config
-      
-      - name: Install Criterion testing framework
-        if: ${{ inputs.enable_criterion }}
-        run: |
-          echo "Installing Criterion testing framework..."
-          apt-get install -y libcriterion-dev || {
-            echo "Criterion not in apt, building from source..."
-            apt-get install -y git meson libffi-dev
-            git clone --depth=1 --branch=v2.4.1 https://github.com/Snaipe/Criterion.git
-            cd Criterion
-            meson build --buildtype=release -Dtests=false
-            ninja -C build
-            ninja -C build install
-            ldconfig
-            cd ..
-            rm -rf Criterion
-          }
       
       - name: Configure CMake project for testing
         run: |
@@ -131,7 +132,7 @@ jobs:
           echo "Setting up test coverage..."
           
           # Install coverage tools
-          apt-get install -y gcov lcov
+          apt-get install -y gcc g++ lcov
           
           # Reconfigure with coverage flags
           cmake -B build_coverage \
