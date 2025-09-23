@@ -79,8 +79,10 @@ else()
 
     # Fallback: simple executable tests without criterion
     add_executable(test_basic test_basic.cpp)
-    add_executable(test_packetmanager packetmanager/test_packetmanager.cpp)
     target_link_libraries(test_basic ecs)
+
+    add_executable(test_packetmanager packetmanager/test_packetmanager.cpp)
+    target_link_libraries(test_packetmanager packetmanager)
 
     add_test(NAME BasicTest COMMAND test_basic)
     add_test(NAME PacketManagerTest COMMAND test_packetmanager)
