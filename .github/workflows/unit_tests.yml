@@ -48,7 +48,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             cmake build-essential ninja-build pkg-config \
-            libcriterion-dev gcov lcov gcovr \
+            libcriterion-dev lcov gcovr \
             gcc g++ \
             doxygen python3 python3-pip \
             clang clang-tidy cppcheck \
