@@ -51,8 +51,8 @@ jobs:
       
       - name: Install analysis dependencies
         run: |
-          apt-get update
-          apt-get install -y cmake build-essential clang ninja-build python3 python3-pip python3-venv
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential clang ninja-build python3 python3-pip python3-venv
           python3 -m venv .venv
           . .venv/bin/activate
           pip install --upgrade pip
