@@ -1,0 +1,243 @@
+name: Code Quality & Static Analysis
+
+on:
+  workflow_call:
+    inputs:
+      enable_codechecker:
+        description: 'Whether to run CodeChecker analysis'
+        required: false
+        type: boolean
+        default: true
+      enable_coding_style:
+        description: 'Whether to run coding style checks'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  static_analysis:
+    name: "Clang Static Analysis"
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Restore Docker image cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/docker-image-coding-style-checker.tar
+          key: docker-image-coding-style-checker-latest
+      
+      - name: Load Docker image from cache if available
+        run: |
+          if [ -f /tmp/docker-image-coding-style-checker.tar ]; then
+            docker load -i /tmp/docker-image-coding-style-checker.tar
+          fi
+      
+      - name: Pull Docker image (if not cached)
+        run: |
+          if ! docker image inspect ghcr.io/epitech/coding-style-checker:latest > /dev/null 2>&1; then
+            docker pull ghcr.io/epitech/coding-style-checker:latest
+            docker save ghcr.io/epitech/coding-style-checker:latest -o /tmp/docker-image-coding-style-checker.tar
+          fi
+      
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install analysis dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build python3 python3-pip
+          pip3 install CodeChecker
+      
+      - name: Configure project with CMake (clang)
+        run: |
+          export CC=clang
+          export CXX=clang++
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_C_COMPILER=$CC \
+            -DCMAKE_CXX_COMPILER=$CXX \
+            -DCMAKE_CXX_STANDARD=17 \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+      
+      - name: Run CodeChecker analysis
+        if: ${{ inputs.enable_codechecker }}
+        run: |
+          echo "Running CodeChecker static analysis..."
+          mkdir -p codechecker-out
+          CodeChecker analyze \
+            build/compile_commands.json \
+            -o codechecker-out \
+            --analyzers clang-tidy \
+            --enable-all || echo "CodeChecker analysis completed with findings"
+        continue-on-error: true
+      
+      - name: Generate CodeChecker HTML report
+        if: ${{ inputs.enable_codechecker }}
+        run: |
+          CodeChecker parse \
+            codechecker-out \
+            --export html \
+            --output codechecker-html || echo "HTML report generation failed"
+        continue-on-error: true
+      
+      - name: Upload CodeChecker results
+        if: ${{ inputs.enable_codechecker }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: codechecker-analysis-results
+          path: |
+            codechecker-out/
+            codechecker-html/
+          retention-days: 30
+        continue-on-error: true
+
+  coding_style_check:
+    name: "Coding Style Validation"
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Restore Docker image cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/docker-image-coding-style-checker.tar
+          key: docker-image-coding-style-checker-latest
+      
+      - name: Load Docker image from cache if available
+        run: |
+          if [ -f /tmp/docker-image-coding-style-checker.tar ]; then
+            docker load -i /tmp/docker-image-coding-style-checker.tar
+          fi
+      
+      - name: Pull Docker image (if not cached)
+        run: |
+          if ! docker image inspect ghcr.io/epitech/coding-style-checker:latest > /dev/null 2>&1; then
+            docker pull ghcr.io/epitech/coding-style-checker:latest
+            docker save ghcr.io/epitech/coding-style-checker:latest -o /tmp/docker-image-coding-style-checker.tar
+          fi
+      
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Create reports directory
+        run: |
+          mkdir -p /tmp/reports
+          cp -r . /tmp/delivery
+      
+      - name: Run coding style checker
+        if: ${{ inputs.enable_coding_style }}
+        run: |
+          echo "Running EPITECH coding style checker..."
+          docker run --rm \
+            --security-opt "label:disable" \
+            -v /tmp:/mnt/delivery \
+            -v /tmp/reports:/mnt/reports \
+            ghcr.io/epitech/coding-style-checker:latest \
+            /mnt/delivery /mnt/reports || echo "Coding style issues found"
+      
+      - name: Display coding style results
+        if: ${{ inputs.enable_coding_style }}
+        run: |
+          echo "Coding Style Results:"
+          if [ -f "/tmp/reports/coding-style-reports.log" ]; then
+            cat /tmp/reports/coding-style-reports.log
+            # Count violations
+            VIOLATIONS=$(wc -l < /tmp/reports/coding-style-reports.log)
+            echo "Total coding style violations: $VIOLATIONS"
+            if [ $VIOLATIONS -gt 0 ]; then
+              echo "::warning::Found $VIOLATIONS coding style violations"
+            fi
+          else
+            echo "✅ No coding style violations found"
+          fi
+      
+      - name: Upload coding style report
+        if: ${{ inputs.enable_coding_style }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coding-style-report
+          path: /tmp/reports/
+          retention-days: 7
+        continue-on-error: true
+
+  advanced_static_checks:
+    name: "Advanced Static Analysis"
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install advanced analysis tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cppcheck clang-tidy cmake ninja-build
+      
+      - name: Configure project for analysis
+        run: |
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_CXX_STANDARD=17 \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+      
+      - name: Enhanced cppcheck analysis
+        run: |
+          echo "Running enhanced cppcheck analysis..."
+          cppcheck \
+            --enable=all \
+            --inconclusive \
+            --std=c++17 \
+            --language=c++ \
+            --suppress=unusedFunction \
+            --suppress=missingIncludeSystem \
+            --xml \
+            --xml-version=2 \
+            -I./server \
+            -I./client \
+            -I./tests \
+            ./server ./client ./tests 2> cppcheck_results.xml || echo "Cppcheck analysis completed"
+      
+      - name: Clang-tidy analysis
+        run: |
+          echo "Running clang-tidy analysis..."
+          find . -name "*.cpp" -o -name "*.hpp" | head -20 | xargs clang-tidy \
+            -p build \
+            --checks='-*,readability-*,performance-*,modernize-*,bugprone-*' \
+            --format-style=file \
+            > clang_tidy_results.txt 2>&1 || echo "Clang-tidy analysis completed"
+        continue-on-error: true
+      
+      - name: Generate quality summary
+        run: |
+          echo "## Code Quality Analysis Summary" > quality_summary.md
+          echo "- **Timestamp**: $(date)" >> quality_summary.md
+          echo "- **Commit**: ${{ github.sha }}" >> quality_summary.md
+          echo "- **Branch**: ${{ github.ref }}" >> quality_summary.md
+          echo "" >> quality_summary.md
+          
+          echo "### Cppcheck Results:" >> quality_summary.md
+          if [ -f "cppcheck_results.xml" ]; then
+            ERRORS=$(grep -c "<error" cppcheck_results.xml || echo "0")
+            echo "- Total issues found: $ERRORS" >> quality_summary.md
+          fi
+          
+          echo "" >> quality_summary.md
+          echo "### Clang-tidy Results:" >> quality_summary.md
+          if [ -f "clang_tidy_results.txt" ]; then
+            WARNINGS=$(grep -c "warning:" clang_tidy_results.txt || echo "0")
+            echo "- Total warnings found: $WARNINGS" >> quality_summary.md
+          fi
+      
+      - name: Upload analysis results
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-analysis-results
+          path: |
+            cppcheck_results.xml
+            clang_tidy_results.txt
+            quality_summary.md
+          retention-days: 14

@@ -1,0 +1,270 @@
+name: Repository Validation & Cleanliness
+
+on:
+  workflow_call:
+    inputs:
+      strict_mode:
+        description: 'Enable strict validation mode'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  repository_cleanliness:
+    name: "Repository Cleanliness Check"
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check for unwanted files
+        id: check_unwanted_files
+        run: |
+          echo "Checking for unwanted files in repository..."
+          
+          # Define unwanted file patterns
+          UNWANTED_FILES=$(find . -type f -not -path "./.git/*" \
+            -wholename "*tmp/*" \
+            -o -name "*~" \
+            -o -name "*.o" \
+            -o -name "*.so" \
+            -o -name "*.a" \
+            -o -name "*.gcno" \
+            -o -name "*.gcda" \
+            -o -name "*#" \
+            -o -name "#*" \
+            -o -name "*.gcov" \
+            -o -name "core" \
+            -o -name "vgcore.*" \
+            -o -name "*.orig" \
+            -o -name "*.rej" \
+            -o -name ".DS_Store" \
+            -o -name "Thumbs.db" \
+            -o -name "*.swp" \
+            -o -name "*.swo" \
+            -o -name ".vscode/settings.json" 2>/dev/null || true)
+          
+          if [ -n "$UNWANTED_FILES" ]; then
+            echo "## ❌ Unwanted Files Detected" >> validation_report.md
+            echo "" >> validation_report.md
+            for FILE in $UNWANTED_FILES; do
+              echo "::error file=${FILE#./},title=Unwanted file detected::${FILE#./}"
+              echo "- \`${FILE#./}\`" >> validation_report.md
+            done
+            echo "UNWANTED_FILES_FOUND=true" >> $GITHUB_ENV
+            exit 1
+          else
+            echo "✅ No unwanted files detected"
+            echo "## ✅ Repository Cleanliness Check Passed" >> validation_report.md
+            echo "" >> validation_report.md
+            echo "No unwanted files found in the repository." >> validation_report.md
+            echo "UNWANTED_FILES_FOUND=false" >> $GITHUB_ENV
+          fi
+      
+      - name: Check for empty directories
+        run: |
+          echo "Checking for empty directories..."
+          EMPTY_DIRS=$(find . -type d -empty -not -path "./.git/*" 2>/dev/null || true)
+          
+          if [ -n "$EMPTY_DIRS" ]; then
+            echo "" >> validation_report.md
+            echo "## ⚠️ Empty Directories Found" >> validation_report.md
+            echo "" >> validation_report.md
+            for DIR in $EMPTY_DIRS; do
+              echo "::warning file=${DIR#./},title=Empty directory detected::${DIR#./}"
+              echo "- \`${DIR#./}\`" >> validation_report.md
+            done
+          else
+            echo "✅ No empty directories found"
+          fi
+      
+      - name: Check for large files
+        run: |
+          echo "Checking for large files (>10MB)..."
+          LARGE_FILES=$(find . -type f -size +10M -not -path "./.git/*" 2>/dev/null || true)
+          
+          if [ -n "$LARGE_FILES" ]; then
+            echo "" >> validation_report.md
+            echo "## ⚠️ Large Files Found" >> validation_report.md
+            echo "" >> validation_report.md
+            for FILE in $LARGE_FILES; do
+              SIZE=$(ls -lh "$FILE" | awk '{print $5}')
+              echo "::warning file=${FILE#./},title=Large file detected (${SIZE})::${FILE#./}"
+              echo "- \`${FILE#./}\` (${SIZE})" >> validation_report.md
+            done
+          else
+            echo "✅ No large files found"
+          fi
+      
+      - name: Check file permissions
+        run: |
+          echo "Checking for files with execute permissions..."
+          EXECUTABLE_FILES=$(find . -type f -executable -not -path "./.git/*" -not -name "*.sh" 2>/dev/null || true)
+          
+          if [ -n "$EXECUTABLE_FILES" ]; then
+            echo "" >> validation_report.md
+            echo "## 📋 Executable Files Found" >> validation_report.md
+            echo "" >> validation_report.md
+            for FILE in $EXECUTABLE_FILES; do
+              echo "- \`${FILE#./}\`" >> validation_report.md
+            done
+            echo "::notice::Found executable files - verify these should have execute permissions"
+          fi
+      
+      - name: Check for IDE/Editor specific files
+        if: ${{ inputs.strict_mode }}
+        run: |
+          echo "Checking for IDE/Editor specific files..."
+          IDE_FILES=$(find . -name ".vscode" -o -name ".idea" -o -name "*.vcxproj*" -o -name "*.sln" -o -name ".vs" 2>/dev/null || true)
+          
+          if [ -n "$IDE_FILES" ]; then
+            echo "" >> validation_report.md
+            echo "## 📝 IDE/Editor Files Found" >> validation_report.md
+            echo "" >> validation_report.md
+            for FILE in $IDE_FILES; do
+              echo "::warning file=${FILE#./},title=IDE specific file detected::${FILE#./}"
+              echo "- \`${FILE#./}\`" >> validation_report.md
+            done
+            echo "Consider adding these to .gitignore if they shouldn't be tracked"
+          fi
+
+  project_structure_validation:
+    name: "Project Structure Validation"
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Validate essential files exist
+        run: |
+          echo "Validating essential project files..."
+          
+          # Create structure validation report
+          echo "## Project Structure Validation" > structure_report.md
+          echo "- **Timestamp**: $(date)" >> structure_report.md
+          echo "- **Commit**: ${{ github.sha }}" >> structure_report.md
+          echo "" >> structure_report.md
+          
+          # Check for essential files
+          ESSENTIAL_FILES="CMakeLists.txt README.md"
+          echo "### Essential Files:" >> structure_report.md
+          
+          for FILE in $ESSENTIAL_FILES; do
+            if [ -f "$FILE" ]; then
+              echo "- ✅ \`$FILE\` exists" >> structure_report.md
+            else
+              echo "- ❌ \`$FILE\` missing" >> structure_report.md
+              echo "::error file=$FILE,title=Essential file missing::$FILE"
+            fi
+          done
+          
+          echo "" >> structure_report.md
+          
+          # Check for essential directories
+          ESSENTIAL_DIRS="server client tests"
+          echo "### Essential Directories:" >> structure_report.md
+          
+          for DIR in $ESSENTIAL_DIRS; do
+            if [ -d "$DIR" ]; then
+              echo "- ✅ \`$DIR/\` exists" >> structure_report.md
+            else
+              echo "- ❌ \`$DIR/\` missing" >> structure_report.md
+              echo "::error file=$DIR,title=Essential directory missing::$DIR/"
+            fi
+          done
+      
+      - name: Validate CMakeLists.txt files
+        run: |
+          echo "Validating CMakeLists.txt files..."
+          
+          echo "" >> structure_report.md
+          echo "### CMakeLists.txt Validation:" >> structure_report.md
+          
+          # Check main CMakeLists.txt
+          if [ -f "CMakeLists.txt" ]; then
+            if grep -q "cmake_minimum_required" CMakeLists.txt; then
+              echo "- ✅ Main CMakeLists.txt has cmake_minimum_required" >> structure_report.md
+            else
+              echo "- ❌ Main CMakeLists.txt missing cmake_minimum_required" >> structure_report.md
+              echo "::warning file=CMakeLists.txt,title=Missing cmake_minimum_required::Main CMakeLists.txt"
+            fi
+            
+            if grep -q "project(" CMakeLists.txt; then
+              echo "- ✅ Main CMakeLists.txt has project declaration" >> structure_report.md
+            else
+              echo "- ❌ Main CMakeLists.txt missing project declaration" >> structure_report.md
+              echo "::warning file=CMakeLists.txt,title=Missing project declaration::Main CMakeLists.txt"
+            fi
+          fi
+          
+          # Check subdirectory CMakeLists.txt files
+          for DIR in server client tests; do
+            if [ -f "$DIR/CMakeLists.txt" ]; then
+              echo "- ✅ \`$DIR/CMakeLists.txt\` exists" >> structure_report.md
+            else
+              echo "- ❌ \`$DIR/CMakeLists.txt\` missing" >> structure_report.md
+              echo "::warning file=$DIR/CMakeLists.txt,title=Subdirectory CMakeLists.txt missing::$DIR/CMakeLists.txt"
+            fi
+          done
+      
+      - name: Check for .gitignore completeness
+        run: |
+          echo "Validating .gitignore file..."
+          
+          echo "" >> structure_report.md
+          echo "### .gitignore Validation:" >> structure_report.md
+          
+          if [ -f ".gitignore" ]; then
+            echo "- ✅ .gitignore exists" >> structure_report.md
+            
+            # Check for common C++ ignore patterns
+            IGNORE_PATTERNS="*.o *.so build/ CMakeCache.txt"
+            for PATTERN in $IGNORE_PATTERNS; do
+              if grep -q "$PATTERN" .gitignore; then
+                echo "- ✅ .gitignore includes \`$PATTERN\`" >> structure_report.md
+              else
+                echo "- ⚠️ .gitignore missing \`$PATTERN\`" >> structure_report.md
+                echo "::notice::.gitignore could include pattern: $PATTERN"
+              fi
+            done
+          else
+            echo "- ❌ .gitignore missing" >> structure_report.md
+            echo "::warning file=.gitignore,title=.gitignore file missing::.gitignore"
+          fi
+      
+      - name: Generate validation summary
+        if: always()
+        run: |
+          echo "## Repository Validation Summary" > validation_summary.md
+          echo "- **Timestamp**: $(date)" >> validation_summary.md
+          echo "- **Commit**: ${{ github.sha }}" >> validation_summary.md
+          echo "- **Branch**: ${{ github.ref }}" >> validation_summary.md
+          echo "" >> validation_summary.md
+          
+          # Combine reports
+          if [ -f "validation_report.md" ]; then
+            cat validation_report.md >> validation_summary.md
+            echo "" >> validation_summary.md
+          fi
+          
+          if [ -f "structure_report.md" ]; then
+            cat structure_report.md >> validation_summary.md
+          fi
+          
+          echo "Repository validation completed."
+      
+      - name: Upload validation results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-validation-results
+          path: |
+            validation_summary.md
+            validation_report.md
+            structure_report.md
+          retention-days: 7

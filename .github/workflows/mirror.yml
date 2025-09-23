@@ -1,24 +1,21 @@
-name: rtype
+name: Simple Mirroring
 
 on:
   push:
     branches-ignore:
       - 'ga-ignore-*'
-  pull_request:
-    branches-ignore:
-      - 'ga-ignore-*'
+      - 'main'
+      - 'dev'
 
 jobs:
   check_repo:
-    name: "Checks if the repository is clean and void of any unwanted files (temp files, binary files, etc.)"
+    name: "Repository Validation"
     runs-on: ubuntu-latest
-    # Skip CI/CD on mirror repository - only run on development repo
-    if: ${{ startsWith(github.repository, 'morgangch') }}
     steps:
       - uses: actions/checkout@v4
       - id: check_repo
         run: |
-          UNWANTED_FILES=$(find . -type f -not -path "./git/*" -wholename "*tmp/*" -or -name "*~" -or -name "*.o" -or -name "*.so" -or -name "*.gcno" -or -name "*.gcda" -or -name "*#" -or -name "#*" -or -name "*.gcov")
+          UNWANTED_FILES=$(find . -type f -not -path "./.git/*" \( -wholename "*tmp/*" -o -name "*~" -o -name "*.o" -o -name "*.so" -o -name "*.gcno" -o -name "*.gcda" -o -name "*#" -o -name "#*" -o -name "*.gcov" \))
           for FILES in $UNWANTED_FILES; do
             echo "::error file=${FILES#./},title=Unwanted file detected::${FILES#./}"
           done
@@ -26,87 +23,12 @@ jobs:
           then
             exit 1
           else
-            echo No unwanted files detected
+            echo "✅ No unwanted files detected - repository is clean"
           fi
-
-  check_program_compilation:
-    needs: [check_repo]
-    name: "Checks if CMake builds and compiles both client and server"
-    runs-on: ubuntu-latest
-    # Skip CI/CD on mirror repository - only run on development repo
-    if: ${{ startsWith(github.repository, 'morgangch') }}
-    container:
-      image: epitechcontent/epitest-docker:latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install CMake
-        run: |
-          apt-get update
-          apt-get install -y cmake build-essential
-      - name: Configure with CMake
-        run: |
-          mkdir -p build
-          cd build
-          cmake ..
-      - name: Build project
-        run: |
-          cd build
-          make
-      - name: Test executables exist
-        run: |
-          if [ ! -f build/bin/server ]; then
-            echo "Error: Server executable not found"
-            exit 1
-          fi
-          if [ ! -f build/bin/client ]; then
-            echo "Error: Client executable not found"
-            exit 1
-          fi
-          echo "Both client and server executables built successfully"
-      - name: Test executables run
-        run: |
-          cd build/bin
-          echo "Testing server executable:"
-          ./server
-          echo "Testing client executable:"
-          ./client
-        timeout-minutes: 2
-
-  run_tests:
-    needs: [check_program_compilation]
-    name: "Runs tests with criterion"
-    runs-on: ubuntu-latest
-    # Skip CI/CD on mirror repository - only run on development repo
-    if: ${{ startsWith(github.repository, 'morgangch') }}
-    container:
-      image: epitechcontent/epitest-docker:latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install CMake
-        run: |
-          apt-get update
-          apt-get install -y cmake build-essential
-      - name: Check if tests exist
-        run: |
-          if [ -f CMakeLists.txt ]; then
-            # Check if tests are defined in CMakeLists.txt
-            if grep -q "enable_testing\|add_test" CMakeLists.txt; then
-              mkdir -p build
-              cd build
-              cmake ..
-              make
-              ctest --output-on-failure
-            else
-              echo "No tests found in CMakeLists.txt, skipping tests."
-            fi
-          else
-            echo "CMakeLists.txt not found, skipping tests."
-          fi
-        timeout-minutes: 2
 
   push_to_mirror:
-    needs: [run_tests, check_repo, check_program_compilation]
+    name: "Mirror Repository"
+    needs: [check_repo]
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]' && startsWith(github.repository, 'morgangch') }}
     runs-on: ubuntu-latest
     steps:

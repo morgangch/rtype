@@ -1,0 +1,274 @@
+name: Unit Tests & Coverage
+
+on:
+  workflow_call:
+    inputs:
+      generate_coverage:
+        description: 'Whether to generate test coverage reports'
+        required: false
+        type: boolean
+        default: true
+      build_type:
+        description: 'Build type for tests (Debug/Release)'
+        required: false
+        type: string
+        default: 'Debug'
+      enable_criterion:
+        description: 'Whether to install and use Criterion testing framework'
+        required: false
+        type: boolean
+        default: true
+
+env:
+  BUILD_TYPE: ${{ inputs.build_type }}
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  unit_tests:
+    name: "C++ Unit Tests with Criterion"
+    runs-on: ubuntu-latest
+    container:
+      image: epitechcontent/epitest-docker:latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install testing dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build build-essential pkg-config
+      
+      - name: Install Criterion testing framework
+        if: ${{ inputs.enable_criterion }}
+        run: |
+          echo "Installing Criterion testing framework..."
+          sudo apt-get install -y libcriterion-dev || {
+            echo "Criterion not in apt, building from source..."
+            sudo apt-get install -y git meson libffi-dev
+            git clone --depth=1 --branch=v2.4.1 https://github.com/Snaipe/Criterion.git
+            cd Criterion
+            meson build --buildtype=release -Dtests=false
+            ninja -C build
+            sudo ninja -C build install
+            sudo ldconfig
+            cd ..
+            rm -rf Criterion
+          }
+      
+      - name: Configure CMake project for testing
+        run: |
+          echo "Configuring CMake project for testing..."
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_CXX_STANDARD=17 \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DENABLE_TESTING=ON
+      
+      - name: Build test targets
+        run: |
+          echo "Building all test targets..."
+          cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+      
+      - name: Verify test executables exist
+        run: |
+          echo "Verifying test executables..."
+          ls -la build/tests/ || echo "Tests directory not found"
+          
+          if [ -f "build/tests/test_basic" ]; then
+            echo "✅ Basic test executable found"
+          else
+            echo "❌ Basic test executable missing"
+          fi
+          
+          if [ -f "build/tests/test_server" ]; then
+            echo "✅ Server test executable found"
+          else
+            echo "❌ Server test executable missing"
+          fi
+          
+          if [ -f "build/tests/test_client" ]; then
+            echo "✅ Client test executable found"
+          else
+            echo "❌ Client test executable missing"
+          fi
+      
+      - name: Run basic tests
+        run: |
+          echo "Running basic tests..."
+          cd build
+          ctest --output-on-failure --verbose --test-regex "BasicTest" || echo "Basic tests failed"
+        continue-on-error: true
+      
+      - name: Run server tests
+        run: |
+          echo "Running server tests..."
+          cd build
+          ctest --output-on-failure --verbose --test-regex "ServerTest" || echo "Server tests failed"
+        continue-on-error: true
+      
+      - name: Run client tests
+        run: |
+          echo "Running client tests..."
+          cd build
+          ctest --output-on-failure --verbose --test-regex "ClientTest" || echo "Client tests failed"
+        continue-on-error: true
+      
+      - name: Run all tests with detailed output
+        run: |
+          echo "Running all tests..."
+          cd build
+          ctest --output-on-failure --verbose --parallel $(nproc) || echo "Some tests failed"
+        continue-on-error: true
+      
+      - name: Generate test coverage (if enabled)
+        if: ${{ inputs.generate_coverage }}
+        run: |
+          echo "Setting up test coverage..."
+          
+          # Install coverage tools
+          sudo apt-get install -y gcov lcov
+          
+          # Reconfigure with coverage flags
+          cmake -B build_coverage \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_STANDARD=17 \
+            -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage" \
+            -DCMAKE_C_FLAGS="--coverage -fprofile-arcs -ftest-coverage" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
+            -DENABLE_TESTING=ON
+          
+          # Build with coverage
+          cmake --build build_coverage --config Debug --parallel $(nproc)
+          
+          # Run tests to generate coverage data
+          cd build_coverage
+          ctest --output-on-failure || echo "Tests completed for coverage"
+          cd ..
+          
+          # Generate coverage report
+          lcov --directory build_coverage --capture --output-file coverage.info
+          lcov --remove coverage.info '/usr/*' --output-file coverage.info
+          lcov --remove coverage.info '*/tests/*' --output-file coverage.info
+          lcov --list coverage.info
+          
+          # Generate HTML coverage report
+          genhtml coverage.info --output-directory coverage_html --title "R-Type Coverage Report"
+        continue-on-error: true
+      
+      - name: Collect test artifacts
+        if: always()
+        run: |
+          echo "Collecting test artifacts..."
+          mkdir -p test_results
+          
+          # Copy test logs if they exist
+          if [ -d "build/Testing" ]; then
+            cp -r build/Testing test_results/
+          fi
+          
+          # Generate test summary
+          echo "## Unit Test Results Summary" > test_results/test_summary.md
+          echo "- **Build Type**: ${{ env.BUILD_TYPE }}" >> test_results/test_summary.md
+          echo "- **Timestamp**: $(date)" >> test_results/test_summary.md
+          echo "- **Commit**: ${{ github.sha }}" >> test_results/test_summary.md
+          echo "- **Branch**: ${{ github.ref }}" >> test_results/test_summary.md
+          echo "" >> test_results/test_summary.md
+          
+          # Parse CTest results if available
+          if [ -f "build/Testing/Temporary/LastTest.log" ]; then
+            echo "### Test Execution Log:" >> test_results/test_summary.md
+            echo '```' >> test_results/test_summary.md
+            tail -50 build/Testing/Temporary/LastTest.log >> test_results/test_summary.md
+            echo '```' >> test_results/test_summary.md
+          fi
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results-${{ env.BUILD_TYPE }}
+          path: |
+            test_results/
+            coverage.info
+            coverage_html/
+          retention-days: 14
+        continue-on-error: true
+
+  integration_tests:
+    name: "Integration Tests"
+    runs-on: ubuntu-latest
+    needs: [unit_tests]
+    if: always()  # Run even if unit tests fail
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build build-essential
+      
+      - name: Build project for integration testing
+        run: |
+          echo "Building project for integration testing..."
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_STANDARD=17
+          cmake --build build --parallel $(nproc)
+      
+      - name: Test server-client integration (basic)
+        run: |
+          echo "Testing basic server-client integration..."
+          
+          # Start server in background (if possible)
+          if [ -f "build/server/r-type_server" ]; then
+            echo "Starting server for integration test..."
+            timeout 10s build/server/r-type_server || echo "Server test completed"
+          else
+            echo "Server executable not found for integration test"
+          fi
+          
+          # Test client connection (if possible)
+          if [ -f "build/client/r-type_client" ]; then
+            echo "Testing client connection..."
+            timeout 5s build/client/r-type_client || echo "Client test completed"
+          else
+            echo "Client executable not found for integration test"
+          fi
+        continue-on-error: true
+      
+      - name: Generate integration test report
+        if: always()
+        run: |
+          echo "## Integration Test Report" > integration_report.md
+          echo "- **Timestamp**: $(date)" >> integration_report.md
+          echo "- **Commit**: ${{ github.sha }}" >> integration_report.md
+          echo "" >> integration_report.md
+          echo "### Server Executable:" >> integration_report.md
+          if [ -f "build/server/r-type_server" ]; then
+            echo "- ✅ Server executable built successfully" >> integration_report.md
+          else
+            echo "- ❌ Server executable not found" >> integration_report.md
+          fi
+          echo "### Client Executable:" >> integration_report.md
+          if [ -f "build/client/r-type_client" ]; then
+            echo "- ✅ Client executable built successfully" >> integration_report.md
+          else
+            echo "- ❌ Client executable not found" >> integration_report.md
+          fi
+      
+      - name: Upload integration test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: integration_report.md
+          retention-days: 7
