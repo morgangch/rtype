@@ -148,6 +148,7 @@ jobs:
             --exclude=".*/tests/.*" \
             --exclude=".*/build.*" \
             --exclude=".*/usr/.*" \
+            --exclude=".*CMakeFiles.*" \
             --html --html-details \
             -o coverage_html/index.html
           
@@ -156,6 +157,7 @@ jobs:
             --exclude=".*/tests/.*" \
             --exclude=".*/build.*" \
             --exclude=".*/usr/.*" \
+            --exclude=".*CMakeFiles.*" \
             --html --html-details \
             -o public/coverage/index.html
           
@@ -164,13 +166,14 @@ jobs:
             --exclude=".*/tests/.*" \
             --exclude=".*/build.*" \
             --exclude=".*/usr/.*" \
+            --exclude=".*CMakeFiles.*" \
             --xml coverage.xml \
             --txt coverage.txt
           
           # Generate simple coverage summary
           echo "## Coverage Summary" > coverage_summary.md
           echo "" >> coverage_summary.md
-          gcovr --root . --exclude=".*/tests/.*" --exclude=".*/build.*" --exclude=".*/usr/.*" >> coverage_summary.md
+          gcovr --root . --exclude=".*/tests/.*" --exclude=".*/build.*" --exclude=".*/usr/.*" --exclude=".*CMakeFiles.*" >> coverage_summary.md
           
           echo "✅ Coverage generation completed successfully"
         continue-on-error: true
