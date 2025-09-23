@@ -7,7 +7,7 @@ add_library(packetmanager STATIC
 )
 
 # Include directories
-target_include_directories(packetmanager PUBLIC  include)
+target_include_directories(packetmanager PUBLIC include)
 
 # Set C++ standard
 target_compile_features(packetmanager PUBLIC cxx_std_17)

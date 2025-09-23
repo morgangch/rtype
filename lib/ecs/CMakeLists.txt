@@ -9,7 +9,7 @@ add_library(ecs STATIC
 )
 
 # Include directories
-target_include_directories(packetmanager PUBLIC include)
+target_include_directories(ecs PUBLIC include)
 
 # Set C++ standard
 target_compile_features(ecs PUBLIC cxx_std_17)
