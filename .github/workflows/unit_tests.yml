@@ -132,7 +132,7 @@ jobs:
           echo "Setting up test coverage..."
           
           # Install coverage tools
-          apt-get install -y gcc g++ lcov
+          apt-get install -y lcov
           
           # Reconfigure with coverage flags
           cmake -B build_coverage \
