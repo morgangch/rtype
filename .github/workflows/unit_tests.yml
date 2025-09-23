@@ -136,27 +136,41 @@ jobs:
           ctest --output-on-failure || echo "Tests completed for coverage"
           cd ..
           
-          # Generate coverage report using gcovr (more reliable than lcov)
+          # Generate coverage report using gcovr
           echo "Generating coverage report with gcovr..."
           
-          # Create coverage output directory first
+          # Create coverage output directories
           mkdir -p coverage_html
+          mkdir -p public/coverage
           
-          gcovr \
-            --root . \
-            --build-root build_coverage \
-            --exclude '.*test.*' \
-            --exclude '.*build.*' \
-            --exclude '.*usr.*' \
-            --html-details \
-            --html coverage_html/index.html \
+          # Generate coverage reports
+          gcovr --root . \
+            --exclude=".*/tests/.*" \
+            --exclude=".*/build.*" \
+            --exclude=".*/usr/.*" \
+            --html --html-details \
+            -o coverage_html/index.html
+          
+          # Also generate for public directory (GitHub Pages)
+          gcovr --root . \
+            --exclude=".*/tests/.*" \
+            --exclude=".*/build.*" \
+            --exclude=".*/usr/.*" \
+            --html --html-details \
+            -o public/coverage/index.html
+          
+          # Generate XML and text reports for CI/CD
+          gcovr --root . \
+            --exclude=".*/tests/.*" \
+            --exclude=".*/build.*" \
+            --exclude=".*/usr/.*" \
             --xml coverage.xml \
             --txt coverage.txt
           
           # Generate simple coverage summary
           echo "## Coverage Summary" > coverage_summary.md
           echo "" >> coverage_summary.md
-          gcovr --root . --build-root build_coverage --exclude '.*test.*' --exclude '.*build.*' --exclude '.*usr.*' >> coverage_summary.md
+          gcovr --root . --exclude=".*/tests/.*" --exclude=".*/build.*" --exclude=".*/usr/.*" >> coverage_summary.md
           
           echo "✅ Coverage generation completed successfully"
         continue-on-error: true
