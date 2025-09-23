@@ -20,8 +20,21 @@ endif()
 if(CRITERION_FOUND)
     message(STATUS "Found Criterion library, building full test suite")
 
+    # Test for ECS library functionality
+    add_executable(test_ecs test_ecs.cpp)
+    target_link_libraries(test_ecs ecs)
+    if(CRITERION_LDFLAGS)
+        target_link_libraries(test_ecs ${CRITERION_LDFLAGS})
+    else()
+        target_link_libraries(test_ecs ${CRITERION_LIBRARIES})
+    endif()
+    if(CRITERION_INCLUDE_DIRS)
+        target_include_directories(test_ecs PRIVATE ${CRITERION_INCLUDE_DIRS})
+    endif()
+
     # Test for server functionality
     add_executable(test_server test_server.cpp)
+    target_link_libraries(test_server ecs)
     if(CRITERION_LDFLAGS)
         target_link_libraries(test_server ${CRITERION_LDFLAGS})
     else()
@@ -33,6 +46,7 @@ if(CRITERION_FOUND)
 
     # Test for client functionality
     add_executable(test_client test_client.cpp)
+    target_link_libraries(test_client ecs)
     if(CRITERION_LDFLAGS)
         target_link_libraries(test_client ${CRITERION_LDFLAGS})
     else()
@@ -44,14 +58,20 @@ if(CRITERION_FOUND)
 
     # Basic fallback test
     add_executable(test_basic test_basic.cpp)
+    target_link_libraries(test_basic ecs)
+
+    add_executable(test_packetmanager packetmanager/test_packetmanager.cpp)
+    target_link_libraries(test_packetmanager packetmanager)
 
     # Add tests to CTest
+    add_test(NAME ECSTest COMMAND test_ecs)
     add_test(NAME ServerTest COMMAND test_server)
     add_test(NAME ClientTest COMMAND test_client)
     add_test(NAME BasicTest COMMAND test_basic)
+    add_test(NAME PacketManagerTest COMMAND test_packetmanager)
 
     # Set test output directory for all test executables
-    set_target_properties(test_server test_client test_basic PROPERTIES
+    set_target_properties(test_ecs test_server test_client test_basic test_packetmanager PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests
     )
 else()
@@ -59,9 +79,13 @@ else()
 
     # Fallback: simple executable tests without criterion
     add_executable(test_basic test_basic.cpp)
-    add_test(NAME BasicTest COMMAND test_basic)
+    add_executable(test_packetmanager packetmanager/test_packetmanager.cpp)
+    target_link_libraries(test_basic ecs)
 
-    set_target_properties(test_basic PROPERTIES
+    add_test(NAME BasicTest COMMAND test_basic)
+    add_test(NAME PacketManagerTest COMMAND test_packetmanager)
+
+    set_target_properties(test_basic test_packetmanager PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests
     )
 endif()
