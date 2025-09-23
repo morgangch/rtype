@@ -368,7 +368,7 @@ jobs:
         continue-on-error: true
       
       - name: Deploy to GitHub Pages
-        if: ${{ inputs.deploy_pages && github.ref == 'refs/heads/main' }}
+        if: ${{ inputs.deploy_pages && (github.ref == 'refs/heads/main' || contains(github.ref, '/cicd')) }}
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
