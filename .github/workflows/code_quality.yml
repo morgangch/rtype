@@ -52,8 +52,11 @@ jobs:
       - name: Install analysis dependencies
         run: |
           apt-get update
-          apt-get install -y cmake build-essential clang ninja-build python3 python3-pip
-          pip3 install CodeChecker
+          apt-get install -y cmake build-essential clang ninja-build python3 python3-pip python3-venv
+          python3 -m venv .venv
+          . .venv/bin/activate
+          pip install --upgrade pip
+          pip install CodeChecker
       
       - name: Configure project with CMake (clang)
         run: |
@@ -71,6 +74,7 @@ jobs:
         run: |
           echo "Running CodeChecker static analysis..."
           mkdir -p codechecker-out
+          . .venv/bin/activate
           CodeChecker analyze \
             build/compile_commands.json \
             -o codechecker-out \
