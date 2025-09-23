@@ -28,7 +28,7 @@ env:
   BUILD_TYPE: ${{ inputs.build_type }}
 
 permissions:
-  contents: read
+  contents: write
   actions: read
   pages: write
   id-token: write
