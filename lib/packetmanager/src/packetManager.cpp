@@ -62,6 +62,7 @@ void PacketManager::handlePacketBytes(const uint8_t *data, size_t size) {
         return;
     }
 }
+
 //
 
 // Add safer version of sendPacketBytes that returns smart pointer
@@ -75,6 +76,11 @@ std::unique_ptr<uint8_t[]> PacketManager::sendPacketBytesSafe(const void *data, 
     header.type = packet_type;
     header.auth = _auth_key;
     header.data_size = data_size;
+    header.client_addr[0] = 0; // Placeholder, set as needed
+    header.client_addr[1] = 0; // Placeholder, set as needed
+    header.client_addr[2] = 0; // Placeholder, set as needed
+    header.client_addr[3] = 0; // Placeholder, set as needed
+    header.client_port = 0; // Placeholder, set as needed
 
     packet->header = header;
     // Make a copy of the input data for the packet
