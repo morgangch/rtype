@@ -29,7 +29,7 @@ jobs:
   push_to_mirror:
     name: "Mirror Repository"
     needs: [check_repo]
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]' && startsWith(github.repository, 'morgangch') }}
+    if: ${{ github.event_name == 'push' && github.actor != 'github-actions[bot]' && startsWith(github.repository, 'morgangch') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
