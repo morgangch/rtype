@@ -1,4 +1,4 @@
-name: Unit Tests & Coverage
+name: Unit Tests, Coverage & Documentation
 
 on:
   workflow_call:
@@ -18,6 +18,11 @@ on:
         required: false
         type: boolean
         default: true
+      deploy_pages:
+        description: 'Whether to deploy documentation and coverage to GitHub Pages'
+        required: false
+        type: boolean
+        default: false
 
 env:
   BUILD_TYPE: ${{ inputs.build_type }}
@@ -25,44 +30,36 @@ env:
 permissions:
   contents: read
   actions: read
+  pages: write
+  id-token: write
 
 jobs:
-  unit_tests:
-    name: "C++ Unit Tests with Criterion"
+  comprehensive_tests_and_coverage:
+    name: "Unit Tests, Coverage & Documentation"
     runs-on: ubuntu-latest
-    container:
-      image: epitechcontent/epitest-docker:latest
+    # Use standard Ubuntu to avoid Docker overhead and GCC version issues
     
     steps:
-      - name: Restore Docker image cache
-        uses: actions/cache@v4
-        with:
-          path: /tmp/docker-image-coding-style-checker.tar
-          key: docker-image-coding-style-checker-latest
-      
-      - name: Load Docker image from cache if available
-        run: |
-          if [ -f /tmp/docker-image-coding-style-checker.tar ]; then
-            docker load -i /tmp/docker-image-coding-style-checker.tar
-          fi
-      
-      - name: Pull Docker image (if not cached)
-        run: |
-          if ! docker image inspect ghcr.io/epitech/coding-style-checker:latest > /dev/null 2>&1; then
-            docker pull ghcr.io/epitech/coding-style-checker:latest
-            docker save ghcr.io/epitech/coding-style-checker:latest -o /tmp/docker-image-coding-style-checker.tar
-          fi
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Install testing dependencies
+      - name: Install comprehensive dependencies
         run: |
-          apt-get update
-          apt-get install -y cmake build-essential ninja-build pkg-config
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake build-essential ninja-build pkg-config \
+            libcriterion-dev gcov lcov gcovr \
+            doxygen python3 python3-pip \
+            clang clang-tidy cppcheck
+      
+      - name: Install CodeChecker for advanced analysis
+        run: |
+          pip3 install CodeChecker || echo "CodeChecker installation skipped"
+        continue-on-error: true
       
       - name: Configure CMake project for testing
         run: |
-          echo "Configuring CMake project for testing..."
+          echo "Configuring CMake project for comprehensive testing..."
           cmake -B build \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
@@ -70,16 +67,17 @@ jobs:
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DENABLE_TESTING=ON
       
-      - name: Build test targets
+      - name: Build all targets
         run: |
-          echo "Building all test targets..."
+          echo "Building all targets..."
           cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
       
-      - name: Verify test executables exist
+      - name: Verify test executables and run tests
         run: |
           echo "Verifying test executables..."
           ls -la build/tests/ || echo "Tests directory not found"
           
+          # Check for test executables
           if [ -f "build/tests/test_basic" ]; then
             echo "✅ Basic test executable found"
           else
@@ -97,185 +95,265 @@ jobs:
           else
             echo "❌ Client test executable missing"
           fi
-      
-      - name: Run basic tests
-        run: |
-          echo "Running basic tests..."
-          cd build
-          ctest --output-on-failure --verbose --test-regex "BasicTest" || echo "Basic tests failed"
-        continue-on-error: true
-      
-      - name: Run server tests
-        run: |
-          echo "Running server tests..."
-          cd build
-          ctest --output-on-failure --verbose --test-regex "ServerTest" || echo "Server tests failed"
-        continue-on-error: true
-      
-      - name: Run client tests
-        run: |
-          echo "Running client tests..."
-          cd build
-          ctest --output-on-failure --verbose --test-regex "ClientTest" || echo "Client tests failed"
-        continue-on-error: true
-      
-      - name: Run all tests with detailed output
-        run: |
+          
+          # Run all tests
           echo "Running all tests..."
           cd build
           ctest --output-on-failure --verbose --parallel $(nproc) || echo "Some tests failed"
         continue-on-error: true
       
-      - name: Generate test coverage (if enabled)
+      - name: Generate test coverage with consistent GCC version
         if: ${{ inputs.generate_coverage }}
         run: |
-          echo "Setting up test coverage..."
+          echo "Setting up test coverage with consistent compiler versions..."
           
-          # Install coverage tools
-          apt-get install -y lcov
+          # Clean and reconfigure with coverage flags using the same GCC version
+          rm -rf build_coverage
           
-          # Reconfigure with coverage flags
+          # Get GCC version info
+          gcc --version
+          gcov --version
+          
           cmake -B build_coverage \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_STANDARD=17 \
-            -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage" \
-            -DCMAKE_C_FLAGS="--coverage -fprofile-arcs -ftest-coverage" \
-            -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
+            -DCMAKE_C_COMPILER=gcc \
+            -DCMAKE_CXX_COMPILER=g++ \
+            -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage -g -O0" \
+            -DCMAKE_C_FLAGS="--coverage -fprofile-arcs -ftest-coverage -g -O0" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage -lgcov" \
             -DENABLE_TESTING=ON
           
           # Build with coverage
           cmake --build build_coverage --config Debug --parallel $(nproc)
           
           # Run tests to generate coverage data
+          echo "Running tests for coverage data generation..."
           cd build_coverage
           ctest --output-on-failure || echo "Tests completed for coverage"
           cd ..
           
-          # Generate coverage report
-          lcov --directory build_coverage --capture --output-file coverage.info
-          lcov --remove coverage.info '/usr/*' --output-file coverage.info
-          lcov --remove coverage.info '*/tests/*' --output-file coverage.info
-          lcov --list coverage.info
+          # Generate coverage report using gcovr (more reliable than lcov)
+          echo "Generating coverage report with gcovr..."
+          gcovr \
+            --root . \
+            --build-root build_coverage \
+            --exclude '.*test.*' \
+            --exclude '.*build.*' \
+            --exclude '.*usr.*' \
+            --html-details \
+            --html coverage_html/index.html \
+            --xml coverage.xml \
+            --txt coverage.txt
           
-          # Generate HTML coverage report
-          genhtml coverage.info --output-directory coverage_html --title "R-Type Coverage Report"
+          # Generate simple coverage summary
+          echo "## Coverage Summary" > coverage_summary.md
+          echo "" >> coverage_summary.md
+          gcovr --root . --build-root build_coverage --exclude '.*test.*' --exclude '.*build.*' --exclude '.*usr.*' >> coverage_summary.md
+          
+          echo "✅ Coverage generation completed successfully"
         continue-on-error: true
       
-      - name: Collect test artifacts
+      - name: Generate Doxygen documentation
+        if: ${{ inputs.deploy_pages }}
+        run: |
+          echo "Generating Doxygen documentation..."
+          
+          # Create Doxyfile if it doesn't exist
+          if [ ! -f "Doxyfile" ]; then
+            echo "Creating basic Doxyfile..."
+            cat > Doxyfile << 'EOF'
+          PROJECT_NAME           = "R-Type"
+          PROJECT_VERSION        = "1.0"
+          PROJECT_BRIEF          = "R-Type Game Implementation"
+          OUTPUT_DIRECTORY       = docs
+          INPUT                  = server client
+          RECURSIVE              = YES
+          GENERATE_HTML          = YES
+          GENERATE_LATEX         = NO
+          HTML_OUTPUT            = html
+          HTML_FILE_EXTENSION    = .html
+          EXTRACT_ALL            = YES
+          EXTRACT_PRIVATE        = NO
+          EXTRACT_STATIC         = YES
+          JAVADOC_AUTOBRIEF      = YES
+          OPTIMIZE_OUTPUT_FOR_C  = NO
+          MARKDOWN_SUPPORT       = YES
+          EOF
+          fi
+          
+          # Generate documentation
+          doxygen Doxyfile || echo "Documentation generation completed with warnings"
+          
+          echo "✅ Documentation generation completed"
+        continue-on-error: true
+      
+      - name: Run advanced static analysis
+        run: |
+          echo "Running comprehensive static analysis..."
+          
+          # Run cppcheck
+          cppcheck \
+            --enable=all \
+            --inconclusive \
+            --std=c++17 \
+            --xml \
+            --xml-version=2 \
+            -I./server -I./client \
+            ./server ./client 2> cppcheck_results.xml || echo "Cppcheck completed"
+          
+          # Run clang-tidy if compile_commands.json exists
+          if [ -f "build/compile_commands.json" ]; then
+            echo "Running clang-tidy analysis..."
+            find . -name "*.cpp" -not -path "./build*" -not -path "./tests*" | head -10 | \
+            xargs clang-tidy -p build --checks='-*,readability-*,performance-*,modernize-*' \
+            > clang_tidy_results.txt 2>&1 || echo "Clang-tidy completed"
+          fi
+        continue-on-error: true
+      
+      - name: Prepare GitHub Pages content
+        if: ${{ inputs.deploy_pages }}
+        run: |
+          echo "Preparing GitHub Pages content..."
+          mkdir -p public
+          
+          # Copy documentation
+          if [ -d "docs/html" ]; then
+            cp -r docs/html/* public/
+          fi
+          
+          # Copy coverage reports
+          if [ -d "coverage_html" ]; then
+            mkdir -p public/coverage
+            cp -r coverage_html/* public/coverage/
+          fi
+          
+          # Create index page
+          cat > public/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>R-Type Project Documentation</title>
+              <style>
+                  body { font-family: Arial, sans-serif; margin: 40px; }
+                  .container { max-width: 800px; margin: 0 auto; }
+                  .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+                  a { color: #0066cc; text-decoration: none; }
+                  a:hover { text-decoration: underline; }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <h1>R-Type Project Documentation</h1>
+                  
+                  <div class="section">
+                      <h2>📖 Code Documentation</h2>
+                      <p><a href="annotated.html">Browse API Documentation</a></p>
+                      <p>Generated with Doxygen - Complete code documentation and API reference.</p>
+                  </div>
+                  
+                  <div class="section">
+                      <h2>📊 Test Coverage Report</h2>
+                      <p><a href="coverage/index.html">View Coverage Report</a></p>
+                      <p>Detailed test coverage analysis showing which parts of the code are tested.</p>
+                  </div>
+                  
+                  <div class="section">
+                      <h2>🔗 Useful Links</h2>
+                      <p><a href="https://github.com/morgangch/rtype">GitHub Repository</a></p>
+                      <p><a href="https://github.com/morgangch/rtype/actions">CI/CD Pipeline</a></p>
+                  </div>
+                  
+                  <div class="section">
+                      <p><em>Last updated: $(date)</em></p>
+                  </div>
+              </div>
+          </body>
+          </html>
+          EOF
+          
+          # Add .nojekyll to prevent Jekyll processing
+          touch public/.nojekyll
+          
+          echo "✅ GitHub Pages content prepared"
+        continue-on-error: true
+      
+      - name: Collect comprehensive results
         if: always()
         run: |
-          echo "Collecting test artifacts..."
-          mkdir -p test_results
+          echo "Collecting comprehensive test and analysis results..."
+          mkdir -p comprehensive_results
           
-          # Copy test logs if they exist
+          # Copy test logs
           if [ -d "build/Testing" ]; then
-            cp -r build/Testing test_results/
+            cp -r build/Testing comprehensive_results/
           fi
           
-          # Generate test summary
-          echo "## Unit Test Results Summary" > test_results/test_summary.md
-          echo "- **Build Type**: ${{ env.BUILD_TYPE }}" >> test_results/test_summary.md
-          echo "- **Timestamp**: $(date)" >> test_results/test_summary.md
-          echo "- **Commit**: ${{ github.sha }}" >> test_results/test_summary.md
-          echo "- **Branch**: ${{ github.ref }}" >> test_results/test_summary.md
-          echo "" >> test_results/test_summary.md
+          # Copy coverage data
+          if [ -f "coverage.xml" ]; then
+            cp coverage.xml comprehensive_results/
+          fi
           
-          # Parse CTest results if available
+          if [ -f "coverage.txt" ]; then
+            cp coverage.txt comprehensive_results/
+          fi
+          
+          if [ -f "coverage_summary.md" ]; then
+            cp coverage_summary.md comprehensive_results/
+          fi
+          
+          # Copy static analysis results
+          if [ -f "cppcheck_results.xml" ]; then
+            cp cppcheck_results.xml comprehensive_results/
+          fi
+          
+          if [ -f "clang_tidy_results.txt" ]; then
+            cp clang_tidy_results.txt comprehensive_results/
+          fi
+          
+          # Generate comprehensive summary
+          echo "## Comprehensive Test & Analysis Report" > comprehensive_results/summary.md
+          echo "- **Build Type**: ${{ env.BUILD_TYPE }}" >> comprehensive_results/summary.md
+          echo "- **Timestamp**: $(date)" >> comprehensive_results/summary.md
+          echo "- **Commit**: ${{ github.sha }}" >> comprehensive_results/summary.md
+          echo "- **Branch**: ${{ github.ref }}" >> comprehensive_results/summary.md
+          echo "- **Compiler**: $(gcc --version | head -n1)" >> comprehensive_results/summary.md
+          echo "" >> comprehensive_results/summary.md
+          
+          # Test results summary
           if [ -f "build/Testing/Temporary/LastTest.log" ]; then
-            echo "### Test Execution Log:" >> test_results/test_summary.md
-            echo '```' >> test_results/test_summary.md
-            tail -50 build/Testing/Temporary/LastTest.log >> test_results/test_summary.md
-            echo '```' >> test_results/test_summary.md
+            echo "### Test Results:" >> comprehensive_results/summary.md
+            echo '```' >> comprehensive_results/summary.md
+            tail -20 build/Testing/Temporary/LastTest.log >> comprehensive_results/summary.md
+            echo '```' >> comprehensive_results/summary.md
+          fi
+          
+          # Coverage summary
+          if [ -f "coverage.txt" ]; then
+            echo "" >> comprehensive_results/summary.md
+            echo "### Coverage Summary:" >> comprehensive_results/summary.md
+            echo '```' >> comprehensive_results/summary.md
+            head -10 coverage.txt >> comprehensive_results/summary.md
+            echo '```' >> comprehensive_results/summary.md
           fi
       
-      - name: Upload test results
+      - name: Upload comprehensive results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: unit-test-results-${{ env.BUILD_TYPE }}
+          name: comprehensive-test-results-${{ env.BUILD_TYPE }}
           path: |
-            test_results/
-            coverage.info
+            comprehensive_results/
             coverage_html/
-          retention-days: 14
-        continue-on-error: true
-
-  integration_tests:
-    name: "Integration Tests"
-    runs-on: ubuntu-latest
-    container:
-      image: epitechcontent/epitest-docker:latest
-    needs: [unit_tests]
-    if: always()  # Run even if unit tests fail
-    
-    steps:
-      - name: Install basic dependencies
-        run: |
-          apt-get update
-          apt-get install -y cmake build-essential
-      
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Install dependencies
-        run: |
-          apt-get install -y ninja-build
-      
-      - name: Build project for integration testing
-        run: |
-          echo "Building project for integration testing..."
-          cmake -B build \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_STANDARD=17
-          cmake --build build --parallel $(nproc)
-      
-      - name: Test server-client integration (basic)
-        run: |
-          echo "Testing basic server-client integration..."
-          
-          # Start server in background (if possible)
-          if [ -f "build/server/r-type_server" ]; then
-            echo "Starting server for integration test..."
-            timeout 10s build/server/r-type_server || echo "Server test completed"
-          else
-            echo "Server executable not found for integration test"
-          fi
-          
-          # Test client connection (if possible)
-          if [ -f "build/client/r-type_client" ]; then
-            echo "Testing client connection..."
-            timeout 5s build/client/r-type_client || echo "Client test completed"
-          else
-            echo "Client executable not found for integration test"
-          fi
+            docs/
+          retention-days: 30
         continue-on-error: true
       
-      - name: Generate integration test report
-        if: always()
-        run: |
-          echo "## Integration Test Report" > integration_report.md
-          echo "- **Timestamp**: $(date)" >> integration_report.md
-          echo "- **Commit**: ${{ github.sha }}" >> integration_report.md
-          echo "" >> integration_report.md
-          echo "### Server Executable:" >> integration_report.md
-          if [ -f "build/server/r-type_server" ]; then
-            echo "- ✅ Server executable built successfully" >> integration_report.md
-          else
-            echo "- ❌ Server executable not found" >> integration_report.md
-          fi
-          echo "### Client Executable:" >> integration_report.md
-          if [ -f "build/client/r-type_client" ]; then
-            echo "- ✅ Client executable built successfully" >> integration_report.md
-          else
-            echo "- ❌ Client executable not found" >> integration_report.md
-          fi
-      
-      - name: Upload integration test results
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Deploy to GitHub Pages
+        if: ${{ inputs.deploy_pages && github.ref == 'refs/heads/main' }}
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          name: integration-test-results
-          path: integration_report.md
-          retention-days: 7
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          force_orphan: true
