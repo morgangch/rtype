@@ -9,7 +9,7 @@ add_library(ecs STATIC
 )
 
 # Include directories
-target_include_directories(ecs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(packetmanager PUBLIC include)
 
 # Set C++ standard
 target_compile_features(ecs PUBLIC cxx_std_17)
