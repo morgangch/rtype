@@ -23,6 +23,11 @@ on:
         required: false
         type: boolean
         default: false
+      error_on_test_failure:
+        description: 'Whether to fail the job if any test fails'
+        required: false
+        type: boolean
+        default: false
 
 env:
   BUILD_TYPE: ${{ inputs.build_type }}
@@ -102,8 +107,8 @@ jobs:
           echo "Running all tests..."
           cd build
           ctest --output-on-failure --verbose --parallel $(nproc) || echo "Some tests failed"
-        continue-on-error: true
-      
+        continue-on-error: ${{ !inputs.error_on_test_failure }}
+
       - name: Generate test coverage with consistent GCC version
         if: ${{ inputs.generate_coverage }}
         run: |
