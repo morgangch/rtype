@@ -1,4 +1,6 @@
-#pragma once
+#ifndef COMMON_LIFETIME_HPP
+#define COMMON_LIFETIME_HPP
+
 #include <ECS/ECS.hpp>
 
 namespace Common {
@@ -11,3 +13,5 @@ namespace Common {
         Lifetime(float maxLifetime = 5.0f);
     };
 }
+
+#endif // COMMON_LIFETIME_HPP

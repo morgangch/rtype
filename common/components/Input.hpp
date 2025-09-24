@@ -1,10 +1,13 @@
-#pragma once
+#ifndef COMMON_INPUT_HPP
+#define COMMON_INPUT_HPP
+
 #include <ECS/ECS.hpp>
 #include <bitset>
 
 namespace Common {
     enum class InputAction {
-        MoveUp = 0, MoveDown, MoveLeft, MoveRight, Fire, Special, Pause, COUNT
+        MoveUp = 0, MoveDown, MoveLeft, MoveRight,
+        Fire, Special, Pause, COUNT
     };
 
     class Input : public ECS::Component<Input> {
@@ -15,3 +18,5 @@ namespace Common {
         Input();
     };
 }
+
+#endif // COMMON_INPUT_HPP

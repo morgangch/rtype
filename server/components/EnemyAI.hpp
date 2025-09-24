@@ -1,4 +1,6 @@
-#pragma once
+#ifndef COMMON_ENEMY_AI_HPP
+#define COMMON_ENEMY_AI_HPP
+
 #include <ECS/ECS.hpp>
 
 namespace Common {
@@ -20,3 +22,5 @@ namespace Common {
         EnemyAI(AIPattern pattern = AIPattern::Straight, float aggressiveness = 0.5f);
     };
 }
+
+#endif // COMMON_ENEMY_AI_HPP

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef COMMON_UTILS_CONFIG_HPP
+#define COMMON_UTILS_CONFIG_HPP
 
 namespace Config {
     constexpr int SCREEN_WIDTH = 1280;
@@ -9,3 +10,4 @@ namespace Config {
 
     constexpr int TICKRATE = 60;
 }
+#endif // COMMON_UTILS_CONFIG_HPP

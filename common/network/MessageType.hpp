@@ -1,4 +1,5 @@
-#pragma once
+#ifndef COMMON_NETWORK_MESSAGETYPE_HPP
+#define COMMON_NETWORK_MESSAGETYPE_HPP
 #include <cstdint>
 
 enum class MessageType : uint8_t {
@@ -12,3 +13,4 @@ enum class MessageType : uint8_t {
     POWERUP,
     GAME_OVER
 };
+#endif // COMMON_NETWORK_MESSAGETYPE_HPP

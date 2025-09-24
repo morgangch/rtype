@@ -1,4 +1,6 @@
-#pragma once
+#ifndef COMMON_POSITION_HPP
+#define COMMON_POSITION_HPP
+
 #include <ECS/ECS.hpp>
 
 namespace Common {
@@ -10,3 +12,5 @@ namespace Common {
         Position(float x = 0.0f, float y = 0.0f, float rotation = 0.0f);
     };
 }
+
+#endif // COMMON_POSITION_HPP

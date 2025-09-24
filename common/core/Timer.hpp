@@ -1,4 +1,5 @@
-#pragma once
+#ifndef COMMON_CORE_TIMER_HPP
+#define COMMON_CORE_TIMER_HPP
 #include <chrono>
 
 class Timer {
@@ -12,3 +13,4 @@ public:
 private:
     std::chrono::time_point<std::chrono::high_resolution_clock> start;
 };
+#endif // COMMON_CORE_TIMER_HPP

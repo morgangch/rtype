@@ -1,4 +1,6 @@
-#pragma once
+#ifndef COMMON_HEALTH_HPP
+#define COMMON_HEALTH_HPP
+
 #include <ECS/ECS.hpp>
 
 namespace Common {
@@ -13,3 +15,5 @@ namespace Common {
         Health(int maxHp = 100);
     };
 }
+
+#endif // COMMON_HEALTH_HPP

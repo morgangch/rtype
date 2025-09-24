@@ -1,4 +1,5 @@
-#pragma once
+#ifndef COMMON_UTILS_LOGGER_HPP
+#define COMMON_UTILS_LOGGER_HPP
 #include <iostream>
 
 enum class LogLevel { INFO, WARN, ERROR };
@@ -10,3 +11,4 @@ inline void log(LogLevel lvl, const std::string& msg) {
         case LogLevel::ERROR: std::cerr << "[ERROR] " << msg << "\n"; break;
     }
 }
+#endif // COMMON_UTILS_LOGGER_HPP

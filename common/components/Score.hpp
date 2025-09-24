@@ -1,4 +1,6 @@
-#pragma once
+#ifndef COMMON_SCORE_HPP
+#define COMMON_SCORE_HPP
+
 #include <ECS/ECS.hpp>
 
 namespace Common {
@@ -14,3 +16,5 @@ namespace Common {
         Score(int points = 0, int kills = 0, int deaths = 0);
     };
 }
+
+#endif // COMMON_SCORE_HPP

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef COMMON_COMPONENTS_TEAM_HPP
+#define COMMON_COMPONENTS_TEAM_HPP
 #include <ECS/ECS.hpp>
 
 namespace Common {
@@ -14,3 +15,4 @@ namespace Common {
         Team(TeamType team = TeamType::Neutral, bool friendlyFire = false);
     };
 }
+#endif // COMMON_COMPONENTS_TEAM_HPP

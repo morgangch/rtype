@@ -1,4 +1,6 @@
-#pragma once
+#ifndef CLIENT_CONFIG_HPP
+#define CLIENT_CONFIG_HPP
+
 #include <common/utils/Config.hpp>
 
 namespace Client::Config {
@@ -15,3 +17,5 @@ namespace Client::Config {
     constexpr bool ENABLE_SHADOWS = true;
     constexpr int TEXTURE_QUALITY = 2; // 0=Low, 1=Medium, 2=High
 }
+
+#endif // CLIENT_CONFIG_HPP

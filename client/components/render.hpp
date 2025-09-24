@@ -1,4 +1,6 @@
-#pragma once
+#ifndef CLIENT_RENDERABLE_HPP
+#define CLIENT_RENDERABLE_HPP
+
 #include <ECS/ECS.hpp>
 #include <string>
 
@@ -22,3 +24,5 @@ namespace Client {
         Renderable(const std::string& texturePath = "", float width = 32.0f, float height = 32.0f);
     };
 }
+
+#endif // CLIENT_RENDERABLE_HPP

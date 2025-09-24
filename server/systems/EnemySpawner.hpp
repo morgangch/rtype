@@ -1,4 +1,6 @@
-#pragma once
+#ifndef SERVER_ENEMY_SPAWNER_HPP
+#define SERVER_ENEMY_SPAWNER_HPP
+
 #include "common/ecs/World.hpp"
 
 class EnemySpawner {
@@ -10,3 +12,5 @@ public:
 private:
     World& world;
 };
+
+#endif // SERVER_ENEMY_SPAWNER_HPP

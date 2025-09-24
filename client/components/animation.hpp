@@ -1,4 +1,6 @@
-#pragma once
+#ifndef CLIENT_ANIMATION_HPP
+#define CLIENT_ANIMATION_HPP
+
 #include <ECS/ECS.hpp>
 #include <vector>
 
@@ -20,3 +22,5 @@ namespace Client {
         Animation();
     };
 }
+
+#endif // CLIENT_ANIMATION_HPP

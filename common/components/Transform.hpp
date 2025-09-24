@@ -1,4 +1,5 @@
-#pragma once
+#ifndef COMMON_COMPONENTS_TRANSFORM_HPP
+#define COMMON_COMPONENTS_TRANSFORM_HPP
 #include <ECS/ECS.hpp>
 
 namespace Common {
@@ -11,3 +12,4 @@ namespace Common {
         Transform(float x = 0.0f, float y = 0.0f, float rotation = 0.0f);
     };
 }
+#endif // COMMON_COMPONENTS_TRANSFORM_HPP

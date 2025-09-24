@@ -1,4 +1,6 @@
-#pragma once
+#ifndef CLIENT_AUDIO_SOURCE_HPP
+#define CLIENT_AUDIO_SOURCE_HPP
+
 #include <ECS/ECS.hpp>
 #include <string>
 
@@ -21,3 +23,5 @@ namespace Client {
         AudioSource(const std::string& soundPath = "", AudioType type = AudioType::SFX);
     };
 }
+
+#endif // CLIENT_AUDIO_SOURCE_HPP

@@ -1,4 +1,6 @@
-#pragma once
+#ifndef SERVER_GAME_RULES_HPP
+#define SERVER_GAME_RULES_HPP
+
 #include <vector>
 #include "common/ecs/World.hpp"
 #include "common/core/Event.hpp"
@@ -18,3 +20,5 @@ private:
     bool friendlyFire;
     std::vector<Event> events;
 };
+
+#endif // SERVER_GAME_RULES_HPP
