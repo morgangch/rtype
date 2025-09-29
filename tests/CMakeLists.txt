@@ -60,7 +60,9 @@ if(CRITERION_FOUND)
     add_executable(test_basic test_basic.cpp)
     target_link_libraries(test_basic ecs)
 
-    add_executable(test_packetmanager packetmanager/test_packetmanager.cpp)
+    # PacketManager test - Auto-discover all .cpp files in packetmanager subdirectory
+    file(GLOB_RECURSE PACKETMANAGER_TEST_SOURCES "packetmanager/*.cpp")
+    add_executable(test_packetmanager ${PACKETMANAGER_TEST_SOURCES})
     target_link_libraries(test_packetmanager packetmanager)
 
     add_executable(test_packethandler test_packethandler.cpp)
@@ -85,7 +87,9 @@ else()
     add_executable(test_basic test_basic.cpp)
     target_link_libraries(test_basic ecs)
 
-    add_executable(test_packetmanager packetmanager/test_packetmanager.cpp)
+    # PacketManager test - Auto-discover all .cpp files in packetmanager subdirectory
+    file(GLOB_RECURSE PACKETMANAGER_TEST_SOURCES "packetmanager/*.cpp")
+    add_executable(test_packetmanager ${PACKETMANAGER_TEST_SOURCES})
     target_link_libraries(test_packetmanager packetmanager)
 
     add_executable(test_packethandler test_packethandler.cpp)
