@@ -87,7 +87,7 @@ int main() {
         }
         
         // Système de rendu (spécifique client)
-    auto* renderables = world.GetAllComponents<rtype::client::components::Renderable>();
+    auto* renderables = world.GetAllComponents<Renderable>();
         if (renderables) {
             std::cout << "  Rendering:" << std::endl;
             for (const auto& pair : *renderables) {
