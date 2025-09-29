@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Server executable
-add_executable(server src/main.cpp src/network/socket_setup.cpp)
+# Server executable - Auto-discover all .cpp files in current directory
+file(GLOB_RECURSE SERVER_SOURCES "*.cpp")
 
+add_executable(server ${SERVER_SOURCES})
 # Include directories for server headers
 target_include_directories(server PRIVATE include)
 

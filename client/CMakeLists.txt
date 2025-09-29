@@ -1,22 +1,18 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Client executable
-add_executable(client
-    main.cpp
-    ../common/components/Position.cpp
-    ../common/components/Velocity.cpp
-    components/render.cpp
-    components/camera.cpp
-    components/audio.cpp
+# Client executable - Auto-discover all .cpp files in current directory and subdirectories
+file(GLOB_RECURSE CLIENT_SOURCES "*.cpp")
+
+add_executable(client ${CLIENT_SOURCES})
+
+# Include directories for client headers
+target_include_directories(client PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/..  # Parent directory to find client/components/
+    ${CMAKE_CURRENT_SOURCE_DIR}     # Current directory
 )
 
-# Link with ECS library
-target_link_libraries(client PRIVATE ecs)
-
-target_include_directories(client PRIVATE 
-    ${CMAKE_SOURCE_DIR}  # This allows #include <common/components/Position.hpp>
-    ${CMAKE_CURRENT_SOURCE_DIR}  # For local includes
-)
+# Link with ECS and common libraries
+target_link_libraries(client PRIVATE ecs common)
 
 # Set output directory - handle both single and multi-config generators
 if(CMAKE_CONFIGURATION_TYPES)
