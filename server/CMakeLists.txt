@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
 
 # Server executable
-add_executable(server main.cpp)
+add_executable(server src/main.cpp)
+
+# Include directories for server headers
+target_include_directories(server PRIVATE include)
 
 # Link with ECS library
 target_link_libraries(server PRIVATE ecs)
