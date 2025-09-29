@@ -1,6 +1,8 @@
 ### C++ template
 # Prerequisites
 *.d
+.vscode
+.claude
 .idea
 # Compiled Object files
 *.slo
