@@ -16,13 +16,9 @@ namespace rtype::server {
     public:
         PacketManager packetManager;
         int udp_server_fd;
-
-
+        void loop();
     };
 };
-
-
-int setupUDPServer(int port);
 
 inline rtype::server::Rtype root;
 

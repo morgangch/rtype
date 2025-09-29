@@ -7,10 +7,14 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 #include <string>
-
 #include "packet.h"
 
+
 namespace rtype::server::network {
+    void loop_recv(int fd);
+
+    int setupUDPServer(int port);
+
     class NetConnection {
     private:
         uint16_t _port;
@@ -29,7 +33,7 @@ namespace rtype::server::network {
          * @brief Send packet to the peer.
          * @param packet Pointer to the packet to send
          */
-        void sendPacket(const packet_t *packet);
+        void sendPacketBytes(const packet_t *packet);
     };
 }
 

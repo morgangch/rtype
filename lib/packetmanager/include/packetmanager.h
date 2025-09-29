@@ -14,6 +14,8 @@
 
 #define PACKET_HISTORY_SIZE 512
 
+struct sockaddr_in;
+
 class PacketManager {
 public:
     PacketManager();
@@ -39,7 +41,7 @@ public:
      * @param data Pointer to the raw packet bytes
      * @param size Size of the raw packet bytes
      */
-    void handlePacketBytes(const uint8_t *data, size_t size);
+    void handlePacketBytes(const uint8_t *data, size_t size, sockaddr_in client_addr);
 
     /*
      * Safer version of sendPacketBytes that returns a smart pointer to avoid memory leaks

@@ -4,10 +4,10 @@
 ** File description:
 ** TODO: add description
 */
+
 #ifndef PACKETS_H
 #define PACKETS_H
-
-#include <cstdint>
+#define MAX_PACKET_SIZE 2048
 
 struct PingPacket {
 };
