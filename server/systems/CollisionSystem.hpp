@@ -2,6 +2,7 @@
 #define SERVER_COLLISION_SYSTEM_HPP
 
 #include "common/ecs/World.hpp"
+#include "common/components/Collision.hpp"
 
 class CollisionSystem {
 public:
