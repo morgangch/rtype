@@ -76,10 +76,7 @@ std::unique_ptr<uint8_t[]> PacketManager::sendPacketBytesSafe(const void *data, 
     header.type = packet_type;
     header.auth = _auth_key;
     header.data_size = data_size;
-    header.client_addr[0] = 0; // Placeholder, set as needed
-    header.client_addr[1] = 0; // Placeholder, set as needed
-    header.client_addr[2] = 0; // Placeholder, set as needed
-    header.client_addr[3] = 0; // Placeholder, set as needed
+    std::memset(&header.client_addr, 0, sizeof(header.client_addr)); // Zero-initialize
     header.client_port = 0; // Placeholder, set as needed
 
     packet->header = header;
