@@ -1,0 +1,43 @@
+name: Conditional Mirroring & Unit Tests
+
+on:
+  workflow_run:
+    workflows: ["All Checks"]
+    branches:
+      - 'main'
+      - 'dev'
+      - 'cicd/*'
+    types:
+      - completed
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+
+jobs:
+
+  unit_tests:
+    name: "Unit Tests"
+    uses: ./.github/workflows/unit_tests.yml
+    with:
+      generate_coverage: false
+      build_type: Debug
+      enable_criterion: true
+      deploy_pages: false
+      error_on_test_failure: true
+
+  push_to_mirror:
+    name: "Push to Mirror"
+    needs: unit_tests
+    if: ${{ github.actor != 'github-actions[bot]' && startsWith(github.repository, 'morgangch') && github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pixta-dev/repository-mirroring-action@v1
+        with:
+          target_repo_url: ${{ vars.MIRROR_URL }}
+          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}

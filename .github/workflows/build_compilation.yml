@@ -1,0 +1,143 @@
+name: Build & Compilation Tests
+
+on:
+  workflow_call:
+    inputs:
+      build_type:
+        description: 'Build type (Release/Debug)'
+        required: false
+        type: string
+        default: 'Release'
+      enable_tests:
+        description: 'Whether to run unit tests after compilation'
+        required: false
+        type: boolean
+        default: true
+
+env:
+  BUILD_TYPE: ${{ inputs.build_type }}
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  compilation_tests:
+    name: "CMake Build & Compilation"
+    runs-on: ubuntu-latest
+    container:
+      image: epitechcontent/epitest-docker:latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y cmake ninja-build build-essential
+      
+      - name: Configure CMake project
+        run: |
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_CXX_STANDARD=17 \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+      
+      - name: Build all targets
+        run: |
+          echo "Building all targets..."
+          cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+      
+      - name: Build server specifically
+        run: |
+          echo "Building server target..."
+          cmake --build build --target server --config ${{ env.BUILD_TYPE }}
+      
+      - name: Build client specifically
+        run: |
+          echo "Building client target..."
+          cmake --build build --target client --config ${{ env.BUILD_TYPE }}
+      
+      - name: Run unit tests
+        if: ${{ inputs.enable_tests }}
+        run: |
+          echo "Running unit tests..."
+          cd build
+          ctest --output-on-failure --parallel $(nproc)
+        continue-on-error: true
+      
+      - name: Install cppcheck for static analysis
+        run: |
+          apt-get install -y cppcheck
+      
+      - name: Cppcheck Analysis - Server Code
+        run: |
+          echo "Running cppcheck on server code..."
+          cppcheck \
+            --enable=all \
+            --inconclusive \
+            --std=c++17 \
+            --language=c++ \
+            --quiet \
+            --suppress=unusedFunction \
+            --suppress=missingIncludeSystem \
+            --error-exitcode=1 \
+            -I./server \
+            ./server || echo "Server cppcheck completed with issues"
+        continue-on-error: true
+      
+      - name: Cppcheck Analysis - Client Code
+        run: |
+          echo "Running cppcheck on client code..."
+          cppcheck \
+            --enable=all \
+            --inconclusive \
+            --std=c++17 \
+            --language=c++ \
+            --quiet \
+            --suppress=unusedFunction \
+            --suppress=missingIncludeSystem \
+            --error-exitcode=1 \
+            -I./client \
+            ./client || echo "Client cppcheck completed with issues"
+        continue-on-error: true
+      
+      - name: Verify build artifacts
+        run: |
+          echo "Verifying build artifacts..."
+          ls -la build/
+          [ -f "build/server/r-type_server" ] && echo "✅ Server executable built" || echo "❌ Server executable missing"
+          [ -f "build/client/r-type_client" ] && echo "✅ Client executable built" || echo "❌ Client executable missing"
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rtype-build-artifacts-${{ env.BUILD_TYPE }}
+          path: |
+            build/server/r-type_server
+            build/client/r-type_client
+            build/compile_commands.json
+          retention-days: 7
+        continue-on-error: true
+      
+      - name: Generate compilation report
+        if: always()
+        run: |
+          echo "## Build & Compilation Report" > compilation_report.md
+          echo "- **Build Type**: ${{ env.BUILD_TYPE }}" >> compilation_report.md
+          echo "- **Timestamp**: $(date)" >> compilation_report.md
+          echo "- **Commit**: ${{ github.sha }}" >> compilation_report.md
+          echo "- **Branch**: ${{ github.ref }}" >> compilation_report.md
+          echo "" >> compilation_report.md
+          echo "### Build Results:" >> compilation_report.md
+          ls -la build/ >> compilation_report.md || echo "Build directory not found" >> compilation_report.md
+      
+      - name: Upload compilation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compilation-report-${{ env.BUILD_TYPE }}
+          path: compilation_report.md
+          retention-days: 7
