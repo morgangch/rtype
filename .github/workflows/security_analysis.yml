@@ -1,0 +1,200 @@
+name: Security Analysis & CodeQL
+
+on:
+  workflow_call:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  security-events: write
+  packages: read
+  actions: read
+  contents: read
+
+jobs:
+  codeql_analysis:
+    name: "CodeQL Security Analysis"
+    runs-on: ubuntu-latest
+    container:
+      image: epitechcontent/epitest-docker:latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+          - language: c-cpp
+            build-mode: manual  # Using manual since we have CMake
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          # Enable security-extended queries for more thorough analysis
+          queries: security-extended,security-and-quality
+      
+      - name: Install build dependencies
+        if: matrix.build-mode == 'manual'
+        run: |
+          apt-get update
+          apt-get install -y cmake build-essential ninja-build
+      
+      - name: Manual build for CodeQL
+        if: matrix.build-mode == 'manual'
+        run: |
+          echo "Building project for CodeQL analysis..."
+          cmake -B build -G Ninja -DCMAKE_CXX_STANDARD=17
+          cmake --build build --parallel $(nproc)
+      
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{matrix.language}}"
+
+  security_audit:
+    name: "Security Audit & Vulnerability Scan"
+    runs-on: ubuntu-latest
+    container:
+      image: epitechcontent/epitest-docker:latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install security scanning tools
+        run: |
+          apt-get update
+          apt-get install -y cmake build-essential cppcheck clang-tools
+      
+      - name: Security-focused cppcheck scan
+        run: |
+          echo "Running security-focused cppcheck analysis..."
+          cppcheck \
+            --enable=warning,style,performance,portability,information \
+            --std=c++17 \
+            --language=c++ \
+            --suppress=unusedFunction \
+            --suppress=missingIncludeSystem \
+            --xml \
+            --xml-version=2 \
+            -I./server \
+            -I./client \
+            ./server ./client 2> security_cppcheck_results.xml
+      
+      - name: Check for common security issues
+        run: |
+          echo "Scanning for common C++ security issues..."
+          
+          # Check for dangerous functions
+          echo "## Security Scan Report" > security_report.md
+          echo "- **Timestamp**: $(date)" >> security_report.md
+          echo "- **Commit**: ${{ github.sha }}" >> security_report.md
+          echo "" >> security_report.md
+          
+          # Look for potentially dangerous function calls
+          echo "### Potentially Dangerous Functions:" >> security_report.md
+          DANGEROUS_FUNCS="\\b(strcpy|strcat|sprintf|gets|scanf)\\b"
+          if grep -r -n -E "$DANGEROUS_FUNCS" --include="*.cpp" --include="*.hpp" . > dangerous_funcs.txt 2>/dev/null; then
+            echo "Found potentially dangerous function usage:" >> security_report.md
+            cat dangerous_funcs.txt >> security_report.md
+            echo "::warning::Found usage of potentially dangerous functions"
+          else
+            echo "✅ No dangerous function usage detected" >> security_report.md
+          fi          
+          echo "" >> security_report.md
+          
+          # Check for buffer operations without bounds checking
+          echo "### Buffer Operations Review:" >> security_report.md
+          BUFFER_FUNCS="memcpy|memmove|strncpy|strncat"
+          if grep -r -n -E "$BUFFER_FUNCS" --include="*.cpp" --include="*.hpp" . > buffer_ops.txt 2>/dev/null; then
+            echo "Found buffer operations (review for bounds checking):" >> security_report.md
+            cat buffer_ops.txt >> security_report.md
+          else
+            echo "✅ No potentially unsafe buffer operations found" >> security_report.md
+          fi
+          
+          echo "" >> security_report.md
+          
+          # Check for hardcoded sensitive data patterns
+          echo "### Hardcoded Sensitive Data Check:" >> security_report.md
+          SENSITIVE_PATTERNS="password|secret|key|token|api_key"
+          if grep -r -n -i -E "$SENSITIVE_PATTERNS" --include="*.cpp" --include="*.hpp" --exclude-dir=".git" . > sensitive_data.txt 2>/dev/null; then
+            echo "Found potential hardcoded sensitive data:" >> security_report.md
+            cat sensitive_data.txt >> security_report.md
+            echo "::warning::Found potential hardcoded sensitive data"
+          else
+            echo "✅ No hardcoded sensitive data patterns detected" >> security_report.md
+          fi
+      
+      - name: Dependency vulnerability check
+        run: |
+          echo "Checking for known vulnerabilities in system dependencies..."
+          
+          # Check if there are any package management files
+          if [ -f "conan.txt" ] || [ -f "conanfile.txt" ] || [ -f "vcpkg.json" ]; then
+            echo "Package manager files found - recommend running dependency vulnerability scans"
+            echo "::notice::Consider using tools like 'conan audit' or 'vcpkg audit' for dependency scanning"
+          fi
+          
+          # Check CMake for external dependencies that might need security review
+          if grep -r -n -E "find_package|FetchContent|ExternalProject" CMakeLists.txt */CMakeLists.txt 2>/dev/null > external_deps.txt; then
+            echo "" >> security_report.md
+            echo "### External Dependencies Review:" >> security_report.md
+            echo "External dependencies found (review for security):" >> security_report.md
+            cat external_deps.txt >> security_report.md
+          fi
+      
+      - name: Memory safety analysis
+        run: |
+          echo "Checking for memory safety patterns..."
+          
+          # Look for raw pointer usage that might benefit from smart pointers
+          echo "" >> security_report.md
+          echo "### Memory Safety Review:" >> security_report.md
+          
+          RAW_NEW_DELETE="new |delete "
+          if grep -r -n -E "$RAW_NEW_DELETE" --include="*.cpp" --include="*.hpp" . > raw_pointers.txt 2>/dev/null; then
+            echo "Raw new/delete usage found (consider smart pointers):" >> security_report.md
+            head -20 raw_pointers.txt >> security_report.md
+            echo "::notice::Consider using smart pointers for memory safety"
+          else
+            echo "✅ No raw new/delete usage detected" >> security_report.md
+          fi
+      
+      - name: Upload security analysis results
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-analysis-results
+          path: |
+            security_report.md
+            security_cppcheck_results.xml
+            dangerous_funcs.txt
+            buffer_ops.txt
+            sensitive_data.txt
+            external_deps.txt
+            raw_pointers.txt
+          retention-days: 30
+        continue-on-error: true
+      
+      - name: Security analysis summary
+        run: |
+          echo "## Security Analysis Summary"
+          if [ -f "security_report.md" ]; then
+            cat security_report.md
+          fi
+          
+          echo ""
+          echo "### Recommendations:"
+          echo "1. Review any flagged dangerous function usage"
+          echo "2. Ensure buffer operations have proper bounds checking"
+          echo "3. Verify no sensitive data is hardcoded"
+          echo "4. Consider using smart pointers for memory management"
+          echo "5. Regularly update dependencies to latest secure versions"
