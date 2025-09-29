@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 3.20)
 
 add_subdirectory(ecs)
 add_subdirectory(packetmanager)
+add_subdirectory(mapparser)
 
 # Future libraries can be added here, for example:
 # add_subdirectory(networking)
