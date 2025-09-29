@@ -76,7 +76,7 @@ int main() {
             for (const auto& pair : *positions) {
                 ECS::EntityID entity = pair.first;
                 auto* pos = pair.second.get();
-                auto* vel = world.GetComponent<rtype::common::components::Velocity>(entity);
+                auto* vel = world.GetComponent<Velocity>(entity);
                 
                 if (vel) {
                     pos->x += vel->vx * deltaTime;
