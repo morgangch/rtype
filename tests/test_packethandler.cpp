@@ -71,7 +71,8 @@ int main() {
     std::cout << "\nTest 1: PlayerJoin packet (type 2)" << std::endl;
     PlayerJoinPacket playerJoinData;
     playerJoinData.newPlayerId = 12345;
-    strcpy(playerJoinData.name, "TestPlayer");
+    strncpy(playerJoinData.name, "TestPlayer", sizeof(playerJoinData.name) - 1);
+    playerJoinData.name[sizeof(playerJoinData.name) - 1] = '\0';
 
     size_t serializedSize;
     auto serializedData = packetManager.sendPacketBytesSafe(
