@@ -71,7 +71,7 @@ int main() {
         std::cout << "Frame " << frame << ":" << std::endl;
         
         // Système de mouvement (logique partagée client/serveur)
-    auto* positions = world.GetAllComponents<rtype::common::components::Position>();
+    auto* positions = world.GetAllComponents<Position>();
         if (positions) {
             for (const auto& pair : *positions) {
                 ECS::EntityID entity = pair.first;
