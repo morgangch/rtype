@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 
-# Add the packethandler library
-add_library(packethandler STATIC
-    src/packethandler.cpp
-)
+# PacketHandler Library - Auto-discover all .cpp files in src directory
+file(GLOB_RECURSE PACKETHANDLER_SOURCES "src/*.cpp")
+
+add_library(packethandler STATIC ${PACKETHANDLER_SOURCES})
 
 # Include directories
 target_include_directories(packethandler PUBLIC

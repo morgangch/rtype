@@ -1,12 +1,9 @@
- cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.20)
 
-# ECS Library
-add_library(ecs STATIC
-    src/Entity.cpp
-    src/ComponentManager.cpp
-    src/EntityManager.cpp
-    src/World.cpp
-)
+# ECS Library - Auto-discover all .cpp files in src directory
+file(GLOB_RECURSE ECS_SOURCES "src/*.cpp")
+
+add_library(ecs STATIC ${ECS_SOURCES})
 
 # Include directories
 target_include_directories(ecs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
