@@ -13,7 +13,7 @@ typedef struct packet_header_s {
     uint32_t ack;
     uint8_t type;
     uint32_t auth;
-    size_t client_addr[4];
+    uint8_t client_addr[4];
     uint16_t client_port;
     uint32_t data_size;
 } packet_header_t;
