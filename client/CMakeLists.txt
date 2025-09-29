@@ -6,11 +6,6 @@ add_subdirectory(lib)
 # Client executable
 add_executable(client
     main.cpp
-    ../common/components/Position.cpp
-    ../common/components/Velocity.cpp
-    components/render.cpp
-    components/camera.cpp
-    components/audio.cpp
 )
 
 # Link with libraries
