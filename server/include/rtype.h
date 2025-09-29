@@ -6,6 +6,7 @@
 */
 #ifndef RTYPE_H
 #define RTYPE_H
+#include "packethandler.h"
 #include "packetmanager.h"
 
 namespace rtype::server {
@@ -15,6 +16,8 @@ namespace rtype::server {
 
     public:
         PacketManager packetManager;
+        PacketHandler packetHandler;
+
         int udp_server_fd;
         void loop();
     };

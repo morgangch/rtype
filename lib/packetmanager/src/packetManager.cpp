@@ -267,6 +267,7 @@ std::vector<std::unique_ptr<packet_t> > PacketManager::fetchPacketsToSend() {
         packet_t packet_copy;
         packet_copy.header = packet->header;
 
+
         // Now we can properly copy the data using the data_size from header
         if (packet->header.data_size > 0 && packet->data) {
             packet_copy.data = new uint8_t[packet->header.data_size];

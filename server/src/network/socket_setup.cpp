@@ -28,6 +28,45 @@ int rtype::server::network::setupUDPServer(int port) {
     return sockfd;
 }
 
+void rtype::server::network::loop_send(int udp_server_fd) {
+    std::vector<std::unique_ptr<packet_t> > packets = root.packetManager.fetchPacketsToSend();
+
+    for (int i = 0; i < packets.size(); i++) {
+        uint8_t buffer[MAX_PACKET_SIZE];
+        std::unique_ptr<packet_t> &packet = packets[i];
+        std::vector<uint8_t> serialized = PacketManager::serializePacket(*packet);
+
+
+        // Extract client address and port from packet header
+        struct sockaddr_in clientaddr;
+        clientaddr.sin_family = AF_INET;
+
+        // Convert client_addr[4] bytes to IP address
+        clientaddr.sin_addr.s_addr = (packet->header.client_addr[0] << 0) |
+                                     (packet->header.client_addr[1] << 8) |
+                                     (packet->header.client_addr[2] << 16) |
+                                     (packet->header.client_addr[3] << 24);
+
+        // Set client port (convert from host to network byte order)
+        clientaddr.sin_port = htons(packet->header.client_port);
+
+        // Send the serialized packet to the client
+        int bytes_sent = sendto(udp_server_fd, serialized.data(), serialized.size(), 0,
+                                (struct sockaddr *) &clientaddr, sizeof(clientaddr));
+
+        if (bytes_sent < 0) {
+            std::cerr << "[ERROR] Failed to send UDP packet to client" << std::endl;
+        } else {
+            std::cout << "[INFO] Sent UDP packet of size " << serialized.size()
+                    << " to " << (int) packet->header.client_addr[0] << "."
+                    << (int) packet->header.client_addr[1] << "."
+                    << (int) packet->header.client_addr[2] << "."
+                    << (int) packet->header.client_addr[3] << ":"
+                    << packet->header.client_port << std::endl;
+        }
+    }
+}
+
 void rtype::server::network::loop_recv(int udp_server_fd) {
     uint8_t buffer[MAX_PACKET_SIZE];
     struct sockaddr_in cliaddr;
