@@ -93,7 +93,7 @@ int main() {
             for (const auto& pair : *renderables) {
                 ECS::EntityID entity = pair.first;
                 auto* renderable = pair.second.get();
-                auto* pos = world.GetComponent<rtype::common::components::Position>(entity);
+                auto* pos = world.GetComponent<Position>(entity);
                 
                 if (pos && renderable->visible) {
                     std::cout << "    " << renderable->texturePath 
