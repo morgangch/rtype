@@ -2,7 +2,7 @@
 #define COMMON_COMPONENTS_VELOCITY_HPP
 #include <ECS/ECS.hpp>
 
-namespace Common {
+namespace rtype::common::components {
     class Velocity : public ECS::Component<Velocity> {
     public:
         float vx, vy;

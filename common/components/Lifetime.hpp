@@ -3,7 +3,7 @@
 
 #include <ECS/ECS.hpp>
 
-namespace Common {
+namespace rtype::common::components {
     class Lifetime : public ECS::Component<Lifetime> {
     public:
         float maxLifetime;

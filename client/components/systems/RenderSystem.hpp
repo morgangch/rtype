@@ -3,13 +3,13 @@
 
 #include <common/core/System.hpp>
 
-namespace Client {
+namespace rtype::client::systems {
     class RenderSystem : public System {
     public:
         void update(ComponentManager& cm, float deltaTime) override;
 
     private:
-        void renderLayer(RenderLayer layer);
+        void renderLayer(int layer);
         void sortByDepth();
     };
 }

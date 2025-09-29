@@ -3,7 +3,7 @@
 
 #include <ECS/ECS.hpp>
 
-namespace Common {
+namespace rtype::common::components {
     enum class PowerUpType {
         Health, WeaponUpgrade, Shield, SpeedBoost, MultiShot, ScoreBonus
     };

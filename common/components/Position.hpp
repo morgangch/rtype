@@ -3,7 +3,7 @@
 
 #include <ECS/ECS.hpp>
 
-namespace Common {
+namespace rtype::common::components {
     class Position : public ECS::Component<Position> {
     public:
         float x, y;

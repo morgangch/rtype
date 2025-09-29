@@ -3,7 +3,7 @@
 
 #include <common/utils/Config.hpp>
 
-namespace Client::Config {
+namespace rtype::client::configs {
     constexpr int WINDOW_WIDTH = 1920;
     constexpr int WINDOW_HEIGHT = 1080;
     constexpr bool FULLSCREEN = false;

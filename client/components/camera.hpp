@@ -4,7 +4,7 @@
 #include <ECS/ECS.hpp>
 #include <common/components/Position.hpp>
 
-namespace Client {
+namespace rtype::client::components {
     class Camera : public ECS::Component<Camera> {
     public:
         float zoom;

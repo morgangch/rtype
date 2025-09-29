@@ -4,7 +4,7 @@
 #include <common/core/System.hpp>
 #include <unordered_map>
 
-namespace Client {
+namespace rtype::client::components {
     enum class KeyState {
         Released = 0,
         JustPressed,

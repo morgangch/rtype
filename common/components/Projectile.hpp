@@ -3,7 +3,7 @@
 
 #include <ECS/ECS.hpp>
 
-namespace Common {
+namespace rtype::common::components {
     enum class ProjectileType {
         Basic, Laser, Missile, Spread, Piercing
     };

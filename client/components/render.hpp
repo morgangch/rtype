@@ -4,7 +4,7 @@
 #include <ECS/ECS.hpp>
 #include <string>
 
-namespace Client {
+namespace rtype::client::components {
     enum class RenderLayer {
         Background = 0,
         Entities,

@@ -3,7 +3,7 @@
 
 #include <ECS/ECS.hpp>
 
-namespace Common {
+namespace rtype::common::components {
     class Score : public ECS::Component<Score> {
     public:
         int points;

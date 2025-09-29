@@ -3,7 +3,7 @@
 
 #include <ECS/ECS.hpp>
 
-namespace Common {
+namespace rtype::common::components {
     class Player : public ECS::Component<Player> {
     public:
         Player() = default;

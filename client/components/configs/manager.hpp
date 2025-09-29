@@ -5,7 +5,7 @@
 #include <string>
 #include <memory>
 
-namespace Client {
+namespace rtype::client::configs {
     template<typename T>
     class ResourceManager {
     public:

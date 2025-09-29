@@ -4,7 +4,7 @@
 #include <ECS/ECS.hpp>
 #include <bitset>
 
-namespace Common {
+namespace rtype::common::components {
     enum class InputAction {
         MoveUp = 0, MoveDown, MoveLeft, MoveRight,
         Fire, Special, Pause, COUNT

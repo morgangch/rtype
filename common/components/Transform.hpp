@@ -2,7 +2,7 @@
 #define COMMON_COMPONENTS_TRANSFORM_HPP
 #include <ECS/ECS.hpp>
 
-namespace Common {
+namespace rtype::common::components {
     class Transform : public ECS::Component<Transform> {
     public:
         float x, y, z;

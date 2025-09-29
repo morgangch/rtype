@@ -2,7 +2,7 @@
 #define COMMON_COMPONENTS_TEAM_HPP
 #include <ECS/ECS.hpp>
 
-namespace Common {
+namespace rtype::common::components {
     enum class TeamType {
         Neutral = 0, Player, Enemy, Environment
     };

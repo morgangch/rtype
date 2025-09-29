@@ -4,7 +4,7 @@
 #include <ECS/ECS.hpp>
 #include <vector>
 
-namespace Client {
+namespace rtype::client::components {
     struct AnimationFrame {
         int textureX, textureY;
         int width, height;
