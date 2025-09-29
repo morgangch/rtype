@@ -20,7 +20,8 @@ namespace rtype::client::components {
         bool playing;
         bool is3D;
 
-        AudioSource(const std::string& soundPath = "", AudioType type = AudioType::SFX);
+        AudioSource(const std::string& soundPath = "", AudioType type = AudioType::SFX)
+            : soundPath(soundPath), type(type), volume(1.0f), looping(false), playing(false), is3D(false) {}
     };
 }
 

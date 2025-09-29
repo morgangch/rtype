@@ -11,7 +11,7 @@
 #include <vector>
 #include <cstring>
 #include <cstdlib>
-#include "packetmanager.h"
+#include "../../lib/packetmanager/include/packetmanager.h"
 
 #define COLOR_RED "\033[31m"
 #define COLOR_GREEN "\033[32m"

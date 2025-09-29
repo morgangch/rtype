@@ -2,7 +2,7 @@
 #define COMMON_CORE_SYSTEM_HPP
 #include <cstdint>
 #include "Entity.hpp"
-#include "../../lib/ecs/include/ECS/Component.hpp"
+#include "ECS/Component.hpp"
 
 class ComponentManager;
 

@@ -10,7 +10,7 @@ namespace rtype::client::components {
         float zoom;
         ECS::EntityID followTarget;
 
-        Camera(float zoom = 1.0f);
+        Camera(float zoom = 1.0f) : zoom(zoom), followTarget(0) {}
     };
 }
 

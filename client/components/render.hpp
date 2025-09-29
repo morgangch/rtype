@@ -21,7 +21,8 @@ namespace rtype::client::components {
         bool visible;
         float alpha;
 
-        Renderable(const std::string& texturePath = "", float width = 32.0f, float height = 32.0f, RenderLayer layer = RenderLayer::Entities);
+        Renderable(const std::string& texturePath = "", float width = 32.0f, float height = 32.0f, RenderLayer layer = RenderLayer::Entities)
+            : texturePath(texturePath), width(width), height(height), layer(layer), visible(true), alpha(1.0f) {}
     };
 }
 
