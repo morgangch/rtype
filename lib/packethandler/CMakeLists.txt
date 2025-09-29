@@ -9,7 +9,7 @@ add_library(packethandler STATIC ${PACKETHANDLER_SOURCES})
 target_include_directories(packethandler PUBLIC
     include
     ../packetmanager/include
-    ../../common/packets
+    ${CMAKE_SOURCE_DIR}/common/packets
 )
 
 # Link dependencies
