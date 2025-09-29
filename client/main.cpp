@@ -8,7 +8,7 @@
 
 
 // Inclure les composants spécifiques au client
-#include "components/client.hpp"
+#include "client/components/client.hpp"
 //#include "components/render.hpp"
 //#include "components/camera.hpp"
 //#include "components/audio.hpp"
