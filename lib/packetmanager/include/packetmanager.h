@@ -4,6 +4,7 @@
 ** File description:
 ** TODO: add description
 */
+
 #ifndef PACKETMANAGER_H
 #define PACKETMANAGER_H
 
@@ -17,6 +18,15 @@ class PacketManager {
 public:
     PacketManager();
     ~PacketManager(); // Add destructor declaration
+
+    // Delete copy constructor and copy assignment operator (due to unique_ptr members)
+    PacketManager(const PacketManager&) = delete;
+    PacketManager& operator=(const PacketManager&) = delete;
+
+    // Enable move constructor and move assignment operator
+    PacketManager(PacketManager&&) = default;
+    PacketManager& operator=(PacketManager&&) = default;
+
     static packet_t deserializePacket(const uint8_t *data, size_t size, packet_t &packet);
     static std::unique_ptr<packet_t> deserializePacketSafe(const uint8_t *data, size_t size);
     static std::vector<uint8_t> serializePacket(const packet_t &packet);
