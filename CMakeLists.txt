@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 enable_testing()
 
 # Add subdirectories
+add_subdirectory(common)  # Add common components library
 add_subdirectory(lib)
 add_subdirectory(server)
 add_subdirectory(client)
