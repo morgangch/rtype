@@ -37,10 +37,10 @@ namespace rtype::client::network {
                               uint32_t room_id);
 
     /**
-     *
-     * @param server_ip
-     * @param server_port
-     * @return the
+     * @brief Initializes a UDP socket for communication with the server.
+     * @param server_ip The IP address of the server.
+     * @param server_port The port number of the server.
+     * @return The file descriptor of the UDP socket on success, or -1 on error.
      */
     int init_udp_socket(const std::string &server_ip, int server_port);
 
