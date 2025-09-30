@@ -3,6 +3,10 @@ name: Close issues when PR merged into dev
 on:
   pull_request:
     types: [closed]
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
 
 jobs:
   close-issues:
@@ -13,14 +17,13 @@ jobs:
       - name: Extract linked issues
         id: extract
         run: |
-          # Récupère le body de la PR
-          body="${{ github.event.pull_request.body }}"
-          echo "Body: $body"
+          text="${{ github.event.pull_request.title }} ${{ github.event.pull_request.body }}"
+          echo "PR text: $text"
 
-          # Cherche toutes les références d'issues (#123) après Closes/Fixes/Resolves
-          issues=$(echo "$body" | grep -E -o '(Closes|Fixes|Resolves) #[0-9]+' | grep -o '#[0-9]+' | tr -d '#')
+          # Match close/fix/resolve + séparateur (espace, tab ou retour ligne) + #numéro
+          issues=$(echo "$text" | grep -iPo '(close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#\d+' | grep -oP '#\d+' | tr -d '#' | xargs)
 
-          # Formate en sortie pour GitHub Actions
+          echo "Issues found: $issues"
           echo "issues=$issues" >> $GITHUB_OUTPUT
 
       - name: Close issues
@@ -31,6 +34,16 @@ jobs:
             const issues = "${{ steps.extract.outputs.issues }}".split(" ");
             for (const issue of issues) {
               console.log(`Closing issue #${issue}`);
+
+              // Add a comment before closing
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: parseInt(issue),
+                body: `Closed via PR #${context.payload.pull_request.number} merged into \`${context.payload.pull_request.base.ref}\`.`
+              });
+
+              // Close the issue
               await github.rest.issues.update({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
