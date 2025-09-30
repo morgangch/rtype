@@ -8,14 +8,14 @@
 
 
 // Inclure les composants spécifiques au client
-#include "client/components/client.hpp"
+#include "client/include/components/client.hpp"
 //#include "components/render.hpp"
 //#include "components/camera.hpp"
 //#include "components/audio.hpp"
 
 // Inclure les systèmes client
-#include "client/components/systems/RenderSystem.hpp"
-#include "client/components/systems/InputSystem.hpp"
+#include "client/include/components/systems/RenderSystem.hpp"
+#include "client/include/components/systems/InputSystem.hpp"
 
 int main() {
     std::cout << "Hello World from Client!" << std::endl;

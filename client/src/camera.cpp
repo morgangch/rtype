@@ -1,4 +1,4 @@
-#include "client/components/camera.hpp"
+#include "client/include/components/camera.hpp"
 
 namespace rtype::client::components {
     Camera::Camera(float zoom)
