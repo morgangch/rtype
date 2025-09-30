@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ECS_ECS_HPP
+#define ECS_ECS_HPP
 
 #include "Types.hpp"
 #include "Component.hpp"
@@ -20,3 +21,5 @@
 // auto entity = world.CreateEntity();
 // world.AddComponent<Position>(entity, 10.0f, 20.0f);
 // auto pos = world.GetComponent<Position>(entity);
+
+#endif // ECS_ECS_HPP
