@@ -12,7 +12,6 @@
 #include <unistd.h>
 #include <cstring>
 #include <arpa/inet.h>
-
 #include "packets/packets.h"
 
 using namespace rtype::client;

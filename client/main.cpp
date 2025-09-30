@@ -3,20 +3,11 @@
 
 // Inclure les composants communs
 
-#include <common/components/Position.hpp>
-#include <common/components/Velocity.hpp>
-
-
-// Inclure les composants spécifiques au client
+#include "common/components/Position.hpp"
+#include "common/components/Velocity.hpp"
 #include "client/include/components/client.hpp"
-//#include "components/render.hpp"
-//#include "components/camera.hpp"
-//#include "components/audio.hpp"
-
-// Inclure les systèmes client
 #include "network.h"
-#include "client/include/components/systems/RenderSystem.hpp"
-#include "client/include/components/systems/InputSystem.hpp"
+#include "components/systems/InputSystem.hpp"
 
 int main() {
     std::cout << "Hello World from Client!" << std::endl;
