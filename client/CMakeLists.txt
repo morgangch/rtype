@@ -12,7 +12,10 @@ target_include_directories(client PRIVATE
 )
 
 # Link with ECS and common libraries
-target_link_libraries(client PRIVATE ecs common)
+target_link_libraries(client PRIVATE ecs common packethandler packetmanager)
+
+target_include_directories(client PRIVATE include)
+
 
 # Set output directory - handle both single and multi-config generators
 if(CMAKE_CONFIGURATION_TYPES)

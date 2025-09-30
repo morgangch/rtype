@@ -10,6 +10,7 @@
 #include <memory>
 #include <stdexcept>
 #include <algorithm>
+#include <netinet/in.h>
 
 PacketManager::PacketManager() : _send_seqid(0), _recv_seqid(0) {
 }
@@ -51,11 +52,16 @@ std::vector<uint8_t> PacketManager::serializePacket(const packet_t &packet) {
 }
 
 
-void PacketManager::handlePacketBytes(const uint8_t *data, size_t size) {
+void PacketManager::handlePacketBytes(const uint8_t *data, size_t size, sockaddr_in client_addr) {
     try {
         // Deserialize the packet and store it in unique_ptr<packet_t>
         std::unique_ptr<packet_t> packet = std::make_unique<packet_t>();
         deserializePacket(data, size, *packet);
+        packet->header.client_addr[0] = (client_addr.sin_addr.s_addr >> 0) & 0xFF;
+        packet->header.client_addr[1] = (client_addr.sin_addr.s_addr >> 8) & 0xFF;
+        packet->header.client_addr[2] = (client_addr.sin_addr.s_addr >> 16) & 0xFF;
+        packet->header.client_addr[3] = (client_addr.sin_addr.s_addr >> 24) & 0xFF;
+        packet->header.client_port = ntohs(client_addr.sin_port);
         _handlePacket(std::move(packet));
     } catch (const std::exception &e) {
         // Invalid packet, ignore it
@@ -94,7 +100,9 @@ std::unique_ptr<uint8_t[]> PacketManager::sendPacketBytesSafe(const void *data, 
     // Create smart pointer for output data
     auto output_data = std::make_unique<uint8_t[]>(serialized_packet.size());
     std::memcpy(output_data.get(), serialized_packet.data(), serialized_packet.size());
-    *output_size = serialized_packet.size();
+
+    if (output_size != nullptr)
+        *output_size = serialized_packet.size();
 
     // Store the packet in the send buffer
     _buffer_send.push_back(std::move(packet));
@@ -260,6 +268,7 @@ std::vector<std::unique_ptr<packet_t> > PacketManager::fetchPacketsToSend() {
         // Create a copy of the packet to store in history
         packet_t packet_copy;
         packet_copy.header = packet->header;
+
 
         // Now we can properly copy the data using the data_size from header
         if (packet->header.data_size > 0 && packet->data) {
