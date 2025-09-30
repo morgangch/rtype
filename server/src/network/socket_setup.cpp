@@ -17,7 +17,7 @@
 
 int rtype::server::network::setupUDPServer(int port) {
     int sockfd;
-    struct sockaddr_in servaddr, cliaddr;
+    struct sockaddr_in servaddr;
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
@@ -42,7 +42,6 @@ void rtype::server::network::loop_send(int udp_server_fd) {
     std::vector<std::unique_ptr<packet_t> > packets = root.packetManager.fetchPacketsToSend();
 
     for (auto& packet : packets) {
-        uint8_t buffer[MAX_PACKET_SIZE];
         std::vector<uint8_t> serialized = PacketManager::serializePacket(*packet);
 
 
@@ -78,7 +77,7 @@ void rtype::server::network::loop_send(int udp_server_fd) {
 
 void rtype::server::network::loop_recv(int udp_server_fd) {
     uint8_t buffer[MAX_PACKET_SIZE];
-    struct sockaddr_in cliaddr;
+    struct sockaddr_in cliaddr{};
     socklen_t len = sizeof(cliaddr);
     packet_t packet;
     int n = recvfrom(udp_server_fd, buffer, sizeof(buffer), 0, (struct sockaddr *) &cliaddr, &len);
