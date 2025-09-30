@@ -1,5 +1,0 @@
-#include "components/render.hpp"
-#include "components/camera.hpp"
-#include "components/audio.hpp"
-#include "components/animation.hpp"
-#include "components/input.hpp"
