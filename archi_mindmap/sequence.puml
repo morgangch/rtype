@@ -1,0 +1,45 @@
+@startuml
+title R-Type - Client-Server Communication Sequence
+
+participant Client
+participant "PacketManager\n(Client)" as PMC
+participant Network
+participant "PacketManager\n(Server)" as PMS
+participant Server
+participant "ECS World" as ECS
+
+== Game Initialization ==
+
+Client -> PMC : Initialize
+Client -> ECS : Create Local World
+PMC -> Network : Send Connection Request
+Network -> PMS : Receive Packet
+PMS -> Server : Handle Connection
+Server -> ECS : Create Player Entity
+Server -> PMS : Send Player Join Packet
+PMS -> Network : Send Response
+Network -> PMC : Receive Response
+PMC -> Client : Player Joined
+
+== Player Input Processing ==
+
+Client -> PMC : Create PlayerInputPacket
+PMC -> Network : Send Input
+Network -> PMS : Receive Input
+PMS -> Server : Process Input
+Server -> ECS : Update Player Position
+Server -> PMS : Create PlayerStatePacket
+PMS -> Network : Broadcast State
+Network -> PMC : Receive State
+PMC -> Client : Update Local State
+
+== Packet Loss Handling ==
+
+Network -> Network : Packet Lost
+PMS -> PMS : Detect Missing Packet
+PMS -> PMC : Send ACK Request
+PMC -> Network : Retransmit Packet
+Network -> PMS : Receive Retransmission
+PMS -> Server : Process Packet
+
+@enduml
