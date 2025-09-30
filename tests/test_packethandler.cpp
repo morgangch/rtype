@@ -8,6 +8,8 @@
 #include <cassert>
 #include <iostream>
 #include <cstring>
+#include <netinet/in.h>
+
 #include "packethandler.h"
 #include "packetmanager.h"
 #include "packets.h"
@@ -83,7 +85,7 @@ int main() {
     );
 
     // Simulate receiving the packet back
-    packetManager.handlePacketBytes(serializedData.get(), serializedSize);
+    packetManager.handlePacketBytes(serializedData.get(), serializedSize, (sockaddr_in){});
 
     // Process received packets
     auto receivedPackets = packetManager.fetchReceivedPackets();
@@ -107,7 +109,7 @@ int main() {
     );
 
     // Simulate receiving the missile packet
-    packetManager.handlePacketBytes(missileSerializedData.get(), serializedSize);
+    packetManager.handlePacketBytes(missileSerializedData.get(), serializedSize, (sockaddr_in){});
 
     // Process received packets
     receivedPackets = packetManager.fetchReceivedPackets();
@@ -123,7 +125,7 @@ int main() {
     );
 
     // Simulate receiving the ping packet
-    packetManager.handlePacketBytes(pingSerializedData.get(), serializedSize);
+    packetManager.handlePacketBytes(pingSerializedData.get(), serializedSize, (sockaddr_in){});
 
     // Process received packets
     receivedPackets = packetManager.fetchReceivedPackets();
@@ -140,7 +142,7 @@ int main() {
     );
 
     // Simulate receiving the type 3 packet
-    packetManager.handlePacketBytes(type3SerializedData.get(), serializedSize);
+    packetManager.handlePacketBytes(type3SerializedData.get(), serializedSize, (sockaddr_in){});
 
     // Process received packets
     receivedPackets = packetManager.fetchReceivedPackets();
@@ -155,7 +157,7 @@ int main() {
         &serializedSize
     );
 
-    packetManager.handlePacketBytes(unregisteredData.get(), serializedSize);
+    packetManager.handlePacketBytes(unregisteredData.get(), serializedSize, (sockaddr_in){});
     receivedPackets = packetManager.fetchReceivedPackets();
     packetHandler.processPackets(receivedPackets); // Should be silently ignored
 
