@@ -10,6 +10,11 @@
 #include <memory>
 #include <stdexcept>
 #include <algorithm>
+#include <iostream>
+#include <fstream>
+#include <dirent.h>
+#include <filesystem>
+namespace fs = std::filesystem;
 
 MapParser::MapParser() {
 }
@@ -24,11 +29,23 @@ void MapParser::clean() {
 }
 
 const std::vector<Tile>& MapParser::loadFromFile(const std::string &filename) {
-    return {};
+    static const std::vector<Tile> mapVector = {};
+    return mapVector;
 }
 
 const std::vector<Tile>& MapParser::loadFromDirectory(const std::string &dirname) {
-    return {};
+    static const std::vector<Tile> mapVector = {};
+    const fs::path dirPath(dirname);
+    const std::vector<fs::directory_entry> entries = fs::directory_iterator(dirPath);
+
+    if (!entries.empty() || entries.size() < 2) {
+        std::cerr << "Directory is empty or has less than 2 files: " << dirname << std::endl;
+        return mapVector;
+    }
+    
+    bool hasMapFile = false;
+    bool hasDefFile = false;
+    return mapVector;
 }
 
 void MapParser::registerTileType(const std::string &tileType) {

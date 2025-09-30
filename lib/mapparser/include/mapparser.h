@@ -32,7 +32,7 @@ public:
     /** 
      * @brief Load a map from a directory name.
      * @param dirname The name of the directory to load the map from.
-     * @return true if the map was loaded successfully, false otherwise.
+     * @return List of "tile" objects representing the map. 
      */
     virtual const std::vector<Tile>& loadFromDirectory(const std::string &dirname);
 
