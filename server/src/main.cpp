@@ -12,7 +12,7 @@ int main() {
     rtype::server::Rtype &r = root;
     r.udp_server_fd = rtype::server::network::setupUDPServer(8080);
 
-    while (1) {
+    while (true) {
         r.loop();
     }
     return 0;

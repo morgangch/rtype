@@ -20,10 +20,20 @@ int rtype::server::network::setupUDPServer(int port) {
     struct sockaddr_in servaddr, cliaddr;
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        std::cerr << "[ERROR] Failed to create socket: ";
+        perror("socket");
+        return -1;
+    }
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = INADDR_ANY;
     servaddr.sin_port = htons(port);
-    bind(sockfd, (struct sockaddr *) &servaddr, sizeof(servaddr));
+    if (bind(sockfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0) {
+        std::cerr << "[ERROR] Failed to bind socket: ";
+        perror("bind");
+        close(sockfd);
+        return -1;
+    }
     std::cout << "[INFO] UDP server listening on port " << port << " and fd " << sockfd << std::endl;
     return sockfd;
 }
@@ -31,9 +41,8 @@ int rtype::server::network::setupUDPServer(int port) {
 void rtype::server::network::loop_send(int udp_server_fd) {
     std::vector<std::unique_ptr<packet_t> > packets = root.packetManager.fetchPacketsToSend();
 
-    for (int i = 0; i < packets.size(); i++) {
+    for (auto& packet : packets) {
         uint8_t buffer[MAX_PACKET_SIZE];
-        std::unique_ptr<packet_t> &packet = packets[i];
         std::vector<uint8_t> serialized = PacketManager::serializePacket(*packet);
 
 
@@ -74,10 +83,11 @@ void rtype::server::network::loop_recv(int udp_server_fd) {
     packet_t packet;
     int n = recvfrom(udp_server_fd, buffer, sizeof(buffer), 0, (struct sockaddr *) &cliaddr, &len);
 
-    if (n > 0)
+    if (n > 0) {
         std::cout << "[INFO] Received UDP packet of size " << n << std::endl;
-    PacketManager::deserializePacket(buffer, n, packet);
-    std::cout << "[INFO] Packet seqid: " << packet.header.seqid << ", type: " << static_cast<int>(packet.header.type) <<
-            std::endl;
-    root.packetManager.handlePacketBytes(buffer, n, cliaddr);
+        PacketManager::deserializePacket(buffer, n, packet);
+        std::cout << "[INFO] Packet seqid: " << packet.header.seqid << ", type: " << static_cast<int>(packet.header.type) <<
+                std::endl;
+        root.packetManager.handlePacketBytes(buffer, n, cliaddr);
+    }
 }

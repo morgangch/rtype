@@ -112,7 +112,7 @@ int main() {
     // TODO: Place that code on the greate place. WARNING: the loop need to be non-blocking.
     // DEMO POC:
     rtype::client::network::start_room_connection("127.0.0.1", 8080, "Eliot", 0);
-    while (1) {
+    while (true) {
         if (rtype::client::network::udp_fd != 0) {
             rtype::client::network::loop_recv();
             rtype::client::network::loop_send();

@@ -52,8 +52,7 @@ void network::loop_recv() {
 void network::loop_send() {
     std::vector<std::unique_ptr<packet_t> > packets = pm.fetchPacketsToSend();
 
-    for (int i = 0; i < packets.size(); i++) {
-        std::unique_ptr<packet_t> &packet = packets[i];
+    for (auto& packet : packets) {
         std::vector<uint8_t> serialized = PacketManager::serializePacket(*packet);
 
         // For client, we send packets directly to the connected server
@@ -102,6 +101,7 @@ int network::start_room_connection(const std::string &ip, int port, const std::s
 
     // Secure the player name to avoid overflow
     strncpy(p.name, player_name.substr(0, 31).c_str(), 32);
+    p.name[31] = '\0';
 
     pm.sendPacketBytesSafe(&p, sizeof(JoinRoomPacket), JOIN_ROOM, nullptr, true);
     return 0;
