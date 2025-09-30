@@ -2,7 +2,7 @@ name: Close issues when PR merged into dev
 
 on:
   pull_request:
-    types: [ closed ]
+    types: [closed]
 permissions:
   contents: read
   pull-requests: read
