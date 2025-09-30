@@ -13,14 +13,13 @@ jobs:
       - name: Extract linked issues
         id: extract
         run: |
-          # Récupère le body de la PR
-          body="${{ github.event.pull_request.body }}"
-          echo "Body: $body"
+          text="${{ github.event.pull_request.title }} ${{ github.event.pull_request.body }}"
+          echo "PR text: $text"
 
-          # Cherche toutes les références d'issues (#123) après Closes/Fixes/Resolves
-          issues=$(echo "$body" | grep -E -o '(Closes|Fixes|Resolves) #[0-9]+' | grep -o '#[0-9]+' | tr -d '#')
+          # Cherche toutes les références d'issues (#123) après close/fix/resolve (insensible à la casse)
+          issues=$(echo "$text" | grep -iE -o '(close[sd]?|fix(e[sd])?|resolve[sd]?) #[0-9]+' | grep -o '#[0-9]+' | tr -d '#' | xargs)
 
-          # Formate en sortie pour GitHub Actions
+          echo "Issues found: $issues"
           echo "issues=$issues" >> $GITHUB_OUTPUT
 
       - name: Close issues
