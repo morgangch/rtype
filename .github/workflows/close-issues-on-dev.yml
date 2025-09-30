@@ -1,0 +1,40 @@
+name: Close issues when PR merged into dev
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  close-issues:
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'dev'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Extract linked issues
+        id: extract
+        run: |
+          # Récupère le body de la PR
+          body="${{ github.event.pull_request.body }}"
+          echo "Body: $body"
+
+          # Cherche toutes les références d'issues (#123) après Closes/Fixes/Resolves
+          issues=$(echo "$body" | grep -E -o '(Closes|Fixes|Resolves) #[0-9]+' | grep -o '#[0-9]+' | tr -d '#')
+
+          # Formate en sortie pour GitHub Actions
+          echo "issues=$issues" >> $GITHUB_OUTPUT
+
+      - name: Close issues
+        if: steps.extract.outputs.issues != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = "${{ steps.extract.outputs.issues }}".split(" ");
+            for (const issue of issues) {
+              console.log(`Closing issue #${issue}`);
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: parseInt(issue),
+                state: "closed"
+              });
+            }
