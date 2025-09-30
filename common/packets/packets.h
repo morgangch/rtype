@@ -9,6 +9,34 @@
 #define PACKETS_H
 #define MAX_PACKET_SIZE 2048
 
+enum Packets {
+    JOIN_ROOM = 2,
+    PING = 3,
+    PONG = 4,
+    PLAYER_JOIN = 5,
+    PLAYER_LEAVE = 6,
+    PLAYER_INPUT = 7,
+    PLAYER_SHOOT = 8,
+    PLAYER_STATE = 9,
+    SPAWN_ENEMY = 10,
+    ENEMY_STATE = 11,
+    MISSILE_SPAWN = 12,
+};
+
+
+
+/**
+ * When a player want to join a room
+ * Client → Server
+ * Packet type 2
+ * @param name Player name (max 32 bytes)
+ * @param roomId Room ID to join. Use 0 to create a new room, 1 to join a public room.
+ */
+struct JoinRoomPacket {
+    char name[32];
+    uint32_t roomId;
+};
+
 struct PingPacket {
 };
 

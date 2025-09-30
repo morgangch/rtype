@@ -100,7 +100,9 @@ std::unique_ptr<uint8_t[]> PacketManager::sendPacketBytesSafe(const void *data, 
     // Create smart pointer for output data
     auto output_data = std::make_unique<uint8_t[]>(serialized_packet.size());
     std::memcpy(output_data.get(), serialized_packet.data(), serialized_packet.size());
-    *output_size = serialized_packet.size();
+
+    if (output_size != nullptr)
+        *output_size = serialized_packet.size();
 
     // Store the packet in the send buffer
     _buffer_send.push_back(std::move(packet));
