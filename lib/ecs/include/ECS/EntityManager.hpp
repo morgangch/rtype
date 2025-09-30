@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ECS_ENTITYMANAGER_HPP
+#define ECS_ENTITYMANAGER_HPP
 
 #include "Types.hpp"
 #include <vector>
@@ -23,3 +24,5 @@ namespace ECS {
         size_t GetAliveEntityCount() const;
     };
 }
+
+#endif // ECS_ENTITYMANAGER_HPP
