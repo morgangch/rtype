@@ -3,6 +3,7 @@
 
 void rtype::server::Rtype::loop() {
     network::loop_recv(udp_server_fd);
+    network::loop_send(udp_server_fd);
     packetHandler.processPackets(packetManager.fetchReceivedPackets());
 }
 

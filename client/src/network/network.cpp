@@ -87,7 +87,7 @@ int network::init_udp_socket(const std::string &server_ip, int server_port) {
     if (connect(sockfd, (const struct sockaddr *) &servaddr, sizeof(servaddr)) < 0) {
         perror("Connection to the server failed");
         close(sockfd);
-        return 1;
+        return -1;
     }
     udp_fd = sockfd;
     return udp_fd;
@@ -95,6 +95,8 @@ int network::init_udp_socket(const std::string &server_ip, int server_port) {
 
 int network::start_room_connection(const std::string &ip, int port, const std::string &player_name, uint32_t room_id) {
     init_udp_socket(ip, port);
+
+    // Build and send the JoinRoomPacket
     JoinRoomPacket p;
     p.roomId = room_id;
 

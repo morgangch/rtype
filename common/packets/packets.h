@@ -9,6 +9,11 @@
 #define PACKETS_H
 #define MAX_PACKET_SIZE 2048
 
+/**
+ * Packet types
+ * Linking a packet type with the packet type id.
+ */
+
 enum Packets {
     JOIN_ROOM = 2,
     PING = 3,
@@ -22,7 +27,6 @@ enum Packets {
     ENEMY_STATE = 11,
     MISSILE_SPAWN = 12,
 };
-
 
 
 /**

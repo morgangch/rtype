@@ -12,9 +12,36 @@
 #include "packetmanager.h"
 
 namespace rtype::client::network {
+    /**
+     * @brief Loop to receive packets from the server and handle it on the PacketManager.
+     * @warning Call that function only if the UDP socket is initialized.
+     */
     void loop_recv();
+
+    /**
+     * @brief Loop to send packets from the PacketManager to the server.
+     * @warning Call that function only if the UDP socket is initialized.
+     */
     void loop_send();
-    int start_room_connection(const std::string &server_ip, int server_port, const std::string &player_name, uint32_t room_id);
+
+    /**
+     * @brief Start a connection to the server to get a room list.
+     *  The function will initialize the UDP socket by calling init_udp_socket() and sending a RoomJoinPacket.
+     * @param server_ip The server IP address.
+     * @param server_port The server port.
+     * @param player_name The player name.
+     * @param room_id The room ID to join.
+     * @return fd of the UDP socket, or -1 on error.
+     */
+    int start_room_connection(const std::string &server_ip, int server_port, const std::string &player_name,
+                              uint32_t room_id);
+
+    /**
+     *
+     * @param server_ip
+     * @param server_port
+     * @return the
+     */
     int init_udp_socket(const std::string &server_ip, int server_port);
 
     extern PacketManager pm;
