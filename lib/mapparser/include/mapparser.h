@@ -9,11 +9,12 @@
 
 #include <vector>
 #include <memory>
+#include <string>
 
 struct Tile {
     int x;
     int y;
-    const std::string tileType;
+    std::string tileType;
 };
 
 class MapParser {
@@ -26,7 +27,14 @@ public:
      * @param filename The name of the file to load the map from.
      * @return true if the map was loaded successfully, false otherwise.
      */
-    bool loadFromFile(const std::string &filename);
+    virtual const std::vector<Tile>& loadFromFile(const std::string &filename);
+
+    /** 
+     * @brief Load a map from a directory name.
+     * @param dirname The name of the directory to load the map from.
+     * @return true if the map was loaded successfully, false otherwise.
+     */
+    virtual const std::vector<Tile>& loadFromDirectory(const std::string &dirname);
 
     /**
      * @brief Clean up the map parser.
@@ -58,14 +66,7 @@ public:
     bool hasTileType(const std::string &tileType) const;
 
 private:
-    std::vector<std::string> m_tileTypes;
-    std::vector<Tile> m_tiles;
-    /**
-     * @brief Add a tile to the map.
-     * @param tile The tile to add.
-     */
-    void addTile(const Tile &tile);
-
+    std::vector<std::string> _tileTypes;
 };
 
 #endif //MAPPARSER_H

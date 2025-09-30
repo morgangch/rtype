@@ -1,10 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 
+file(GLOB_RECURSE MAPPARSER_SOURCES "src/*.cpp")
+
 # mapparser Library
-add_library(mapparser STATIC
-    src/mapparser.cpp
-    include/mapparser.h
-)
+add_library(mapparser STATIC ${MAPPARSER_SOURCES})
 
 # Include directories
 target_include_directories(mapparser PUBLIC
