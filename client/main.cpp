@@ -1,113 +1,126 @@
-// #include <iostream>
-// #include <ECS/ECS.hpp>
+#include <iostream>
+#include <Graphics.hpp>
+#include <Input.hpp>
+#include <chrono>
+#include <thread>
+#include <cmath>
 
-// // Inclure les composants communs
+using namespace rtype::client::graphics;
+using namespace rtype::client::input;
 
-// #include "common/components/Position.hpp"
-// #include "common/components/Velocity.hpp"
-// #include "client/include/components/client.hpp"
-// #include "network.h"
-// #include "components/systems/InputSystem.hpp"
-
-// int main() {
-//     std::cout << "Hello World from Client!" << std::endl;
-//     std::cout << "Client is connecting..." << std::endl;
-
-//     // Démonstration ECS avec composants client/serveur
-//     std::cout << "\n=== ECS Library Demo (Client avec composants partagés) ===" << std::endl;
-
-//     ECS::World world;
-
-//     // Créer des entités
-//     auto player = world.CreateEntity();
-//     auto enemy = world.CreateEntity();
-//     auto ui_element = world.CreateEntity();
-
-//     std::cout << "Created entities: Player(" << player << "), Enemy(" << enemy << "), UI(" << ui_element << ")" <<
-//             std::endl;
-
-//     // Ajouter des composants communs (partagés avec le serveur)
-
-//     using rtype::common::components::Position;
-//     using rtype::common::components::Velocity;
-//     using rtype::client::components::Renderable;
-//     using rtype::client::components::RenderLayer;
-//     using rtype::client::components::Camera;
-//     using rtype::client::components::AudioSource;
-//     using rtype::client::components::AudioType;
-
-//     world.AddComponent<Position>(player, 100.0f, 200.0f, 0.0f);
-//     world.AddComponent<Velocity>(player, 0.0f, 0.0f, 250.0f);
-
-//     world.AddComponent<Position>(enemy, 300.0f, 150.0f, 3.14f / 2);
-//     world.AddComponent<Velocity>(enemy, -50.0f, 0.0f, 100.0f);
-
-//     // Ajouter des composants spécifiques au client
-//     world.AddComponent<Renderable>(player, "player.png", 64.0f, 64.0f, RenderLayer::Entities);
-//     world.AddComponent<Renderable>(enemy, "enemy.png", 48.0f, 48.0f, RenderLayer::Entities);
-//     world.AddComponent<Renderable>(ui_element, "health_bar.png", 200.0f, 20.0f, RenderLayer::UI);
-
-//     // Ajouter caméra
-//     world.AddComponent<Camera>(world.CreateEntity(), 1.0f);
-
-//     // Ajouter son
-//     world.AddComponent<AudioSource>(player, "player_move.wav", AudioType::SFX);
-
-//     std::cout << "Added components to entities" << std::endl;
-
-//     // Simulation d'une boucle de jeu simplifiée
-//     std::cout << "\n=== Simulation de boucle de jeu ===" << std::endl;
-
-//     for (int frame = 0; frame < 5; ++frame) {
-//         float deltaTime = 0.016f; // ~60 FPS
-
-//         std::cout << "Frame " << frame << ":" << std::endl;
-
-//         // Système de mouvement (logique partagée client/serveur)
-//         auto *positions = world.GetAllComponents<Position>();
-//         if (positions) {
-//             for (const auto &pair: *positions) {
-//                 ECS::EntityID entity = pair.first;
-//                 auto *pos = pair.second.get();
-//                 auto *vel = world.GetComponent<Velocity>(entity);
-
-//                 if (vel) {
-//                     pos->x += vel->vx * deltaTime;
-//                     pos->y += vel->vy * deltaTime;
-//                     std::cout << "  Entity " << entity << " moved to (" << pos->x << ", " << pos->y << ")" << std::endl;
-//                 }
-//             }
-//         }
-
-//         // Système de rendu (spécifique client)
-//         auto *renderables = world.GetAllComponents<Renderable>();
-//         if (renderables) {
-//             std::cout << "  Rendering:" << std::endl;
-//             for (const auto &pair: *renderables) {
-//                 ECS::EntityID entity = pair.first;
-//                 auto *renderable = pair.second.get();
-//                 auto *pos = world.GetComponent<Position>(entity);
-
-//                 if (pos && renderable->visible) {
-//                     std::cout << "    " << renderable->texturePath
-//                             << " at (" << pos->x << ", " << pos->y << ") "
-//                             << "layer=" << static_cast<int>(renderable->layer) << std::endl;
-//                 }
-//             }
-//         }
-//     }
-
-//     std::cout << "\nTotal alive entities: " << world.GetAliveEntityCount() << std::endl;
-
-
-//     // TODO: Place that code on the greate place. WARNING: the loop need to be non-blocking.
-//     // DEMO POC:
-//     rtype::client::network::start_room_connection("127.0.0.1", 8080, "Eliot", 0);
-//     while (true) {
-//         if (rtype::client::network::udp_fd != 0) {
-//             rtype::client::network::loop_recv();
-//             rtype::client::network::loop_send();
-//         }
-//     }
-//     return 0;
-// }
+int main() {
+    std::cout << "=== R-Type Client - Player Movement Test ===" << std::endl;
+    
+    // Initialize graphics system
+    Graphics graphics;
+    if (!graphics.Initialize(800, 600, "R-Type - Player Movement Test")) {
+        std::cout << "Failed to initialize graphics!" << std::endl;
+        return -1;
+    }
+    
+    // Initialize input system
+    Input input;
+    if (!input.Initialize()) {
+        std::cout << "Failed to initialize input!" << std::endl;
+        return -1;
+    }
+    
+    // Connect input to graphics
+    graphics.SetInputManager(&input.GetInputManager());
+    
+    std::cout << "Graphics and Input initialized successfully!" << std::endl;
+    std::cout << "Controls:" << std::endl;
+    std::cout << "  LEFT/RIGHT arrows - Move player ship horizontally" << std::endl;
+    std::cout << "  UP/DOWN arrows - Move player ship vertically" << std::endl;
+    std::cout << "  WASD keys also work for movement" << std::endl;
+    std::cout << "  SPACE - Fire (test)" << std::endl;
+    std::cout << "  ESC - Close window" << std::endl;
+    
+    // Player ship variables
+    float playerX = 400.0f;  // Center of screen
+    float playerY = 500.0f;  // Near bottom
+    const float playerSpeed = 300.0f; // pixels per second
+    const float screenWidth = 800.0f;
+    const float screenHeight = 600.0f;
+    const float playerWidth = 32.0f;  // Assumed player width
+    const float playerHeight = 32.0f; // Assumed player height
+    
+    // Test variables for animation
+    float time = 0.0f;
+    
+    // Main game loop
+    while (graphics.IsRunning()) {
+        // Handle events and update input
+        graphics.PollEvents();
+        input.Update();
+        
+        // Check for pause
+        if (input.IsPausePressed()) {
+            std::cout << "Pause pressed, exiting..." << std::endl;
+            break;
+        }
+        
+        // Update
+        float deltaTime = 0.016f; // ~60 FPS
+        time += deltaTime;
+        
+        // Player movement
+        float horizontalMovement = input.GetPlayerMovement();
+        float verticalMovement = input.GetPlayerVerticalMovement();
+        
+        if (horizontalMovement != 0.0f || verticalMovement != 0.0f) {
+            // Update position
+            playerX += horizontalMovement * playerSpeed * deltaTime;
+            playerY += verticalMovement * playerSpeed * deltaTime;
+            
+            // Keep player on screen - horizontal bounds
+            if (playerX < playerWidth * 0.5f) {
+                playerX = playerWidth * 0.5f;
+            } else if (playerX > screenWidth - playerWidth * 0.5f) {
+                playerX = screenWidth - playerWidth * 0.5f;
+            }
+            
+            // Keep player on screen - vertical bounds
+            if (playerY < playerHeight * 0.5f) {
+                playerY = playerHeight * 0.5f;
+            } else if (playerY > screenHeight - playerHeight * 0.5f) {
+                playerY = screenHeight - playerHeight * 0.5f;
+            }
+            
+            std::cout << "Player position: (" << playerX << ", " << playerY << ")" << std::endl;
+        }
+        
+        // Fire test
+        if (input.IsFirePressed()) {
+            std::cout << "FIRE! Pew pew pew!" << std::endl;
+        }
+        
+        // Render
+        graphics.BeginFrame();
+        
+        // Draw background grid
+        for (int x = 0; x < 800; x += 100) {
+            graphics.DrawRectangle(x, 0, 2, 600, 0x444444FF);
+        }
+        for (int y = 0; y < 600; y += 100) {
+            graphics.DrawRectangle(0, y, 800, 2, 0x444444FF);
+        }
+        
+        // Draw player ship (simple rectangle for now)
+        graphics.DrawRectangle(playerX - playerWidth * 0.5f, playerY - playerHeight * 0.5f, playerWidth, playerHeight, 0x00FF00FF); // Green player
+        
+        // Draw some enemy placeholders
+        float enemyY = 100 + std::sin(time) * 50;
+        graphics.DrawRectangle(200, enemyY, 24, 24, 0xFF0000FF); // Red enemy
+        graphics.DrawRectangle(400, enemyY + 30, 24, 24, 0xFF0000FF); // Red enemy
+        graphics.DrawRectangle(600, enemyY, 24, 24, 0xFF0000FF); // Red enemy
+        
+        graphics.EndFrame();
+        
+        // Cap framerate
+        std::this_thread::sleep_for(std::chrono::milliseconds(16)); // ~60 FPS
+    }
+    
+    std::cout << "Player movement test finished!" << std::endl;
+    return 0;
+}
