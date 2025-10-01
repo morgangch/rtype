@@ -8,7 +8,6 @@
 #ifndef PACKETS_H
 #define PACKETS_H
 #define MAX_PACKET_SIZE 2048
-#include "../../lib/ecs/include/ECS/Types.h"
 
 /**
  * Packet types
@@ -17,10 +16,16 @@
 
 enum Packets {
     JOIN_ROOM = 2,
-    JOIN_ROOM_ACCEPTED = 3,
-    GAME_START_REQUEST = 4,
-    GAME_START = 5,
-    PLAYER_DISCONNECT = 6,
+    PING = 3,
+    PONG = 4,
+    PLAYER_JOIN = 5,
+    PLAYER_LEAVE = 6,
+    PLAYER_INPUT = 7,
+    PLAYER_SHOOT = 8,
+    PLAYER_STATE = 9,
+    SPAWN_ENEMY = 10,
+    ENEMY_STATE = 11,
+    MISSILE_SPAWN = 12,
 };
 
 
