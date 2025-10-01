@@ -1,0 +1,52 @@
+@startuml
+title R-Type - Component Architecture
+
+package "Client Application" {
+    [Client Main]
+    [Input Handler]
+    [Renderer]
+}
+
+package "Server Application" {
+    [Server Main]
+    [Game Logic]
+    [AI System]
+}
+
+package "Shared Libraries" {
+    package "ECS Library" {
+        [World Manager]
+        [Entity Manager]
+        [Component Manager]
+    }
+    
+    package "Network Library" {
+        [Packet Manager]
+        [Reliability Layer]
+    }
+    
+    [Game Packets]
+}
+
+package "External" {
+    [Network Socket]
+    [Graphics]
+}
+
+[Client Main] --> [World Manager]
+[Client Main] --> [Packet Manager]
+[Server Main] --> [World Manager]
+[Server Main] --> [Packet Manager]
+
+[World Manager] --> [Entity Manager]
+[World Manager] --> [Component Manager]
+
+[Packet Manager] --> [Reliability Layer]
+[Packet Manager] --> [Game Packets]
+
+[Packet Manager] --> [Network Socket]
+[Renderer] --> [Graphics]
+
+[Client Main] ..> [Server Main] : network
+
+@enduml
