@@ -8,7 +8,8 @@ namespace rtype::common::components {
         float vx, vy;
         float maxSpeed;
 
-        Velocity(float vx = 0.0f, float vy = 0.0f, float maxSpeed = 100.0f);
+        Velocity(float vx = 0.0f, float vy = 0.0f, float maxSpeed = 100.0f)
+            : vx(vx), vy(vy), maxSpeed(maxSpeed) {}
     };
 }
 #endif // COMMON_COMPONENTS_VELOCITY_HPP

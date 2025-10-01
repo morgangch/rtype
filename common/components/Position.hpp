@@ -9,7 +9,8 @@ namespace rtype::common::components {
         float x, y;
         float rotation;
 
-        Position(float x = 0.0f, float y = 0.0f, float rotation = 0.0f);
+        Position(float x = 0.0f, float y = 0.0f, float rotation = 0.0f) 
+            : x(x), y(y), rotation(rotation) {}
     };
 }
 
