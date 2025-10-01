@@ -29,6 +29,13 @@ namespace rtype::server::services::room_service {
      * @return True if the join code already exists, false otherwise
      */
     bool isJoinCodeExists(int join_code);
+
+    /**
+     *  @brief Retrieves a room EntityID by its join code
+     *  @param join_code The join code of the room to retrieve
+     *  @return The EntityID of the room with the specified join code, or 0 if not found
+     */
+    ECS::EntityID getRoomByJoinCode(int join_code);
 }
 
 #endif //ROOMSERVICE_H

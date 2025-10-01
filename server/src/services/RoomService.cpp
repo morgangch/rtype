@@ -38,3 +38,14 @@ bool room_service::isJoinCodeExists(int join_code) {
     }
     return false;
 }
+
+ECS::EntityID room_service::getRoomByJoinCode(int join_code) {
+    auto *rooms = root.world.GetAllComponents<components::RoomProperties>();
+
+    for (const auto &pair: *rooms) {
+        if (pair.second->joinCode == join_code) {
+            return pair.first;
+        }
+    }
+    return 0; // Return 0 if room not found
+}
