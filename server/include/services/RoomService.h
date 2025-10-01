@@ -50,6 +50,18 @@ namespace rtype::server::services::room_service {
      * @return The EntityID of the room the player is in, or 0 if not found
      */
     ECS::EntityID getRoomByPlayer(ECS::EntityID player);
+
+    /**
+     * @brief Kick a player from a room
+     * @param player The EntityID of the player to kick
+     */
+    void kickPlayer(ECS::EntityID player);
+
+    /**
+     * @brief Closes a room and removes all its associated data
+     * @param room The EntityID of the room to close
+     */
+    void closeRoom(ECS::EntityID room);
 }
 
 #endif //ROOMSERVICE_H

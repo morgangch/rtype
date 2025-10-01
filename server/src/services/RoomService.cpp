@@ -7,6 +7,7 @@
 
 #include "services/RoomService.h"
 
+#include "packets.h"
 #include "rtype.h"
 #include "../../../common/components/Player.hpp"
 #include "components/RoomProperties.h"
@@ -76,4 +77,31 @@ ECS::EntityID room_service::getRoomByPlayer(ECS::EntityID player) {
         return playerComp->room_code;
     }
     return 0; // Return 0 if player not found or not in a room
+}
+
+void room_service::kickPlayer(ECS::EntityID player) {
+    auto *playerComp = root.world.GetComponent<common::components::Player>(player);
+
+    if (playerComp) {
+        ECS::EntityID room = playerComp->room_code;
+        PlayerDisconnectPacket p;
+        p.playerId = player;
+        root.packetManager.sendPacketBytesSafe(&p, sizeof(PlayerDisconnectPacket), Packets::PLAYER_DISCONNECT, nullptr,
+                                               true);
+        root.world.DestroyEntity(player);
+    }
+}
+
+void room_service::closeRoom(ECS::EntityID room) {
+    auto *rp = root.world.GetComponent<components::RoomProperties>(room);
+
+    if (rp) {
+        // Remove all players from the room
+        auto *players = root.world.GetAllComponents<common::components::Player>();
+        for (const auto &pair: *players) {
+            kickPlayer(pair.first);
+        }
+        // Finally, destroy the room entity
+        root.world.DestroyEntity(room);
+    }
 }

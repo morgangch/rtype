@@ -38,3 +38,16 @@ ECS::EntityID player_service::findPlayerByNetwork(const uint8_t *uint8_t, uint16
                      std::to_string(uint8_t[2]) + "." + std::to_string(uint8_t[3]);
     return findPlayerByNetwork(ip, port);
 }
+
+std::vector<ECS::EntityID> player_service::findPlayersByRoomCode(int room_code) {
+    std::vector<ECS::EntityID> players_in_room;
+    auto players = root.world.GetAllComponents<rtype::common::components::Player>();
+
+    for (const auto &pair: *players) {
+        auto *player = root.world.GetComponent<rtype::common::components::Player>(pair.first);
+        if (player && player->room_code == room_code) {
+            players_in_room.push_back(pair.first);
+        }
+    }
+    return players_in_room;
+}
