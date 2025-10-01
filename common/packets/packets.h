@@ -16,16 +16,7 @@
 
 enum Packets {
     JOIN_ROOM = 2,
-    PING = 3,
-    PONG = 4,
-    PLAYER_JOIN = 5,
-    PLAYER_LEAVE = 6,
-    PLAYER_INPUT = 7,
-    PLAYER_SHOOT = 8,
-    PLAYER_STATE = 9,
-    SPAWN_ENEMY = 10,
-    ENEMY_STATE = 11,
-    MISSILE_SPAWN = 12,
+    JOIN_ROOM_ACCEPTED = 3,
 };
 
 
@@ -39,6 +30,18 @@ enum Packets {
 struct JoinRoomPacket {
     char name[32];
     uint32_t joinCode;
+};
+
+/**
+ * When the server accepts a player to join a room
+ * Server → Client
+ * Packet type 3
+ * @param roomCode The ID of the room the player joined
+ * @param admin If the user is an admin, the value is true.
+ */
+struct JoinRoomAcceptedPacket {
+    uint32_t roomCode;
+    bool admin;
 };
 
 struct PingPacket {
