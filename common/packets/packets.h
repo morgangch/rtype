@@ -8,6 +8,7 @@
 #ifndef PACKETS_H
 #define PACKETS_H
 #define MAX_PACKET_SIZE 2048
+#include "../../lib/ecs/include/ECS/Types.hpp"
 
 /**
  * Packet types
@@ -19,6 +20,7 @@ enum Packets {
     JOIN_ROOM_ACCEPTED = 3,
     GAME_START_REQUEST = 4,
     GAME_START = 5,
+    PLAYER_DISCONNECT = 6,
 };
 
 
@@ -60,6 +62,16 @@ struct GameStartRequestPacket {
  */
 struct GameStartPacket {
 };
+
+/**
+ * To disconnect a player.
+ * If the player is on the game, it will leave after the reception of this packet.
+ * Server → Client
+ */
+struct PlayerDisconnectPacket {
+    ECS::EntityID playerId;
+};
+
 
 struct PingPacket {
 };
