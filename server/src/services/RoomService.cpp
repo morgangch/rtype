@@ -11,11 +11,11 @@
 #include "components/RoomProperties.h"
 using namespace rtype::server::services;
 
-ECS::EntityID room_service::openNewRoom(bool is_public) {
+ECS::EntityID room_service::openNewRoom(bool is_public, ECS::EntityID player) {
     auto room = root.world.CreateEntity();
     int join_code = generateFreeJoinCode();
 
-    root.world.AddComponent<components::RoomProperties>(room, join_code, is_public);
+    root.world.AddComponent<components::RoomProperties>(room, join_code, is_public, player);
     return room;
 }
 
@@ -48,4 +48,15 @@ ECS::EntityID room_service::getRoomByJoinCode(int join_code) {
         }
     }
     return 0; // Return 0 if room not found
+}
+
+ECS::EntityID room_service::findAvailablePublicRoom() {
+    auto *rooms = root.world.GetAllComponents<components::RoomProperties>();
+
+    for (const auto &pair: *rooms) {
+        if (pair.second->isPublic && !pair.second->isGameStarted) {
+            return pair.first;
+        }
+    }
+    return 0; // Return 0 if no available public room found
 }
