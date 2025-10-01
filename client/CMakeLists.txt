@@ -1,29 +1,21 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Add client libraries subdirectory first
-add_subdirectory(lib)
+# Client executable - Auto-discover all .cpp files in current directory and subdirectories
+file(GLOB_RECURSE CLIENT_SOURCES "*.cpp")
 
-# Client executable
-add_executable(client
-    main.cpp
+add_executable(client ${CLIENT_SOURCES})
+
+# Include directories for client headers
+target_include_directories(client PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/..  # Parent directory to find client/components/
+    ${CMAKE_CURRENT_SOURCE_DIR}     # Current directory
 )
 
-# Link with libraries
-target_link_libraries(client PRIVATE 
-    ecs
-    client_graphics
-    client_input
-)
+# Link with ECS and common libraries
+target_link_libraries(client PRIVATE ecs common packethandler packetmanager)
 
-# Add include directories
-target_include_directories(client PRIVATE ${CMAKE_SOURCE_DIR})
-target_include_directories(client PRIVATE ${CMAKE_SOURCE_DIR}/client)
-target_include_directories(client PRIVATE ${CMAKE_SOURCE_DIR}/lib/ecs/include)
+target_include_directories(client PRIVATE include)
 
-target_include_directories(client PRIVATE 
-    ${CMAKE_SOURCE_DIR}  # This allows #include <common/components/Position.hpp>
-    ${CMAKE_CURRENT_SOURCE_DIR}  # For local includes
-)
 
 # Set output directory - handle both single and multi-config generators
 if(CMAKE_CONFIGURATION_TYPES)

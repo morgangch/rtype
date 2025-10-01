@@ -1,4 +1,4 @@
-#include "client/components/audio.hpp"
+#include "components/audio.hpp"
 
 namespace rtype::client::components {
     AudioSource::AudioSource(const std::string& soundPath, AudioType type)

@@ -1,7 +1,7 @@
 #ifndef CLIENT_CONFIG_HPP
 #define CLIENT_CONFIG_HPP
 
-#include <common/utils/Config.hpp>
+#include "common/utils/Config.hpp"
 
 namespace rtype::client::configs {
     constexpr int WINDOW_WIDTH = 1920;
