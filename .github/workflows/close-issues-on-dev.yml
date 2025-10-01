@@ -17,12 +17,16 @@ jobs:
       - name: Extract linked issues
         id: extract
         run: |
-          text="${{ github.event.pull_request.title }} ${{ github.event.pull_request.body }}"
-          echo "PR text: $text"
-
-          # Match close/fix/resolve + séparateur (espace, tab ou retour ligne) + #numéro
-          issues=$(echo "$text" | grep -iPo '(close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#\d+' | grep -oP '#\d+' | tr -d '#' | xargs)
-
+          # Use environment variables to safely handle special characters
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_BODY="${{ github.event.pull_request.body }}"
+          text="$PR_TITLE $PR_BODY"
+          
+          echo "Processing PR text for issue extraction..."
+          
+          # Match close/fix/resolve + separator + #number
+          issues=$(printf '%s' "$text" | grep -iPo '(close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#\d+' | grep -oP '#\d+' | tr -d '#' | sort -u | xargs)
+          
           echo "Issues found: $issues"
           echo "issues=$issues" >> $GITHUB_OUTPUT
 
