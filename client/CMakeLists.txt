@@ -6,7 +6,10 @@ add_subdirectory(lib)
 # Client executable - organized source structure
 add_executable(client 
     main.cpp
+    src/application/ApplicationManager.cpp
     src/application/MenuApplication.cpp
+    src/application/GameApplication.cpp
+    src/application/GameApp.cpp
     src/gui/StateManager.cpp
     src/gui/states/MainMenuState.cpp
     src/gui/states/PrivateServerLobbyState.cpp

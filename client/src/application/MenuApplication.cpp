@@ -8,7 +8,8 @@ MenuApplication::MenuApplication() :
     input(),
     stateManager(nullptr),
     window(nullptr),
-    isRunning(false) {
+    isRunning(false),
+    shouldStartGame(false) {
 }
 
 MenuApplication::~MenuApplication() {
@@ -17,6 +18,18 @@ MenuApplication::~MenuApplication() {
 
 bool MenuApplication::Initialize(int width, int height, const std::string& title) {
     std::cout << "=== R-Type Client - Menu Application ===" << std::endl;
+    
+    // Initialize graphics system
+    if (!graphics.Initialize(width, height, title)) {
+        std::cout << "Failed to initialize graphics!" << std::endl;
+        return false;
+    }
+    
+    // Initialize input system
+    if (!input.Initialize()) {
+        std::cout << "Failed to initialize input!" << std::endl;
+        return false;
+    }
     
     // Initialize graphics system
     if (!graphics.Initialize(width, height, title)) {
@@ -45,6 +58,13 @@ bool MenuApplication::Initialize(int width, int height, const std::string& title
     
     // Initialize state manager with SFML window
     stateManager = std::make_unique<rtype::client::gui::StateManager>(*window);
+    
+    // Set callback for game start
+    stateManager->setOnGameStartCallback([this]() {
+        std::cout << "Game start requested from menu!" << std::endl;
+        shouldStartGame = true;
+        isRunning = false; // Exit menu loop
+    });
     
     // Create and push initial main menu state  
     auto mainMenuState = std::make_unique<rtype::client::gui::MainMenuState>(*stateManager);

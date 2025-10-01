@@ -219,7 +219,9 @@ namespace rtype::client::gui {
         if (isAdmin) {
             std::cout << "Admin " << username << " is starting the game!" << std::endl;
             std::cout << "Game starting with " << playersReady << " ready players in server " << serverCode << std::endl;
-            // TODO: Start the actual game
+            
+            // Request game start via StateManager
+            stateManager.requestGameStart();
         }
     }
     

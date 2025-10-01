@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
-#include "application/MenuApplication.hpp"
+#include "application/GameApp.hpp"
 
 using namespace rtype::client;
 
@@ -9,12 +9,12 @@ int main() {
     // Initialize random seed
     srand(static_cast<unsigned int>(time(nullptr)));
     
-    // Create menu application
-    MenuApplication app;
+    // Create game application
+    GameApp app;
     
     // Initialize application
-    if (!app.Initialize(1280, 720, "R-TYPE - Main Menu")) {
-        std::cout << "Failed to initialize menu application!" << std::endl;
+    if (!app.Initialize()) {
+        std::cout << "Failed to initialize application!" << std::endl;
         return -1;
     }
     

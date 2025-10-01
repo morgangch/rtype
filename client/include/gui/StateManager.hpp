@@ -4,6 +4,7 @@
 #include "states/State.hpp"
 #include <memory>
 #include <stack>
+#include <functional>
 #include <SFML/Graphics.hpp>
 
 namespace rtype::client::gui {
@@ -21,9 +22,14 @@ namespace rtype::client::gui {
         
         bool isEmpty() const;
         
+        // Game launch callback
+        void setOnGameStartCallback(std::function<void()> callback) { onGameStart = callback; }
+        void requestGameStart() { if (onGameStart) onGameStart(); }
+        
     private:
         sf::RenderWindow& window;
         std::stack<std::unique_ptr<State>> states;
+        std::function<void()> onGameStart;
     };
 }
 

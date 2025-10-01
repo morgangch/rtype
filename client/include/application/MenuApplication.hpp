@@ -28,6 +28,8 @@ public:
     
     // State management
     bool IsRunning() const { return isRunning; }
+    bool ShouldStartGame() const { return shouldStartGame; }
+    void ResetGameRequest() { shouldStartGame = false; }
     
 private:
     void HandleEvents();
@@ -43,6 +45,7 @@ private:
     sf::RenderWindow* window; // Raw pointer to SFML window from graphics system
     
     bool isRunning;
+    bool shouldStartGame = false;
 };
 
 } // namespace rtype::client
