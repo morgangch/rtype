@@ -38,7 +38,7 @@ namespace rtype::client::gui {
         float cursorTimer;
         bool showCursor;
         
-        // Button rectangles for click detection
+        // Button rectangles for click detections
         sf::RectangleShape publicButtonRect;
         sf::RectangleShape privateButtonRect;
         
