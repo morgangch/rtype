@@ -18,10 +18,10 @@ if(SFML_FOUND)
         src/SFMLTexture.cpp
         src/Sprite.cpp
         src/Graphics.cpp
-        include/graphics/Renderer.hpp
-        include/graphics/Texture.hpp
-        include/graphics/Sprite.hpp
-        include/graphics/Graphics.hpp
+        include/Renderer.hpp
+        include/Texture.hpp
+        include/Sprite.hpp
+        include/Graphics.hpp
     )
     
     target_link_libraries(client_graphics PRIVATE ${SFML_LIBRARIES})

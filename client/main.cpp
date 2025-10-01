@@ -1,6 +1,6 @@
 #include <iostream>
-#include <graphics/Graphics.hpp>
-#include <input/Input.hpp>
+#include <Graphics.hpp>
+#include <Input.hpp>
 #include <chrono>
 #include <thread>
 #include <cmath>

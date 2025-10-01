@@ -17,10 +17,10 @@ add_library(client_input STATIC
     src/InputManager.cpp
     src/Input.cpp
     src/SFMLKeyConverter.cpp
-    include/input/InputManager.hpp
-    include/input/Input.hpp
-    include/input/Keys.hpp
-    include/input/SFMLKeyConverter.hpp
+    include/InputManager.hpp
+    include/Input.hpp
+    include/Keys.hpp
+    include/SFMLKeyConverter.hpp
 )
 
 if(SFML_FOUND)

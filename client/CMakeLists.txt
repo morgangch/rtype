@@ -1,9 +1,13 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Client executable - Auto-discover all .cpp files in current directory and subdirectories
-file(GLOB_RECURSE CLIENT_SOURCES "*.cpp")
+# Add client libraries subdirectory first
+add_subdirectory(lib)
 
-add_executable(client ${CLIENT_SOURCES})
+# Client executable - only include main.cpp and specific client sources (not library sources)
+add_executable(client 
+    main.cpp
+    # Add any other client-specific source files here (not in lib/)
+)
 
 # Include directories for client headers
 target_include_directories(client PRIVATE
@@ -11,8 +15,14 @@ target_include_directories(client PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}     # Current directory
 )
 
-# Link with ECS and common libraries
-target_link_libraries(client PRIVATE ecs common packethandler packetmanager)
+# Link with ECS, common libraries, and client libraries
+target_link_libraries(client PRIVATE 
+    ecs 
+    common 
+    packethandler 
+    packetmanager
+    client_libs  # This provides client_graphics, client_input, etc.
+)
 
 target_include_directories(client PRIVATE include)
 
