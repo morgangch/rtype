@@ -44,16 +44,15 @@ void rtype::server::network::loop_send(int udp_server_fd) {
     for (auto& packet : packets) {
         std::vector<uint8_t> serialized = PacketManager::serializePacket(*packet);
 
-
         // Extract client address and port from packet header
         struct sockaddr_in clientaddr;
         clientaddr.sin_family = AF_INET;
 
-        // Convert client_addr[4] bytes to IP address
-        clientaddr.sin_addr.s_addr = (packet->header.client_addr[0] << 0) |
-                                     (packet->header.client_addr[1] << 8) |
-                                     (packet->header.client_addr[2] << 16) |
-                                     (packet->header.client_addr[3] << 24);
+        // Convert client_addr[4] bytes to IP address - fix byte order
+        clientaddr.sin_addr.s_addr = ((uint32_t)packet->header.client_addr[0] << 0) |
+                                     ((uint32_t)packet->header.client_addr[1] << 8) |
+                                     ((uint32_t)packet->header.client_addr[2] << 16) |
+                                     ((uint32_t)packet->header.client_addr[3] << 24);
 
         // Set client port (convert from host to network byte order)
         clientaddr.sin_port = htons(packet->header.client_port);
@@ -64,6 +63,7 @@ void rtype::server::network::loop_send(int udp_server_fd) {
 
         if (bytes_sent < 0) {
             std::cerr << "[ERROR] Failed to send UDP packet to client" << std::endl;
+            perror("sendto");
         } else {
             std::cout << "[INFO] Sent UDP packet of size " << serialized.size()
                     << " to " << (int) packet->header.client_addr[0] << "."
