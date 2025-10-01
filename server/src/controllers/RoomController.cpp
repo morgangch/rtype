@@ -8,6 +8,7 @@
 #include "controllers/RoomController.h"
 #include "packets.h"
 #include "rtype.h"
+#include "components/RoomProperties.h"
 #include "ECS/Types.hpp"
 #include "services/PlayerService.h"
 #include "services/RoomService.h"
@@ -41,4 +42,11 @@ void room_controller::handleJoinRoomPacket(const packet_t &packet) {
         // Room not found.
         return;
     }
+
+    // Allow the client to join the room
+    JoinRoomAcceptedPacket a;
+    auto *rp = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
+    a.admin = (rp->ownerId == player);
+    a.roomCode = rp->joinCode;
+    root.packetManager.sendPacketBytesSafe(&a, sizeof(a), JOIN_ROOM_ACCEPTED, nullptr, true);
 }
