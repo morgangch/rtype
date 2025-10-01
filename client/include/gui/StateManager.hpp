@@ -1,7 +1,7 @@
 #ifndef CLIENT_STATE_MANAGER_HPP
 #define CLIENT_STATE_MANAGER_HPP
 
-#include "State.hpp"
+#include "states/State.hpp"
 #include <memory>
 #include <stack>
 #include <SFML/Graphics.hpp>

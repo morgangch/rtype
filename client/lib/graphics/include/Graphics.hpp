@@ -35,6 +35,11 @@ namespace rtype::client::graphics {
         // Getters
         Renderer* GetRenderer() { return m_renderer.get(); }
         
+#ifdef RTYPE_USE_SFML
+        // SFML-specific access for GUI integration
+        sf::RenderWindow* GetSFMLWindow();
+#endif
+        
         // Input integration
         void SetInputManager(input::InputManager* inputManager);
         

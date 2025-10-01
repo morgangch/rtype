@@ -1,6 +1,6 @@
-#include "PrivateServerState.hpp"
-#include "PrivateServerLobbyState.hpp"
-#include "MainMenuState.hpp"
+#include "gui/states/PrivateServerState.hpp"
+#include "gui/states/PrivateServerLobbyState.hpp"
+#include "gui/states/MainMenuState.hpp"
 #include <iostream>
 #include <cstdlib>
 

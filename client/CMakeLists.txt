@@ -3,10 +3,16 @@ cmake_minimum_required(VERSION 3.20)
 # Add client libraries subdirectory first
 add_subdirectory(lib)
 
-# Client executable - only include main.cpp and specific client sources (not library sources)
+# Client executable - organized source structure
 add_executable(client 
     main.cpp
-    # Add any other client-specific source files here (not in lib/)
+    src/application/MenuApplication.cpp
+    src/gui/StateManager.cpp
+    src/gui/states/MainMenuState.cpp
+    src/gui/states/PrivateServerLobbyState.cpp
+    src/gui/states/PrivateServerState.cpp
+    src/gui/states/PublicServerState.cpp
+    src/gui/widgets/MainMenu.cpp
 )
 
 # Include directories for client headers

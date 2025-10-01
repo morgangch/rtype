@@ -1,12 +1,9 @@
-#include "MainMenuState.hpp"
-#include "PublicServerState.hpp"
-#include "PrivateServerState.hpp"
+#include "gui/widgets/MainMenu.hpp"
 #include <iostream>
-#include <cstdlib>
 
 namespace rtype::client::gui {
-    MainMenuState::MainMenuState(StateManager& stateManager)
-        : stateManager(stateManager), isTyping(false), cursorTimer(0.0f), showCursor(true) {
+    MainMenu::MainMenu(sf::RenderWindow& window)
+        : window(window), isTyping(false), cursorTimer(0.0f), showCursor(true) {
         
         // Try to load fonts in order of preference
         bool fontLoaded = false;
@@ -34,9 +31,10 @@ namespace rtype::client::gui {
         }
         
         setupUI();
+        updateLayout();
     }
     
-    void MainMenuState::setupUI() {
+    void MainMenu::setupUI() {
         // Title setup
         titleText.setFont(font);
         titleText.setString("THE TOP R-TYPE");
@@ -79,11 +77,8 @@ namespace rtype::client::gui {
         privateButtonRect.setOutlineThickness(2.0f);
     }
     
-    void MainMenuState::onEnter() {
-        // Called when this state becomes active
-    }
-    
-    void MainMenuState::updateLayout(const sf::Vector2u& windowSize) {
+    void MainMenu::updateLayout() {
+        sf::Vector2u windowSize = window.getSize();
         float centerX = windowSize.x / 2.0f;
         float centerY = windowSize.y / 2.0f;
         
@@ -122,9 +117,9 @@ namespace rtype::client::gui {
                   privateButtonRect.getPosition().y + buttonHeight / 2);
     }
     
-    void MainMenuState::handleEvent(const sf::Event& event) {
+    void MainMenu::handleEvent(const sf::Event& event) {
         if (event.type == sf::Event::Resized) {
-            updateLayout(sf::Vector2u(event.size.width, event.size.height));
+            updateLayout();
         }
         
         if (event.type == sf::Event::MouseButtonPressed) {
@@ -138,11 +133,15 @@ namespace rtype::client::gui {
                 }
                 // Check public servers button
                 else if (isPointInRect(mousePos, publicButtonRect)) {
-                    onPublicServersClick();
+                    if (onPublicServersClick) {
+                        onPublicServersClick();
+                    }
                 }
                 // Check private servers button
                 else if (isPointInRect(mousePos, privateButtonRect)) {
-                    onPrivateServersClick();
+                    if (onPrivateServersClick) {
+                        onPrivateServersClick();
+                    }
                 }
                 // Click outside - stop typing
                 else {
@@ -189,7 +188,7 @@ namespace rtype::client::gui {
         }
     }
     
-    void MainMenuState::update(float deltaTime) {
+    void MainMenu::update(float deltaTime) {
         // Cursor blinking animation
         cursorTimer += deltaTime;
         if (cursorTimer >= 0.5f) {
@@ -205,10 +204,7 @@ namespace rtype::client::gui {
         usernameText.setPosition(boxBounds.left + 10, boxBounds.top + 15);
     }
     
-    void MainMenuState::render(sf::RenderWindow& window) {
-        // Update layout if needed
-        updateLayout(window.getSize());
-        
+    void MainMenu::render() {
         // Render title
         window.draw(titleText);
         
@@ -227,30 +223,20 @@ namespace rtype::client::gui {
         window.draw(privateServersButton);
     }
     
-    void MainMenuState::onPublicServersClick() {
-        std::cout << "Switching to Public Server state" << std::endl;
-        std::string finalUsername = username.empty() ? generateUsername() : username;
-        stateManager.changeState(std::make_unique<PublicServerState>(stateManager, finalUsername));
+    void MainMenu::setPublicServersCallback(std::function<void()> callback) {
+        onPublicServersClick = callback;
     }
     
-    void MainMenuState::onPrivateServersClick() {
-        std::cout << "Switching to Private Server state" << std::endl;
-        std::string finalUsername = username.empty() ? generateUsername() : username;
-        stateManager.changeState(std::make_unique<PrivateServerState>(stateManager, finalUsername));
+    void MainMenu::setPrivateServersCallback(std::function<void()> callback) {
+        onPrivateServersClick = callback;
     }
     
-    std::string MainMenuState::generateUsername() {
-        // Generate random 4-digit number between 1000-9999
-        int randomNum = 1000 + (rand() % 9000);
-        return "USERNAME" + std::to_string(randomNum);
-    }
-    
-    bool MainMenuState::isPointInRect(const sf::Vector2f& point, const sf::RectangleShape& rect) {
+    bool MainMenu::isPointInRect(const sf::Vector2f& point, const sf::RectangleShape& rect) {
         sf::FloatRect bounds = rect.getGlobalBounds();
         return bounds.contains(point);
     }
     
-    void MainMenuState::centerText(sf::Text& text, float x, float y) {
+    void MainMenu::centerText(sf::Text& text, float x, float y) {
         sf::FloatRect textBounds = text.getLocalBounds();
         text.setPosition(x - textBounds.width / 2, y - textBounds.height / 2);
     }

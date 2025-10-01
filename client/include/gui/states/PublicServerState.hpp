@@ -1,15 +1,15 @@
-#ifndef CLIENT_PRIVATE_SERVER_LOBBY_STATE_HPP
-#define CLIENT_PRIVATE_SERVER_LOBBY_STATE_HPP
+#ifndef CLIENT_PUBLIC_SERVER_STATE_HPP
+#define CLIENT_PUBLIC_SERVER_STATE_HPP
 
 #include "State.hpp"
-#include "StateManager.hpp"
+#include "../StateManager.hpp"
 #include <SFML/Graphics.hpp>
 #include <string>
 
 namespace rtype::client::gui {
-    class PrivateServerLobbyState : public State {
+    class PublicServerState : public State {
     public:
-        PrivateServerLobbyState(StateManager& stateManager, const std::string& username, const std::string& serverCode, bool isAdmin);
+        PublicServerState(StateManager& stateManager, const std::string& username);
         
         void handleEvent(const sf::Event& event) override;
         void update(float deltaTime) override;
@@ -20,17 +20,14 @@ namespace rtype::client::gui {
     private:
         StateManager& stateManager;
         std::string username;
-        std::string serverCode;
-        bool isAdmin;
         sf::Font font;
         
         // UI Elements
         sf::Text playersReadyText;
-        sf::Text actionButton; // "Ready" for players, "Start" for admin
-        sf::RectangleShape actionButtonRect;
+        sf::Text readyButton;
+        sf::RectangleShape readyButtonRect;
         sf::Text returnButton;
         sf::RectangleShape returnButtonRect;
-        sf::Text serverCodeDisplay;
         
         // State
         bool isReady;
@@ -42,10 +39,8 @@ namespace rtype::client::gui {
         bool isPointInRect(const sf::Vector2f& point, const sf::RectangleShape& rect);
         void centerText(sf::Text& text, float x, float y);
         void toggleReady();
-        void startGame();
         void updatePlayersReadyText();
-        void updateActionButton();
     };
 }
 
-#endif // CLIENT_PRIVATE_SERVER_LOBBY_STATE_HPP
+#endif // CLIENT_PUBLIC_SERVER_STATE_HPP

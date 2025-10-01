@@ -1,4 +1,5 @@
 #include "Graphics.hpp"
+#include "Renderer.hpp"
 #include <iostream>
 
 namespace rtype::client::graphics {
@@ -100,4 +101,17 @@ namespace rtype::client::graphics {
             m_renderer->SetInputManager(inputManager);
         }
     }
+    
+#ifdef RTYPE_USE_SFML
+    sf::RenderWindow* Graphics::GetSFMLWindow() {
+        if (m_renderer) {
+            // Try to cast to SFMLRenderer
+            SFMLRenderer* sfmlRenderer = dynamic_cast<SFMLRenderer*>(m_renderer.get());
+            if (sfmlRenderer) {
+                return sfmlRenderer->GetNativeWindow();
+            }
+        }
+        return nullptr;
+    }
+#endif
 }

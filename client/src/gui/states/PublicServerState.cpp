@@ -1,5 +1,5 @@
-#include "PublicServerState.hpp"
-#include "MainMenuState.hpp"
+#include "gui/states/PublicServerState.hpp"
+#include "gui/states/MainMenuState.hpp"
 #include <iostream>
 #include <cstdlib>
 

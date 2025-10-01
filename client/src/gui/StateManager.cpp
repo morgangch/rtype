@@ -1,4 +1,4 @@
-#include "StateManager.hpp"
+#include "gui/StateManager.hpp"
 
 namespace rtype::client::gui {
     StateManager::StateManager(sf::RenderWindow& window) : window(window) {}

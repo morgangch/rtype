@@ -2,7 +2,7 @@
 #define CLIENT_MAIN_MENU_STATE_HPP
 
 #include "State.hpp"
-#include "StateManager.hpp"
+#include "../StateManager.hpp"
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <functional>
