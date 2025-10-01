@@ -68,3 +68,12 @@ ECS::EntityID room_service::findAvailablePublicRoom() {
     }
     return 0; // Return 0 if no available public room found
 }
+
+ECS::EntityID room_service::getRoomByPlayer(ECS::EntityID player) {
+    auto *playerComp = root.world.GetComponent<common::components::Player>(player);
+
+    if (playerComp) {
+        return playerComp->room_code;
+    }
+    return 0; // Return 0 if player not found or not in a room
+}

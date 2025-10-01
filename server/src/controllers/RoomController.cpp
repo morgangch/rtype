@@ -17,6 +17,22 @@ using namespace rtype::server::controllers;
 using namespace rtype::server::services;
 
 
+void room_controller::handleGameStartRequest(const packet_t &packet) {
+    ECS::EntityID player = player_service::findPlayerByNetwork(packet.header.client_addr, packet.header.client_port);
+    ECS::EntityID room;
+
+    if (!player)
+        return; // The user is not found
+    room = room_service::getRoomByPlayer(player);
+    if (!room)
+        return; // The player is not in a room (strange case)
+    // Check if the player is the room owner
+    auto *rp = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
+    if (rp->ownerId != player)
+        return; // The player is not the room owner (cheater)
+    // TODO: Start the game
+}
+
 void room_controller::handleJoinRoomPacket(const packet_t &packet) {
     JoinRoomPacket *p = (JoinRoomPacket *) packet.data;
 
@@ -44,7 +60,7 @@ void room_controller::handleJoinRoomPacket(const packet_t &packet) {
     }
 
     // Allow the client to join the room
-    JoinRoomAcceptedPacket a;
+    JoinRoomAcceptedPacket a{};
     auto *rp = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
     a.admin = (rp->ownerId == player);
     a.roomCode = rp->joinCode;

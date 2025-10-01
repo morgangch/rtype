@@ -43,6 +43,13 @@ namespace rtype::server::services::room_service {
      * @return The EntityID of the found room, or 0 if none found
     */
     ECS::EntityID findAvailablePublicRoom();
+
+    /**
+     * @brief Retrieves the room EntityID that a player is currently in
+     * @param player The EntityID of the player
+     * @return The EntityID of the room the player is in, or 0 if not found
+     */
+    ECS::EntityID getRoomByPlayer(ECS::EntityID player);
 }
 
 #endif //ROOMSERVICE_H
