@@ -8,14 +8,22 @@
 #include "services/RoomService.h"
 
 #include "rtype.h"
+#include "../../../common/components/Player.hpp"
 #include "components/RoomProperties.h"
+
 using namespace rtype::server::services;
+using namespace rtype::common::components;
 
 ECS::EntityID room_service::openNewRoom(bool is_public, ECS::EntityID player) {
     auto room = root.world.CreateEntity();
     int join_code = generateFreeJoinCode();
 
     root.world.AddComponent<components::RoomProperties>(room, join_code, is_public, player);
+
+    // Set the player in the room
+    if (auto *playerComp = root.world.GetComponent<common::components::Player>(player)) {
+        playerComp->room_code = room;
+    }
     return room;
 }
 

@@ -6,7 +6,16 @@
 namespace rtype::common::components {
     class Player : public ECS::Component<Player> {
     public:
-        Player() = default;
+        /**
+         * @brief The room code the player is currently in.
+         */
+        unsigned int room_code;
+        std::string name;
+
+    public:
+        Player(std::string name, unsigned int room_code) : room_code(room_code) {
+            this->name = name;
+        }
     };
 }
 
