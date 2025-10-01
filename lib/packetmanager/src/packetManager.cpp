@@ -104,7 +104,6 @@ std::unique_ptr<uint8_t[]> PacketManager::sendPacketBytesSafe(const void *data, 
     if (output_size != nullptr) {
         *output_size = serialized_packet.size();
     }
-
     // Store the packet in the send buffer
     _buffer_send.push_back(std::move(packet));
 
@@ -269,6 +268,7 @@ std::vector<std::unique_ptr<packet_t> > PacketManager::fetchPacketsToSend() {
         // Create a copy of the packet to store in history
         packet_t packet_copy;
         packet_copy.header = packet->header;
+
 
         // Now we can properly copy the data using the data_size from header
         if (packet->header.data_size > 0 && packet->data) {

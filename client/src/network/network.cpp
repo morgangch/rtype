@@ -99,7 +99,7 @@ int network::start_room_connection(const std::string &ip, int port, const std::s
     p.roomId = room_id;
 
     // Secure the player name to avoid overflow
-    strncpy(p.name, player_name.substr(0, 31).c_str(), 31);
+    strncpy(p.name, player_name.c_str(), 31);
     p.name[31] = '\0';
 
     pm.sendPacketBytesSafe(&p, sizeof(JoinRoomPacket), JOIN_ROOM, nullptr, true);
