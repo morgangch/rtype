@@ -9,6 +9,7 @@
 #include "packets.h"
 #include "rtype.h"
 #include "ECS/Types.hpp"
+#include "services/PlayerService.h"
 #include "services/RoomService.h"
 
 using namespace rtype::server::controllers;
@@ -19,10 +20,10 @@ void room_controller::handleJoinRoomPacket(const packet_t &packet) {
     JoinRoomPacket *p = (JoinRoomPacket *) packet.data;
 
     ECS::EntityID room = 0;
-    // TODO: create a player
-    ECS::EntityID player = 0;
+    ECS::EntityID player = player_service::createNewPlayer(std::string(p->name));
 
     if (p->joinCode == 0) {
+        // Create a new private room
         room = room_service::openNewRoom(false, player);
     } else if (p->joinCode == 1) {
         // Join a random public room
