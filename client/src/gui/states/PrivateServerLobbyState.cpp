@@ -12,7 +12,7 @@ namespace rtype::client::gui {
         // Try to load fonts in order of preference
         bool fontLoaded = false;
         
-        if (font.loadFromFile("assets/fonts/arial.ttf")) {
+        if (font.loadFromFile("client/assets/fonts/arial.ttf")) {
             fontLoaded = true;
         }
         else if (font.loadFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {

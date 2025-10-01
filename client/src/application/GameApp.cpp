@@ -1,4 +1,5 @@
 #include "application/GameApp.hpp"
+#include "../../lib/input/include/SFMLKeyConverter.hpp"
 #include <iostream>
 #include <cmath>
 #include <algorithm>
@@ -126,13 +127,32 @@ void GameApp::HandleEvents() {
             }
         }
         
-        // Pass events to appropriate system
+        // Pass events to menu system
         if (currentMode == Mode::Menu && stateManager) {
             stateManager->handleEvent(event);
-        } else if (currentMode == Mode::InGame) {
-            // Update input system for game mode
-            input.Update();
         }
+        
+        // Pass events to input system for game mode  
+        if (currentMode == Mode::InGame) {
+            if (event.type == sf::Event::KeyPressed) {
+                // Convert SFML key to our Key enum
+                auto key = rtype::client::input::SFMLKeyConverter::SFMLToKey(event.key.code);
+                if (key != rtype::client::input::Key::Count) {
+                    input.GetInputManager().HandleKeyPressed(key);
+                }
+            } else if (event.type == sf::Event::KeyReleased) {
+                // Convert SFML key to our Key enum
+                auto key = rtype::client::input::SFMLKeyConverter::SFMLToKey(event.key.code);
+                if (key != rtype::client::input::Key::Count) {
+                    input.GetInputManager().HandleKeyReleased(key);
+                }
+            }
+        }
+    }
+    
+    // Update input system continuously for game mode
+    if (currentMode == Mode::InGame) {
+        input.Update();
     }
 }
 
@@ -176,9 +196,6 @@ void GameApp::RenderMenu() {
 }
 
 void GameApp::UpdateInGame(float deltaTime) {
-    // Update input for game mode
-    input.Update();
-    
     UpdatePlayer(deltaTime);
     UpdateEnemies(deltaTime);
     HandleCollisions();
@@ -338,7 +355,7 @@ void GameApp::SwitchToInGame() {
     player.y = screenHeight * 0.5f;
     
     std::cout << "Game mode active! Controls:" << std::endl;
-    std::cout << "  WASD/Arrows - Move player ship" << std::endl;
+    std::cout << "  ZQSD/Arrows - Move player ship" << std::endl;
     std::cout << "  SPACE - Fire" << std::endl;
     std::cout << "  ESC - Return to menu" << std::endl;
 }

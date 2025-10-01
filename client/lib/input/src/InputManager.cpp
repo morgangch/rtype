@@ -77,7 +77,7 @@ namespace rtype::client::input {
     // Convenience methods for Space Invaders
     float InputManager::GetPlayerMovement() const {
         float movement = 0.0f;
-        if (IsKeyDown(Key::Left) || IsKeyDown(Key::MoveLeft) || IsKeyDown(Key::A)) {
+        if (IsKeyDown(Key::Left) || IsKeyDown(Key::MoveLeft) || IsKeyDown(Key::Q)) {
             movement -= 1.0f;
         }
         if (IsKeyDown(Key::Right) || IsKeyDown(Key::MoveRight) || IsKeyDown(Key::D)) {
@@ -88,7 +88,7 @@ namespace rtype::client::input {
     
     float InputManager::GetPlayerVerticalMovement() const {
         float movement = 0.0f;
-        if (IsKeyDown(Key::Up) || IsKeyDown(Key::MoveUp) || IsKeyDown(Key::W)) {
+        if (IsKeyDown(Key::Up) || IsKeyDown(Key::MoveUp) || IsKeyDown(Key::Z)) {
             movement -= 1.0f;  // Up is negative Y
         }
         if (IsKeyDown(Key::Down) || IsKeyDown(Key::MoveDown) || IsKeyDown(Key::S)) {

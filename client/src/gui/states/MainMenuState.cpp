@@ -12,7 +12,7 @@ namespace rtype::client::gui {
         bool fontLoaded = false;
         
         // Try custom font first
-        if (font.loadFromFile("assets/fonts/arial.ttf")) {
+        if (font.loadFromFile("client/assets/fonts/arial.ttf")) {
             fontLoaded = true;
         }
         // Try common system fonts
