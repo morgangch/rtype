@@ -10,6 +10,7 @@
 
 namespace rtype::server::controllers::room_controller {
     void handleJoinRoomPacket(const packet_t& packet);
+    void handleGameStartRequest(const packet_t& packet);
 }
 
 #endif //ROOMCONTROLLER_H

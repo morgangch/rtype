@@ -17,6 +17,8 @@
 enum Packets {
     JOIN_ROOM = 2,
     JOIN_ROOM_ACCEPTED = 3,
+    GAME_START_REQUEST = 4,
+    GAME_START = 5,
 };
 
 
@@ -42,6 +44,21 @@ struct JoinRoomPacket {
 struct JoinRoomAcceptedPacket {
     uint32_t roomCode;
     bool admin;
+};
+
+/**
+ * When the owner of a room is starting a game
+ * Client → Server
+ * Packet type 4
+ */
+struct GameStartRequestPacket {
+};
+
+/**
+ * When the game is starting
+ * Server → All clients in the room
+ */
+struct GameStartPacket {
 };
 
 struct PingPacket {
