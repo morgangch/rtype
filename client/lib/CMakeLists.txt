@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.20)
 
 # Add subdirectories for each client library that exists
 add_subdirectory(graphics)
-# add_subdirectory(input)
+add_subdirectory(input)
 # add_subdirectory(audio)
 # add_subdirectory(ui)
 # add_subdirectory(animation)
@@ -18,7 +18,7 @@ add_library(client_libs INTERFACE)
 
 target_link_libraries(client_libs INTERFACE
     client_graphics
-    # client_input
+    client_input
     # client_audio
     # client_ui
     # client_animation

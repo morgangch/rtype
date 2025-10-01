@@ -1,10 +1,14 @@
 #pragma once
 
 // Main graphics header - includes all graphics components
-#include "graphics/Renderer.hpp"
-#include "graphics/Texture.hpp"
-#include "graphics/Sprite.hpp"
-#include "graphics/Camera.hpp"
+#include "Renderer.hpp"
+#include "Texture.hpp"
+#include "Sprite.hpp"
+
+// Forward declaration
+namespace rtype::client::input {
+    class InputManager;
+}
 
 namespace rtype::client::graphics {
     
@@ -30,7 +34,9 @@ namespace rtype::client::graphics {
         
         // Getters
         Renderer* GetRenderer() { return m_renderer.get(); }
-        Camera& GetCamera() { return m_camera; }
+        
+        // Input integration
+        void SetInputManager(input::InputManager* inputManager);
         
         // Quick drawing methods
         void DrawSprite(const Sprite& sprite);
@@ -43,7 +49,6 @@ namespace rtype::client::graphics {
         
     private:
         std::unique_ptr<Renderer> m_renderer;
-        Camera m_camera;
         bool m_initialized = false;
     };
 }

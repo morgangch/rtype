@@ -12,6 +12,7 @@ add_executable(client
 target_link_libraries(client PRIVATE 
     ecs
     client_graphics
+    client_input
 )
 
 # Add include directories

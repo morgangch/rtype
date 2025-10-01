@@ -3,18 +3,29 @@ cmake_minimum_required(VERSION 3.20)
 # Client Input Library - Input management system
 project(client_input)
 
+# Check if SFML is available (should be detected by graphics library)
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(SFML QUIET sfml-window sfml-system)
+endif()
+
+if(SFML_FOUND)
+    message(STATUS "SFML found for input library")
+endif()
+
 add_library(client_input STATIC
     src/InputManager.cpp
-    src/KeyboardInput.cpp
-    src/MouseInput.cpp
-    src/GamepadInput.cpp
+    src/Input.cpp
+    src/SFMLKeyConverter.cpp
     include/input/InputManager.hpp
-    include/input/KeyboardInput.hpp
-    include/input/MouseInput.hpp
-    include/input/GamepadInput.hpp
     include/input/Input.hpp
     include/input/Keys.hpp
+    include/input/SFMLKeyConverter.hpp
 )
+
+if(SFML_FOUND)
+    target_compile_definitions(client_input PUBLIC RTYPE_USE_SFML)
+endif()
 
 # Include directories
 target_include_directories(client_input PUBLIC 

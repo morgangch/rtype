@@ -1,4 +1,4 @@
-#include "graphics/Texture.hpp"
+#include "Texture.hpp"
 #include <iostream>
 
 namespace rtype::client::graphics {

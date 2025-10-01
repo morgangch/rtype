@@ -17,12 +17,10 @@ if(SFML_FOUND)
         src/SFMLRenderer.cpp
         src/SFMLTexture.cpp
         src/Sprite.cpp
-        src/Camera.cpp
         src/Graphics.cpp
         include/graphics/Renderer.hpp
         include/graphics/Texture.hpp
         include/graphics/Sprite.hpp
-        include/graphics/Camera.hpp
         include/graphics/Graphics.hpp
     )
     
@@ -44,12 +42,10 @@ else()
             src/SFMLRenderer.cpp
             src/SFMLTexture.cpp
             src/Sprite.cpp
-            src/Camera.cpp
             src/Graphics.cpp
             include/graphics/Renderer.hpp
             include/graphics/Texture.hpp
             include/graphics/Sprite.hpp
-            include/graphics/Camera.hpp
             include/graphics/Graphics.hpp
         )
         
@@ -64,12 +60,10 @@ else()
             src/StubRenderer.cpp
             src/StubTexture.cpp
             src/Sprite.cpp
-            src/Camera.cpp
             src/Graphics.cpp
             include/graphics/Renderer.hpp
             include/graphics/Texture.hpp
             include/graphics/Sprite.hpp
-            include/graphics/Camera.hpp
             include/graphics/Graphics.hpp
         )
     endif()
@@ -83,10 +77,11 @@ target_include_directories(client_graphics PUBLIC
 # Link with common components
 target_include_directories(client_graphics PRIVATE
     ${CMAKE_SOURCE_DIR}/common
+    ${CMAKE_CURRENT_SOURCE_DIR}/../input/include
 )
 
 # Dependencies
-target_link_libraries(client_graphics PUBLIC ecs)
+target_link_libraries(client_graphics PUBLIC ecs client_input)
 
 # Compiler features
 target_compile_features(client_graphics PUBLIC cxx_std_17)

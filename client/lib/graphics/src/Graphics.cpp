@@ -1,4 +1,4 @@
-#include "graphics/Graphics.hpp"
+#include "Graphics.hpp"
 #include <iostream>
 
 namespace rtype::client::graphics {
@@ -25,11 +25,6 @@ namespace rtype::client::graphics {
             std::cout << "[Graphics] Failed to initialize renderer" << std::endl;
             return false;
         }
-        
-        // Setup camera
-        m_camera.SetViewportSize(width, height);
-        m_camera.SetPosition(0, 0);
-        m_renderer->SetCamera(m_camera);
         
         m_initialized = true;
         std::cout << "[Graphics] Graphics system initialized successfully" << std::endl;
@@ -71,13 +66,13 @@ namespace rtype::client::graphics {
     
     void Graphics::DrawSprite(const Sprite& sprite) {
         if (m_renderer) {
-            m_renderer->DrawSprite(sprite, m_camera);
+            m_renderer->DrawSprite(sprite);
         }
     }
     
     void Graphics::DrawSprite(const Sprite& sprite, float x, float y) {
         if (m_renderer) {
-            m_renderer->DrawSprite(sprite, x, y, m_camera);
+            m_renderer->DrawSprite(sprite, x, y);
         }
     }
     
@@ -98,5 +93,11 @@ namespace rtype::client::graphics {
             return m_renderer->LoadTexture(path);
         }
         return nullptr;
+    }
+    
+    void Graphics::SetInputManager(input::InputManager* inputManager) {
+        if (m_renderer) {
+            m_renderer->SetInputManager(inputManager);
+        }
     }
 }

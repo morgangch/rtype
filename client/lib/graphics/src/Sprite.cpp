@@ -1,5 +1,5 @@
-#include "graphics/Sprite.hpp"
-#include "graphics/Texture.hpp"
+#include "Sprite.hpp"
+#include "Texture.hpp"
 
 namespace rtype::client::graphics {
     

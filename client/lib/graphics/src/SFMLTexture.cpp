@@ -1,4 +1,4 @@
-#include "graphics/Texture.hpp"
+#include "Texture.hpp"
 #include <iostream>
 
 #ifdef RTYPE_USE_SFML

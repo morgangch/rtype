@@ -1,5 +1,5 @@
-#include "graphics/Renderer.hpp"
-#include "graphics/Texture.hpp"
+#include "Renderer.hpp"
+#include "Texture.hpp"
 #include <iostream>
 
 namespace rtype::client::graphics {
@@ -52,11 +52,11 @@ namespace rtype::client::graphics {
         std::cout << "[StubRenderer] Unloading texture (stub): " << path << std::endl;
     }
     
-    void StubRenderer::DrawSprite(const Sprite& sprite, const Camera& camera) {
+    void StubRenderer::DrawSprite(const Sprite& sprite) {
         // Stub
     }
     
-    void StubRenderer::DrawSprite(const Sprite& sprite, float x, float y, const Camera& camera) {
+    void StubRenderer::DrawSprite(const Sprite& sprite, float x, float y) {
         // Stub
     }
     
@@ -65,10 +65,6 @@ namespace rtype::client::graphics {
     }
     
     void StubRenderer::DrawCircle(float x, float y, float radius, uint32_t color) {
-        // Stub
-    }
-    
-    void StubRenderer::SetCamera(const Camera& camera) {
         // Stub
     }
     
@@ -81,5 +77,9 @@ namespace rtype::client::graphics {
         if (m_data->frameCount >= 300) {
             m_data->windowOpen = false;
         }
+    }
+    
+    void StubRenderer::SetInputManager(input::InputManager* inputManager) {
+        // Stub implementation - does nothing
     }
 }

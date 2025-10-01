@@ -1,12 +1,13 @@
-#include "graphics/Renderer.hpp"
-#include "graphics/Texture.hpp"
-#include "graphics/Sprite.hpp"
-#include "graphics/Camera.hpp"
+#include "Renderer.hpp"
+#include "Texture.hpp"
+#include "Sprite.hpp"
 #include <iostream>
 #include <unordered_map>
 
 #ifdef RTYPE_USE_SFML
 #include <SFML/Graphics.hpp>
+#include "InputManager.hpp"
+#include "SFMLKeyConverter.hpp"
 #endif
 
 namespace rtype::client::graphics {
@@ -32,6 +33,7 @@ namespace rtype::client::graphics {
         std::unordered_map<std::string, std::shared_ptr<Texture>> textureCache;
         sf::View currentView;
         bool initialized = false;
+        input::InputManager* inputManager = nullptr;
     };
     
     SFMLRenderer::SFMLRenderer() : m_data(std::make_unique<SFMLData>()) {
@@ -101,11 +103,11 @@ namespace rtype::client::graphics {
         }
     }
     
-    void SFMLRenderer::DrawSprite(const Sprite& sprite, const Camera& camera) {
-        DrawSprite(sprite, sprite.GetX(), sprite.GetY(), camera);
+    void SFMLRenderer::DrawSprite(const Sprite& sprite) {
+        DrawSprite(sprite, sprite.GetX(), sprite.GetY());
     }
     
-    void SFMLRenderer::DrawSprite(const Sprite& sprite, float x, float y, const Camera& camera) {
+    void SFMLRenderer::DrawSprite(const Sprite& sprite, float x, float y) {
         if (!sprite.IsVisible() || !sprite.GetTexture()) {
             return;
         }
@@ -115,7 +117,7 @@ namespace rtype::client::graphics {
         
         sf::Sprite sfmlSprite(*sfmlTexture);
         
-        // Set position (world coordinates)
+        // Set position (screen coordinates - no camera transformation)
         sfmlSprite.setPosition(x, y);
         
         // Set scale
@@ -168,17 +170,6 @@ namespace rtype::client::graphics {
         m_data->window.draw(circle);
     }
     
-    void SFMLRenderer::SetCamera(const Camera& camera) {
-        sf::View view;
-        view.setCenter(camera.GetX(), camera.GetY());
-        view.setSize(camera.GetViewportWidth() / camera.GetZoom(), 
-                     camera.GetViewportHeight() / camera.GetZoom());
-        view.setRotation(camera.GetRotation());
-        
-        m_data->currentView = view;
-        m_data->window.setView(view);
-    }
-    
     bool SFMLRenderer::IsWindowOpen() const {
         return m_data->initialized && m_data->window.isOpen();
     }
@@ -194,9 +185,53 @@ namespace rtype::client::graphics {
                     std::cout << "[SFMLRenderer] ESC pressed, closing window" << std::endl;
                     m_data->window.close();
                 }
-                // TODO: Forward other key events to input system
+                
+                // Forward key events to input system
+                if (m_data->inputManager) {
+                    input::Key key = input::SFMLKeyConverter::SFMLToKey(event.key.code);
+                    if (key != input::Key::Count) {
+                        m_data->inputManager->HandleKeyPressed(key);
+                    }
+                }
+            }
+            else if (event.type == sf::Event::KeyReleased) {
+                // Forward key release events to input system
+                if (m_data->inputManager) {
+                    input::Key key = input::SFMLKeyConverter::SFMLToKey(event.key.code);
+                    if (key != input::Key::Count) {
+                        m_data->inputManager->HandleKeyReleased(key);
+                    }
+                }
+            }
+            else if (event.type == sf::Event::MouseButtonPressed) {
+                // Forward mouse press events to input system
+                if (m_data->inputManager) {
+                    input::MouseButton button = input::SFMLKeyConverter::SFMLToMouseButton(event.mouseButton.button);
+                    if (button != input::MouseButton::Count) {
+                        m_data->inputManager->HandleMousePressed(button, event.mouseButton.x, event.mouseButton.y);
+                    }
+                }
+            }
+            else if (event.type == sf::Event::MouseButtonReleased) {
+                // Forward mouse release events to input system
+                if (m_data->inputManager) {
+                    input::MouseButton button = input::SFMLKeyConverter::SFMLToMouseButton(event.mouseButton.button);
+                    if (button != input::MouseButton::Count) {
+                        m_data->inputManager->HandleMouseReleased(button, event.mouseButton.x, event.mouseButton.y);
+                    }
+                }
+            }
+            else if (event.type == sf::Event::MouseMoved) {
+                // Forward mouse move events to input system
+                if (m_data->inputManager) {
+                    m_data->inputManager->HandleMouseMoved(event.mouseMove.x, event.mouseMove.y);
+                }
             }
         }
+    }
+    
+    void SFMLRenderer::SetInputManager(input::InputManager* inputManager) {
+        m_data->inputManager = inputManager;
     }
     
     sf::RenderWindow* SFMLRenderer::GetNativeWindow() {

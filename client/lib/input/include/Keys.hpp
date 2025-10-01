@@ -24,6 +24,8 @@ namespace rtype::client::input {
         Fire = Space,
         MoveLeft = Left,
         MoveRight = Right,
+        MoveUp = Up,
+        MoveDown = Down,
         Pause = Escape,
         
         Count // Keep this last
