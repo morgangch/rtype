@@ -13,9 +13,10 @@ namespace rtype::server::services::room_service {
      * @brief Opens a new room and returns its EntityID
      *
      * @param is_public Specifies if the room is public or private
+     * @param player The Entity of the room owner
      * @return The EntityID of the newly created room
      */
-    ECS::EntityID openNewRoom(bool is_public);
+    ECS::EntityID openNewRoom(bool is_public, ECS::EntityID player);
 
     /**
      * @brief Generates a unique join code for a room
@@ -36,6 +37,12 @@ namespace rtype::server::services::room_service {
      *  @return The EntityID of the room with the specified join code, or 0 if not found
      */
     ECS::EntityID getRoomByJoinCode(int join_code);
+
+    /**
+     * @brief Find a public room isn't started yet
+     * @return The EntityID of the found room, or 0 if none found
+    */
+    ECS::EntityID findAvailablePublicRoom();
 }
 
 #endif //ROOMSERVICE_H

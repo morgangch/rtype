@@ -15,8 +15,10 @@ namespace rtype::server::components {
     public:
         int joinCode;
         bool isPublic;
-        RoomProperties(int joinCode = 0, bool isPublic = true)
-            : joinCode(joinCode), isPublic(isPublic) {
+        bool isGameStarted = false;
+        int ownerId = 0; // EntityID of the room owner (first player who created the room)
+        RoomProperties(int joinCode = 0, bool isPublic = true, int ownerId = 0)
+            : joinCode(joinCode), isPublic(isPublic), ownerId(ownerId) {
         };
     };
 }
