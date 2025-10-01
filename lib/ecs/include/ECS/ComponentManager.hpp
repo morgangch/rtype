@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ECS_COMPONENTMANAGER_HPP
+#define ECS_COMPONENTMANAGER_HPP
 
 #include "Types.hpp"
 #include "Component.hpp"
@@ -116,3 +117,5 @@ namespace ECS {
         }
     };
 }
+
+#endif // ECS_COMPONENTMANAGER_HPP

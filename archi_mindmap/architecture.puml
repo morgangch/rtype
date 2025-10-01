@@ -1,0 +1,103 @@
+@startuml
+title R-Type Architecture - UML Class Diagram
+
+package "Network Layer" {
+    class PacketManager {
+        - uint32_t _send_seqid
+        - uint32_t _recv_seqid
+        + handlePacketBytes(data: uint8_t*, size: size_t)
+        + sendPacketBytesSafe(data: void*, size: size_t, type: uint8_t)
+        + fetchReceivedPackets()
+        + fetchPacketsToSend()
+    }
+
+    class packet_t {
+        + packet_header_t header
+        + void* data
+    }
+
+    class packet_header_t {
+        + uint32_t seqid
+        + uint32_t ack
+        + uint8_t type
+        + uint32_t auth
+        + uint32_t data_size
+    }
+
+    PacketManager --> packet_t : manages
+    packet_t *-- packet_header_t : contains
+}
+
+package "ECS System" {
+    class World {
+        - EntityManager m_entityManager
+        - ComponentManager m_componentManager
+        + CreateEntity(): EntityID
+        + DestroyEntity(entity: EntityID)
+        + AddComponent<T>(entity: EntityID, args...)
+        + GetComponent<T>(entity: EntityID): T*
+        + HasComponent<T>(entity: EntityID): bool
+    }
+
+    class EntityManager {
+        - std::vector<bool> m_aliveEntities
+        - std::queue<EntityID> m_freeEntities
+        + CreateEntity(): EntityID
+        + DestroyEntity(entity: EntityID)
+        + IsEntityAlive(entity: EntityID): bool
+    }
+
+    class ComponentManager {
+        - std::unordered_map<ComponentTypeID, std::unique_ptr<IComponentArray>> m_componentArrays
+        + AddComponent<T>(entity: EntityID, args...): T*
+        + GetComponent<T>(entity: EntityID): T*
+        + RemoveComponent<T>(entity: EntityID)
+        + HasComponent<T>(entity: EntityID): bool
+    }
+
+    abstract class Component {
+        + {abstract} GetTypeID(): ComponentTypeID
+    }
+
+    World *-- EntityManager : contains
+    World *-- ComponentManager : contains
+    ComponentManager --> Component : manages
+}
+
+package "Game Components" {
+    class Position {
+        + float x, y
+        + Position(x: float, y: float)
+    }
+
+    class Velocity {
+        + float vx, vy
+        + Velocity(vx: float, vy: float)
+    }
+
+    class Health {
+        + int hp
+        + Health(hp: int)
+    }
+
+    Position --|> Component : extends
+    Velocity --|> Component : extends
+    Health --|> Component : extends
+}
+
+package "Application Layer" {
+    class ServerMain {
+        + main(): int
+    }
+
+    class ClientMain {
+        + main(): int
+    }
+
+    ServerMain --> World : uses
+    ServerMain --> PacketManager : uses
+    ClientMain --> World : uses
+    ClientMain --> PacketManager : uses
+}
+
+@enduml
