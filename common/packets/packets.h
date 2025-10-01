@@ -34,11 +34,11 @@ enum Packets {
  * Client → Server
  * Packet type 2
  * @param name Player name (max 32 bytes)
- * @param roomId Room ID to join. Use 0 to create a new room, 1 to join a public room.
+ * @param joinCode Room ID to join. Use 0 to create a new room, 1 to join a public room.
  */
 struct JoinRoomPacket {
     char name[32];
-    uint32_t roomId;
+    uint32_t joinCode;
 };
 
 struct PingPacket {
