@@ -17,7 +17,6 @@
  * @date 2025
  */
 
-#include <SFML/Graphics.hpp>
 #include "gui/StateManager.hpp"
 #include "gui/MainMenuState.hpp"
 #include <iostream>
