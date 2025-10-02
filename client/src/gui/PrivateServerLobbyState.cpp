@@ -1,5 +1,5 @@
-#include "PrivateServerLobbyState.hpp"
-#include "MainMenuState.hpp"
+#include "gui/PrivateServerLobbyState.hpp"
+#include "gui/MainMenuState.hpp"
 #include <iostream>
 #include <cstdlib>
 
@@ -8,64 +8,25 @@ namespace rtype::client::gui {
                                                      const std::string& serverCode, bool isAdmin)
         : stateManager(stateManager), username(username), serverCode(serverCode), isAdmin(isAdmin), 
           isReady(false), playersReady(0) {
-        
-        // Try to load fonts in order of preference
-        bool fontLoaded = false;
-        
-        if (font.loadFromFile("assets/fonts/arial.ttf")) {
-            fontLoaded = true;
-        }
-        else if (font.loadFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
-            fontLoaded = true;
-        }
-        else if (font.loadFromFile("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf")) {
-            fontLoaded = true;
-        }
-        else if (font.loadFromFile("/System/Library/Fonts/Arial.ttf")) {
-            fontLoaded = true;
-        }
-        else if (font.loadFromFile("C:/Windows/Fonts/arial.ttf")) {
-            fontLoaded = true;
-        }
-        
-        if (!fontLoaded) {
-            std::cerr << "Warning: Could not load any font file, using SFML default" << std::endl;
-        }
-        
         setupUI();
     }
     
     void PrivateServerLobbyState::setupUI() {
+        const sf::Font& font = GUIHelper::getFont();
+        
         // Players ready text setup
         playersReadyText.setFont(font);
-        playersReadyText.setCharacterSize(36);
-        playersReadyText.setFillColor(sf::Color::White);
+        playersReadyText.setCharacterSize(GUIHelper::Sizes::TITLE_FONT_SIZE - 28);
+        playersReadyText.setFillColor(GUIHelper::Colors::TEXT);
         
-        // Action button setup (Ready/Start)
-        actionButton.setFont(font);
-        actionButton.setCharacterSize(28);
-        actionButton.setFillColor(sf::Color::White);
-        
-        // Action button rectangle
-        actionButtonRect.setFillColor(sf::Color(70, 70, 70, 200));
-        actionButtonRect.setOutlineColor(sf::Color::White);
-        actionButtonRect.setOutlineThickness(2.0f);
-        
-        // Return button setup
-        returnButton.setFont(font);
-        returnButton.setString("Return");
-        returnButton.setCharacterSize(24);
-        returnButton.setFillColor(sf::Color::White);
-        
-        // Return button rectangle
-        returnButtonRect.setFillColor(sf::Color(100, 50, 50, 200));
-        returnButtonRect.setOutlineColor(sf::Color::White);
-        returnButtonRect.setOutlineThickness(2.0f);
+        // Button setup using GUIHelper
+        GUIHelper::setupButton(actionButton, actionButtonRect, "", GUIHelper::Sizes::BUTTON_FONT_SIZE);
+        GUIHelper::setupReturnButton(returnButton, returnButtonRect);
         
         // Server code display setup
         serverCodeDisplay.setFont(font);
         serverCodeDisplay.setString("Server Code: " + serverCode);
-        serverCodeDisplay.setCharacterSize(24);
+        serverCodeDisplay.setCharacterSize(GUIHelper::Sizes::INPUT_FONT_SIZE);
         serverCodeDisplay.setFillColor(sf::Color::Yellow);
         serverCodeDisplay.setStyle(sf::Text::Bold);
         
@@ -85,7 +46,7 @@ namespace rtype::client::gui {
         float centerY = windowSize.y / 2.0f;
         
         // Players ready text positioning (center)
-        centerText(playersReadyText, centerX, centerY - 50.0f);
+        GUIHelper::centerText(playersReadyText, centerX, centerY - 50.0f);
         
         // Action button positioning (below the text)
         float buttonWidth = 200.0f;
@@ -94,7 +55,7 @@ namespace rtype::client::gui {
         
         actionButtonRect.setSize(sf::Vector2f(buttonWidth, buttonHeight));
         actionButtonRect.setPosition(centerX - buttonWidth / 2, buttonY);
-        centerText(actionButton,
+        GUIHelper::centerText(actionButton,
                   actionButtonRect.getPosition().x + buttonWidth / 2,
                   actionButtonRect.getPosition().y + buttonHeight / 2);
         
@@ -103,7 +64,7 @@ namespace rtype::client::gui {
         float returnButtonHeight = 40.0f;
         returnButtonRect.setSize(sf::Vector2f(returnButtonWidth, returnButtonHeight));
         returnButtonRect.setPosition(20.0f, 20.0f);
-        centerText(returnButton,
+        GUIHelper::centerText(returnButton,
                   returnButtonRect.getPosition().x + returnButtonWidth / 2,
                   returnButtonRect.getPosition().y + returnButtonHeight / 2);
         
@@ -128,7 +89,7 @@ namespace rtype::client::gui {
                 sf::Vector2f mousePos(event.mouseButton.x, event.mouseButton.y);
                 
                 // Check action button click
-                if (isPointInRect(mousePos, actionButtonRect)) {
+                if (GUIHelper::isPointInRect(mousePos, actionButtonRect)) {
                     if (isAdmin) {
                         startGame();
                     } else {
@@ -136,7 +97,7 @@ namespace rtype::client::gui {
                     }
                 }
                 // Check return button click
-                else if (isPointInRect(mousePos, returnButtonRect)) {
+                else if (GUIHelper::isPointInRect(mousePos, returnButtonRect)) {
                     stateManager.changeState(std::make_unique<MainMenuState>(stateManager));
                 }
             }
@@ -146,31 +107,27 @@ namespace rtype::client::gui {
         if (event.type == sf::Event::MouseMoved) {
             sf::Vector2f mousePos(event.mouseMove.x, event.mouseMove.y);
             
-            // Action button hover
-            if (isPointInRect(mousePos, actionButtonRect)) {
+            // Button hover effects using GUIHelper
+            bool isActionHovered = GUIHelper::isPointInRect(mousePos, actionButtonRect);
+            if (isActionHovered) {
                 if (isAdmin) {
                     actionButtonRect.setFillColor(sf::Color(50, 150, 50, 200));
                 } else {
-                    actionButtonRect.setFillColor(sf::Color(100, 100, 100, 200));
+                    actionButtonRect.setFillColor(GUIHelper::Colors::BUTTON_HOVER);
                 }
                 actionButton.setFillColor(sf::Color::Cyan);
             } else {
                 if (isAdmin) {
                     actionButtonRect.setFillColor(sf::Color(50, 100, 50, 200));
                 } else {
-                    actionButtonRect.setFillColor(sf::Color(70, 70, 70, 200));
+                    actionButtonRect.setFillColor(GUIHelper::Colors::BUTTON_NORMAL);
                 }
-                actionButton.setFillColor(sf::Color::White);
+                actionButton.setFillColor(GUIHelper::Colors::TEXT);
             }
             
-            // Return button hover
-            if (isPointInRect(mousePos, returnButtonRect)) {
-                returnButtonRect.setFillColor(sf::Color(150, 70, 70, 200));
-                returnButton.setFillColor(sf::Color::Yellow);
-            } else {
-                returnButtonRect.setFillColor(sf::Color(100, 50, 50, 200));
-                returnButton.setFillColor(sf::Color::White);
-            }
+            GUIHelper::applyButtonHover(returnButtonRect, returnButton, 
+                                      GUIHelper::isPointInRect(mousePos, returnButtonRect),
+                                      GUIHelper::Colors::RETURN_BUTTON, sf::Color(150, 70, 70, 200));
         }
     }
     
@@ -240,15 +197,5 @@ namespace rtype::client::gui {
                 actionButtonRect.setFillColor(sf::Color(70, 70, 70, 200)); // Gray when not ready
             }
         }
-    }
-    
-    bool PrivateServerLobbyState::isPointInRect(const sf::Vector2f& point, const sf::RectangleShape& rect) {
-        sf::FloatRect bounds = rect.getGlobalBounds();
-        return bounds.contains(point);
-    }
-    
-    void PrivateServerLobbyState::centerText(sf::Text& text, float x, float y) {
-        sf::FloatRect textBounds = text.getLocalBounds();
-        text.setPosition(x - textBounds.width / 2, y - textBounds.height / 2);
     }
 }

@@ -1,90 +1,47 @@
-#include "PrivateServerState.hpp"
-#include "PrivateServerLobbyState.hpp"
-#include "MainMenuState.hpp"
+#include "gui/PrivateServerState.hpp"
+#include "gui/PrivateServerLobbyState.hpp"
+#include "gui/MainMenuState.hpp"
 #include <iostream>
 #include <cstdlib>
 
 namespace rtype::client::gui {
     PrivateServerState::PrivateServerState(StateManager& stateManager, const std::string& username)
         : stateManager(stateManager), username(username), isTyping(false), cursorTimer(0.0f), showCursor(true) {
-        
-        // Try to load fonts in order of preference
-        bool fontLoaded = false;
-        
-        if (font.loadFromFile("assets/fonts/arial.ttf")) {
-            fontLoaded = true;
-        }
-        else if (font.loadFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
-            fontLoaded = true;
-        }
-        else if (font.loadFromFile("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf")) {
-            fontLoaded = true;
-        }
-        else if (font.loadFromFile("/System/Library/Fonts/Arial.ttf")) {
-            fontLoaded = true;
-        }
-        else if (font.loadFromFile("C:/Windows/Fonts/arial.ttf")) {
-            fontLoaded = true;
-        }
-        
-        if (!fontLoaded) {
-            std::cerr << "Warning: Could not load any font file, using SFML default" << std::endl;
-        }
-        
         setupUI();
     }
     
     void PrivateServerState::setupUI() {
+        const sf::Font& font = GUIHelper::getFont();
+        
         // Title setup
         titleText.setFont(font);
         titleText.setString("Private Servers");
-        titleText.setCharacterSize(48);
-        titleText.setFillColor(sf::Color::White);
+        titleText.setCharacterSize(GUIHelper::Sizes::TITLE_FONT_SIZE - 16);
+        titleText.setFillColor(GUIHelper::Colors::TEXT);
         titleText.setStyle(sf::Text::Bold);
         
         // Server code input setup
-        serverCodeBox.setFillColor(sf::Color(50, 50, 50, 200));
-        serverCodeBox.setOutlineColor(sf::Color::White);
+        serverCodeBox.setFillColor(GUIHelper::Colors::INPUT_BOX);
+        serverCodeBox.setOutlineColor(GUIHelper::Colors::TEXT);
         serverCodeBox.setOutlineThickness(2.0f);
         
         serverCodeText.setFont(font);
-        serverCodeText.setCharacterSize(24);
-        serverCodeText.setFillColor(sf::Color::White);
+        serverCodeText.setCharacterSize(GUIHelper::Sizes::INPUT_FONT_SIZE);
+        serverCodeText.setFillColor(GUIHelper::Colors::TEXT);
         
         serverCodeHintText.setFont(font);
         serverCodeHintText.setString("Enter server code (1000-9999)");
-        serverCodeHintText.setCharacterSize(20);
-        serverCodeHintText.setFillColor(sf::Color(150, 150, 150));
+        serverCodeHintText.setCharacterSize(GUIHelper::Sizes::HINT_FONT_SIZE);
+        serverCodeHintText.setFillColor(GUIHelper::Colors::HINT_TEXT);
         
-        // Join button setup
-        joinButton.setFont(font);
-        joinButton.setString("Join Server");
-        joinButton.setCharacterSize(28);
-        joinButton.setFillColor(sf::Color::White);
-        
+        // Button setup using GUIHelper
+        GUIHelper::setupButton(joinButton, joinButtonRect, "Join Server", GUIHelper::Sizes::BUTTON_FONT_SIZE);
         joinButtonRect.setFillColor(sf::Color(50, 100, 50, 200));
-        joinButtonRect.setOutlineColor(sf::Color::White);
-        joinButtonRect.setOutlineThickness(2.0f);
         
-        // Create button setup
-        createButton.setFont(font);
-        createButton.setString("Create New Server");
-        createButton.setCharacterSize(28);
-        createButton.setFillColor(sf::Color::White);
-        
+        GUIHelper::setupButton(createButton, createButtonRect, "Create New Server", GUIHelper::Sizes::BUTTON_FONT_SIZE);
         createButtonRect.setFillColor(sf::Color(50, 50, 100, 200));
-        createButtonRect.setOutlineColor(sf::Color::White);
-        createButtonRect.setOutlineThickness(2.0f);
         
-        // Return button setup
-        returnButton.setFont(font);
-        returnButton.setString("Return");
-        returnButton.setCharacterSize(24);
-        returnButton.setFillColor(sf::Color::White);
-        
-        returnButtonRect.setFillColor(sf::Color(100, 50, 50, 200));
-        returnButtonRect.setOutlineColor(sf::Color::White);
-        returnButtonRect.setOutlineThickness(2.0f);
+        GUIHelper::setupReturnButton(returnButton, returnButtonRect);
     }
     
     void PrivateServerState::onEnter() {
@@ -96,7 +53,7 @@ namespace rtype::client::gui {
         float centerY = windowSize.y / 2.0f;
         
         // Title positioning
-        centerText(titleText, centerX, windowSize.y * 0.2f);
+        GUIHelper::centerText(titleText, centerX, windowSize.y * 0.2f);
         
         // Server code input positioning
         float boxWidth = std::min(400.0f, windowSize.x * 0.6f);
@@ -118,14 +75,14 @@ namespace rtype::client::gui {
         // Join button
         joinButtonRect.setSize(sf::Vector2f(buttonWidth, buttonHeight));
         joinButtonRect.setPosition(centerX - buttonWidth - buttonSpacing / 2, buttonY);
-        centerText(joinButton,
+        GUIHelper::centerText(joinButton,
                   joinButtonRect.getPosition().x + buttonWidth / 2,
                   joinButtonRect.getPosition().y + buttonHeight / 2);
         
         // Create button
         createButtonRect.setSize(sf::Vector2f(buttonWidth, buttonHeight));
         createButtonRect.setPosition(centerX + buttonSpacing / 2, buttonY);
-        centerText(createButton,
+        GUIHelper::centerText(createButton,
                   createButtonRect.getPosition().x + buttonWidth / 2,
                   createButtonRect.getPosition().y + buttonHeight / 2);
         
@@ -134,7 +91,7 @@ namespace rtype::client::gui {
         float returnButtonHeight = 40.0f;
         returnButtonRect.setSize(sf::Vector2f(returnButtonWidth, returnButtonHeight));
         returnButtonRect.setPosition(20.0f, 20.0f);
-        centerText(returnButton,
+        GUIHelper::centerText(returnButton,
                   returnButtonRect.getPosition().x + returnButtonWidth / 2,
                   returnButtonRect.getPosition().y + returnButtonHeight / 2);
     }
@@ -155,20 +112,20 @@ namespace rtype::client::gui {
                 sf::Vector2f mousePos(event.mouseButton.x, event.mouseButton.y);
                 
                 // Check server code box click
-                if (isPointInRect(mousePos, serverCodeBox)) {
+                if (GUIHelper::isPointInRect(mousePos, serverCodeBox)) {
                     isTyping = true;
                     serverCodeBox.setOutlineColor(sf::Color::Cyan);
                 }
                 // Check join button click
-                else if (isPointInRect(mousePos, joinButtonRect)) {
+                else if (GUIHelper::isPointInRect(mousePos, joinButtonRect)) {
                     joinServer();
                 }
                 // Check create button click
-                else if (isPointInRect(mousePos, createButtonRect)) {
+                else if (GUIHelper::isPointInRect(mousePos, createButtonRect)) {
                     createServer();
                 }
                 // Check return button click
-                else if (isPointInRect(mousePos, returnButtonRect)) {
+                else if (GUIHelper::isPointInRect(mousePos, returnButtonRect)) {
                     stateManager.changeState(std::make_unique<MainMenuState>(stateManager));
                 }
                 // Click outside - stop typing
@@ -196,32 +153,18 @@ namespace rtype::client::gui {
         if (event.type == sf::Event::MouseMoved) {
             sf::Vector2f mousePos(event.mouseMove.x, event.mouseMove.y);
             
-            // Join button hover
-            if (isPointInRect(mousePos, joinButtonRect)) {
-                joinButtonRect.setFillColor(sf::Color(70, 150, 70, 200));
-                joinButton.setFillColor(sf::Color::Cyan);
-            } else {
-                joinButtonRect.setFillColor(sf::Color(50, 100, 50, 200));
-                joinButton.setFillColor(sf::Color::White);
-            }
+            // Button hover effects using GUIHelper
+            GUIHelper::applyButtonHover(joinButtonRect, joinButton, 
+                                      GUIHelper::isPointInRect(mousePos, joinButtonRect),
+                                      sf::Color(50, 100, 50, 200), sf::Color(70, 150, 70, 200));
             
-            // Create button hover
-            if (isPointInRect(mousePos, createButtonRect)) {
-                createButtonRect.setFillColor(sf::Color(70, 70, 150, 200));
-                createButton.setFillColor(sf::Color::Cyan);
-            } else {
-                createButtonRect.setFillColor(sf::Color(50, 50, 100, 200));
-                createButton.setFillColor(sf::Color::White);
-            }
+            GUIHelper::applyButtonHover(createButtonRect, createButton, 
+                                      GUIHelper::isPointInRect(mousePos, createButtonRect),
+                                      sf::Color(50, 50, 100, 200), sf::Color(70, 70, 150, 200));
             
-            // Return button hover
-            if (isPointInRect(mousePos, returnButtonRect)) {
-                returnButtonRect.setFillColor(sf::Color(150, 70, 70, 200));
-                returnButton.setFillColor(sf::Color::Yellow);
-            } else {
-                returnButtonRect.setFillColor(sf::Color(100, 50, 50, 200));
-                returnButton.setFillColor(sf::Color::White);
-            }
+            GUIHelper::applyButtonHover(returnButtonRect, returnButton, 
+                                      GUIHelper::isPointInRect(mousePos, returnButtonRect),
+                                      GUIHelper::Colors::RETURN_BUTTON, sf::Color(150, 70, 70, 200));
         }
     }
     
@@ -266,7 +209,7 @@ namespace rtype::client::gui {
     }
     
     void PrivateServerState::joinServer() {
-        if (isValidServerCode(serverCode)) {
+        if (GUIHelper::isValidServerCode(serverCode)) {
             std::cout << "Joining server with code: " << serverCode << std::endl;
             std::cout << "Sending network data: ServerType=1 (private), Username=" << username << ", ServerCode=" << serverCode << std::endl;
             
@@ -289,24 +232,4 @@ namespace rtype::client::gui {
         stateManager.changeState(std::make_unique<PrivateServerLobbyState>(stateManager, username, generatedCode, true));
     }
     
-    bool PrivateServerState::isValidServerCode(const std::string& code) {
-        if (code.length() != 4) return false;
-        
-        try {
-            int num = std::stoi(code);
-            return num >= 1000 && num <= 9999;
-        } catch (...) {
-            return false;
-        }
-    }
-    
-    bool PrivateServerState::isPointInRect(const sf::Vector2f& point, const sf::RectangleShape& rect) {
-        sf::FloatRect bounds = rect.getGlobalBounds();
-        return bounds.contains(point);
-    }
-    
-    void PrivateServerState::centerText(sf::Text& text, float x, float y) {
-        sf::FloatRect textBounds = text.getLocalBounds();
-        text.setPosition(x - textBounds.width / 2, y - textBounds.height / 2);
-    }
 }

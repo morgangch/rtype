@@ -1,89 +1,68 @@
-#include "MainMenu.hpp"
+/**
+ * @file MainMenuState.cpp
+ * @brief Implementation of the MainMenuState class
+ * 
+ * This file implements the main menu interface for the R-TYPE client.
+ * It handles user input for username entry, button interactions, and
+ * navigation to server selection screens. The implementation uses the
+ * centralized GUIHelper utilities for consistent styling and behavior.
+ * 
+ * @author R-TYPE Development Team
+ * @date 2025
+ */
+
+#include "gui/MainMenuState.hpp"
+#include "gui/PublicServerState.hpp"
+#include "gui/PrivateServerState.hpp"
 #include <iostream>
+#include <cstdlib>
 
 namespace rtype::client::gui {
-    MainMenu::MainMenu(sf::RenderWindow& window)
-        : window(window), isTyping(false), cursorTimer(0.0f), showCursor(true) {
-        
-        // Try to load fonts in order of preference
-        bool fontLoaded = false;
-        
-        // Try custom font first
-        if (font.loadFromFile("assets/fonts/arial.ttf")) {
-            fontLoaded = true;
-        }
-        // Try common system fonts
-        else if (font.loadFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
-            fontLoaded = true;
-        }
-        else if (font.loadFromFile("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf")) {
-            fontLoaded = true;
-        }
-        else if (font.loadFromFile("/System/Library/Fonts/Arial.ttf")) { // macOS
-            fontLoaded = true;
-        }
-        else if (font.loadFromFile("C:/Windows/Fonts/arial.ttf")) { // Windows
-            fontLoaded = true;
-        }
-        
-        if (!fontLoaded) {
-            std::cerr << "Warning: Could not load any font file, using SFML default" << std::endl;
-        }
-        
+    
+    MainMenuState::MainMenuState(StateManager& stateManager)
+        : stateManager(stateManager), isTyping(false), cursorTimer(0.0f), showCursor(true) {
         setupUI();
-        updateLayout();
     }
     
-    void MainMenu::setupUI() {
+    void MainMenuState::setupUI() {
+        const sf::Font& font = GUIHelper::getFont();
+        
         // Title setup
         titleText.setFont(font);
         titleText.setString("THE TOP R-TYPE");
-        titleText.setCharacterSize(64);
-        titleText.setFillColor(sf::Color::White);
+        titleText.setCharacterSize(GUIHelper::Sizes::TITLE_FONT_SIZE);
+        titleText.setFillColor(GUIHelper::Colors::TEXT);
         titleText.setStyle(sf::Text::Bold);
         
         // Username input setup
-        usernameBox.setFillColor(sf::Color(50, 50, 50, 200));
-        usernameBox.setOutlineColor(sf::Color::White);
+        usernameBox.setFillColor(GUIHelper::Colors::INPUT_BOX);
+        usernameBox.setOutlineColor(GUIHelper::Colors::TEXT);
         usernameBox.setOutlineThickness(2.0f);
         
         usernameText.setFont(font);
-        usernameText.setCharacterSize(24);
-        usernameText.setFillColor(sf::Color::White);
+        usernameText.setCharacterSize(GUIHelper::Sizes::INPUT_FONT_SIZE);
+        usernameText.setFillColor(GUIHelper::Colors::TEXT);
         
         usernameHintText.setFont(font);
         usernameHintText.setString("Add here your username");
-        usernameHintText.setCharacterSize(20);
-        usernameHintText.setFillColor(sf::Color(150, 150, 150));
+        usernameHintText.setCharacterSize(GUIHelper::Sizes::HINT_FONT_SIZE);
+        usernameHintText.setFillColor(GUIHelper::Colors::HINT_TEXT);
         
-        // Button setup
-        publicServersButton.setFont(font);
-        publicServersButton.setString("Public servers");
-        publicServersButton.setCharacterSize(28);
-        publicServersButton.setFillColor(sf::Color::White);
-        
-        privateServersButton.setFont(font);
-        privateServersButton.setString("Private servers");
-        privateServersButton.setCharacterSize(28);
-        privateServersButton.setFillColor(sf::Color::White);
-        
-        // Button rectangles
-        publicButtonRect.setFillColor(sf::Color(70, 70, 70, 200));
-        publicButtonRect.setOutlineColor(sf::Color::White);
-        publicButtonRect.setOutlineThickness(2.0f);
-        
-        privateButtonRect.setFillColor(sf::Color(70, 70, 70, 200));
-        privateButtonRect.setOutlineColor(sf::Color::White);
-        privateButtonRect.setOutlineThickness(2.0f);
+        // Button setup using GUIHelper
+        GUIHelper::setupButton(publicServersButton, publicButtonRect, "Public servers", GUIHelper::Sizes::BUTTON_FONT_SIZE);
+        GUIHelper::setupButton(privateServersButton, privateButtonRect, "Private servers", GUIHelper::Sizes::BUTTON_FONT_SIZE);
     }
     
-    void MainMenu::updateLayout() {
-        sf::Vector2u windowSize = window.getSize();
+    void MainMenuState::onEnter() {
+        // Called when this state becomes active
+    }
+    
+    void MainMenuState::updateLayout(const sf::Vector2u& windowSize) {
         float centerX = windowSize.x / 2.0f;
         float centerY = windowSize.y / 2.0f;
         
         // Title positioning (center top)
-        centerText(titleText, centerX, windowSize.y * 0.2f);
+        GUIHelper::centerText(titleText, centerX, windowSize.y * 0.2f);
         
         // Username box positioning (middle)
         float boxWidth = std::min(400.0f, windowSize.x * 0.6f);
@@ -105,21 +84,21 @@ namespace rtype::client::gui {
         // Public servers button
         publicButtonRect.setSize(sf::Vector2f(buttonWidth, buttonHeight));
         publicButtonRect.setPosition(centerX - buttonWidth - buttonSpacing / 2, buttonY);
-        centerText(publicServersButton, 
+        GUIHelper::centerText(publicServersButton, 
                   publicButtonRect.getPosition().x + buttonWidth / 2,
                   publicButtonRect.getPosition().y + buttonHeight / 2);
         
         // Private servers button
         privateButtonRect.setSize(sf::Vector2f(buttonWidth, buttonHeight));
         privateButtonRect.setPosition(centerX + buttonSpacing / 2, buttonY);
-        centerText(privateServersButton,
+        GUIHelper::centerText(privateServersButton,
                   privateButtonRect.getPosition().x + buttonWidth / 2,
                   privateButtonRect.getPosition().y + buttonHeight / 2);
     }
     
-    void MainMenu::handleEvent(const sf::Event& event) {
+    void MainMenuState::handleEvent(const sf::Event& event) {
         if (event.type == sf::Event::Resized) {
-            updateLayout();
+            updateLayout(sf::Vector2u(event.size.width, event.size.height));
         }
         
         if (event.type == sf::Event::MouseButtonPressed) {
@@ -127,21 +106,17 @@ namespace rtype::client::gui {
                 sf::Vector2f mousePos(event.mouseButton.x, event.mouseButton.y);
                 
                 // Check username box click
-                if (isPointInRect(mousePos, usernameBox)) {
+                if (GUIHelper::isPointInRect(mousePos, usernameBox)) {
                     isTyping = true;
                     usernameBox.setOutlineColor(sf::Color::Cyan);
                 }
                 // Check public servers button
-                else if (isPointInRect(mousePos, publicButtonRect)) {
-                    if (onPublicServersClick) {
-                        onPublicServersClick();
-                    }
+                else if (GUIHelper::isPointInRect(mousePos, publicButtonRect)) {
+                    onPublicServersClick();
                 }
                 // Check private servers button
-                else if (isPointInRect(mousePos, privateButtonRect)) {
-                    if (onPrivateServersClick) {
-                        onPrivateServersClick();
-                    }
+                else if (GUIHelper::isPointInRect(mousePos, privateButtonRect)) {
+                    onPrivateServersClick();
                 }
                 // Click outside - stop typing
                 else {
@@ -169,26 +144,18 @@ namespace rtype::client::gui {
             sf::Vector2f mousePos(event.mouseMove.x, event.mouseMove.y);
             
             // Public button hover
-            if (isPointInRect(mousePos, publicButtonRect)) {
-                publicButtonRect.setFillColor(sf::Color(100, 100, 100, 200));
-                publicServersButton.setFillColor(sf::Color::Cyan);
-            } else {
-                publicButtonRect.setFillColor(sf::Color(70, 70, 70, 200));
-                publicServersButton.setFillColor(sf::Color::White);
-            }
+            GUIHelper::applyButtonHover(publicButtonRect, publicServersButton, 
+                                      GUIHelper::isPointInRect(mousePos, publicButtonRect),
+                                      GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
             
             // Private button hover
-            if (isPointInRect(mousePos, privateButtonRect)) {
-                privateButtonRect.setFillColor(sf::Color(100, 100, 100, 200));
-                privateServersButton.setFillColor(sf::Color::Cyan);
-            } else {
-                privateButtonRect.setFillColor(sf::Color(70, 70, 70, 200));
-                privateServersButton.setFillColor(sf::Color::White);
-            }
+            GUIHelper::applyButtonHover(privateButtonRect, privateServersButton, 
+                                      GUIHelper::isPointInRect(mousePos, privateButtonRect),
+                                      GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
         }
     }
     
-    void MainMenu::update(float deltaTime) {
+    void MainMenuState::update(float deltaTime) {
         // Cursor blinking animation
         cursorTimer += deltaTime;
         if (cursorTimer >= 0.5f) {
@@ -204,7 +171,10 @@ namespace rtype::client::gui {
         usernameText.setPosition(boxBounds.left + 10, boxBounds.top + 15);
     }
     
-    void MainMenu::render() {
+    void MainMenuState::render(sf::RenderWindow& window) {
+        // Update layout if needed
+        updateLayout(window.getSize());
+        
         // Render title
         window.draw(titleText);
         
@@ -223,21 +193,15 @@ namespace rtype::client::gui {
         window.draw(privateServersButton);
     }
     
-    void MainMenu::setPublicServersCallback(std::function<void()> callback) {
-        onPublicServersClick = callback;
+    void MainMenuState::onPublicServersClick() {
+        std::cout << "Switching to Public Server state" << std::endl;
+        std::string finalUsername = username.empty() ? GUIHelper::generateRandomUsername() : username;
+        stateManager.changeState(std::make_unique<PublicServerState>(stateManager, finalUsername));
     }
     
-    void MainMenu::setPrivateServersCallback(std::function<void()> callback) {
-        onPrivateServersClick = callback;
-    }
-    
-    bool MainMenu::isPointInRect(const sf::Vector2f& point, const sf::RectangleShape& rect) {
-        sf::FloatRect bounds = rect.getGlobalBounds();
-        return bounds.contains(point);
-    }
-    
-    void MainMenu::centerText(sf::Text& text, float x, float y) {
-        sf::FloatRect textBounds = text.getLocalBounds();
-        text.setPosition(x - textBounds.width / 2, y - textBounds.height / 2);
+    void MainMenuState::onPrivateServersClick() {
+        std::cout << "Switching to Private Server state" << std::endl;
+        std::string finalUsername = username.empty() ? GUIHelper::generateRandomUsername() : username;
+        stateManager.changeState(std::make_unique<PrivateServerState>(stateManager, finalUsername));
     }
 }

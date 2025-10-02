@@ -3,6 +3,7 @@
 
 #include "State.hpp"
 #include "StateManager.hpp"
+#include "GUIHelper.hpp"
 #include <SFML/Graphics.hpp>
 #include <string>
 
@@ -20,7 +21,6 @@ namespace rtype::client::gui {
     private:
         StateManager& stateManager;
         std::string username;
-        sf::Font font;
         
         // UI Elements
         sf::Text playersReadyText;
@@ -36,8 +36,6 @@ namespace rtype::client::gui {
         // Helper methods
         void setupUI();
         void updateLayout(const sf::Vector2u& windowSize);
-        bool isPointInRect(const sf::Vector2f& point, const sf::RectangleShape& rect);
-        void centerText(sf::Text& text, float x, float y);
         void toggleReady();
         void updatePlayersReadyText();
     };

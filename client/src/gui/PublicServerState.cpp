@@ -1,66 +1,25 @@
-#include "PublicServerState.hpp"
-#include "MainMenuState.hpp"
+#include "gui/PublicServerState.hpp"
+#include "gui/MainMenuState.hpp"
 #include <iostream>
 #include <cstdlib>
 
 namespace rtype::client::gui {
     PublicServerState::PublicServerState(StateManager& stateManager, const std::string& username)
         : stateManager(stateManager), username(username), isReady(false), playersReady(0) {
-        
-        // Try to load fonts in order of preference
-        bool fontLoaded = false;
-        
-        // Try custom font first
-        if (font.loadFromFile("assets/fonts/arial.ttf")) {
-            fontLoaded = true;
-        }
-        // Try common system fonts
-        else if (font.loadFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
-            fontLoaded = true;
-        }
-        else if (font.loadFromFile("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf")) {
-            fontLoaded = true;
-        }
-        else if (font.loadFromFile("/System/Library/Fonts/Arial.ttf")) { // macOS
-            fontLoaded = true;
-        }
-        else if (font.loadFromFile("C:/Windows/Fonts/arial.ttf")) { // Windows
-            fontLoaded = true;
-        }
-        
-        if (!fontLoaded) {
-            std::cerr << "Warning: Could not load any font file, using SFML default" << std::endl;
-        }
-        
         setupUI();
     }
     
     void PublicServerState::setupUI() {
+        const sf::Font& font = GUIHelper::getFont();
+        
         // Players ready text setup
         playersReadyText.setFont(font);
-        playersReadyText.setCharacterSize(36);
-        playersReadyText.setFillColor(sf::Color::White);
+        playersReadyText.setCharacterSize(GUIHelper::Sizes::TITLE_FONT_SIZE - 28);
+        playersReadyText.setFillColor(GUIHelper::Colors::TEXT);
         
-        // Ready button setup
-        readyButton.setFont(font);
-        readyButton.setCharacterSize(28);
-        readyButton.setFillColor(sf::Color::White);
-        
-        // Ready button rectangle
-        readyButtonRect.setFillColor(sf::Color(70, 70, 70, 200));
-        readyButtonRect.setOutlineColor(sf::Color::White);
-        readyButtonRect.setOutlineThickness(2.0f);
-        
-        // Return button setup
-        returnButton.setFont(font);
-        returnButton.setString("Return");
-        returnButton.setCharacterSize(24);
-        returnButton.setFillColor(sf::Color::White);
-        
-        // Return button rectangle
-        returnButtonRect.setFillColor(sf::Color(100, 50, 50, 200));
-        returnButtonRect.setOutlineColor(sf::Color::White);
-        returnButtonRect.setOutlineThickness(2.0f);
+        // Button setup using GUIHelper
+        GUIHelper::setupButton(readyButton, readyButtonRect, "", GUIHelper::Sizes::BUTTON_FONT_SIZE);
+        GUIHelper::setupReturnButton(returnButton, returnButtonRect);
         
         updatePlayersReadyText();
     }
@@ -75,7 +34,7 @@ namespace rtype::client::gui {
         float centerY = windowSize.y / 2.0f;
         
         // Players ready text positioning (center)
-        centerText(playersReadyText, centerX, centerY - 50.0f);
+        GUIHelper::centerText(playersReadyText, centerX, centerY - 50.0f);
         
         // Ready button positioning (below the text)
         float buttonWidth = 200.0f;
@@ -84,7 +43,7 @@ namespace rtype::client::gui {
         
         readyButtonRect.setSize(sf::Vector2f(buttonWidth, buttonHeight));
         readyButtonRect.setPosition(centerX - buttonWidth / 2, buttonY);
-        centerText(readyButton,
+        GUIHelper::centerText(readyButton,
                   readyButtonRect.getPosition().x + buttonWidth / 2,
                   readyButtonRect.getPosition().y + buttonHeight / 2);
         
@@ -93,7 +52,7 @@ namespace rtype::client::gui {
         float returnButtonHeight = 40.0f;
         returnButtonRect.setSize(sf::Vector2f(returnButtonWidth, returnButtonHeight));
         returnButtonRect.setPosition(20.0f, 20.0f);
-        centerText(returnButton,
+        GUIHelper::centerText(returnButton,
                   returnButtonRect.getPosition().x + returnButtonWidth / 2,
                   returnButtonRect.getPosition().y + returnButtonHeight / 2);
     }
@@ -115,11 +74,11 @@ namespace rtype::client::gui {
                 sf::Vector2f mousePos(event.mouseButton.x, event.mouseButton.y);
                 
                 // Check ready button click
-                if (isPointInRect(mousePos, readyButtonRect)) {
+                if (GUIHelper::isPointInRect(mousePos, readyButtonRect)) {
                     toggleReady();
                 }
                 // Check return button click
-                else if (isPointInRect(mousePos, returnButtonRect)) {
+                else if (GUIHelper::isPointInRect(mousePos, returnButtonRect)) {
                     stateManager.changeState(std::make_unique<MainMenuState>(stateManager));
                 }
             }
@@ -129,23 +88,14 @@ namespace rtype::client::gui {
         if (event.type == sf::Event::MouseMoved) {
             sf::Vector2f mousePos(event.mouseMove.x, event.mouseMove.y);
             
-            // Ready button hover
-            if (isPointInRect(mousePos, readyButtonRect)) {
-                readyButtonRect.setFillColor(sf::Color(100, 100, 100, 200));
-                readyButton.setFillColor(sf::Color::Cyan);
-            } else {
-                readyButtonRect.setFillColor(sf::Color(70, 70, 70, 200));
-                readyButton.setFillColor(sf::Color::White);
-            }
+            // Button hover effects using GUIHelper
+            GUIHelper::applyButtonHover(readyButtonRect, readyButton, 
+                                      GUIHelper::isPointInRect(mousePos, readyButtonRect),
+                                      GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
             
-            // Return button hover
-            if (isPointInRect(mousePos, returnButtonRect)) {
-                returnButtonRect.setFillColor(sf::Color(150, 70, 70, 200));
-                returnButton.setFillColor(sf::Color::Yellow);
-            } else {
-                returnButtonRect.setFillColor(sf::Color(100, 50, 50, 200));
-                returnButton.setFillColor(sf::Color::White);
-            }
+            GUIHelper::applyButtonHover(returnButtonRect, returnButton, 
+                                      GUIHelper::isPointInRect(mousePos, returnButtonRect),
+                                      GUIHelper::Colors::RETURN_BUTTON, sf::Color(150, 70, 70, 200));
         }
     }
     
@@ -197,15 +147,5 @@ namespace rtype::client::gui {
         } else {
             readyButton.setString("Not ready");
         }
-    }
-    
-    bool PublicServerState::isPointInRect(const sf::Vector2f& point, const sf::RectangleShape& rect) {
-        sf::FloatRect bounds = rect.getGlobalBounds();
-        return bounds.contains(point);
-    }
-    
-    void PublicServerState::centerText(sf::Text& text, float x, float y) {
-        sf::FloatRect textBounds = text.getLocalBounds();
-        text.setPosition(x - textBounds.width / 2, y - textBounds.height / 2);
     }
 }
