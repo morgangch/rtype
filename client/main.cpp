@@ -4,14 +4,22 @@
  * 
  * This file contains the main function that initializes the R-TYPE client
  * application. It sets up the SFML window, initializes the state management
- * system, and runs the main game loop. The application starts with the
- * MainMenuState and handles state transitions through the StateManager.
+ * system with integrated network functionality, and runs the main game loop.
+ * 
+ * The application starts with the MainMenuState and handles state transitions
+ * through the StateManager. Network operations are managed through the
+ * NetworkManager which runs in a background thread for non-blocking I/O.
  * 
  * The main loop follows the standard game loop pattern:
  * 1. Handle events (input, window events)
- * 2. Update game state and animations
+ * 2. Update game state, animations, and network operations
  * 3. Render the current state to the screen
  * 4. Display the frame
+ * 
+ * Network functionality has been restored and integrated into the GUI system:
+ * - Background network thread handles UDP communication
+ * - States can connect/disconnect using NetworkManager
+ * - Original network code functionality is preserved
  * 
  * @author R-TYPE Development Team
  * @date 2025
@@ -28,8 +36,9 @@ int main() {
     // Initialize random seed for username generation
     srand(static_cast<unsigned int>(time(nullptr)));
     
-    // Create window
-    sf::RenderWindow window(sf::VideoMode(1280, 720), "R-TYPE - Main Menu", sf::Style::Default);
+    // Create window with fixed size (non-resizable)
+    sf::RenderWindow window(sf::VideoMode(1280, 720), "R-TYPE - Main Menu", 
+                           sf::Style::Titlebar | sf::Style::Close);
     window.setFramerateLimit(60);
     
     // Create state manager

@@ -4,17 +4,36 @@
  * 
  * This file implements the StateManager class methods for managing GUI states
  * in the R-TYPE client. It handles state transitions, lifecycle management,
- * and event delegation using a stack-based approach.
+ * and event delegation using a stack-based approach. The StateManager also
+ * integrates network functionality through the NetworkManager.
  * 
  * @author R-TYPE Development Team
  * @date 2025
  */
 
 #include "gui/StateManager.hpp"
+#include "gui/NetworkManager.hpp"
 
 namespace rtype::client::gui {
     
-    StateManager::StateManager(sf::RenderWindow& window) : window(window) {}
+    // Custom deleter implementation
+    void NetworkManagerDeleter::operator()(NetworkManager* ptr) {
+        delete ptr;
+    }
+    
+    StateManager::StateManager(sf::RenderWindow& window) 
+        : window(window), networkManager(new NetworkManager(), NetworkManagerDeleter()) {}
+    
+    StateManager::~StateManager() {
+        // Clean up network connections
+        if (networkManager) {
+            networkManager->disconnect();
+        }
+    }
+    
+    NetworkManager& StateManager::getNetworkManager() {
+        return *networkManager;
+    }
     
     void StateManager::pushState(std::unique_ptr<State> state) {
         // Pause the current state by calling onExit()
@@ -54,6 +73,12 @@ namespace rtype::client::gui {
     }
     
     void StateManager::update(float deltaTime) {
+        // Update network manager first
+        if (networkManager) {
+            networkManager->update();
+        }
+        
+        // Then update the active state
         if (!states.empty()) {
             states.top()->update(deltaTime);
         }

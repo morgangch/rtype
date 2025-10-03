@@ -97,36 +97,55 @@ namespace rtype::client::gui {
     }
     
     void MainMenuState::handleEvent(const sf::Event& event) {
-        if (event.type == sf::Event::Resized) {
-            updateLayout(sf::Vector2u(event.size.width, event.size.height));
+        switch (event.type) {
+            case sf::Event::Resized:
+                handleResizeEvent(event);
+                break;
+            case sf::Event::MouseButtonPressed:
+                handleMouseButtonEvent(event);
+                break;
+            case sf::Event::TextEntered:
+                handleTextInputEvent(event);
+                break;
+            case sf::Event::MouseMoved:
+                handleMouseMoveEvent(event);
+                break;
+            default:
+                break;
         }
-        
-        if (event.type == sf::Event::MouseButtonPressed) {
-            if (event.mouseButton.button == sf::Mouse::Left) {
-                sf::Vector2f mousePos(event.mouseButton.x, event.mouseButton.y);
-                
-                // Check username box click
-                if (GUIHelper::isPointInRect(mousePos, usernameBox)) {
-                    isTyping = true;
-                    usernameBox.setOutlineColor(sf::Color::Cyan);
-                }
-                // Check public servers button
-                else if (GUIHelper::isPointInRect(mousePos, publicButtonRect)) {
-                    onPublicServersClick();
-                }
-                // Check private servers button
-                else if (GUIHelper::isPointInRect(mousePos, privateButtonRect)) {
-                    onPrivateServersClick();
-                }
-                // Click outside - stop typing
-                else {
-                    isTyping = false;
-                    usernameBox.setOutlineColor(sf::Color::White);
-                }
+    }
+    
+    void MainMenuState::handleResizeEvent(const sf::Event& event) {
+        updateLayout(sf::Vector2u(event.size.width, event.size.height));
+    }
+    
+    void MainMenuState::handleMouseButtonEvent(const sf::Event& event) {
+        if (event.mouseButton.button == sf::Mouse::Left) {
+            sf::Vector2f mousePos(event.mouseButton.x, event.mouseButton.y);
+            
+            // Check username box click
+            if (GUIHelper::isPointInRect(mousePos, usernameBox)) {
+                isTyping = true;
+                usernameBox.setOutlineColor(sf::Color::Cyan);
+            }
+            // Check public servers button
+            else if (GUIHelper::isPointInRect(mousePos, publicButtonRect)) {
+                onPublicServersClick();
+            }
+            // Check private servers button
+            else if (GUIHelper::isPointInRect(mousePos, privateButtonRect)) {
+                onPrivateServersClick();
+            }
+            // Click outside - stop typing
+            else {
+                isTyping = false;
+                usernameBox.setOutlineColor(sf::Color::White);
             }
         }
-        
-        if (event.type == sf::Event::TextEntered && isTyping) {
+    }
+    
+    void MainMenuState::handleTextInputEvent(const sf::Event& event) {
+        if (isTyping) {
             if (event.text.unicode == 8) { // Backspace
                 if (!username.empty()) {
                     username.pop_back();
@@ -138,21 +157,20 @@ namespace rtype::client::gui {
                 }
             }
         }
+    }
+    
+    void MainMenuState::handleMouseMoveEvent(const sf::Event& event) {
+        sf::Vector2f mousePos(event.mouseMove.x, event.mouseMove.y);
         
-        // Mouse hover effects
-        if (event.type == sf::Event::MouseMoved) {
-            sf::Vector2f mousePos(event.mouseMove.x, event.mouseMove.y);
-            
-            // Public button hover
-            GUIHelper::applyButtonHover(publicButtonRect, publicServersButton, 
-                                      GUIHelper::isPointInRect(mousePos, publicButtonRect),
-                                      GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
-            
-            // Private button hover
-            GUIHelper::applyButtonHover(privateButtonRect, privateServersButton, 
-                                      GUIHelper::isPointInRect(mousePos, privateButtonRect),
-                                      GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
-        }
+        // Public button hover
+        GUIHelper::applyButtonHover(publicButtonRect, publicServersButton, 
+                                  GUIHelper::isPointInRect(mousePos, publicButtonRect),
+                                  GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
+        
+        // Private button hover
+        GUIHelper::applyButtonHover(privateButtonRect, privateServersButton, 
+                                  GUIHelper::isPointInRect(mousePos, privateButtonRect),
+                                  GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
     }
     
     void MainMenuState::update(float deltaTime) {

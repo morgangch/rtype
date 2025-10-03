@@ -18,7 +18,16 @@
 #include <stack>
 #include <SFML/Graphics.hpp>
 
+// Forward declaration to avoid circular dependency
 namespace rtype::client::gui {
+    class NetworkManager;
+    
+    /**
+     * @brief Custom deleter for NetworkManager to handle incomplete type
+     */
+    struct NetworkManagerDeleter {
+        void operator()(NetworkManager* ptr);
+    };
     
     /**
      * @class StateManager
@@ -56,7 +65,18 @@ namespace rtype::client::gui {
          * @brief Construct a new StateManager
          * @param window Reference to the SFML render window
          */
-        StateManager(sf::RenderWindow& window);
+        explicit StateManager(sf::RenderWindow& window);
+        
+        /**
+         * @brief Destructor - ensures proper cleanup of all states
+         */
+        ~StateManager();
+        
+        /**
+         * @brief Get access to the network manager
+         * @return Reference to the NetworkManager instance
+         */
+        NetworkManager& getNetworkManager();
         
         /**
          * @brief Push a new state onto the stack
@@ -112,6 +132,7 @@ namespace rtype::client::gui {
     private:
         sf::RenderWindow& window;           ///< Reference to the render window
         std::stack<std::unique_ptr<State>> states;  ///< Stack of states (top = active)
+        std::unique_ptr<NetworkManager, NetworkManagerDeleter> networkManager;  ///< Network management system
     };
 }
 

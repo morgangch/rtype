@@ -1,6 +1,29 @@
+/**
+ * @file PrivateServerState.cpp
+ * @brief Implementation of the private server connection state for the R-Type client GUI
+ * 
+ * This file contains the implementation of the PrivateServerState class, which handles
+ * the private server connection interface. Users can either join an existing private
+ * server using a 4-digit code or create a new private server as an admin.
+ * 
+ * Key features:
+ * - Server code input validation (4-digit numbers 1000-9999)
+ * - Join existing private server functionality
+ * - Create new private server with random code generation
+ * - Text input handling with cursor animation
+ * - Real-time input validation and feedback
+ * 
+ * The state transitions to PrivateServerLobbyState upon successful server
+ * connection or creation.
+ * 
+ * @author R-Type Development Team
+ * @date 2024
+ */
+
 #include "gui/PrivateServerState.hpp"
 #include "gui/PrivateServerLobbyState.hpp"
 #include "gui/MainMenuState.hpp"
+#include "gui/NetworkManager.hpp"
 #include <iostream>
 #include <cstdlib>
 
@@ -97,46 +120,68 @@ namespace rtype::client::gui {
     }
     
     void PrivateServerState::handleEvent(const sf::Event& event) {
-        if (event.type == sf::Event::Resized) {
-            updateLayout(sf::Vector2u(event.size.width, event.size.height));
+        switch (event.type) {
+            case sf::Event::Resized:
+                handleResizeEvent(event);
+                break;
+            case sf::Event::KeyPressed:
+                handleKeyboardEvent(event);
+                break;
+            case sf::Event::MouseButtonPressed:
+                handleMouseButtonEvent(event);
+                break;
+            case sf::Event::TextEntered:
+                handleTextInputEvent(event);
+                break;
+            case sf::Event::MouseMoved:
+                handleMouseMoveEvent(event);
+                break;
+            default:
+                break;
         }
-        
-        if (event.type == sf::Event::KeyPressed) {
-            if (event.key.code == sf::Keyboard::Escape) {
+    }
+    
+    void PrivateServerState::handleResizeEvent(const sf::Event& event) {
+        updateLayout(sf::Vector2u(event.size.width, event.size.height));
+    }
+    
+    void PrivateServerState::handleKeyboardEvent(const sf::Event& event) {
+        if (event.key.code == sf::Keyboard::Escape) {
+            stateManager.changeState(std::make_unique<MainMenuState>(stateManager));
+        }
+    }
+    
+    void PrivateServerState::handleMouseButtonEvent(const sf::Event& event) {
+        if (event.mouseButton.button == sf::Mouse::Left) {
+            sf::Vector2f mousePos(event.mouseButton.x, event.mouseButton.y);
+            
+            // Check server code box click
+            if (GUIHelper::isPointInRect(mousePos, serverCodeBox)) {
+                isTyping = true;
+                serverCodeBox.setOutlineColor(sf::Color::Cyan);
+            }
+            // Check join button click
+            else if (GUIHelper::isPointInRect(mousePos, joinButtonRect)) {
+                joinServer();
+            }
+            // Check create button click
+            else if (GUIHelper::isPointInRect(mousePos, createButtonRect)) {
+                createServer();
+            }
+            // Check return button click
+            else if (GUIHelper::isPointInRect(mousePos, returnButtonRect)) {
                 stateManager.changeState(std::make_unique<MainMenuState>(stateManager));
             }
-        }
-        
-        if (event.type == sf::Event::MouseButtonPressed) {
-            if (event.mouseButton.button == sf::Mouse::Left) {
-                sf::Vector2f mousePos(event.mouseButton.x, event.mouseButton.y);
-                
-                // Check server code box click
-                if (GUIHelper::isPointInRect(mousePos, serverCodeBox)) {
-                    isTyping = true;
-                    serverCodeBox.setOutlineColor(sf::Color::Cyan);
-                }
-                // Check join button click
-                else if (GUIHelper::isPointInRect(mousePos, joinButtonRect)) {
-                    joinServer();
-                }
-                // Check create button click
-                else if (GUIHelper::isPointInRect(mousePos, createButtonRect)) {
-                    createServer();
-                }
-                // Check return button click
-                else if (GUIHelper::isPointInRect(mousePos, returnButtonRect)) {
-                    stateManager.changeState(std::make_unique<MainMenuState>(stateManager));
-                }
-                // Click outside - stop typing
-                else {
-                    isTyping = false;
-                    serverCodeBox.setOutlineColor(sf::Color::White);
-                }
+            // Click outside - stop typing
+            else {
+                isTyping = false;
+                serverCodeBox.setOutlineColor(sf::Color::White);
             }
         }
-        
-        if (event.type == sf::Event::TextEntered && isTyping) {
+    }
+    
+    void PrivateServerState::handleTextInputEvent(const sf::Event& event) {
+        if (isTyping) {
             if (event.text.unicode == 8) { // Backspace
                 if (!serverCode.empty()) {
                     serverCode.pop_back();
@@ -148,24 +193,23 @@ namespace rtype::client::gui {
                 }
             }
         }
+    }
+    
+    void PrivateServerState::handleMouseMoveEvent(const sf::Event& event) {
+        sf::Vector2f mousePos(event.mouseMove.x, event.mouseMove.y);
         
-        // Mouse hover effects
-        if (event.type == sf::Event::MouseMoved) {
-            sf::Vector2f mousePos(event.mouseMove.x, event.mouseMove.y);
-            
-            // Button hover effects using GUIHelper
-            GUIHelper::applyButtonHover(joinButtonRect, joinButton, 
-                                      GUIHelper::isPointInRect(mousePos, joinButtonRect),
-                                      sf::Color(50, 100, 50, 200), sf::Color(70, 150, 70, 200));
-            
-            GUIHelper::applyButtonHover(createButtonRect, createButton, 
-                                      GUIHelper::isPointInRect(mousePos, createButtonRect),
-                                      sf::Color(50, 50, 100, 200), sf::Color(70, 70, 150, 200));
-            
-            GUIHelper::applyButtonHover(returnButtonRect, returnButton, 
-                                      GUIHelper::isPointInRect(mousePos, returnButtonRect),
-                                      GUIHelper::Colors::RETURN_BUTTON, sf::Color(150, 70, 70, 200));
-        }
+        // Button hover effects using GUIHelper
+        GUIHelper::applyButtonHover(joinButtonRect, joinButton, 
+                                  GUIHelper::isPointInRect(mousePos, joinButtonRect),
+                                  sf::Color(50, 100, 50, 200), sf::Color(70, 150, 70, 200));
+        
+        GUIHelper::applyButtonHover(createButtonRect, createButton, 
+                                  GUIHelper::isPointInRect(mousePos, createButtonRect),
+                                  sf::Color(50, 50, 100, 200), sf::Color(70, 70, 150, 200));
+        
+        GUIHelper::applyButtonHover(returnButtonRect, returnButton, 
+                                  GUIHelper::isPointInRect(mousePos, returnButtonRect),
+                                  GUIHelper::Colors::RETURN_BUTTON, sf::Color(150, 70, 70, 200));
     }
     
     void PrivateServerState::update(float deltaTime) {
@@ -210,11 +254,22 @@ namespace rtype::client::gui {
     
     void PrivateServerState::joinServer() {
         if (GUIHelper::isValidServerCode(serverCode)) {
-            std::cout << "Joining server with code: " << serverCode << std::endl;
-            std::cout << "Sending network data: ServerType=1 (private), Username=" << username << ", ServerCode=" << serverCode << std::endl;
+            std::cout << "Joining private server with code: " << serverCode << std::endl;
             
-            // Switch to private lobby state as a regular player
-            stateManager.changeState(std::make_unique<PrivateServerLobbyState>(stateManager, username, serverCode, false));
+            // Convert server code to room ID (assuming server code maps to room ID)
+            uint32_t roomId = static_cast<uint32_t>(std::stoi(serverCode));
+            
+            // Connect to the private server using the NetworkManager
+            bool connected = stateManager.getNetworkManager().connectToServer("127.0.0.1", 8080, username, roomId);
+            
+            if (connected) {
+                std::cout << "Successfully connected to private server!" << std::endl;
+                // Switch to private lobby state as a regular player
+                stateManager.changeState(std::make_unique<PrivateServerLobbyState>(stateManager, username, serverCode, false));
+            } else {
+                std::cout << "Failed to connect to private server!" << std::endl;
+                // Could show an error message to the user
+            }
         } else {
             std::cout << "Invalid server code. Please enter a 4-digit number between 1000-9999." << std::endl;
         }
@@ -224,12 +279,27 @@ namespace rtype::client::gui {
         // Generate random server code between 1000-9999
         int randomCode = 1000 + (rand() % 9000);
         std::string generatedCode = std::to_string(randomCode);
+        uint32_t roomId = static_cast<uint32_t>(randomCode);
         
-        std::cout << "Creating new server with code: " << generatedCode << std::endl;
-        std::cout << "Sending network data: ServerType=1 (private), Username=" << username << ", ServerCode=" << generatedCode << ", IsAdmin=true" << std::endl;
+        std::cout << "Creating new private server with code: " << generatedCode << std::endl;
         
-        // Switch to private lobby state as the admin
-        stateManager.changeState(std::make_unique<PrivateServerLobbyState>(stateManager, username, generatedCode, true));
+        // Connect to the server as admin to create the room
+        bool connected = stateManager.getNetworkManager().connectToServer("127.0.0.1", 8080, username, roomId);
+        
+        if (connected) {
+            std::cout << "Successfully created private server!" << std::endl;
+            // Switch to private lobby state as the admin
+            stateManager.changeState(std::make_unique<PrivateServerLobbyState>(stateManager, username, generatedCode, true));
+        } else {
+            std::cout << "Failed to create private server!" << std::endl;
+            // Could show an error message to the user
+        }
+    }
+    
+    void PrivateServerState::onExit() {
+        std::cout << "Exiting Private Server state" << std::endl;
+        // Note: We don't disconnect here because we might be transitioning to the lobby
+        // The lobby will manage the connection
     }
     
 }

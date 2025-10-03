@@ -1,3 +1,22 @@
+/**
+ * @file PrivateServerLobbyState.cpp
+ * @brief Implementation of the private server lobby state for the R-Type client GUI
+ * 
+ * This file contains the implementation of the PrivateServerLobbyState class, which handles
+ * the private server lobby interface where players wait for game start. The lobby supports
+ * both admin and regular player roles, with different UI interactions for each role.
+ * 
+ * Key features:
+ * - Ready state management for players
+ * - Admin controls for starting games
+ * - Real-time player count display
+ * - Server code display for sharing
+ * - Dynamic button behavior based on user role
+ * 
+ * @author R-Type Development Team
+ * @date 2024
+ */
+
 #include "gui/PrivateServerLobbyState.hpp"
 #include "gui/MainMenuState.hpp"
 #include <iostream>

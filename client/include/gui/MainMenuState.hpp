@@ -118,6 +118,31 @@ namespace rtype::client::gui {
          */
         void updateLayout(const sf::Vector2u& windowSize);
         
+        // Event handling methods
+        /**
+         * @brief Handle window resize events
+         * @param event The resize event
+         */
+        void handleResizeEvent(const sf::Event& event);
+        
+        /**
+         * @brief Handle mouse button press events
+         * @param event The mouse button event
+         */
+        void handleMouseButtonEvent(const sf::Event& event);
+        
+        /**
+         * @brief Handle text input events
+         * @param event The text input event
+         */
+        void handleTextInputEvent(const sf::Event& event);
+        
+        /**
+         * @brief Handle mouse movement events for hover effects
+         * @param event The mouse move event
+         */
+        void handleMouseMoveEvent(const sf::Event& event);
+        
         // Button action handlers
         /**
          * @brief Handle public servers button click

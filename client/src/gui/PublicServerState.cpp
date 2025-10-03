@@ -1,5 +1,29 @@
+/**
+ * @file PublicServerState.cpp
+ * @brief Implementation of the public server lobby state for the R-Type client GUI
+ * 
+ * This file contains the implementation of the PublicServerState class, which handles
+ * the public server lobby interface where players can mark themselves as ready
+ * for matchmaking. The state provides a simple ready/not ready toggle system
+ * for quick game matching.
+ * 
+ * Key features:
+ * - Ready state toggle for players
+ * - Real-time player count display
+ * - Simple lobby interface for public matchmaking
+ * - Automatic game start when sufficient players are ready
+ * - Network integration for player state synchronization
+ * 
+ * This state is designed for casual play where players don't need to coordinate
+ * private server codes and can quickly join available games.
+ * 
+ * @author R-Type Development Team
+ * @date 2024
+ */
+
 #include "gui/PublicServerState.hpp"
 #include "gui/MainMenuState.hpp"
+#include "gui/NetworkManager.hpp"
 #include <iostream>
 #include <cstdlib>
 
@@ -26,7 +50,24 @@ namespace rtype::client::gui {
     
     void PublicServerState::onEnter() {
         std::cout << "Entered Public Server state with username: " << username << std::endl;
-        std::cout << "Sending network data: ServerType=0 (public), Username=" << username << std::endl;
+        std::cout << "Connecting to public server..." << std::endl;
+        
+        // Connect to the public server using the NetworkManager
+        // Public server uses room ID 0 by convention
+        bool connected = stateManager.getNetworkManager().connectToServer("127.0.0.1", 8080, username, 0);
+        
+        if (connected) {
+            std::cout << "Successfully connected to public server!" << std::endl;
+        } else {
+            std::cout << "Failed to connect to public server!" << std::endl;
+            // Could show an error message or return to main menu
+        }
+    }
+    
+    void PublicServerState::onExit() {
+        std::cout << "Exiting Public Server state" << std::endl;
+        // Disconnect from the server when leaving this state
+        stateManager.getNetworkManager().disconnect();
     }
     
     void PublicServerState::updateLayout(const sf::Vector2u& windowSize) {
@@ -58,45 +99,61 @@ namespace rtype::client::gui {
     }
     
     void PublicServerState::handleEvent(const sf::Event& event) {
-        if (event.type == sf::Event::Resized) {
-            updateLayout(sf::Vector2u(event.size.width, event.size.height));
+        switch (event.type) {
+            case sf::Event::Resized:
+                handleResizeEvent(event);
+                break;
+            case sf::Event::KeyPressed:
+                handleKeyboardEvent(event);
+                break;
+            case sf::Event::MouseButtonPressed:
+                handleMouseButtonEvent(event);
+                break;
+            case sf::Event::MouseMoved:
+                handleMouseMoveEvent(event);
+                break;
+            default:
+                break;
         }
-        
-        if (event.type == sf::Event::KeyPressed) {
-            if (event.key.code == sf::Keyboard::Escape) {
-                // Go back to main menu
+    }
+    
+    void PublicServerState::handleResizeEvent(const sf::Event& event) {
+        updateLayout(sf::Vector2u(event.size.width, event.size.height));
+    }
+    
+    void PublicServerState::handleKeyboardEvent(const sf::Event& event) {
+        if (event.key.code == sf::Keyboard::Escape) {
+            // Go back to main menu
+            stateManager.changeState(std::make_unique<MainMenuState>(stateManager));
+        }
+    }
+    
+    void PublicServerState::handleMouseButtonEvent(const sf::Event& event) {
+        if (event.mouseButton.button == sf::Mouse::Left) {
+            sf::Vector2f mousePos(event.mouseButton.x, event.mouseButton.y);
+            
+            // Check ready button click
+            if (GUIHelper::isPointInRect(mousePos, readyButtonRect)) {
+                toggleReady();
+            }
+            // Check return button click
+            else if (GUIHelper::isPointInRect(mousePos, returnButtonRect)) {
                 stateManager.changeState(std::make_unique<MainMenuState>(stateManager));
             }
         }
+    }
+    
+    void PublicServerState::handleMouseMoveEvent(const sf::Event& event) {
+        sf::Vector2f mousePos(event.mouseMove.x, event.mouseMove.y);
         
-        if (event.type == sf::Event::MouseButtonPressed) {
-            if (event.mouseButton.button == sf::Mouse::Left) {
-                sf::Vector2f mousePos(event.mouseButton.x, event.mouseButton.y);
-                
-                // Check ready button click
-                if (GUIHelper::isPointInRect(mousePos, readyButtonRect)) {
-                    toggleReady();
-                }
-                // Check return button click
-                else if (GUIHelper::isPointInRect(mousePos, returnButtonRect)) {
-                    stateManager.changeState(std::make_unique<MainMenuState>(stateManager));
-                }
-            }
-        }
+        // Button hover effects using GUIHelper
+        GUIHelper::applyButtonHover(readyButtonRect, readyButton, 
+                                  GUIHelper::isPointInRect(mousePos, readyButtonRect),
+                                  GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
         
-        // Mouse hover effects
-        if (event.type == sf::Event::MouseMoved) {
-            sf::Vector2f mousePos(event.mouseMove.x, event.mouseMove.y);
-            
-            // Button hover effects using GUIHelper
-            GUIHelper::applyButtonHover(readyButtonRect, readyButton, 
-                                      GUIHelper::isPointInRect(mousePos, readyButtonRect),
-                                      GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
-            
-            GUIHelper::applyButtonHover(returnButtonRect, returnButton, 
-                                      GUIHelper::isPointInRect(mousePos, returnButtonRect),
-                                      GUIHelper::Colors::RETURN_BUTTON, sf::Color(150, 70, 70, 200));
-        }
+        GUIHelper::applyButtonHover(returnButtonRect, returnButton, 
+                                  GUIHelper::isPointInRect(mousePos, returnButtonRect),
+                                  GUIHelper::Colors::RETURN_BUTTON, sf::Color(150, 70, 70, 200));
     }
     
     void PublicServerState::update(float deltaTime) {
