@@ -93,61 +93,77 @@ namespace rtype::client::gui {
     }
     
     void PrivateServerLobbyState::handleEvent(const sf::Event& event) {
-        if (event.type == sf::Event::Resized) {
-            updateLayout(sf::Vector2u(event.size.width, event.size.height));
+        switch (event.type) {
+            case sf::Event::Resized:
+                handleResizeEvent(event);
+                break;
+            case sf::Event::KeyPressed:
+                handleKeyboardEvent(event);
+                break;
+            case sf::Event::MouseButtonPressed:
+                handleMouseButtonEvent(event);
+                break;
+            case sf::Event::MouseMoved:
+                handleMouseMoveEvent(event);
+                break;
+            default:
+                break;
         }
-        
-        if (event.type == sf::Event::KeyPressed) {
-            if (event.key.code == sf::Keyboard::Escape) {
+    }
+    
+    void PrivateServerLobbyState::handleResizeEvent(const sf::Event& event) {
+        updateLayout(sf::Vector2u(event.size.width, event.size.height));
+    }
+    
+    void PrivateServerLobbyState::handleKeyboardEvent(const sf::Event& event) {
+        if (event.key.code == sf::Keyboard::Escape) {
+            stateManager.changeState(std::make_unique<MainMenuState>(stateManager));
+        }
+    }
+    
+    void PrivateServerLobbyState::handleMouseButtonEvent(const sf::Event& event) {
+        if (event.mouseButton.button == sf::Mouse::Left) {
+            sf::Vector2f mousePos(event.mouseButton.x, event.mouseButton.y);
+            
+            // Check action button click
+            if (GUIHelper::isPointInRect(mousePos, actionButtonRect)) {
+                if (isAdmin) {
+                    startGame();
+                } else {
+                    toggleReady();
+                }
+            }
+            // Check return button click
+            else if (GUIHelper::isPointInRect(mousePos, returnButtonRect)) {
                 stateManager.changeState(std::make_unique<MainMenuState>(stateManager));
             }
         }
+    }
+    
+    void PrivateServerLobbyState::handleMouseMoveEvent(const sf::Event& event) {
+        sf::Vector2f mousePos(event.mouseMove.x, event.mouseMove.y);
         
-        if (event.type == sf::Event::MouseButtonPressed) {
-            if (event.mouseButton.button == sf::Mouse::Left) {
-                sf::Vector2f mousePos(event.mouseButton.x, event.mouseButton.y);
-                
-                // Check action button click
-                if (GUIHelper::isPointInRect(mousePos, actionButtonRect)) {
-                    if (isAdmin) {
-                        startGame();
-                    } else {
-                        toggleReady();
-                    }
-                }
-                // Check return button click
-                else if (GUIHelper::isPointInRect(mousePos, returnButtonRect)) {
-                    stateManager.changeState(std::make_unique<MainMenuState>(stateManager));
-                }
-            }
-        }
-        
-        // Mouse hover effects
-        if (event.type == sf::Event::MouseMoved) {
-            sf::Vector2f mousePos(event.mouseMove.x, event.mouseMove.y);
-            
-            // Button hover effects using GUIHelper
-            bool isActionHovered = GUIHelper::isPointInRect(mousePos, actionButtonRect);
-            if (isActionHovered) {
-                if (isAdmin) {
-                    actionButtonRect.setFillColor(sf::Color(50, 150, 50, 200));
-                } else {
-                    actionButtonRect.setFillColor(GUIHelper::Colors::BUTTON_HOVER);
-                }
-                actionButton.setFillColor(sf::Color::Cyan);
+        // Button hover effects using GUIHelper
+        bool isActionHovered = GUIHelper::isPointInRect(mousePos, actionButtonRect);
+        if (isActionHovered) {
+            if (isAdmin) {
+                actionButtonRect.setFillColor(sf::Color(50, 150, 50, 200));
             } else {
-                if (isAdmin) {
-                    actionButtonRect.setFillColor(sf::Color(50, 100, 50, 200));
-                } else {
-                    actionButtonRect.setFillColor(GUIHelper::Colors::BUTTON_NORMAL);
-                }
-                actionButton.setFillColor(GUIHelper::Colors::TEXT);
+                actionButtonRect.setFillColor(GUIHelper::Colors::BUTTON_HOVER);
             }
-            
-            GUIHelper::applyButtonHover(returnButtonRect, returnButton, 
-                                      GUIHelper::isPointInRect(mousePos, returnButtonRect),
-                                      GUIHelper::Colors::RETURN_BUTTON, sf::Color(150, 70, 70, 200));
+            actionButton.setFillColor(sf::Color::Cyan);
+        } else {
+            if (isAdmin) {
+                actionButtonRect.setFillColor(sf::Color(50, 100, 50, 200));
+            } else {
+                actionButtonRect.setFillColor(GUIHelper::Colors::BUTTON_NORMAL);
+            }
+            actionButton.setFillColor(GUIHelper::Colors::TEXT);
         }
+        
+        GUIHelper::applyButtonHover(returnButtonRect, returnButton, 
+                                  GUIHelper::isPointInRect(mousePos, returnButtonRect),
+                                  GUIHelper::Colors::RETURN_BUTTON, sf::Color(150, 70, 70, 200));
     }
     
     void PrivateServerLobbyState::update(float deltaTime) {

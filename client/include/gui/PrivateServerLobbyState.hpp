@@ -100,29 +100,87 @@ namespace rtype::client::gui {
         void onEnter() override;
         
     private:
-        StateManager& stateManager;
-        std::string username;
-        std::string serverCode;
-        bool isAdmin;
+        // Core references and configuration
+        StateManager& stateManager;     ///< Reference to state manager for navigation
+        std::string username;           ///< Player's username for display and networking
+        std::string serverCode;         ///< 4-digit server code for this private lobby
+        bool isAdmin;                   ///< Whether this player is the server administrator
         
-        // UI Elements
-        sf::Text playersReadyText;
-        sf::Text actionButton; // "Ready" for players, "Start" for admin
-        sf::RectangleShape actionButtonRect;
-        sf::Text returnButton;
-        sf::RectangleShape returnButtonRect;
-        sf::Text serverCodeDisplay;
+        // UI Text Elements
+        sf::Text playersReadyText;      ///< Displays current ready player count
+        sf::Text actionButton;          ///< "Ready" for players, "Start Game" for admin
+        sf::Text returnButton;          ///< "Return" button text for navigation back
+        sf::Text serverCodeDisplay;     ///< Shows server code for sharing with others
         
-        // State
-        bool isReady;
-        int playersReady;
+        // UI Visual Elements
+        sf::RectangleShape actionButtonRect;  ///< Clickable area for main action button
+        sf::RectangleShape returnButtonRect;  ///< Clickable area for return button
         
-        // Helper methods
+        // Lobby State Management
+        bool isReady;                   ///< Current ready state of this player
+        int playersReady;               ///< Total number of players marked as ready
+        
+        // UI Management Methods
+        /**
+         * @brief Initialize all UI elements with fonts, colors, and positioning
+         */
         void setupUI();
+        
+        /**
+         * @brief Update element positions based on window size
+         * @param windowSize Current window dimensions for responsive layout
+         */
         void updateLayout(const sf::Vector2u& windowSize);
+        
+        // Event Handling Methods
+        /**
+         * @brief Handle window resize events
+         * @param event The resize event containing new dimensions
+         */
+        void handleResizeEvent(const sf::Event& event);
+        
+        /**
+         * @brief Handle keyboard input events (Escape key for navigation)
+         * @param event The keyboard event for navigation shortcuts
+         */
+        void handleKeyboardEvent(const sf::Event& event);
+        
+        /**
+         * @brief Handle mouse button click events
+         * @param event The mouse button event for role-based actions
+         */
+        void handleMouseButtonEvent(const sf::Event& event);
+        
+        /**
+         * @brief Handle mouse movement events for button hover effects
+         * @param event The mouse move event for visual feedback
+         */
+        void handleMouseMoveEvent(const sf::Event& event);
+        
+        // Player Action Methods
+        /**
+         * @brief Toggle the ready state for regular players
+         * Updates player count and button appearance
+         */
         void toggleReady();
+        
+        /**
+         * @brief Start the game (admin only)
+         * Initiates game start sequence for all players in lobby
+         */
         void startGame();
+        
+        // UI Update Methods
+        /**
+         * @brief Update the ready player count display text
+         * Refreshes the "Amount of players ready: X" text
+         */
         void updatePlayersReadyText();
+        
+        /**
+         * @brief Update the action button text and appearance
+         * Changes button text/color based on player role and ready state
+         */
         void updateActionButton();
     };
 }

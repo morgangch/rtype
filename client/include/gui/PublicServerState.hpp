@@ -95,32 +95,71 @@ namespace rtype::client::gui {
         void onExit() override;
         
     private:
-        StateManager& stateManager;
-        std::string username;
+        // Core references and configuration
+        StateManager& stateManager;     ///< Reference to state manager for navigation
+        std::string username;           ///< Player's username for lobby display and networking
         
-        // UI Elements
-        sf::Text playersReadyText;
-        sf::Text readyButton;
-        sf::RectangleShape readyButtonRect;
-        sf::Text returnButton;
-        sf::RectangleShape returnButtonRect;
+        // UI Text Elements
+        sf::Text playersReadyText;      ///< Displays "Amount of players ready: X"
+        sf::Text readyButton;           ///< "Ready" or "Not ready" button text
+        sf::Text returnButton;          ///< "Return" button text for navigation back
         
-        // State
-        bool isReady;
-        int playersReady;
+        // UI Visual Elements
+        sf::RectangleShape readyButtonRect;   ///< Clickable area for ready toggle button
+        sf::RectangleShape returnButtonRect;  ///< Clickable area for return button
         
-        // Helper methods
+        // Matchmaking State Management
+        bool isReady;                   ///< Current ready state of this player
+        int playersReady;               ///< Total number of players marked as ready
+        
+        // UI Management Methods
+        /**
+         * @brief Initialize all UI elements with fonts, colors, and positioning
+         */
         void setupUI();
+        
+        /**
+         * @brief Update element positions based on window size
+         * @param windowSize Current window dimensions for responsive layout
+         */
         void updateLayout(const sf::Vector2u& windowSize);
         
-        // Event handling methods
+        // Event Handling Methods
+        /**
+         * @brief Handle window resize events
+         * @param event The resize event containing new dimensions
+         */
         void handleResizeEvent(const sf::Event& event);
+        
+        /**
+         * @brief Handle keyboard input events (Escape key for navigation)
+         * @param event The keyboard event for navigation shortcuts
+         */
         void handleKeyboardEvent(const sf::Event& event);
+        
+        /**
+         * @brief Handle mouse button click events
+         * @param event The mouse button event for ready toggle and navigation
+         */
         void handleMouseButtonEvent(const sf::Event& event);
+        
+        /**
+         * @brief Handle mouse movement events for button hover effects
+         * @param event The mouse move event for visual feedback
+         */
         void handleMouseMoveEvent(const sf::Event& event);
         
-        // Action methods
+        // Player Action Methods
+        /**
+         * @brief Toggle the ready state and update UI accordingly
+         * Changes button text/color and updates player count display
+         */
         void toggleReady();
+        
+        /**
+         * @brief Update the ready player count display text
+         * Refreshes both the count display and button text based on ready state
+         */
         void updatePlayersReadyText();
     };
 }

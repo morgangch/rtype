@@ -97,40 +97,84 @@ namespace rtype::client::gui {
         void onExit() override;
         
     private:
-        StateManager& stateManager;
-        std::string username;
+        // Core references and configuration
+        StateManager& stateManager;     ///< Reference to state manager for navigation
+        std::string username;           ///< Player's username for server connection
         
-        // UI Elements
-        sf::Text titleText;
-        sf::Text serverCodeText;
-        sf::Text serverCodeHintText;
-        sf::RectangleShape serverCodeBox;
-        sf::Text joinButton;
-        sf::RectangleShape joinButtonRect;
-        sf::Text createButton;
-        sf::RectangleShape createButtonRect;
-        sf::Text returnButton;
-        sf::RectangleShape returnButtonRect;
+        // UI Text Elements
+        sf::Text titleText;             ///< "Private Servers" title display
+        sf::Text serverCodeText;        ///< User-entered server code display
+        sf::Text serverCodeHintText;    ///< Placeholder text "Enter server code (1000-9999)"
+        sf::Text joinButton;            ///< "Join Server" button text
+        sf::Text createButton;          ///< "Create New Server" button text
+        sf::Text returnButton;          ///< "Return" button text for navigation back
         
-        // State
-        std::string serverCode;
-        bool isTyping;
-        float cursorTimer;
-        bool showCursor;
+        // UI Visual Elements
+        sf::RectangleShape serverCodeBox;    ///< Input field background for server code
+        sf::RectangleShape joinButtonRect;   ///< Clickable area for join server button
+        sf::RectangleShape createButtonRect; ///< Clickable area for create server button
+        sf::RectangleShape returnButtonRect; ///< Clickable area for return button
         
-        // Helper methods
+        // Input State Management
+        std::string serverCode;         ///< Current server code input (max 4 digits)
+        bool isTyping;                  ///< Whether the input field is currently active
+        float cursorTimer;              ///< Timer for cursor blinking animation
+        bool showCursor;                ///< Current cursor visibility state
+        
+        // UI Management Methods
+        /**
+         * @brief Initialize all UI elements with fonts, colors, and positioning
+         */
         void setupUI();
+        
+        /**
+         * @brief Update element positions based on window size
+         * @param windowSize Current window dimensions for responsive layout
+         */
         void updateLayout(const sf::Vector2u& windowSize);
         
-        // Event handling methods
+        // Event Handling Methods
+        /**
+         * @brief Handle window resize events
+         * @param event The resize event containing new dimensions
+         */
         void handleResizeEvent(const sf::Event& event);
+        
+        /**
+         * @brief Handle keyboard input events (Escape key)
+         * @param event The keyboard event for navigation shortcuts
+         */
         void handleKeyboardEvent(const sf::Event& event);
+        
+        /**
+         * @brief Handle mouse button click events
+         * @param event The mouse button event for UI interactions
+         */
         void handleMouseButtonEvent(const sf::Event& event);
+        
+        /**
+         * @brief Handle text input events for server code entry
+         * @param event The text input event with numeric validation
+         */
         void handleTextInputEvent(const sf::Event& event);
+        
+        /**
+         * @brief Handle mouse movement events for button hover effects
+         * @param event The mouse move event for visual feedback
+         */
         void handleMouseMoveEvent(const sf::Event& event);
         
-        // Action methods
+        // Server Connection Methods
+        /**
+         * @brief Attempt to join an existing private server
+         * Validates server code and connects to specified private lobby
+         */
         void joinServer();
+        
+        /**
+         * @brief Create a new private server
+         * Generates random server code and creates new private lobby as admin
+         */
         void createServer();
     };
 }
