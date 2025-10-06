@@ -1,5 +1,5 @@
 /**
- * @file PrivateServerLobbyState.hpp
+ * @file @file PrivateServerLobbyState.h
  * @brief Private server lobby state for the R-Type client GUI
  * 
  * This file defines the PrivateServerLobbyState class, which handles the lobby
@@ -21,9 +21,9 @@
 #ifndef CLIENT_PRIVATE_SERVER_LOBBY_STATE_HPP
 #define CLIENT_PRIVATE_SERVER_LOBBY_STATE_HPP
 
-#include "State.hpp"
-#include "StateManager.hpp"
-#include "GUIHelper.hpp"
+#include "State.h"
+#include "StateManager.h"
+#include "GUIHelper.h"
 #include <SFML/Graphics.hpp>
 #include <string>
 

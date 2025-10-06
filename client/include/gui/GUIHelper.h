@@ -1,5 +1,5 @@
 /**
- * @file GUIHelper.hpp
+ * @file @file GUIHelper.h
  * @brief Centralized GUI utilities and constants for the R-TYPE client
  * 
  * This file contains the GUIHelper class which provides static utility functions

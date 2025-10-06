@@ -10,7 +10,7 @@
  * @date 2025
  */
 
-#include "gui/FontManager.hpp"
+#include "gui/FontManager.h"
 #include <iostream>
 
 namespace rtype::client::gui {

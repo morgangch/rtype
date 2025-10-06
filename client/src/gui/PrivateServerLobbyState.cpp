@@ -17,9 +17,9 @@
  * @date 2024
  */
 
-#include "gui/PrivateServerLobbyState.hpp"
-#include "gui/GameState.hpp"
-#include "gui/MainMenuState.hpp"
+#include "gui/PrivateServerLobbyState.h"
+#include "gui/GameState.h"
+#include "gui/MainMenuState.h"
 #include <iostream>
 #include <cstdlib>
 

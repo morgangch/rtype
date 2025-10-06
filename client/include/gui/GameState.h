@@ -1,5 +1,5 @@
 /**
- * @file GameState.hpp
+ * @file GameState.h
  * @brief Space Invaders game state implementation for R-TYPE
  * 
  * This file contains the GameState class which implements the actual gameplay
@@ -13,8 +13,8 @@
 #ifndef CLIENT_GAME_STATE_HPP
 #define CLIENT_GAME_STATE_HPP
 
-#include "State.hpp"
-#include "StateManager.hpp"
+#include "State.h"
+#include "StateManager.h"
 #include <SFML/Graphics.hpp>
 #include <vector>
 

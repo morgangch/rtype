@@ -1,5 +1,5 @@
 /**
- * @file NetworkManager.hpp
+ * @file @file NetworkManager.h
  * @brief Network management system for the R-TYPE client GUI
  * 
  * This file defines the NetworkManager class which provides a bridge between

@@ -1,5 +1,5 @@
 /**
- * @file MainMenuState.hpp
+ * @file @file MainMenuState.h
  * @brief Main menu screen implementation for the R-TYPE client
  * 
  * This file contains the MainMenuState class which implements the main menu
@@ -13,9 +13,9 @@
 #ifndef CLIENT_MAIN_MENU_STATE_HPP
 #define CLIENT_MAIN_MENU_STATE_HPP
 
-#include "State.hpp"
-#include "StateManager.hpp"
-#include "GUIHelper.hpp"
+#include "State.h"
+#include "StateManager.h"
+#include "GUIHelper.h"
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <functional>

@@ -1,5 +1,5 @@
 /**
- * @file FontManager.hpp
+ * @file @file FontManager.h
  * @brief Centralized font management system for the R-TYPE client GUI
  * 
  * This file contains the FontManager class which implements a singleton pattern

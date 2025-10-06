@@ -20,8 +20,8 @@
  * @date 2025
  */
 
-#include "gui/GameState.hpp"
-#include "gui/MainMenuState.hpp"
+#include "gui/GameState.h"
+#include "gui/MainMenuState.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
