@@ -2,6 +2,20 @@
  * @file GameState.cpp
  * @brief Implementation of the Space Invaders game state
  * 
+ * This file implements the GameState class which provides a playable
+ * Space Invaders style game with player movement, enemy spawning,
+ * collision detection, and rendering.
+ * 
+ * The implementation follows the State pattern interface defined in State.hpp
+ * and integrates seamlessly with the StateManager for state transitions.
+ * 
+ * Key implementation details:
+ * - Uses SFML for rendering and input handling
+ * - Implements normalized diagonal movement for consistent speed
+ * - Static starfield for optimized rendering
+ * - Simple AABB collision detection
+ * - Automatic enemy cleanup when off-screen
+ * 
  * @author R-TYPE Development Team
  * @date 2025
  */
