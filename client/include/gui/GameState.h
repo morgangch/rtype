@@ -83,14 +83,29 @@ namespace rtype::client::gui {
         
     private:
         /**
-         * @brief Player ship structure
+         * @struct Player
+         * @brief Represents the player's ship in the game
+         * 
+         * The Player structure contains all data related to the player's ship including
+         * position, size, speed, and collision bounds calculation.
          */
         struct Player {
+            /** @brief Current position of the player (center point) */
             sf::Vector2f position{100.0f, 360.0f};  // Centered vertically
+            
+            /** @brief Size of the player ship (width, height) */
             sf::Vector2f size{32.0f, 32.0f};
+            
+            /** @brief Movement speed in pixels per second */
             float speed{300.0f};
             
-            // Get bounding box for collision
+            /**
+             * @brief Get the axis-aligned bounding box for collision detection
+             * @return sf::FloatRect representing the player's collision box
+             * 
+             * Calculates the bounding rectangle centered on the player's position.
+             * Used for AABB collision detection with enemies.
+             */
             sf::FloatRect getBounds() const {
                 return sf::FloatRect(
                     position.x - size.x * 0.5f,
@@ -102,14 +117,29 @@ namespace rtype::client::gui {
         };
         
         /**
-         * @brief Enemy structure
+         * @struct Enemy
+         * @brief Represents an enemy ship in the game
+         * 
+         * The Enemy structure contains all data for enemy ships that move from
+         * right to left across the screen.
          */
         struct Enemy {
+            /** @brief Current position of the enemy (center point) */
             sf::Vector2f position;
+            
+            /** @brief Size of the enemy ship (width, height) */
             sf::Vector2f size{24.0f, 24.0f};
+            
+            /** @brief Movement speed in pixels per second (leftward) */
             float speed{100.0f};
             
-            // Get bounding box for collision
+            /**
+             * @brief Get the axis-aligned bounding box for collision detection
+             * @return sf::FloatRect representing the enemy's collision box
+             * 
+             * Calculates the bounding rectangle centered on the enemy's position.
+             * Used for AABB collision detection with the player.
+             */
             sf::FloatRect getBounds() const {
                 return sf::FloatRect(
                     position.x - size.x * 0.5f,
@@ -120,43 +150,167 @@ namespace rtype::client::gui {
             }
         };
         
-        // Game logic methods
+        /**
+         * @brief Update the player's position based on input
+         * @param deltaTime Time elapsed since last frame in seconds
+         * 
+         * Moves the player ship based on current input state (ZQSD/Arrow keys).
+         * Handles diagonal movement normalization and screen boundary clamping.
+         * Player is restricted to the left third of the screen.
+         */
         void updatePlayer(float deltaTime);
+        
+        /**
+         * @brief Update all enemies' positions and remove off-screen ones
+         * @param deltaTime Time elapsed since last frame in seconds
+         * 
+         * Moves all enemies from right to left. Removes enemies that have
+         * moved completely off the left side of the screen.
+         */
         void updateEnemies(float deltaTime);
+        
+        /**
+         * @brief Check for collisions between player and enemies
+         * 
+         * Uses AABB (Axis-Aligned Bounding Box) collision detection.
+         * If a collision is detected, the game is reset.
+         */
         void checkCollisions();
+        
+        /**
+         * @brief Spawn a new enemy at a random vertical position
+         * 
+         * Creates a new enemy on the right edge of the screen at a random
+         * Y position. Only spawns if the current enemy count is below MAX_ENEMIES.
+         */
         void spawnEnemy();
+        
+        /**
+         * @brief Reset the game to initial state
+         * 
+         * Resets player position to starting point and clears all enemies.
+         * Called when the player collides with an enemy or when starting a new game.
+         */
         void resetGame();
         
-        // Rendering methods
+        /**
+         * @brief Render the animated starfield background
+         * @param window The render window to draw to
+         * 
+         * Draws a space-themed background with moving stars to create
+         * a parallax scrolling effect.
+         */
         void renderStarfield(sf::RenderWindow& window);
+        
+        /**
+         * @brief Render the player ship
+         * @param window The render window to draw to
+         * 
+         * Draws the player's ship as a green triangle pointing right.
+         */
         void renderPlayer(sf::RenderWindow& window);
+        
+        /**
+         * @brief Render all enemy ships
+         * @param window The render window to draw to
+         * 
+         * Draws all active enemies as red triangles pointing left.
+         */
         void renderEnemies(sf::RenderWindow& window);
         
-        // Input handling
+        /**
+         * @brief Get the current movement vector from input state
+         * @return sf::Vector2f Normalized movement direction vector
+         * 
+         * Combines keyboard input (ZQSD/Arrow keys) into a movement vector.
+         * The vector is normalized for diagonal movement to prevent faster diagonal speed.
+         */
         sf::Vector2f getMovementInput() const;
         
-        // State reference
+        /**
+         * @brief Reference to the state manager for state transitions
+         * 
+         * Used to switch between game states (e.g., return to main menu).
+         */
         StateManager& m_stateManager;
         
-        // Game objects
+        /**
+         * @brief The player's ship data
+         * 
+         * Contains position, size, speed, and collision information for the player.
+         */
         Player m_player;
+        
+        /**
+         * @brief Active enemy ships in the game
+         * 
+         * Vector of all currently active enemies. Enemies are added via spawnEnemy()
+         * and removed when they move off-screen or on collision.
+         */
         std::vector<Enemy> m_enemies;
         
-        // Spawn timing
+        /**
+         * @brief Timer for enemy spawning
+         * 
+         * Accumulates delta time. When it exceeds ENEMY_SPAWN_INTERVAL,
+         * a new enemy is spawned and the timer resets.
+         */
         float m_enemySpawnTimer{0.0f};
+        
+        /**
+         * @brief Interval between enemy spawns in seconds
+         */
         static constexpr float ENEMY_SPAWN_INTERVAL{2.0f};
+        
+        /**
+         * @brief Maximum number of simultaneous enemies
+         * 
+         * Prevents excessive enemy spawning that could impact performance.
+         */
         static constexpr size_t MAX_ENEMIES{10};
         
-        // Input state tracking
+        /**
+         * @brief Input state: Up key (Z or Arrow Up) is pressed
+         */
         bool m_keyUp{false};
+        
+        /**
+         * @brief Input state: Down key (S or Arrow Down) is pressed
+         */
         bool m_keyDown{false};
+        
+        /**
+         * @brief Input state: Left key (Q or Arrow Left) is pressed
+         */
         bool m_keyLeft{false};
+        
+        /**
+         * @brief Input state: Right key (D or Arrow Right) is pressed
+         */
         bool m_keyRight{false};
+        
+        /**
+         * @brief Input state: Fire key (Space) is pressed
+         * 
+         * @note Not yet implemented in gameplay
+         */
         bool m_keyFire{false};
         
-        // Screen bounds
+        /**
+         * @brief Screen width in pixels
+         */
         static constexpr float SCREEN_WIDTH{1280.0f};
+        
+        /**
+         * @brief Screen height in pixels
+         */
         static constexpr float SCREEN_HEIGHT{720.0f};
+        
+        /**
+         * @brief Maximum X position for player movement
+         * 
+         * Restricts player to the left third of the screen (Space Invaders style).
+         */
         static constexpr float PLAYER_BOUNDS_RIGHT{SCREEN_WIDTH * 0.3f}; // Left third only
     };
     
