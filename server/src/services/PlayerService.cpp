@@ -39,6 +39,10 @@ ECS::EntityID player_service::findPlayerByNetwork(const uint8_t *uint8_t, uint16
     return findPlayerByNetwork(ip, port);
 }
 
+ECS::EntityID player_service::findPlayerByNetwork(const sockaddr_in &addr) {
+    return findPlayerByNetwork((const uint8_t *) &addr.sin_addr, ntohs(addr.sin_port));
+}
+
 std::vector<ECS::EntityID> player_service::findPlayersByRoomCode(int room_code) {
     std::vector<ECS::EntityID> players_in_room;
     auto players = root.world.GetAllComponents<rtype::common::components::Player>();

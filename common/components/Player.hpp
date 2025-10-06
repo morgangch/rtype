@@ -12,9 +12,20 @@ namespace rtype::common::components {
         unsigned int room_code;
         std::string name;
 
+        /**
+         * @brief The packet manager for the player.
+         */
+        PacketManager packet_manager;
+
+        /**
+         * @brief The packet handler for the player.
+         */
+        PacketHandler packet_handler;
+
     public:
         Player(std::string name, unsigned int room_code) : room_code(room_code) {
             this->name = name;
+
         }
     };
 }
