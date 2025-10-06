@@ -39,59 +39,63 @@ void GameState::handleEvent(const sf::Event& event) {
         m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
         return;
     }
-    
-    // Track key presses
+
     if (event.type == sf::Event::KeyPressed) {
-        switch (event.key.code) {
-            case sf::Keyboard::Z:
-            case sf::Keyboard::Up:
-                m_keyUp = true;
-                break;
-            case sf::Keyboard::S:
-            case sf::Keyboard::Down:
-                m_keyDown = true;
-                break;
-            case sf::Keyboard::Q:
-            case sf::Keyboard::Left:
-                m_keyLeft = true;
-                break;
-            case sf::Keyboard::D:
-            case sf::Keyboard::Right:
-                m_keyRight = true;
-                break;
-            case sf::Keyboard::Space:
-                m_keyFire = true;
-                break;
-            default:
-                break;
-        }
+        handleKeyPressed(event.key.code);
+    } else if (event.type == sf::Event::KeyReleased) {
+        handleKeyReleased(event.key.code);
     }
-    
-    // Track key releases
-    if (event.type == sf::Event::KeyReleased) {
-        switch (event.key.code) {
-            case sf::Keyboard::Z:
-            case sf::Keyboard::Up:
-                m_keyUp = false;
-                break;
-            case sf::Keyboard::S:
-            case sf::Keyboard::Down:
-                m_keyDown = false;
-                break;
-            case sf::Keyboard::Q:
-            case sf::Keyboard::Left:
-                m_keyLeft = false;
-                break;
-            case sf::Keyboard::D:
-            case sf::Keyboard::Right:
-                m_keyRight = false;
-                break;
-            case sf::Keyboard::Space:
-                m_keyFire = false;
-                break;
-            default:
-                break;
-        }
+}
+
+void GameState::handleKeyPressed(sf::Keyboard::Key key) {
+    switch (key) {
+        case sf::Keyboard::Z:
+        case sf::Keyboard::Up:
+            m_keyUp = true;
+            break;
+        case sf::Keyboard::S:
+        case sf::Keyboard::Down:
+            m_keyDown = true;
+            break;
+        case sf::Keyboard::Q:
+        case sf::Keyboard::Left:
+            m_keyLeft = true;
+            break;
+        case sf::Keyboard::D:
+        case sf::Keyboard::Right:
+            m_keyRight = true;
+            break;
+        case sf::Keyboard::Space:
+            m_keyFire = true;
+            break;
+        default:
+            break;
+    }
+}
+
+void GameState::handleKeyReleased(sf::Keyboard::Key key) {
+    switch (key) {
+        case sf::Keyboard::Z:
+        case sf::Keyboard::Up:
+            m_keyUp = false;
+            break;
+        case sf::Keyboard::S:
+        case sf::Keyboard::Down:
+            m_keyDown = false;
+            break;
+        case sf::Keyboard::Q:
+        case sf::Keyboard::Left:
+            m_keyLeft = false;
+            break;
+        case sf::Keyboard::D:
+        case sf::Keyboard::Right:
+            m_keyRight = false;
+            break;
+        case sf::Keyboard::Space:
+            m_keyFire = false;
+            break;
+        default:
+            break;
     }
 }
 
@@ -145,9 +149,9 @@ void GameState::updatePlayer(float deltaTime) {
         // Update position
         m_player.position += movement * m_player.speed * deltaTime;
         
-        // Clamp to screen bounds
+        // Clamp to screen bounds (full screen movement)
         m_player.position.x = std::max(m_player.size.x * 0.5f, 
-                                       std::min(m_player.position.x, PLAYER_BOUNDS_RIGHT));
+                                       std::min(m_player.position.x, SCREEN_WIDTH - m_player.size.x * 0.5f));
         m_player.position.y = std::max(m_player.size.y * 0.5f, 
                                        std::min(m_player.position.y, SCREEN_HEIGHT - m_player.size.y * 0.5f));
     }

@@ -1,5 +1,5 @@
 /**
- * @file @file PublicServerState.h
+ * @file PublicServerState.h
  * @brief Public server lobby state for the R-Type client GUI
  * 
  * This file defines the PublicServerState class, which handles the public

@@ -1,5 +1,5 @@
 /**
- * @file @file MainMenuState.h
+ * @file MainMenuState.h
  * @brief Main menu screen implementation for the R-TYPE client
  * 
  * This file contains the MainMenuState class which implements the main menu

@@ -60,6 +60,18 @@ namespace rtype::client::gui {
         void handleEvent(const sf::Event& event) override;
         
         /**
+         * @brief Handle key press events
+         * @param key The SFML key code that was pressed
+         */
+        void handleKeyPressed(sf::Keyboard::Key key);
+
+        /**
+         * @brief Handle key release events
+         * @param key The SFML key code that was released
+         */
+        void handleKeyReleased(sf::Keyboard::Key key);
+
+        /**
          * @brief Update game logic (player, enemies, collisions)
          * @param deltaTime Time elapsed since last update
          */
@@ -156,7 +168,7 @@ namespace rtype::client::gui {
          * 
          * Moves the player ship based on current input state (ZQSD/Arrow keys).
          * Handles diagonal movement normalization and screen boundary clamping.
-         * Player is restricted to the left third of the screen.
+         * Player can move freely across the entire screen.
          */
         void updatePlayer(float deltaTime);
         
@@ -305,13 +317,6 @@ namespace rtype::client::gui {
          * @brief Screen height in pixels
          */
         static constexpr float SCREEN_HEIGHT{720.0f};
-        
-        /**
-         * @brief Maximum X position for player movement
-         * 
-         * Restricts player to the left third of the screen (Space Invaders style).
-         */
-        static constexpr float PLAYER_BOUNDS_RIGHT{SCREEN_WIDTH * 0.3f}; // Left third only
     };
     
 } // namespace rtype::client::gui

@@ -1,5 +1,5 @@
 /**
- * @file @file StateManager.h
+ * @file StateManager.h
  * @brief State management system for the R-TYPE client GUI
  * 
  * This file contains the StateManager class which implements a stack-based
