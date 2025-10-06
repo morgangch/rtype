@@ -105,3 +105,4 @@ void room_service::closeRoom(ECS::EntityID room) {
         root.world.DestroyEntity(room);
     }
 }
+

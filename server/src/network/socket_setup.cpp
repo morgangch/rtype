@@ -13,7 +13,17 @@
 
 #include "network.h"
 #include "packets.h"
+#include "../../../common/components/Player.hpp"
+#include "services/PlayerService.h"
 
+
+namespace rtype::common::components {
+    class Player;
+}
+
+namespace rtype::server::components {
+    class NetworkAddress;
+}
 
 int rtype::server::network::setupUDPServer(int port) {
     int sockfd;
@@ -41,7 +51,7 @@ int rtype::server::network::setupUDPServer(int port) {
 void rtype::server::network::loop_send(int udp_server_fd) {
     std::vector<std::unique_ptr<packet_t> > packets = root.packetManager.fetchPacketsToSend();
 
-    for (auto& packet : packets) {
+    for (auto &packet: packets) {
         std::vector<uint8_t> serialized = PacketManager::serializePacket(*packet);
 
         // Extract client address and port from packet header
@@ -49,10 +59,10 @@ void rtype::server::network::loop_send(int udp_server_fd) {
         clientaddr.sin_family = AF_INET;
 
         // Convert client_addr[4] bytes to IP address - fix byte order
-        clientaddr.sin_addr.s_addr = ((uint32_t)packet->header.client_addr[0] << 0) |
-                                     ((uint32_t)packet->header.client_addr[1] << 8) |
-                                     ((uint32_t)packet->header.client_addr[2] << 16) |
-                                     ((uint32_t)packet->header.client_addr[3] << 24);
+        clientaddr.sin_addr.s_addr = ((uint32_t) packet->header.client_addr[0] << 0) |
+                                     ((uint32_t) packet->header.client_addr[1] << 8) |
+                                     ((uint32_t) packet->header.client_addr[2] << 16) |
+                                     ((uint32_t) packet->header.client_addr[3] << 24);
 
         // Set client port (convert from host to network byte order)
         clientaddr.sin_port = htons(packet->header.client_port);
@@ -84,9 +94,14 @@ void rtype::server::network::loop_recv(int udp_server_fd) {
 
     if (n > 0) {
         std::cout << "[INFO] Received UDP packet of size " << n << std::endl;
-        PacketManager::deserializePacket(buffer, n, packet);
-        std::cout << "[INFO] Packet seqid: " << packet.header.seqid << ", type: " << static_cast<int>(packet.header.type) <<
-                std::endl;
-        root.packetManager.handlePacketBytes(buffer, n, cliaddr);
+
+        // Redirect to the appropriate player or to the global packet manager
+        auto pid = rtype::server::services::player_service::findPlayerByNetwork(cliaddr);
+        if (pid) {
+            auto p = root.world.GetComponent<rtype::common::components::Player>(pid);
+            p->packet_manager.handlePacketBytes(buffer, n, cliaddr);
+        } else {
+            root.packetManager.handlePacketBytes(buffer, n, cliaddr);
+        }
     }
 }

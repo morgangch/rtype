@@ -8,6 +8,7 @@
 #define PLAYERSERVICE_H
 #include <string>
 #include <vector>
+#include <netinet/in.h>
 
 #include "ECS/Types.hpp"
 
@@ -30,9 +31,8 @@ namespace rtype::server::services::player_service {
      * @return The EntityID of the player, or 0 if not found
      */
     ECS::EntityID findPlayerByNetwork(const std::string &ip, int port);
-
     ECS::EntityID findPlayerByNetwork(const uint8_t *ip, uint16_t port);
-
+    ECS::EntityID findPlayerByNetwork(const sockaddr_in &addr);
     /**
      * @brief Find players from a room code
      * @param room_code The room code

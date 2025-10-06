@@ -37,7 +37,11 @@ void room_controller::handleJoinRoomPacket(const packet_t &packet) {
     JoinRoomPacket *p = (JoinRoomPacket *) packet.data;
 
     ECS::EntityID room = 0;
-    ECS::EntityID player = player_service::createNewPlayer(std::string(p->name));
+    // convert ip to string
+    std::string ip_str = "";
+
+    ECS::EntityID player = player_service::createNewPlayer(std::string(p->name), p->joinCode, ip_str,
+                                                           packet.header.client_port);
 
     if (p->joinCode == 0) {
         // Create a new private room
