@@ -92,13 +92,11 @@ namespace rtype::client::gui {
         sf::Text titleText;             ///< "THE TOP R-TYPE" title
         sf::Text usernameText;          ///< User-entered username display
         sf::Text usernameHintText;      ///< Placeholder text for username field
-        sf::Text playGameButton;       ///< "Play Game" button text
         sf::Text publicServersButton;  ///< "Public servers" button text
         sf::Text privateServersButton; ///< "Private servers" button text
         
         // UI Visual Elements
         sf::RectangleShape usernameBox;     ///< Input field background
-        sf::RectangleShape playGameButtonRect;   ///< Play game button clickable area
         sf::RectangleShape publicButtonRect;   ///< Public servers button clickable area
         sf::RectangleShape privateButtonRect;  ///< Private servers button clickable area
         
@@ -146,12 +144,6 @@ namespace rtype::client::gui {
         void handleMouseMoveEvent(const sf::Event& event);
         
         // Button action handlers
-        /**
-         * @brief Handle play game button click
-         * Transitions to GameState to start playing
-         */
-        void onPlayGameClick();
-        
         /**
          * @brief Handle public servers button click
          * Transitions to PublicServerState with current username

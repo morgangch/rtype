@@ -12,7 +12,6 @@
  */
 
 #include "gui/MainMenuState.hpp"
-#include "gui/GameState.hpp"
 #include "gui/PublicServerState.hpp"
 #include "gui/PrivateServerState.hpp"
 #include <iostream>
@@ -50,7 +49,6 @@ namespace rtype::client::gui {
         usernameHintText.setFillColor(GUIHelper::Colors::HINT_TEXT);
         
         // Button setup using GUIHelper
-        GUIHelper::setupButton(playGameButton, playGameButtonRect, "Play Game", GUIHelper::Sizes::BUTTON_FONT_SIZE);
         GUIHelper::setupButton(publicServersButton, publicButtonRect, "Public servers", GUIHelper::Sizes::BUTTON_FONT_SIZE);
         GUIHelper::setupButton(privateServersButton, privateButtonRect, "Private servers", GUIHelper::Sizes::BUTTON_FONT_SIZE);
     }
@@ -82,13 +80,6 @@ namespace rtype::client::gui {
         float buttonHeight = 60.0f;
         float buttonSpacing = 20.0f;
         float buttonY = centerY + 80.0f;
-        
-        // Play Game button (centered, first button)
-        playGameButtonRect.setSize(sf::Vector2f(buttonWidth, buttonHeight));
-        playGameButtonRect.setPosition(centerX - buttonWidth / 2, buttonY - 100.0f);
-        GUIHelper::centerText(playGameButton, 
-                  playGameButtonRect.getPosition().x + buttonWidth / 2,
-                  playGameButtonRect.getPosition().y + buttonHeight / 2);
         
         // Public servers button
         publicButtonRect.setSize(sf::Vector2f(buttonWidth, buttonHeight));
@@ -137,10 +128,6 @@ namespace rtype::client::gui {
                 isTyping = true;
                 usernameBox.setOutlineColor(sf::Color::Cyan);
             }
-            // Check play game button
-            else if (GUIHelper::isPointInRect(mousePos, playGameButtonRect)) {
-                onPlayGameClick();
-            }
             // Check public servers button
             else if (GUIHelper::isPointInRect(mousePos, publicButtonRect)) {
                 onPublicServersClick();
@@ -174,11 +161,6 @@ namespace rtype::client::gui {
     
     void MainMenuState::handleMouseMoveEvent(const sf::Event& event) {
         sf::Vector2f mousePos(event.mouseMove.x, event.mouseMove.y);
-        
-        // Play Game button hover
-        GUIHelper::applyButtonHover(playGameButtonRect, playGameButton, 
-                                  GUIHelper::isPointInRect(mousePos, playGameButtonRect),
-                                  GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
         
         // Public button hover
         GUIHelper::applyButtonHover(publicButtonRect, publicServersButton, 
@@ -223,17 +205,10 @@ namespace rtype::client::gui {
         }
         
         // Render buttons
-        window.draw(playGameButtonRect);
-        window.draw(playGameButton);
         window.draw(publicButtonRect);
         window.draw(publicServersButton);
         window.draw(privateButtonRect);
         window.draw(privateServersButton);
-    }
-    
-    void MainMenuState::onPlayGameClick() {
-        std::cout << "Starting game..." << std::endl;
-        stateManager.changeState(std::make_unique<GameState>(stateManager));
     }
     
     void MainMenuState::onPublicServersClick() {
