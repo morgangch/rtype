@@ -16,6 +16,8 @@ target_link_libraries(client PRIVATE ecs common packethandler packetmanager)
 
 target_include_directories(client PRIVATE include)
 
+target_link_libraries(client PRIVATE sfml-graphics sfml-window sfml-system)
+
 
 # Set output directory - handle both single and multi-config generators
 if(CMAKE_CONFIGURATION_TYPES)
