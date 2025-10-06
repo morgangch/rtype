@@ -3,8 +3,7 @@
 
 #include <Graphics.hpp>
 #include <Input.hpp>
-#include "gui/StateManager.hpp"
-#include "gui/states/MainMenuState.hpp"
+#include <SFML/Graphics.hpp>
 #include <memory>
 #include <string>
 #include <chrono>
@@ -14,12 +13,11 @@
 namespace rtype::client {
 
 /**
- * @brief Main Game Application that handles Menu and InGame modes
+ * @brief Main Game Application (Game only, no menu)
  */
 class GameApp {
 public:
     enum class Mode {
-        Menu,
         InGame
     };
     
@@ -32,17 +30,12 @@ public:
     void Shutdown();
     
     // Mode switching
-    void SwitchToMenu();
     void SwitchToInGame();
     
 private:
     void HandleEvents();
     void Update(float deltaTime);
     void Render();
-    
-    // Menu mode methods
-    void UpdateMenu(float deltaTime);
-    void RenderMenu();
     
     // InGame mode methods
     void UpdateInGame(float deltaTime);
@@ -59,8 +52,7 @@ private:
     Mode currentMode;
     bool isRunning;
     
-    // Menu system
-    std::unique_ptr<rtype::client::gui::StateManager> stateManager;
+    // Window reference
     sf::RenderWindow* window;
     
     // Game objects

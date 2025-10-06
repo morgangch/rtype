@@ -9,9 +9,8 @@ namespace rtype::client {
 GameApp::GameApp() : 
     graphics(),
     input(),
-    currentMode(Mode::Menu),
+    currentMode(Mode::InGame),
     isRunning(false),
-    stateManager(nullptr),
     window(nullptr) {
 }
 
@@ -25,13 +24,13 @@ bool GameApp::Initialize(int width, int height, const std::string& title) {
     screenWidth = static_cast<float>(width);
     screenHeight = static_cast<float>(height);
     
-    // Initialize graphics system ONCE
+    // Initialize graphics system
     if (!graphics.Initialize(width, height, title)) {
         std::cout << "Failed to initialize graphics!" << std::endl;
         return false;
     }
     
-    // Initialize input system ONCE
+    // Initialize input system
     if (!input.Initialize()) {
         std::cout << "Failed to initialize input!" << std::endl;
         return false;
@@ -40,7 +39,7 @@ bool GameApp::Initialize(int width, int height, const std::string& title) {
     // Connect input to graphics
     graphics.SetInputManager(&input.GetInputManager());
     
-    // Get SFML window for GUI
+    // Get SFML window
     window = graphics.GetSFMLWindow();
     if (!window) {
         std::cout << "Failed to get SFML window from graphics system!" << std::endl;
@@ -49,28 +48,13 @@ bool GameApp::Initialize(int width, int height, const std::string& title) {
     
     window->setFramerateLimit(60);
     
-    // Initialize menu system
-    stateManager = std::make_unique<rtype::client::gui::StateManager>(*window);
-    
-    // Set callback for game start
-    stateManager->setOnGameStartCallback([this]() {
-        std::cout << "Switching to game mode!" << std::endl;
-        SwitchToInGame();
-    });
-    
-    // Create and push initial main menu state  
-    auto mainMenuState = std::make_unique<rtype::client::gui::MainMenuState>(*stateManager);
-    stateManager->pushState(std::move(mainMenuState));
-    
     // Initialize game objects
     player.x = 100.0f;
     player.y = screenHeight * 0.5f;
     
     isRunning = true;
-    currentMode = Mode::Menu;
     
-    std::cout << "Unified application initialized successfully!" << std::endl;
-    std::cout << "Starting in Menu mode" << std::endl;
+    std::cout << "Game application initialized successfully!" << std::endl;
     
     return true;
 }
@@ -114,85 +98,41 @@ void GameApp::HandleEvents() {
             return;
         }
         
-        // Handle ESC key for both modes
+        // Handle ESC key to exit
         if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
-            if (currentMode == Mode::InGame) {
-                std::cout << "ESC pressed in game, returning to menu..." << std::endl;
-                SwitchToMenu();
-                return;
-            } else {
-                std::cout << "ESC pressed in menu, exiting..." << std::endl;
-                isRunning = false;
-                return;
+            std::cout << "ESC pressed, exiting game..." << std::endl;
+            isRunning = false;
+            return;
+        }
+        
+        // Pass key events to input system
+        if (event.type == sf::Event::KeyPressed) {
+            // Convert SFML key to our Key enum
+            auto key = rtype::client::input::SFMLKeyConverter::SFMLToKey(event.key.code);
+            if (key != rtype::client::input::Key::Count) {
+                input.GetInputManager().HandleKeyPressed(key);
             }
-        }
-        
-        // Pass events to menu system
-        if (currentMode == Mode::Menu && stateManager) {
-            stateManager->handleEvent(event);
-        }
-        
-        // Pass events to input system for game mode  
-        if (currentMode == Mode::InGame) {
-            if (event.type == sf::Event::KeyPressed) {
-                // Convert SFML key to our Key enum
-                auto key = rtype::client::input::SFMLKeyConverter::SFMLToKey(event.key.code);
-                if (key != rtype::client::input::Key::Count) {
-                    input.GetInputManager().HandleKeyPressed(key);
-                }
-            } else if (event.type == sf::Event::KeyReleased) {
-                // Convert SFML key to our Key enum
-                auto key = rtype::client::input::SFMLKeyConverter::SFMLToKey(event.key.code);
-                if (key != rtype::client::input::Key::Count) {
-                    input.GetInputManager().HandleKeyReleased(key);
-                }
+        } else if (event.type == sf::Event::KeyReleased) {
+            // Convert SFML key to our Key enum
+            auto key = rtype::client::input::SFMLKeyConverter::SFMLToKey(event.key.code);
+            if (key != rtype::client::input::Key::Count) {
+                input.GetInputManager().HandleKeyReleased(key);
             }
         }
     }
     
-    // Update input system continuously for game mode
-    if (currentMode == Mode::InGame) {
-        input.Update();
-    }
+    // Update input system continuously
+    input.Update();
 }
 
 void GameApp::Update(float deltaTime) {
-    if (currentMode == Mode::Menu) {
-        UpdateMenu(deltaTime);
-    } else if (currentMode == Mode::InGame) {
-        UpdateInGame(deltaTime);
-    }
+    UpdateInGame(deltaTime);
 }
 
 void GameApp::Render() {
     graphics.BeginFrame();
-    
-    if (currentMode == Mode::Menu) {
-        RenderMenu();
-    } else if (currentMode == Mode::InGame) {
-        RenderInGame();
-    }
-    
+    RenderInGame();
     graphics.EndFrame();
-}
-
-void GameApp::UpdateMenu(float deltaTime) {
-    if (stateManager && !stateManager->isEmpty()) {
-        stateManager->update(deltaTime);
-    }
-}
-
-void GameApp::RenderMenu() {
-    // Clear with dark background for menu
-    window->clear(sf::Color(20, 20, 30));
-    
-    // Render current menu state
-    if (stateManager && !stateManager->isEmpty()) {
-        stateManager->render();
-    }
-    
-    // Display
-    window->display();
 }
 
 void GameApp::UpdateInGame(float deltaTime) {
@@ -323,27 +263,6 @@ void GameApp::HandleCollisions() {
     }
 }
 
-void GameApp::SwitchToMenu() {
-    std::cout << "Switching to Menu mode" << std::endl;
-    currentMode = Mode::Menu;
-    
-    // Reset game state
-    enemies.clear();
-    enemySpawnTimer = 0.0f;
-    player.x = 100.0f;
-    player.y = screenHeight * 0.5f;
-    
-    // Make sure menu state manager is ready
-    if (!stateManager || stateManager->isEmpty()) {
-        stateManager = std::make_unique<rtype::client::gui::StateManager>(*window);
-        stateManager->setOnGameStartCallback([this]() {
-            SwitchToInGame();
-        });
-        auto mainMenuState = std::make_unique<rtype::client::gui::MainMenuState>(*stateManager);
-        stateManager->pushState(std::move(mainMenuState));
-    }
-}
-
 void GameApp::SwitchToInGame() {
     std::cout << "Switching to InGame mode" << std::endl;
     currentMode = Mode::InGame;
@@ -357,18 +276,13 @@ void GameApp::SwitchToInGame() {
     std::cout << "Game mode active! Controls:" << std::endl;
     std::cout << "  ZQSD/Arrows - Move player ship" << std::endl;
     std::cout << "  SPACE - Fire" << std::endl;
-    std::cout << "  ESC - Return to menu" << std::endl;
+    std::cout << "  ESC - Exit game" << std::endl;
 }
 
 void GameApp::Shutdown() {
-    if (stateManager) {
-        stateManager.reset();
-    }
-    
     input.Shutdown();
-    
     isRunning = false;
-    std::cout << "Unified application shut down." << std::endl;
+    std::cout << "Game application shut down." << std::endl;
 }
 
 } // namespace rtype::client
