@@ -1,28 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Add client libraries subdirectory first
-add_subdirectory(lib)
+# Client executable - Auto-discover all .cpp files in current directory and subdirectories
+file(GLOB_RECURSE CLIENT_SOURCES "*.cpp")
 
-# Client executable - organized source structure
-add_executable(client 
-    main.cpp
-    src/application/ApplicationManager.cpp
-    src/application/MenuApplication.cpp
-    src/application/GameApplication.cpp
-    src/application/GameApp.cpp
-    src/gui/StateManager.cpp
-    src/gui/states/MainMenuState.cpp
-    src/gui/states/PrivateServerLobbyState.cpp
-    src/gui/states/PrivateServerState.cpp
-    src/gui/states/PublicServerState.cpp
-    src/gui/widgets/MainMenu.cpp
-)
-
-# Test executable for debugging input and performance issues
-add_executable(test_client
-    ../test_client.cpp
-    src/TestMode.cpp
-)
+add_executable(client ${CLIENT_SOURCES})
 
 # Include directories for client headers
 target_include_directories(client PRIVATE
@@ -30,30 +11,12 @@ target_include_directories(client PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}     # Current directory
 )
 
-# Link with ECS, common libraries, and client libraries
-target_link_libraries(client PRIVATE 
-    ecs 
-    common 
-    packethandler 
-    packetmanager
-    client_libs  # This provides client_graphics, client_input, etc.
-)
+# Link with ECS and common libraries
+target_link_libraries(client PRIVATE ecs common packethandler packetmanager)
 
 target_include_directories(client PRIVATE include)
 
 target_link_libraries(client PRIVATE sfml-graphics sfml-window sfml-system)
-
-# Configure test_client
-target_include_directories(test_client PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/..
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
-target_link_libraries(test_client PRIVATE 
-    client_libs
-    sfml-graphics sfml-window sfml-system
-)
 
 
 # Set output directory - handle both single and multi-config generators
@@ -67,9 +30,6 @@ if(CMAKE_CONFIGURATION_TYPES)
 else()
     # Single config generators (Make, Ninja)
     set_target_properties(client PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-    )
-    set_target_properties(test_client PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
     )
 endif()
