@@ -10,7 +10,7 @@
  * @date 2024
  */
 
-#include "gui/NetworkManager.hpp"
+#include "gui/NetworkManager.h"
 #include <iostream>
 #include <chrono>
 #include <thread>

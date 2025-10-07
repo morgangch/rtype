@@ -26,8 +26,8 @@
  */
 
 #include <SFML/Graphics.hpp>
-#include "gui/StateManager.hpp"
-#include "gui/MainMenuState.hpp"
+#include "gui/StateManager.h"
+#include "gui/MainMenuState.h"
 #include <iostream>
 #include <cstdlib>
 #include <ctime>

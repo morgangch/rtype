@@ -1,5 +1,5 @@
 /**
- * @file PublicServerState.hpp
+ * @file PublicServerState.h
  * @brief Public server lobby state for the R-Type client GUI
  * 
  * This file defines the PublicServerState class, which handles the public
@@ -21,9 +21,9 @@
 #ifndef CLIENT_PUBLIC_SERVER_STATE_HPP
 #define CLIENT_PUBLIC_SERVER_STATE_HPP
 
-#include "State.hpp"
-#include "StateManager.hpp"
-#include "GUIHelper.hpp"
+#include "State.h"
+#include "StateManager.h"
+#include "GUIHelper.h"
 #include <SFML/Graphics.hpp>
 #include <string>
 
