@@ -441,10 +441,19 @@ namespace rtype::client::gui {
          * @brief Show the in-game menu (pause or game over)
          * 
          * Transitions to in-game menu state and displays menu options.
+         * Resets all input states to prevent stuck keys.
          * 
          * @param isGameOver True if player died (game over), false if paused
          */
         void showInGameMenu(bool isGameOver = false);
+        
+        /**
+         * @brief Resume the game from in-game menu
+         * 
+         * Returns to playing state and resets all input states to ensure
+         * no keys remain in "pressed" state from the menu.
+         */
+        void resumeGame();
         
         /**
          * @brief Get the current movement vector from input state

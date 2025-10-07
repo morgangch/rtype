@@ -79,14 +79,14 @@ void GameState::handleEvent(const sf::Event& event) {
                     if (m_isGameOver) {
                         resetGame();
                     }
-                    m_gameStatus = GameStatus::Playing;
+                    resumeGame(); // Clear input states and return to playing
                 } else {
                     // Return to main menu
                     m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
                 }
             } else if (event.key.code == sf::Keyboard::Escape && !m_isGameOver) {
                 // ESC to resume (only if paused, not game over)
-                m_gameStatus = GameStatus::Playing;
+                resumeGame(); // Clear input states and return to playing
             }
         }
         
@@ -104,7 +104,7 @@ void GameState::handleEvent(const sf::Event& event) {
                 if (m_isGameOver) {
                     resetGame();
                 }
-                m_gameStatus = GameStatus::Playing;
+                resumeGame(); // Clear input states and return to playing
             } else if (menuButton.contains(mousePos)) {
                 // Return to main menu
                 m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
@@ -484,6 +484,13 @@ void GameState::showInGameMenu(bool isGameOver) {
     m_isGameOver = isGameOver;
     m_selectedMenuOption = 0; // Default to first option
     
+    // Reset all input states to prevent keys from staying "pressed"
+    m_keyUp = false;
+    m_keyDown = false;
+    m_keyLeft = false;
+    m_keyRight = false;
+    m_keyFire = false;
+    
     // Update title and button text based on context
     if (isGameOver) {
         m_gameOverTitleText.setString("GAME OVER");
@@ -492,6 +499,23 @@ void GameState::showInGameMenu(bool isGameOver) {
         m_gameOverTitleText.setString("PAUSED");
         m_restartText.setString("Resume");
     }
+}
+
+/**
+ * @brief Resume the game from in-game menu
+ * 
+ * Returns to playing state and resets all input states to ensure
+ * no keys remain in "pressed" state from the menu.
+ */
+void GameState::resumeGame() {
+    m_gameStatus = GameStatus::Playing;
+    
+    // Reset all input states to prevent keys from staying "pressed"
+    m_keyUp = false;
+    m_keyDown = false;
+    m_keyLeft = false;
+    m_keyRight = false;
+    m_keyFire = false;
 }
 
 void GameState::resetGame() {
