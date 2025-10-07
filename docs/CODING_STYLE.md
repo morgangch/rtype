@@ -17,7 +17,7 @@ Toutes les classes, fonctions et méthodes doivent être documentées en utilisa
 ```cpp
 /**
  * @file PlayerManager.h
-* @brief Defines the player management logic.
+ * @brief Defines the player management logic.
 */
 ```
 
