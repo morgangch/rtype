@@ -57,13 +57,13 @@ jobs:
             cmake build-essential ninja-build pkg-config \
             libcriterion-dev lcov gcovr \
             gcc g++ \
-            doxygen python3 python3-pip \
+            doxygen graphviz python3 python3-pip \
             clang clang-tidy cppcheck \
             unzip curl
       
       - name: Install CodeChecker for advanced analysis
         run: |
-          pip3 install CodeChecker || echo "CodeChecker installation skipped"
+          pip3 install CodeChecker --break-system-packages || echo "CodeChecker installation skipped"
         continue-on-error: true
       
       - name: Configure CMake project for testing
