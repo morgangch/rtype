@@ -1,5 +1,5 @@
 /**
- * @file @file State.h
+ * @file State.h
  * @brief Abstract base class for the state pattern implementation in R-TYPE GUI
  * 
  * This file defines the State interface which serves as the base class for all

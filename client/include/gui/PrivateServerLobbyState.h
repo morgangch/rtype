@@ -1,5 +1,5 @@
 /**
- * @file @file PrivateServerLobbyState.h
+ * @file PrivateServerLobbyState.h
  * @brief Private server lobby state for the R-Type client GUI
  * 
  * This file defines the PrivateServerLobbyState class, which handles the lobby

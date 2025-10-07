@@ -1,5 +1,5 @@
 /**
- * @file @file PrivateServerState.h
+ * @file PrivateServerState.h
  * @brief Private server connection state for the R-Type client GUI
  * 
  * This file defines the PrivateServerState class, which handles the interface
