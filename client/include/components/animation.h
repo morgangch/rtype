@@ -1,5 +1,5 @@
 /**
- * @file animation.hpp
+ * @file animation.h
  * @brief Animation component for sprite animation in the R-TYPE client
  * 
  * This file defines the Animation component which handles frame-by-frame

@@ -8,7 +8,7 @@
 #ifndef ROOMPROPERTIESCOMPONENT_H
 #define ROOMPROPERTIESCOMPONENT_H
 
-#include "ECS/Component.hpp"
+#include "ECS/Component.h"
 
 namespace rtype::server::components {
     class RoomProperties : public ECS::Component<RoomProperties> {

@@ -1,5 +1,5 @@
 /**
- * @file camera.hpp
+ * @file camera.h
  * @brief Camera component for viewport management in the R-TYPE client
  * 
  * This file defines the Camera component which controls the game's viewport.
@@ -13,7 +13,7 @@
 #define CLIENT_CAMERA_HPP
 
 #include <ECS/ECS.h>
-#include <common/components/Position.hpp>
+#include <common/components/Position.h>
 
 namespace rtype::client::components {
     /**

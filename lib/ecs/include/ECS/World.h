@@ -1,5 +1,5 @@
 /**
- * @file World.hpp
+ * @file World.h
  * @brief Central ECS world manager that coordinates entities and components
  * @author R-Type Team
  * @date 2025

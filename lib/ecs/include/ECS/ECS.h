@@ -1,5 +1,5 @@
 /**
- * @file ECS.hpp
+ * @file ECS.h
  * @brief Main header file for the Entity Component System library
  * @author R-Type Team
  * @date 2025
@@ -10,7 +10,7 @@
  *
  * @example Basic ECS Usage
  * ```cpp
- * #include <ECS/ECS.hpp>
+ * #include <ECS/ECS.h>
  *
  * // Define a component
  * class Position : public ECS::Component<Position> {

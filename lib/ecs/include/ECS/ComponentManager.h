@@ -1,5 +1,5 @@
 /**
- * @file ComponentManager.hpp
+ * @file ComponentManager.h
  * @brief Component management system for the ECS architecture
  * @author R-Type Team
  * @date 2025

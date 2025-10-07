@@ -1,5 +1,5 @@
 /**
- * @file Position.hpp
+ * @file Position.h
  * @brief Position component for 2D spatial positioning
  * 
  * This file defines the Position component which represents an entity's

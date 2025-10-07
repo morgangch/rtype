@@ -1,5 +1,5 @@
 /**
- * @file EntityManager.hpp
+ * @file EntityManager.h
  * @brief Entity management system for the ECS architecture
  * @author R-Type Team
  * @date 2025

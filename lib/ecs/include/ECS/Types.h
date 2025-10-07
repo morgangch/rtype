@@ -1,5 +1,5 @@
 /**
- * @file Types.hpp
+ * @file Types.h
  * @brief Core type definitions for the Entity Component System (ECS)
  * @author R-Type Team
  * @date 2025

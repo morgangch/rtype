@@ -1,5 +1,5 @@
 /**
- * @file audio.hpp
+ * @file audio.h
  * @brief Audio component for sound and music management in the R-TYPE client
  * 
  * This file defines the AudioSource component which represents an audio entity

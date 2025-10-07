@@ -1,5 +1,5 @@
 /**
- * @file client.hpp
+ * @file client.h
  * @brief Main header aggregating all client components
  * 
  * This convenience header includes all client-side component headers.

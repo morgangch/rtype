@@ -1,5 +1,5 @@
 /**
- * @file Health.hpp
+ * @file Health.h
  * @brief Health component for entity damage and life management
  * 
  * This file defines the Health component which manages an entity's health points,

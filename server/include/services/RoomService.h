@@ -6,7 +6,7 @@
 */
 #ifndef ROOMSERVICE_H
 #define ROOMSERVICE_H
-#include "ECS/Types.hpp"
+#include "ECS/Types.h"
 
 namespace rtype::server::services::room_service {
     /**

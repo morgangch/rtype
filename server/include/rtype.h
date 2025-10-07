@@ -8,7 +8,7 @@
 #define RTYPE_H
 #include "packethandler.h"
 #include "packetmanager.h"
-#include "ECS/World.hpp"
+#include "ECS/World.h"
 
 namespace rtype::server {
     class Rtype {

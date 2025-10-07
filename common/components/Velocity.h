@@ -1,5 +1,5 @@
 /**
- * @file Velocity.hpp
+ * @file Velocity.h
  * @brief Velocity component for 2D movement
  * 
  * This file defines the Velocity component which represents an entity's

@@ -8,7 +8,7 @@
 #include "services/PlayerService.h"
 #include "rtype.h"
 //TODO: optimize the following import.
-#include "../../../common/components/Player.hpp"
+#include "../../../common/components/Player.h"
 #include "components/PlayerConn.h"
 
 using namespace rtype::server::services;

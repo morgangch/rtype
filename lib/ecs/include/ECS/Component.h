@@ -1,5 +1,5 @@
 /**
- * @file Component.hpp
+ * @file Component.h
  * @brief Base component classes and type registration system for the ECS
  * @author R-Type Team
  * @date 2025
