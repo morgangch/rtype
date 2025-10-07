@@ -15,6 +15,7 @@
 
 #include "State.h"
 #include "StateManager.h"
+#include "ParallaxSystem.h"
 #include <SFML/Graphics.hpp>
 #include <vector>
 
@@ -379,15 +380,6 @@ namespace rtype::client::gui {
         void resetGame();
         
         /**
-         * @brief Render the animated starfield background
-         * @param window The render window to draw to
-         * 
-         * Draws a space-themed background with moving stars to create
-         * a parallax scrolling effect.
-         */
-        void renderStarfield(sf::RenderWindow& window);
-        
-        /**
          * @brief Render the player ship
          * @param window The render window to draw to
          * 
@@ -530,6 +522,11 @@ namespace rtype::client::gui {
          * and removed when they move off-screen or hit the player.
          */
         std::vector<EnemyProjectile> m_enemyProjectiles;
+        
+        /**
+         * @brief Parallax background system for space environment
+         */
+        ParallaxSystem m_parallaxSystem;
         
         /**
          * @brief Timer for enemy spawning

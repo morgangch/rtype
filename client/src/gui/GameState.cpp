@@ -30,7 +30,7 @@
 namespace rtype::client::gui {
 
 GameState::GameState(StateManager& stateManager)
-    : m_stateManager(stateManager) {
+    : m_stateManager(stateManager), m_parallaxSystem(SCREEN_WIDTH, SCREEN_HEIGHT) {
     setupGameOverUI();
 }
 
@@ -213,6 +213,7 @@ void GameState::update(float deltaTime) {
     updateEnemies(deltaTime);
     updateProjectiles(deltaTime);
     updateEnemyProjectiles(deltaTime);
+    m_parallaxSystem.update(deltaTime);
     checkCollisions();
     checkProjectileCollisions();
     checkEnemyProjectileCollisions();
@@ -220,10 +221,12 @@ void GameState::update(float deltaTime) {
 
 void GameState::render(sf::RenderWindow& window) {
     // Clear with space background
-    window.clear(sf::Color(5, 5, 15));
+    window.clear(sf::Color::Black);
+    
+    // Render parallax background
+    m_parallaxSystem.render(window);
     
     // Render game elements
-    renderStarfield(window);
     renderPlayer(window);
     renderEnemies(window);
     renderProjectiles(window);
@@ -506,33 +509,10 @@ void GameState::resetGame() {
     m_enemySpawnTimer = 0.0f;
     m_fireCooldown = 0.0f;
     
+    // Reset parallax system
+    m_parallaxSystem.reset();
+    
     std::cout << "Game reset!" << std::endl;
-}
-
-void GameState::renderStarfield(sf::RenderWindow& window) {
-    // Create a simple starfield effect
-    static std::vector<sf::CircleShape> stars;
-    
-    // Generate stars on first call
-    if (stars.empty()) {
-        stars.reserve(50);
-        for (int x = 0; x < static_cast<int>(SCREEN_WIDTH); x += 150) {
-            for (int y = 0; y < static_cast<int>(SCREEN_HEIGHT); y += 150) {
-                sf::CircleShape star(1.0f);
-                star.setPosition(
-                    static_cast<float>(x + (rand() % 50)),
-                    static_cast<float>(y + (rand() % 50))
-                );
-                star.setFillColor(sf::Color(255, 255, 255, 128));
-                stars.push_back(star);
-            }
-        }
-    }
-    
-    // Draw all stars
-    for (const auto& star : stars) {
-        window.draw(star);
-    }
 }
 
 void GameState::renderPlayer(sf::RenderWindow& window) {
