@@ -92,7 +92,7 @@ jobs:
       - name: Install advanced analysis tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential cppcheck clang-tidy ninja-build
+          sudo apt-get install -y cmake build-essential cppcheck clang-tidy ninja-build libsfml-dev libsfml-graphics2.5 libsfml-window2.5 libsfml-system2.5
       
       - name: Configure project for analysis
         run: |

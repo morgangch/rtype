@@ -45,7 +45,7 @@ jobs:
         if: matrix.build-mode == 'manual'
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential ninja-build
+          sudo apt-get install -y cmake build-essential ninja-build libsfml-dev libsfml-graphics2.5 libsfml-window2.5 libsfml-system2.5
       
       - name: Manual build for CodeQL
         if: matrix.build-mode == 'manual'
