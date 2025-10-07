@@ -23,6 +23,8 @@ jobs:
   static_analysis:
     name: "Clang Static Analysis"
     runs-on: ubuntu-latest
+    container: 
+      image: epitechcontent/epitest-docker:latest
     
     steps:
       - name: Checkout code

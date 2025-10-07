@@ -17,6 +17,8 @@ jobs:
   codeql_analysis:
     name: "CodeQL Security Analysis"
     runs-on: ubuntu-latest
+    container: 
+      image: epitechcontent/epitest-docker:latest
     
     strategy:
       fail-fast: false
