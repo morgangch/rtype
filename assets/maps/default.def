@@ -1,5 +1,5 @@
 80,40
-Les assets par défaut pour les tuiles.
+Default tile assets.
 . ./assets/default/empty.png
 # ./assets/default/block.png
 * ./assets/default/star.png
