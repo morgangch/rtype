@@ -28,25 +28,6 @@ jobs:
             build-mode: manual  # Using manual since we have CMake
     
     steps:
-      - name: Restore Docker image cache
-        uses: actions/cache@v4
-        with:
-          path: /tmp/docker-image-coding-style-checker.tar
-          key: docker-image-coding-style-checker-latest
-      
-      - name: Load Docker image from cache if available
-        run: |
-          if [ -f /tmp/docker-image-coding-style-checker.tar ]; then
-            docker load -i /tmp/docker-image-coding-style-checker.tar
-          fi
-      
-      - name: Pull Docker image (if not cached)
-        run: |
-          if ! docker image inspect ghcr.io/epitech/coding-style-checker:latest > /dev/null 2>&1; then
-            docker pull ghcr.io/epitech/coding-style-checker:latest
-            docker save ghcr.io/epitech/coding-style-checker:latest -o /tmp/docker-image-coding-style-checker.tar
-          fi
-      
       - name: Checkout repository
         uses: actions/checkout@v4
       
@@ -61,8 +42,8 @@ jobs:
       - name: Install build dependencies
         if: matrix.build-mode == 'manual'
         run: |
-          apt-get update
-          apt-get install -y cmake build-essential ninja-build
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential ninja-build
       
       - name: Manual build for CodeQL
         if: matrix.build-mode == 'manual'
