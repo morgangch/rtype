@@ -21,9 +21,9 @@
  * @date 2024
  */
 
-#include "gui/PublicServerState.hpp"
-#include "gui/MainMenuState.hpp"
-#include "gui/NetworkManager.hpp"
+#include "gui/PublicServerState.h"
+#include "gui/MainMenuState.h"
+#include "gui/NetworkManager.h"
 #include <iostream>
 #include <cstdlib>
 

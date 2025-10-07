@@ -11,9 +11,9 @@
  * @date 2025
  */
 
-#include "gui/MainMenuState.hpp"
-#include "gui/PublicServerState.hpp"
-#include "gui/PrivateServerState.hpp"
+#include "gui/MainMenuState.h"
+#include "gui/PublicServerState.h"
+#include "gui/PrivateServerState.h"
 #include <iostream>
 #include <cstdlib>
 

@@ -1,5 +1,5 @@
 /**
- * @file StateManager.hpp
+ * @file StateManager.h
  * @brief State management system for the R-TYPE client GUI
  * 
  * This file contains the StateManager class which implements a stack-based
@@ -13,7 +13,7 @@
 #ifndef CLIENT_STATE_MANAGER_HPP
 #define CLIENT_STATE_MANAGER_HPP
 
-#include "State.hpp"
+#include "State.h"
 #include <memory>
 #include <stack>
 #include <SFML/Graphics.hpp>

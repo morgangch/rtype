@@ -1,5 +1,5 @@
 /**
- * @file PrivateServerState.hpp
+ * @file PrivateServerState.h
  * @brief Private server connection state for the R-Type client GUI
  * 
  * This file defines the PrivateServerState class, which handles the interface
@@ -20,9 +20,9 @@
 #ifndef CLIENT_PRIVATE_SERVER_STATE_HPP
 #define CLIENT_PRIVATE_SERVER_STATE_HPP
 
-#include "State.hpp"
-#include "StateManager.hpp"
-#include "GUIHelper.hpp"
+#include "State.h"
+#include "StateManager.h"
+#include "GUIHelper.h"
 #include <SFML/Graphics.hpp>
 #include <string>
 

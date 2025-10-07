@@ -17,8 +17,9 @@
  * @date 2024
  */
 
-#include "gui/PrivateServerLobbyState.hpp"
-#include "gui/MainMenuState.hpp"
+#include "gui/PrivateServerLobbyState.h"
+#include "gui/GameState.h"
+#include "gui/MainMenuState.h"
 #include <iostream>
 #include <cstdlib>
 
@@ -211,7 +212,9 @@ namespace rtype::client::gui {
         if (isAdmin) {
             std::cout << "Admin " << username << " is starting the game!" << std::endl;
             std::cout << "Game starting with " << playersReady << " ready players in server " << serverCode << std::endl;
-            // TODO: Start the actual game
+            
+            // Launch the game
+            stateManager.changeState(std::make_unique<GameState>(stateManager));
         }
     }
     

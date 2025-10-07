@@ -11,8 +11,8 @@
  * @date 2025
  */
 
-#include "gui/StateManager.hpp"
-#include "gui/NetworkManager.hpp"
+#include "gui/StateManager.h"
+#include "gui/NetworkManager.h"
 
 namespace rtype::client::gui {
     
