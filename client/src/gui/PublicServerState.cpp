@@ -78,8 +78,8 @@ namespace rtype::client::gui {
         GUIHelper::centerText(playersReadyText, centerX, centerY - 50.0f);
         
         // Ready button positioning (below the text)
-        float buttonWidth = 200.0f;
-        float buttonHeight = 60.0f;
+        float buttonWidth = 300.0f;
+        float buttonHeight = 80.0f;
         float buttonY = centerY + 50.0f;
         
         readyButtonRect.setSize(sf::Vector2f(buttonWidth, buttonHeight));
@@ -89,8 +89,8 @@ namespace rtype::client::gui {
                   readyButtonRect.getPosition().y + buttonHeight / 2);
         
         // Return button positioning (top left)
-        float returnButtonWidth = 120.0f;
-        float returnButtonHeight = 40.0f;
+        float returnButtonWidth = 150.0f;
+        float returnButtonHeight = 50.0f;
         returnButtonRect.setSize(sf::Vector2f(returnButtonWidth, returnButtonHeight));
         returnButtonRect.setPosition(20.0f, 20.0f);
         GUIHelper::centerText(returnButton,
@@ -196,7 +196,7 @@ namespace rtype::client::gui {
     }
     
     void PublicServerState::updatePlayersReadyText() {
-        playersReadyText.setString("Amount of players ready: " + std::to_string(playersReady));
+        playersReadyText.setString("Amount of players ready " + std::to_string(playersReady));
         
         // Update button text based on ready state
         if (isReady) {
