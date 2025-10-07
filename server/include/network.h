@@ -14,6 +14,7 @@ namespace rtype::server::network {
     /**
      * @brief Loop to receive UDP packets and store them in the PacketManager.
      * @param fd  File descriptor of the UDP socket
+     * If the ip source is already assigned to a player, redirect the packet to the player's personal PacketManager.
      * @return void
      */
     void loop_recv(int fd);

@@ -23,9 +23,10 @@
 
 #include "gui/PublicServerState.h"
 #include "gui/MainMenuState.h"
-#include "gui/NetworkManager.h"
 #include <iostream>
 #include <cstdlib>
+
+#include "network.h"
 
 namespace rtype::client::gui {
     PublicServerState::PublicServerState(StateManager& stateManager, const std::string& username)
@@ -54,20 +55,12 @@ namespace rtype::client::gui {
         
         // Connect to the public server using the NetworkManager
         // Public server uses room ID 0 by convention
-        bool connected = stateManager.getNetworkManager().connectToServer("127.0.0.1", 8080, username, 0);
-        
-        if (connected) {
-            std::cout << "Successfully connected to public server!" << std::endl;
-        } else {
-            std::cout << "Failed to connect to public server!" << std::endl;
-            // Could show an error message or return to main menu
-        }
+        network::start_room_connection("127.0.0.1", 8080, username, 0);
     }
     
     void PublicServerState::onExit() {
         std::cout << "Exiting Public Server state" << std::endl;
-        // Disconnect from the server when leaving this state
-        stateManager.getNetworkManager().disconnect();
+        // TODO: send a disconnect packet.
     }
     
     void PublicServerState::updateLayout(const sf::Vector2u& windowSize) {
