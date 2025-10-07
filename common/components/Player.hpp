@@ -2,6 +2,7 @@
 #define COMMON_PLAYER_HPP
 
 #include <ECS/ECS.hpp>
+#include <utility>
 
 namespace rtype::common::components {
     class Player : public ECS::Component<Player> {
@@ -18,7 +19,7 @@ namespace rtype::common::components {
         unsigned int serverId = 0;
 
     public:
-        Player(std::string name, unsigned int serverId = 0) : name(name), serverId(serverId) {}
+        explicit Player(std::string name, unsigned int serverId = 0) : name(std::move(name)), serverId(serverId) {}
     };
 }
 
