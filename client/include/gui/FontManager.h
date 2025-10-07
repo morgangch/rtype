@@ -87,7 +87,7 @@ namespace rtype::client::gui {
          * @return True if font loading was successful, false otherwise
          * 
          * Tries to load fonts in the following order:
-         * 1. Custom font: "assets/fonts/arial.ttf"
+         * 1. Custom font: "assets/fonts/r-type.otf"
          * 2. Linux: "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
          * 3. Linux: "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
          * 4. macOS: "/System/Library/Fonts/Arial.ttf"

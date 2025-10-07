@@ -45,7 +45,7 @@ namespace rtype::client::gui {
         
         // Server code display setup
         serverCodeDisplay.setFont(font);
-        serverCodeDisplay.setString("Server Code: " + serverCode);
+        serverCodeDisplay.setString("Server Code " + serverCode);
         serverCodeDisplay.setCharacterSize(GUIHelper::Sizes::INPUT_FONT_SIZE);
         serverCodeDisplay.setFillColor(sf::Color::Yellow);
         serverCodeDisplay.setStyle(sf::Text::Bold);
@@ -57,7 +57,7 @@ namespace rtype::client::gui {
     void PrivateServerLobbyState::onEnter() {
         std::cout << "Entered Private Server Lobby:" << std::endl;
         std::cout << "Username: " << username << std::endl;
-        std::cout << "Server Code: " << serverCode << std::endl;
+        std::cout << "Server Code " << serverCode << std::endl;
         std::cout << "Is Admin: " << (isAdmin ? "Yes" : "No") << std::endl;
     }
     
@@ -69,8 +69,8 @@ namespace rtype::client::gui {
         GUIHelper::centerText(playersReadyText, centerX, centerY - 50.0f);
         
         // Action button positioning (below the text)
-        float buttonWidth = 200.0f;
-        float buttonHeight = 60.0f;
+        float buttonWidth = 300.0f;
+        float buttonHeight = 80.0f;
         float buttonY = centerY + 50.0f;
         
         actionButtonRect.setSize(sf::Vector2f(buttonWidth, buttonHeight));
@@ -80,8 +80,8 @@ namespace rtype::client::gui {
                   actionButtonRect.getPosition().y + buttonHeight / 2);
         
         // Return button positioning (top left)
-        float returnButtonWidth = 120.0f;
-        float returnButtonHeight = 40.0f;
+        float returnButtonWidth = 150.0f;
+        float returnButtonHeight = 50.0f;
         returnButtonRect.setSize(sf::Vector2f(returnButtonWidth, returnButtonHeight));
         returnButtonRect.setPosition(20.0f, 20.0f);
         GUIHelper::centerText(returnButton,
@@ -219,7 +219,7 @@ namespace rtype::client::gui {
     }
     
     void PrivateServerLobbyState::updatePlayersReadyText() {
-        playersReadyText.setString("Amount of players ready: " + std::to_string(playersReady));
+        playersReadyText.setString("Amount of players ready " + std::to_string(playersReady));
     }
     
     void PrivateServerLobbyState::updateActionButton() {
