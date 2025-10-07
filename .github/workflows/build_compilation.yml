@@ -26,29 +26,13 @@ jobs:
     name: "CMake Build & Compilation"
     runs-on: ubuntu-latest
     steps:
-      - name: Restore Docker image cache
-        uses: actions/cache@v4
-        with:
-          path: /tmp/docker-image-coding-style-checker.tar
-          key: docker-image-coding-style-checker-latest
-      - name: Load Docker image from cache if available
-        run: |
-          if [ -f /tmp/docker-image-coding-style-checker.tar ]; then
-            docker load -i /tmp/docker-image-coding-style-checker.tar
-          fi
-      - name: Pull Docker image (if not cached)
-        run: |
-          if ! docker image inspect ghcr.io/epitech/coding-style-checker:latest > /dev/null 2>&1; then
-            docker pull ghcr.io/epitech/coding-style-checker:latest
-            docker save ghcr.io/epitech/coding-style-checker:latest -o /tmp/docker-image-coding-style-checker.tar
-          fi
       - name: Checkout code
         uses: actions/checkout@v4
       
       - name: Install build dependencies
         run: |
-          apt-get update
-          apt-get install -y cmake ninja-build build-essential
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build build-essential
       
       - name: Configure CMake project
         run: |
@@ -83,7 +67,7 @@ jobs:
       
       - name: Install cppcheck for static analysis
         run: |
-          apt-get install -y cppcheck
+          sudo apt-get install -y cppcheck
       
       - name: Cppcheck Analysis - Server Code
         run: |
