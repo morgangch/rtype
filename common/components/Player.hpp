@@ -7,26 +7,18 @@ namespace rtype::common::components {
     class Player : public ECS::Component<Player> {
     public:
         /**
-         * @brief The room code the player is currently in.
+         * @brief The name of the player.
          */
-        unsigned int room_code;
         std::string name;
 
         /**
-         * @brief The packet manager for the player.
+         * @brief The server ID of the player.
+         * Used to identify the player on the client side.
          */
-        PacketManager packet_manager;
-
-        /**
-         * @brief The packet handler for the player.
-         */
-        PacketHandler packet_handler;
+        unsigned int serverId = 0;
 
     public:
-        Player(std::string name, unsigned int room_code) : room_code(room_code) {
-            this->name = name;
-
-        }
+        Player(std::string name, unsigned int serverId = 0) : name(name), serverId(serverId) {}
     };
 }
 

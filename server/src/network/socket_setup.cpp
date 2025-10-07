@@ -14,6 +14,7 @@
 #include "network.h"
 #include "packets.h"
 #include "../../../common/components/Player.hpp"
+#include "components/PlayerConn.h"
 #include "services/PlayerService.h"
 
 
@@ -22,7 +23,7 @@ namespace rtype::common::components {
 }
 
 namespace rtype::server::components {
-    class NetworkAddress;
+    class PlayerConn;
 }
 
 int rtype::server::network::setupUDPServer(int port) {
@@ -98,7 +99,7 @@ void rtype::server::network::loop_recv(int udp_server_fd) {
         // Redirect to the appropriate player or to the global packet manager
         auto pid = rtype::server::services::player_service::findPlayerByNetwork(cliaddr);
         if (pid) {
-            auto p = root.world.GetComponent<rtype::common::components::Player>(pid);
+            auto p = root.world.GetComponent<components::PlayerConn>(pid);
             p->packet_manager.handlePacketBytes(buffer, n, cliaddr);
         } else {
             root.packetManager.handlePacketBytes(buffer, n, cliaddr);
