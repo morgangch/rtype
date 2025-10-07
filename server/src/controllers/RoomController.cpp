@@ -8,6 +8,7 @@
 #include "controllers/RoomController.h"
 #include "packets.h"
 #include "rtype.h"
+#include "tools.h"
 #include "components/RoomProperties.h"
 #include "ECS/Types.hpp"
 #include "services/PlayerService.h"
@@ -38,7 +39,7 @@ void room_controller::handleJoinRoomPacket(const packet_t &packet) {
 
     ECS::EntityID room = 0;
     // convert ip to string
-    std::string ip_str = "";
+    std::string ip_str = rtype::tools::ipToString(const_cast<uint8_t*>(packet.header.client_addr));
 
     ECS::EntityID player = player_service::createNewPlayer(std::string(p->name), p->joinCode, ip_str,
                                                            packet.header.client_port);
