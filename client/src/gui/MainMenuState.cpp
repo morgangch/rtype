@@ -29,7 +29,7 @@ namespace rtype::client::gui {
         
         // Title setup
         titleText.setFont(font);
-        titleText.setString("THE TOP R-TYPE");
+        titleText.setString("THE TOP RTYPE");
         titleText.setCharacterSize(GUIHelper::Sizes::TITLE_FONT_SIZE);
         titleText.setFillColor(GUIHelper::Colors::TEXT);
         titleText.setStyle(sf::Text::Bold);
@@ -44,13 +44,13 @@ namespace rtype::client::gui {
         usernameText.setFillColor(GUIHelper::Colors::TEXT);
         
         usernameHintText.setFont(font);
-        usernameHintText.setString("Add here your username");
+        usernameHintText.setString("Username");
         usernameHintText.setCharacterSize(GUIHelper::Sizes::HINT_FONT_SIZE);
         usernameHintText.setFillColor(GUIHelper::Colors::HINT_TEXT);
         
         // Button setup using GUIHelper
-        GUIHelper::setupButton(publicServersButton, publicButtonRect, "Public servers", GUIHelper::Sizes::BUTTON_FONT_SIZE);
-        GUIHelper::setupButton(privateServersButton, privateButtonRect, "Private servers", GUIHelper::Sizes::BUTTON_FONT_SIZE);
+        GUIHelper::setupButton(publicServersButton, publicButtonRect, "Public", GUIHelper::Sizes::BUTTON_FONT_SIZE);
+        GUIHelper::setupButton(privateServersButton, privateButtonRect, "Private", GUIHelper::Sizes::BUTTON_FONT_SIZE);
     }
     
     void MainMenuState::onEnter() {
