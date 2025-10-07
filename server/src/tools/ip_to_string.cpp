@@ -6,6 +6,8 @@
 */
 
 #include "tools.h"
+#include <string>
+#include <cstdint>
 
 std::string rtype::tools::ipToString(uint32_t ip) {
     std::string ip_str = "";
