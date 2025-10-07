@@ -3,6 +3,7 @@
 
 #include <ECS/ECS.hpp>
 #include <utility>
+#include <string>
 
 namespace rtype::common::components {
     class Player : public ECS::Component<Player> {
