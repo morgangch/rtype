@@ -26,14 +26,17 @@ namespace rtype::client::gui {
      * 
      * GameState handles the core game loop including:
      * - Player ship movement (ZQSD/Arrow keys)
+     * - Projectile firing (Space bar)
      * - Enemy spawning and movement
-     * - Collision detection
+     * - Collision detection (player-enemy and projectile-enemy)
      * - Game rendering
      * 
      * Features:
      * - Smooth player movement in all directions
+     * - Projectile system with fire rate cooldown
      * - Automatic enemy spawning from the right
      * - Simple AABB collision detection
+     * - Enemy health system with damage
      * - Space-themed visuals with starfield background
      * - ESC to return to main menu
      * 
@@ -42,7 +45,7 @@ namespace rtype::client::gui {
      * - S/Down: Move down
      * - Q/Left: Move left
      * - D/Right: Move right
-     * - Space: Fire (not yet implemented)
+     * - Space: Fire projectiles
      * - ESC: Return to menu
      */
     class GameState : public State {
@@ -145,12 +148,52 @@ namespace rtype::client::gui {
             /** @brief Movement speed in pixels per second (leftward) */
             float speed{100.0f};
             
+            /** @brief Health points of the enemy */
+            int health{1};
+            
             /**
              * @brief Get the axis-aligned bounding box for collision detection
              * @return sf::FloatRect representing the enemy's collision box
              * 
              * Calculates the bounding rectangle centered on the enemy's position.
-             * Used for AABB collision detection with the player.
+             * Used for AABB collision detection with the player and projectiles.
+             */
+            sf::FloatRect getBounds() const {
+                return sf::FloatRect(
+                    position.x - size.x * 0.5f,
+                    position.y - size.y * 0.5f,
+                    size.x,
+                    size.y
+                );
+            }
+        };
+        
+        /**
+         * @struct Projectile
+         * @brief Represents a projectile fired by the player
+         * 
+         * The Projectile structure contains data for player projectiles that
+         * move from left to right across the screen to destroy enemies.
+         */
+        struct Projectile {
+            /** @brief Current position of the projectile (center point) */
+            sf::Vector2f position;
+            
+            /** @brief Size of the projectile (width, height) */
+            sf::Vector2f size{12.0f, 4.0f};
+            
+            /** @brief Movement speed in pixels per second (rightward) */
+            float speed{500.0f};
+            
+            /** @brief Damage dealt to enemies on hit */
+            int damage{1};
+            
+            /**
+             * @brief Get the axis-aligned bounding box for collision detection
+             * @return sf::FloatRect representing the projectile's collision box
+             * 
+             * Calculates the bounding rectangle centered on the projectile's position.
+             * Used for AABB collision detection with enemies.
              */
             sf::FloatRect getBounds() const {
                 return sf::FloatRect(
@@ -182,12 +225,31 @@ namespace rtype::client::gui {
         void updateEnemies(float deltaTime);
         
         /**
+         * @brief Update all projectiles' positions and remove off-screen ones
+         * @param deltaTime Time elapsed since last frame in seconds
+         * 
+         * Moves all projectiles from left to right. Removes projectiles that have
+         * moved completely off the right side of the screen.
+         */
+        void updateProjectiles(float deltaTime);
+        
+        /**
          * @brief Check for collisions between player and enemies
          * 
          * Uses AABB (Axis-Aligned Bounding Box) collision detection.
          * If a collision is detected, the game is reset.
          */
         void checkCollisions();
+        
+        /**
+         * @brief Check for collisions between projectiles and enemies
+         * 
+         * Uses AABB collision detection. When a projectile hits an enemy:
+         * - The enemy takes damage
+         * - The projectile is destroyed
+         * - If enemy health reaches 0, the enemy is destroyed
+         */
+        void checkProjectileCollisions();
         
         /**
          * @brief Spawn a new enemy at a random vertical position
@@ -198,9 +260,17 @@ namespace rtype::client::gui {
         void spawnEnemy();
         
         /**
+         * @brief Fire a projectile from the player's position
+         * 
+         * Creates a new projectile at the player's current position,
+         * shooting to the right. Respects the fire rate cooldown.
+         */
+        void fireProjectile();
+        
+        /**
          * @brief Reset the game to initial state
          * 
-         * Resets player position to starting point and clears all enemies.
+         * Resets player position to starting point and clears all enemies and projectiles.
          * Called when the player collides with an enemy or when starting a new game.
          */
         void resetGame();
@@ -229,6 +299,14 @@ namespace rtype::client::gui {
          * Draws all active enemies as red triangles pointing left.
          */
         void renderEnemies(sf::RenderWindow& window);
+        
+        /**
+         * @brief Render all projectiles
+         * @param window The render window to draw to
+         * 
+         * Draws all active projectiles as yellow/white rectangles moving right.
+         */
+        void renderProjectiles(sf::RenderWindow& window);
         
         /**
          * @brief Get the current movement vector from input state
@@ -262,6 +340,14 @@ namespace rtype::client::gui {
         std::vector<Enemy> m_enemies;
         
         /**
+         * @brief Active projectiles fired by the player
+         * 
+         * Vector of all currently active projectiles. Projectiles are added via fireProjectile()
+         * and removed when they move off-screen or hit an enemy.
+         */
+        std::vector<Projectile> m_projectiles;
+        
+        /**
          * @brief Timer for enemy spawning
          * 
          * Accumulates delta time. When it exceeds ENEMY_SPAWN_INTERVAL,
@@ -270,9 +356,22 @@ namespace rtype::client::gui {
         float m_enemySpawnTimer{0.0f};
         
         /**
+         * @brief Timer for fire rate cooldown
+         * 
+         * Tracks time since last shot. When it reaches FIRE_COOLDOWN,
+         * the player can fire again.
+         */
+        float m_fireCooldown{0.0f};
+        
+        /**
          * @brief Interval between enemy spawns in seconds
          */
         static constexpr float ENEMY_SPAWN_INTERVAL{2.0f};
+        
+        /**
+         * @brief Minimum time between shots in seconds
+         */
+        static constexpr float FIRE_COOLDOWN{0.2f};
         
         /**
          * @brief Maximum number of simultaneous enemies

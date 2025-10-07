@@ -103,9 +103,16 @@ void GameState::update(float deltaTime) {
     // Cap delta time to prevent physics issues
     deltaTime = std::min(deltaTime, 0.016f);
     
+    // Update fire cooldown
+    if (m_fireCooldown > 0.0f) {
+        m_fireCooldown -= deltaTime;
+    }
+    
     updatePlayer(deltaTime);
     updateEnemies(deltaTime);
+    updateProjectiles(deltaTime);
     checkCollisions();
+    checkProjectileCollisions();
 }
 
 void GameState::render(sf::RenderWindow& window) {
@@ -116,14 +123,16 @@ void GameState::render(sf::RenderWindow& window) {
     renderStarfield(window);
     renderPlayer(window);
     renderEnemies(window);
+    renderProjectiles(window);
 }
 
 void GameState::onEnter() {
     std::cout << "=== Space Invaders Game ===" << std::endl;
     std::cout << "Controls:" << std::endl;
     std::cout << "  ZQSD/Arrow keys - Move ship" << std::endl;
-    std::cout << "  SPACE - Fire (not implemented yet)" << std::endl;
+    std::cout << "  SPACE - Fire projectiles" << std::endl;
     std::cout << "  ESC - Return to menu" << std::endl;
+    std::cout << "Objective: Destroy enemies with your projectiles!" << std::endl;
     
     resetGame();
 }
@@ -156,18 +165,10 @@ void GameState::updatePlayer(float deltaTime) {
                                        std::min(m_player.position.y, SCREEN_HEIGHT - m_player.size.y * 0.5f));
     }
     
-    // Handle fire input (placeholder for future implementation)
-    if (m_keyFire) {
-        // TODO: Spawn projectile
-        // For now, just print
-        static bool fired = false;
-        if (!fired) {
-            std::cout << "FIRE! (Projectile system not yet implemented)" << std::endl;
-            fired = true;
-        }
-    } else {
-        static bool fired = false;
-        fired = false;
+    // Handle fire input
+    if (m_keyFire && m_fireCooldown <= 0.0f) {
+        fireProjectile();
+        m_fireCooldown = FIRE_COOLDOWN;
     }
 }
 
@@ -192,6 +193,20 @@ void GameState::updateEnemies(float deltaTime) {
     );
 }
 
+void GameState::updateProjectiles(float deltaTime) {
+    // Update projectile positions
+    for (auto& projectile : m_projectiles) {
+        projectile.position.x += projectile.speed * deltaTime;
+    }
+    
+    // Remove off-screen projectiles
+    m_projectiles.erase(
+        std::remove_if(m_projectiles.begin(), m_projectiles.end(),
+            [](const Projectile& p) { return p.position.x > SCREEN_WIDTH + p.size.x; }),
+        m_projectiles.end()
+    );
+}
+
 void GameState::checkCollisions() {
     auto playerBounds = m_player.getBounds();
     
@@ -200,6 +215,43 @@ void GameState::checkCollisions() {
             std::cout << "Collision! Restarting game..." << std::endl;
             resetGame();
             return;
+        }
+    }
+}
+
+void GameState::checkProjectileCollisions() {
+    // Check each projectile against each enemy
+    for (auto projIt = m_projectiles.begin(); projIt != m_projectiles.end(); ) {
+        bool projectileHit = false;
+        auto projBounds = projIt->getBounds();
+        
+        for (auto enemyIt = m_enemies.begin(); enemyIt != m_enemies.end(); ) {
+            if (projBounds.intersects(enemyIt->getBounds())) {
+                // Deal damage to enemy
+                enemyIt->health -= projIt->damage;
+                
+                // Mark projectile as hit
+                projectileHit = true;
+                
+                // Remove enemy if health <= 0
+                if (enemyIt->health <= 0) {
+                    std::cout << "Enemy destroyed!" << std::endl;
+                    enemyIt = m_enemies.erase(enemyIt);
+                } else {
+                    ++enemyIt;
+                }
+                
+                break; // Projectile can only hit one enemy
+            } else {
+                ++enemyIt;
+            }
+        }
+        
+        // Remove projectile if it hit something
+        if (projectileHit) {
+            projIt = m_projectiles.erase(projIt);
+        } else {
+            ++projIt;
         }
     }
 }
@@ -218,15 +270,26 @@ void GameState::spawnEnemy() {
     m_enemies.push_back(newEnemy);
 }
 
+void GameState::fireProjectile() {
+    Projectile newProjectile;
+    // Spawn projectile at player's right edge, centered vertically
+    newProjectile.position.x = m_player.position.x + m_player.size.x * 0.5f;
+    newProjectile.position.y = m_player.position.y;
+    
+    m_projectiles.push_back(newProjectile);
+}
+
 void GameState::resetGame() {
     // Reset player to starting position
     m_player.position = sf::Vector2f(100.0f, SCREEN_HEIGHT * 0.5f);
     
-    // Clear all enemies
+    // Clear all enemies and projectiles
     m_enemies.clear();
+    m_projectiles.clear();
     
-    // Reset spawn timer
+    // Reset timers
     m_enemySpawnTimer = 0.0f;
+    m_fireCooldown = 0.0f;
     
     std::cout << "Game reset!" << std::endl;
 }
@@ -281,6 +344,16 @@ void GameState::renderEnemies(sf::RenderWindow& window) {
         enemyShape.setPosition(enemy.position - enemy.size * 0.5f);
         enemyShape.setFillColor(sf::Color::Red);
         window.draw(enemyShape);
+    }
+}
+
+void GameState::renderProjectiles(sf::RenderWindow& window) {
+    // Draw all projectiles (yellow/white rectangles)
+    for (const auto& projectile : m_projectiles) {
+        sf::RectangleShape projectileShape(projectile.size);
+        projectileShape.setPosition(projectile.position - projectile.size * 0.5f);
+        projectileShape.setFillColor(sf::Color::Yellow);
+        window.draw(projectileShape);
     }
 }
 
