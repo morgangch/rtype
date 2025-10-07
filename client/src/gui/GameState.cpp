@@ -22,6 +22,7 @@
 
 #include "gui/GameState.h"
 #include "gui/MainMenuState.h"
+#include "gui/GUIHelper.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -30,10 +31,65 @@ namespace rtype::client::gui {
 
 GameState::GameState(StateManager& stateManager)
     : m_stateManager(stateManager) {
+    setupGameOverUI();
+}
+
+/**
+ * @brief Initialize the Game Over UI elements
+ * 
+ * Sets up all text objects for the game over menu using the centralized
+ * GUIHelper utilities. This ensures consistent styling with other menus
+ * and proper font loading from FontManager.
+ */
+void GameState::setupGameOverUI() {
+    const sf::Font& font = GUIHelper::getFont();
+    
+    // Game Over title
+    m_gameOverTitleText.setFont(font);
+    m_gameOverTitleText.setString("GAME OVER");
+    m_gameOverTitleText.setCharacterSize(GUIHelper::Sizes::TITLE_FONT_SIZE);
+    m_gameOverTitleText.setFillColor(GUIHelper::Colors::TEXT);
+    m_gameOverTitleText.setStyle(sf::Text::Bold);
+    
+    // Restart button text
+    m_restartText.setFont(font);
+    m_restartText.setString("Restart");
+    m_restartText.setCharacterSize(GUIHelper::Sizes::BUTTON_FONT_SIZE);
+    m_restartText.setFillColor(GUIHelper::Colors::TEXT);
+    
+    // Return to Menu button text
+    m_menuText.setFont(font);
+    m_menuText.setString("Return to Menu");
+    m_menuText.setCharacterSize(GUIHelper::Sizes::BUTTON_FONT_SIZE);
+    m_menuText.setFillColor(GUIHelper::Colors::TEXT);
 }
 
 void GameState::handleEvent(const sf::Event& event) {
-    // Handle ESC to return to menu
+    // Handle game over menu
+    if (m_gameStatus == GameStatus::GameOver) {
+        if (event.type == sf::Event::KeyPressed) {
+            if (event.key.code == sf::Keyboard::Up || event.key.code == sf::Keyboard::Z) {
+                m_selectedMenuOption = 0; // Restart
+            } else if (event.key.code == sf::Keyboard::Down || event.key.code == sf::Keyboard::S) {
+                m_selectedMenuOption = 1; // Menu
+            } else if (event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) {
+                if (m_selectedMenuOption == 0) {
+                    // Restart game
+                    resetGame();
+                    m_gameStatus = GameStatus::Playing;
+                } else {
+                    // Return to main menu
+                    m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
+                }
+            } else if (event.key.code == sf::Keyboard::Escape) {
+                // ESC also returns to menu
+                m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
+            }
+        }
+        return; // Don't process game input when game over
+    }
+    
+    // Handle ESC to return to menu during gameplay
     if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
         std::cout << "Returning to main menu..." << std::endl;
         m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
@@ -100,6 +156,11 @@ void GameState::handleKeyReleased(sf::Keyboard::Key key) {
 }
 
 void GameState::update(float deltaTime) {
+    // Don't update game logic if game over
+    if (m_gameStatus == GameStatus::GameOver) {
+        return;
+    }
+    
     // Cap delta time to prevent physics issues
     deltaTime = std::min(deltaTime, 0.016f);
     
@@ -111,8 +172,10 @@ void GameState::update(float deltaTime) {
     updatePlayer(deltaTime);
     updateEnemies(deltaTime);
     updateProjectiles(deltaTime);
+    updateEnemyProjectiles(deltaTime);
     checkCollisions();
     checkProjectileCollisions();
+    checkEnemyProjectileCollisions();
 }
 
 void GameState::render(sf::RenderWindow& window) {
@@ -124,6 +187,13 @@ void GameState::render(sf::RenderWindow& window) {
     renderPlayer(window);
     renderEnemies(window);
     renderProjectiles(window);
+    renderEnemyProjectiles(window);
+    renderHUD(window);
+    
+    // Render game over menu if game over
+    if (m_gameStatus == GameStatus::GameOver) {
+        renderGameOverMenu(window);
+    }
 }
 
 void GameState::onEnter() {
@@ -144,6 +214,11 @@ void GameState::onExit() {
 // Private methods
 
 void GameState::updatePlayer(float deltaTime) {
+    // Update invulnerability timer
+    if (m_player.invulnerabilityTimer > 0.0f) {
+        m_player.invulnerabilityTimer -= deltaTime;
+    }
+    
     // Get movement direction
     sf::Vector2f movement = getMovementInput();
     
@@ -180,9 +255,16 @@ void GameState::updateEnemies(float deltaTime) {
         spawnEnemy();
     }
     
-    // Update enemy positions
+    // Update enemy positions and fire timers
     for (auto& enemy : m_enemies) {
         enemy.position.x -= enemy.speed * deltaTime;
+        
+        // Update fire timer and shoot if ready
+        enemy.fireTimer += deltaTime;
+        if (enemy.fireTimer >= ENEMY_FIRE_INTERVAL) {
+            enemy.fireTimer = 0.0f;
+            fireEnemyProjectile(enemy.position);
+        }
     }
     
     // Remove off-screen enemies
@@ -207,13 +289,32 @@ void GameState::updateProjectiles(float deltaTime) {
     );
 }
 
+void GameState::updateEnemyProjectiles(float deltaTime) {
+    // Update enemy projectile positions (moving left)
+    for (auto& projectile : m_enemyProjectiles) {
+        projectile.position.x -= projectile.speed * deltaTime;
+    }
+    
+    // Remove off-screen enemy projectiles
+    m_enemyProjectiles.erase(
+        std::remove_if(m_enemyProjectiles.begin(), m_enemyProjectiles.end(),
+            [](const EnemyProjectile& p) { return p.position.x < -p.size.x; }),
+        m_enemyProjectiles.end()
+    );
+}
+
 void GameState::checkCollisions() {
+    // Only check collision if player is not invulnerable
+    if (m_player.isInvulnerable()) {
+        return;
+    }
+    
     auto playerBounds = m_player.getBounds();
     
     for (auto& enemy : m_enemies) {
         if (playerBounds.intersects(enemy.getBounds())) {
-            std::cout << "Collision! Restarting game..." << std::endl;
-            resetGame();
+            std::cout << "Hit by enemy! " << std::endl;
+            damagePlayer();
             return;
         }
     }
@@ -256,6 +357,30 @@ void GameState::checkProjectileCollisions() {
     }
 }
 
+void GameState::checkEnemyProjectileCollisions() {
+    // Only check if player is not invulnerable
+    if (m_player.isInvulnerable()) {
+        return;
+    }
+    
+    auto playerBounds = m_player.getBounds();
+    
+    // Check each enemy projectile against player
+    for (auto projIt = m_enemyProjectiles.begin(); projIt != m_enemyProjectiles.end(); ) {
+        if (playerBounds.intersects(projIt->getBounds())) {
+            // Player hit by enemy projectile
+            std::cout << "Hit by enemy projectile! ";
+            damagePlayer();
+            
+            // Remove the projectile
+            projIt = m_enemyProjectiles.erase(projIt);
+            return; // Stop checking after one hit
+        } else {
+            ++projIt;
+        }
+    }
+}
+
 void GameState::spawnEnemy() {
     // Limit total number of enemies
     if (m_enemies.size() >= MAX_ENEMIES) {
@@ -266,6 +391,8 @@ void GameState::spawnEnemy() {
     newEnemy.position.x = SCREEN_WIDTH + newEnemy.size.x;
     // Random Y position with padding from edges
     newEnemy.position.y = 50.0f + static_cast<float>(rand() % static_cast<int>(SCREEN_HEIGHT - 100.0f));
+    // Random initial fire timer to stagger shots
+    newEnemy.fireTimer = static_cast<float>(rand() % 1000) / 1000.0f * ENEMY_FIRE_INTERVAL;
     
     m_enemies.push_back(newEnemy);
 }
@@ -279,13 +406,43 @@ void GameState::fireProjectile() {
     m_projectiles.push_back(newProjectile);
 }
 
+void GameState::fireEnemyProjectile(const sf::Vector2f& enemyPosition) {
+    EnemyProjectile newProjectile;
+    // Spawn projectile at enemy's left edge, centered vertically
+    newProjectile.position.x = enemyPosition.x - 12.0f; // Offset to left of enemy
+    newProjectile.position.y = enemyPosition.y;
+    
+    m_enemyProjectiles.push_back(newProjectile);
+}
+
+void GameState::damagePlayer() {
+    m_player.lives--;
+    std::cout << "Lives remaining: " << m_player.lives << std::endl;
+    
+    if (m_player.lives <= 0) {
+        std::cout << "Game Over!" << std::endl;
+        showGameOver();
+    } else {
+        // Grant temporary invulnerability
+        m_player.invulnerabilityTimer = INVULNERABILITY_DURATION;
+    }
+}
+
+void GameState::showGameOver() {
+    m_gameStatus = GameStatus::GameOver;
+    m_selectedMenuOption = 0; // Default to "Restart"
+}
+
 void GameState::resetGame() {
     // Reset player to starting position
     m_player.position = sf::Vector2f(100.0f, SCREEN_HEIGHT * 0.5f);
+    m_player.lives = 3;
+    m_player.invulnerabilityTimer = 0.0f;
     
     // Clear all enemies and projectiles
     m_enemies.clear();
     m_projectiles.clear();
+    m_enemyProjectiles.clear();
     
     // Reset timers
     m_enemySpawnTimer = 0.0f;
@@ -321,6 +478,15 @@ void GameState::renderStarfield(sf::RenderWindow& window) {
 }
 
 void GameState::renderPlayer(sf::RenderWindow& window) {
+    // Skip rendering if invulnerable and flashing (blink effect)
+    if (m_player.isInvulnerable()) {
+        // Flash every 0.15 seconds
+        int flashCycle = static_cast<int>(m_player.invulnerabilityTimer / 0.15f);
+        if (flashCycle % 2 == 0) {
+            return; // Skip this frame for blinking effect
+        }
+    }
+    
     // Draw player ship (green rectangle)
     sf::RectangleShape playerShip(m_player.size);
     playerShip.setPosition(m_player.position - m_player.size * 0.5f);
@@ -355,6 +521,81 @@ void GameState::renderProjectiles(sf::RenderWindow& window) {
         projectileShape.setFillColor(sf::Color::Yellow);
         window.draw(projectileShape);
     }
+}
+
+void GameState::renderEnemyProjectiles(sf::RenderWindow& window) {
+    // Draw all enemy projectiles (red rectangles)
+    for (const auto& projectile : m_enemyProjectiles) {
+        sf::RectangleShape projectileShape(projectile.size);
+        projectileShape.setPosition(projectile.position - projectile.size * 0.5f);
+        projectileShape.setFillColor(sf::Color(255, 100, 100)); // Light red
+        window.draw(projectileShape);
+    }
+}
+
+void GameState::renderHUD(sf::RenderWindow& window) {
+    // Create text for lives display
+    sf::Font font; // Using default font
+    sf::Text livesText;
+    livesText.setString("Lives: " + std::to_string(m_player.lives));
+    livesText.setCharacterSize(24);
+    livesText.setFillColor(sf::Color::White);
+    livesText.setPosition(10.0f, 10.0f);
+    
+    // Draw lives as hearts/icons
+    for (int i = 0; i < m_player.lives; ++i) {
+        sf::RectangleShape lifeIcon(sf::Vector2f(20.0f, 20.0f));
+        lifeIcon.setPosition(10.0f + i * 30.0f, 10.0f);
+        lifeIcon.setFillColor(sf::Color::Green);
+        window.draw(lifeIcon);
+    }
+}
+
+void GameState::renderGameOverMenu(sf::RenderWindow& window) {
+    // Semi-transparent black overlay
+    sf::RectangleShape overlay(sf::Vector2f(SCREEN_WIDTH, SCREEN_HEIGHT));
+    overlay.setFillColor(sf::Color(0, 0, 0, 180));
+    window.draw(overlay);
+    
+    // Game Over title
+    GUIHelper::centerText(m_gameOverTitleText, SCREEN_WIDTH * 0.5f, 240.0f);
+    window.draw(m_gameOverTitleText);
+    
+    // Restart button
+    sf::RectangleShape restartButton(sf::Vector2f(300.0f, 60.0f));
+    restartButton.setPosition((SCREEN_WIDTH - 300.0f) * 0.5f, 340.0f);
+    if (m_selectedMenuOption == 0) {
+        restartButton.setFillColor(GUIHelper::Colors::BUTTON_HOVER);
+        restartButton.setOutlineColor(GUIHelper::Colors::TEXT);
+        restartButton.setOutlineThickness(3.0f);
+    } else {
+        restartButton.setFillColor(GUIHelper::Colors::BUTTON_NORMAL);
+        restartButton.setOutlineColor(GUIHelper::Colors::TEXT);
+        restartButton.setOutlineThickness(2.0f);
+    }
+    window.draw(restartButton);
+    
+    // Restart text
+    GUIHelper::centerText(m_restartText, SCREEN_WIDTH * 0.5f, 370.0f);
+    window.draw(m_restartText);
+    
+    // Menu button
+    sf::RectangleShape menuButton(sf::Vector2f(300.0f, 60.0f));
+    menuButton.setPosition((SCREEN_WIDTH - 300.0f) * 0.5f, 420.0f);
+    if (m_selectedMenuOption == 1) {
+        menuButton.setFillColor(GUIHelper::Colors::BUTTON_HOVER);
+        menuButton.setOutlineColor(GUIHelper::Colors::TEXT);
+        menuButton.setOutlineThickness(3.0f);
+    } else {
+        menuButton.setFillColor(GUIHelper::Colors::BUTTON_NORMAL);
+        menuButton.setOutlineColor(GUIHelper::Colors::TEXT);
+        menuButton.setOutlineThickness(2.0f);
+    }
+    window.draw(menuButton);
+    
+    // Menu text
+    GUIHelper::centerText(m_menuText, SCREEN_WIDTH * 0.5f, 450.0f);
+    window.draw(m_menuText);
 }
 
 sf::Vector2f GameState::getMovementInput() const {

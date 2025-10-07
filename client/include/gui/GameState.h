@@ -51,6 +51,15 @@ namespace rtype::client::gui {
     class GameState : public State {
     public:
         /**
+         * @enum GameStatus
+         * @brief Represents the current state of the game
+         */
+        enum class GameStatus {
+            Playing,    ///< Game is active
+            GameOver    ///< Player has died, showing game over menu
+        };
+        
+        /**
          * @brief Construct a new GameState
          * @param stateManager Reference to the state manager for transitions
          */
@@ -102,7 +111,7 @@ namespace rtype::client::gui {
          * @brief Represents the player's ship in the game
          * 
          * The Player structure contains all data related to the player's ship including
-         * position, size, speed, and collision bounds calculation.
+         * position, size, speed, health/lives, and collision bounds calculation.
          */
         struct Player {
             /** @brief Current position of the player (center point) */
@@ -114,12 +123,26 @@ namespace rtype::client::gui {
             /** @brief Movement speed in pixels per second */
             float speed{300.0f};
             
+            /** @brief Current number of lives remaining */
+            int lives{3};
+            
+            /** @brief Invulnerability timer after taking damage (seconds) */
+            float invulnerabilityTimer{0.0f};
+            
+            /**
+             * @brief Check if player is currently invulnerable
+             * @return True if player has temporary invulnerability
+             */
+            bool isInvulnerable() const {
+                return invulnerabilityTimer > 0.0f;
+            }
+            
             /**
              * @brief Get the axis-aligned bounding box for collision detection
              * @return sf::FloatRect representing the player's collision box
              * 
              * Calculates the bounding rectangle centered on the player's position.
-             * Used for AABB collision detection with enemies.
+             * Used for AABB collision detection with enemies and enemy projectiles.
              */
             sf::FloatRect getBounds() const {
                 return sf::FloatRect(
@@ -136,7 +159,7 @@ namespace rtype::client::gui {
          * @brief Represents an enemy ship in the game
          * 
          * The Enemy structure contains all data for enemy ships that move from
-         * right to left across the screen.
+         * right to left across the screen and can fire projectiles.
          */
         struct Enemy {
             /** @brief Current position of the enemy (center point) */
@@ -150,6 +173,9 @@ namespace rtype::client::gui {
             
             /** @brief Health points of the enemy */
             int health{1};
+            
+            /** @brief Timer for enemy fire rate */
+            float fireTimer{0.0f};
             
             /**
              * @brief Get the axis-aligned bounding box for collision detection
@@ -206,12 +232,50 @@ namespace rtype::client::gui {
         };
         
         /**
+         * @struct EnemyProjectile
+         * @brief Represents a projectile fired by enemies
+         * 
+         * The EnemyProjectile structure contains data for enemy projectiles that
+         * move from right to left across the screen to damage the player.
+         */
+        struct EnemyProjectile {
+            /** @brief Current position of the enemy projectile (center point) */
+            sf::Vector2f position;
+            
+            /** @brief Size of the projectile (width, height) */
+            sf::Vector2f size{10.0f, 4.0f};
+            
+            /** @brief Movement speed in pixels per second (leftward, slower than player shots) */
+            float speed{300.0f};
+            
+            /** @brief Damage dealt to player on hit */
+            int damage{1};
+            
+            /**
+             * @brief Get the axis-aligned bounding box for collision detection
+             * @return sf::FloatRect representing the enemy projectile's collision box
+             * 
+             * Calculates the bounding rectangle centered on the projectile's position.
+             * Used for AABB collision detection with the player.
+             */
+            sf::FloatRect getBounds() const {
+                return sf::FloatRect(
+                    position.x - size.x * 0.5f,
+                    position.y - size.y * 0.5f,
+                    size.x,
+                    size.y
+                );
+            }
+        };
+        
+        /**
          * @brief Update the player's position based on input
          * @param deltaTime Time elapsed since last frame in seconds
          * 
          * Moves the player ship based on current input state (ZQSD/Arrow keys).
          * Handles diagonal movement normalization and screen boundary clamping.
          * Player can move freely across the entire screen.
+         * Also updates invulnerability timer.
          */
         void updatePlayer(float deltaTime);
         
@@ -221,6 +285,7 @@ namespace rtype::client::gui {
          * 
          * Moves all enemies from right to left. Removes enemies that have
          * moved completely off the left side of the screen.
+         * Updates enemy fire timers and triggers enemy shots.
          */
         void updateEnemies(float deltaTime);
         
@@ -234,10 +299,20 @@ namespace rtype::client::gui {
         void updateProjectiles(float deltaTime);
         
         /**
+         * @brief Update all enemy projectiles' positions and remove off-screen ones
+         * @param deltaTime Time elapsed since last frame in seconds
+         * 
+         * Moves all enemy projectiles from right to left. Removes projectiles that have
+         * moved completely off the left side of the screen.
+         */
+        void updateEnemyProjectiles(float deltaTime);
+        
+        /**
          * @brief Check for collisions between player and enemies
          * 
          * Uses AABB (Axis-Aligned Bounding Box) collision detection.
-         * If a collision is detected, the game is reset.
+         * If a collision is detected and player is not invulnerable,
+         * the player loses one life.
          */
         void checkCollisions();
         
@@ -250,6 +325,17 @@ namespace rtype::client::gui {
          * - If enemy health reaches 0, the enemy is destroyed
          */
         void checkProjectileCollisions();
+        
+        /**
+         * @brief Check for collisions between enemy projectiles and player
+         * 
+         * Uses AABB collision detection. When an enemy projectile hits the player:
+         * - The player loses one life if not invulnerable
+         * - The projectile is destroyed
+         * - Player gains temporary invulnerability
+         * - If player lives reach 0, game over
+         */
+        void checkEnemyProjectileCollisions();
         
         /**
          * @brief Spawn a new enemy at a random vertical position
@@ -268,10 +354,27 @@ namespace rtype::client::gui {
         void fireProjectile();
         
         /**
+         * @brief Fire an enemy projectile from an enemy's position
+         * @param enemyPosition Position of the enemy firing the projectile
+         * 
+         * Creates a new enemy projectile at the specified position,
+         * shooting to the left towards the player.
+         */
+        void fireEnemyProjectile(const sf::Vector2f& enemyPosition);
+        
+        /**
+         * @brief Handle player taking damage
+         * 
+         * Reduces player lives by 1, grants invulnerability,
+         * and checks for game over condition.
+         */
+        void damagePlayer();
+        
+        /**
          * @brief Reset the game to initial state
          * 
-         * Resets player position to starting point and clears all enemies and projectiles.
-         * Called when the player collides with an enemy or when starting a new game.
+         * Resets player position, lives to 3, and clears all enemies and projectiles.
+         * Called when starting a new game or when player loses all lives.
          */
         void resetGame();
         
@@ -288,7 +391,8 @@ namespace rtype::client::gui {
          * @brief Render the player ship
          * @param window The render window to draw to
          * 
-         * Draws the player's ship as a green triangle pointing right.
+         * Draws the player's ship as a green rectangle.
+         * Flashes the ship during invulnerability period.
          */
         void renderPlayer(sf::RenderWindow& window);
         
@@ -309,6 +413,46 @@ namespace rtype::client::gui {
         void renderProjectiles(sf::RenderWindow& window);
         
         /**
+         * @brief Render all enemy projectiles
+         * @param window The render window to draw to
+         * 
+         * Draws all active enemy projectiles as red rectangles moving left.
+         */
+        void renderEnemyProjectiles(sf::RenderWindow& window);
+        
+        /**
+         * @brief Render the player's lives/HUD
+         * @param window The render window to draw to
+         * 
+         * Draws the player's remaining lives count in the top-left corner.
+         */
+        void renderHUD(sf::RenderWindow& window);
+        
+        /**
+         * @brief Render the game over menu
+         * @param window The render window to draw to
+         * 
+         * Draws the game over screen with options to restart or return to menu.
+         */
+        void renderGameOverMenu(sf::RenderWindow& window);
+        
+        /**
+         * @brief Initialize the Game Over UI elements (text, buttons)
+         * 
+         * Sets up the sf::Text objects for the game over menu using the
+         * centralized GUIHelper utilities for consistent styling.
+         * Called once in the constructor.
+         */
+        void setupGameOverUI();
+        
+        /**
+         * @brief Handle game over state and show menu
+         * 
+         * Transitions to game over state and displays menu options.
+         */
+        void showGameOver();
+        
+        /**
          * @brief Get the current movement vector from input state
          * @return sf::Vector2f Normalized movement direction vector
          * 
@@ -323,6 +467,31 @@ namespace rtype::client::gui {
          * Used to switch between game states (e.g., return to main menu).
          */
         StateManager& m_stateManager;
+        
+        /**
+         * @brief Current game status (Playing or GameOver)
+         */
+        GameStatus m_gameStatus{GameStatus::Playing};
+        
+        /**
+         * @brief Selected menu option in game over screen (0 = Restart, 1 = Menu)
+         */
+        int m_selectedMenuOption{0};
+        
+        /**
+         * @brief Text object for "GAME OVER" title displayed in game over menu
+         */
+        sf::Text m_gameOverTitleText;
+        
+        /**
+         * @brief Text object for "Restart" button in game over menu
+         */
+        sf::Text m_restartText;
+        
+        /**
+         * @brief Text object for "Return to Menu" button in game over menu
+         */
+        sf::Text m_menuText;
         
         /**
          * @brief The player's ship data
@@ -348,6 +517,14 @@ namespace rtype::client::gui {
         std::vector<Projectile> m_projectiles;
         
         /**
+         * @brief Active projectiles fired by enemies
+         * 
+         * Vector of all currently active enemy projectiles. Projectiles are added when enemies fire
+         * and removed when they move off-screen or hit the player.
+         */
+        std::vector<EnemyProjectile> m_enemyProjectiles;
+        
+        /**
          * @brief Timer for enemy spawning
          * 
          * Accumulates delta time. When it exceeds ENEMY_SPAWN_INTERVAL,
@@ -367,6 +544,16 @@ namespace rtype::client::gui {
          * @brief Interval between enemy spawns in seconds
          */
         static constexpr float ENEMY_SPAWN_INTERVAL{2.0f};
+        
+        /**
+         * @brief Interval between enemy shots in seconds
+         */
+        static constexpr float ENEMY_FIRE_INTERVAL{2.5f};
+        
+        /**
+         * @brief Duration of player invulnerability after taking damage (seconds)
+         */
+        static constexpr float INVULNERABILITY_DURATION{2.0f};
         
         /**
          * @brief Minimum time between shots in seconds
