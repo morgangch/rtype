@@ -57,42 +57,82 @@ void GameState::setupGameOverUI() {
     m_restartText.setCharacterSize(GUIHelper::Sizes::BUTTON_FONT_SIZE);
     m_restartText.setFillColor(GUIHelper::Colors::TEXT);
     
-    // Return to Menu button text
+    // Leave button text
     m_menuText.setFont(font);
-    m_menuText.setString("Return to Menu");
+    m_menuText.setString("Leave");
     m_menuText.setCharacterSize(GUIHelper::Sizes::BUTTON_FONT_SIZE);
     m_menuText.setFillColor(GUIHelper::Colors::TEXT);
 }
 
 void GameState::handleEvent(const sf::Event& event) {
-    // Handle game over menu
-    if (m_gameStatus == GameStatus::GameOver) {
+    // Handle in-game menu (pause or game over)
+    if (m_gameStatus == GameStatus::InGameMenu) {
+        // Keyboard navigation
         if (event.type == sf::Event::KeyPressed) {
             if (event.key.code == sf::Keyboard::Up || event.key.code == sf::Keyboard::Z) {
-                m_selectedMenuOption = 0; // Restart
+                m_selectedMenuOption = 0;
             } else if (event.key.code == sf::Keyboard::Down || event.key.code == sf::Keyboard::S) {
-                m_selectedMenuOption = 1; // Menu
+                m_selectedMenuOption = 1;
             } else if (event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) {
                 if (m_selectedMenuOption == 0) {
-                    // Restart game
-                    resetGame();
+                    // Resume/Restart game
+                    if (m_isGameOver) {
+                        resetGame();
+                    }
                     m_gameStatus = GameStatus::Playing;
                 } else {
                     // Return to main menu
                     m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
                 }
-            } else if (event.key.code == sf::Keyboard::Escape) {
-                // ESC also returns to menu
+            } else if (event.key.code == sf::Keyboard::Escape && !m_isGameOver) {
+                // ESC to resume (only if paused, not game over)
+                m_gameStatus = GameStatus::Playing;
+            }
+        }
+        
+        // Mouse interaction
+        if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+            sf::Vector2f mousePos(static_cast<float>(event.mouseButton.x), 
+                                 static_cast<float>(event.mouseButton.y));
+            
+            // Button dimensions (same as in renderGameOverMenu)
+            sf::FloatRect restartButton((SCREEN_WIDTH - 300.0f) * 0.5f, 340.0f, 300.0f, 60.0f);
+            sf::FloatRect menuButton((SCREEN_WIDTH - 300.0f) * 0.5f, 420.0f, 300.0f, 60.0f);
+            
+            if (restartButton.contains(mousePos)) {
+                // Resume/Restart
+                if (m_isGameOver) {
+                    resetGame();
+                }
+                m_gameStatus = GameStatus::Playing;
+            } else if (menuButton.contains(mousePos)) {
+                // Return to main menu
                 m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
             }
         }
-        return; // Don't process game input when game over
+        
+        // Mouse hover for visual feedback
+        if (event.type == sf::Event::MouseMoved) {
+            sf::Vector2f mousePos(static_cast<float>(event.mouseMove.x), 
+                                 static_cast<float>(event.mouseMove.y));
+            
+            sf::FloatRect restartButton((SCREEN_WIDTH - 300.0f) * 0.5f, 340.0f, 300.0f, 60.0f);
+            sf::FloatRect menuButton((SCREEN_WIDTH - 300.0f) * 0.5f, 420.0f, 300.0f, 60.0f);
+            
+            if (restartButton.contains(mousePos)) {
+                m_selectedMenuOption = 0;
+            } else if (menuButton.contains(mousePos)) {
+                m_selectedMenuOption = 1;
+            }
+        }
+        
+        return; // Don't process game input when in menu
     }
     
-    // Handle ESC to return to menu during gameplay
+    // Handle ESC to pause during gameplay
     if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
-        std::cout << "Returning to main menu..." << std::endl;
-        m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
+        std::cout << "Game paused..." << std::endl;
+        showInGameMenu(false); // Show pause menu
         return;
     }
 
@@ -156,8 +196,8 @@ void GameState::handleKeyReleased(sf::Keyboard::Key key) {
 }
 
 void GameState::update(float deltaTime) {
-    // Don't update game logic if game over
-    if (m_gameStatus == GameStatus::GameOver) {
+    // Don't update game logic if in menu
+    if (m_gameStatus == GameStatus::InGameMenu) {
         return;
     }
     
@@ -190,8 +230,8 @@ void GameState::render(sf::RenderWindow& window) {
     renderEnemyProjectiles(window);
     renderHUD(window);
     
-    // Render game over menu if game over
-    if (m_gameStatus == GameStatus::GameOver) {
+    // Render in-game menu if paused or game over
+    if (m_gameStatus == GameStatus::InGameMenu) {
         renderGameOverMenu(window);
     }
 }
@@ -421,16 +461,34 @@ void GameState::damagePlayer() {
     
     if (m_player.lives <= 0) {
         std::cout << "Game Over!" << std::endl;
-        showGameOver();
+        showInGameMenu(true); // Show game over menu
     } else {
         // Grant temporary invulnerability
         m_player.invulnerabilityTimer = INVULNERABILITY_DURATION;
     }
 }
 
-void GameState::showGameOver() {
-    m_gameStatus = GameStatus::GameOver;
-    m_selectedMenuOption = 0; // Default to "Restart"
+/**
+ * @brief Show the in-game menu
+ * 
+ * Pauses the game and displays the in-game menu with options to
+ * resume/restart or return to main menu.
+ * 
+ * @param isGameOver True if showing menu due to game over, false for pause
+ */
+void GameState::showInGameMenu(bool isGameOver) {
+    m_gameStatus = GameStatus::InGameMenu;
+    m_isGameOver = isGameOver;
+    m_selectedMenuOption = 0; // Default to first option
+    
+    // Update title and button text based on context
+    if (isGameOver) {
+        m_gameOverTitleText.setString("GAME OVER");
+        m_restartText.setString("Restart");
+    } else {
+        m_gameOverTitleText.setString("PAUSED");
+        m_restartText.setString("Resume");
+    }
 }
 
 void GameState::resetGame() {

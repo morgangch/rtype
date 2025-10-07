@@ -55,8 +55,8 @@ namespace rtype::client::gui {
          * @brief Represents the current state of the game
          */
         enum class GameStatus {
-            Playing,    ///< Game is active
-            GameOver    ///< Player has died, showing game over menu
+            Playing,     ///< Game is active
+            InGameMenu   ///< Paused or game over, showing in-game menu
         };
         
         /**
@@ -437,20 +437,22 @@ namespace rtype::client::gui {
         void renderGameOverMenu(sf::RenderWindow& window);
         
         /**
-         * @brief Initialize the Game Over UI elements (text, buttons)
+         * @brief Initialize the In-Game Menu UI elements (text, buttons)
          * 
-         * Sets up the sf::Text objects for the game over menu using the
+         * Sets up the sf::Text objects for the in-game menu using the
          * centralized GUIHelper utilities for consistent styling.
          * Called once in the constructor.
          */
         void setupGameOverUI();
         
         /**
-         * @brief Handle game over state and show menu
+         * @brief Show the in-game menu (pause or game over)
          * 
-         * Transitions to game over state and displays menu options.
+         * Transitions to in-game menu state and displays menu options.
+         * 
+         * @param isGameOver True if player died (game over), false if paused
          */
-        void showGameOver();
+        void showInGameMenu(bool isGameOver = false);
         
         /**
          * @brief Get the current movement vector from input state
@@ -469,12 +471,17 @@ namespace rtype::client::gui {
         StateManager& m_stateManager;
         
         /**
-         * @brief Current game status (Playing or GameOver)
+         * @brief Current game status (Playing or InGameMenu)
          */
         GameStatus m_gameStatus{GameStatus::Playing};
         
         /**
-         * @brief Selected menu option in game over screen (0 = Restart, 1 = Menu)
+         * @brief Flag indicating if menu is shown due to game over (true) or pause (false)
+         */
+        bool m_isGameOver{false};
+        
+        /**
+         * @brief Selected menu option in in-game menu (0 = Restart/Resume, 1 = Menu)
          */
         int m_selectedMenuOption{0};
         
