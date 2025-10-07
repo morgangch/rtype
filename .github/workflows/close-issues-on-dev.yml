@@ -16,10 +16,11 @@ jobs:
     steps:
       - name: Extract linked issues
         id: extract
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          # Use environment variables to safely handle special characters
-          PR_TITLE="${{ github.event.pull_request.title }}"
-          PR_BODY="${{ github.event.pull_request.body }}"
+          # Combine PR title and body safely
           text="$PR_TITLE $PR_BODY"
           
           echo "Processing PR text for issue extraction..."

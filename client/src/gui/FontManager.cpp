@@ -10,7 +10,7 @@
  * @date 2025
  */
 
-#include "gui/FontManager.hpp"
+#include "gui/FontManager.h"
 #include <iostream>
 
 namespace rtype::client::gui {
@@ -33,7 +33,7 @@ namespace rtype::client::gui {
     
     bool FontManager::loadFont() {
         // Try to load fonts in order of preference
-        if (font.loadFromFile("assets/fonts/arial.ttf")) {
+        if (font.loadFromFile("assets/fonts/r-type.otf")) {
             return true;
         }
         // Try common system fonts

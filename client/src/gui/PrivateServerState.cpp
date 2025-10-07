@@ -20,10 +20,10 @@
  * @date 2024
  */
 
-#include "gui/PrivateServerState.hpp"
-#include "gui/PrivateServerLobbyState.hpp"
-#include "gui/MainMenuState.hpp"
-#include "gui/NetworkManager.hpp"
+#include "gui/PrivateServerState.h"
+#include "gui/PrivateServerLobbyState.h"
+#include "gui/MainMenuState.h"
+#include "gui/NetworkManager.h"
 #include <iostream>
 #include <cstdlib>
 
@@ -53,15 +53,15 @@ namespace rtype::client::gui {
         serverCodeText.setFillColor(GUIHelper::Colors::TEXT);
         
         serverCodeHintText.setFont(font);
-        serverCodeHintText.setString("Enter server code (1000-9999)");
+        serverCodeHintText.setString("Enter server code");
         serverCodeHintText.setCharacterSize(GUIHelper::Sizes::HINT_FONT_SIZE);
         serverCodeHintText.setFillColor(GUIHelper::Colors::HINT_TEXT);
         
         // Button setup using GUIHelper
-        GUIHelper::setupButton(joinButton, joinButtonRect, "Join Server", GUIHelper::Sizes::BUTTON_FONT_SIZE);
+        GUIHelper::setupButton(joinButton, joinButtonRect, "Join", GUIHelper::Sizes::BUTTON_FONT_SIZE);
         joinButtonRect.setFillColor(sf::Color(50, 100, 50, 200));
         
-        GUIHelper::setupButton(createButton, createButtonRect, "Create New Server", GUIHelper::Sizes::BUTTON_FONT_SIZE);
+        GUIHelper::setupButton(createButton, createButtonRect, "Create", GUIHelper::Sizes::BUTTON_FONT_SIZE);
         createButtonRect.setFillColor(sf::Color(50, 50, 100, 200));
         
         GUIHelper::setupReturnButton(returnButton, returnButtonRect);
@@ -90,8 +90,8 @@ namespace rtype::client::gui {
         serverCodeText.setPosition(boxBounds.left + 10, boxBounds.top + 15);
         
         // Button positioning
-        float buttonWidth = 200.0f;
-        float buttonHeight = 60.0f;
+        float buttonWidth = 300.0f;
+        float buttonHeight = 80.0f;
         float buttonSpacing = 20.0f;
         float buttonY = centerY + 80.0f;
         
@@ -110,8 +110,8 @@ namespace rtype::client::gui {
                   createButtonRect.getPosition().y + buttonHeight / 2);
         
         // Return button positioning (top left)
-        float returnButtonWidth = 120.0f;
-        float returnButtonHeight = 40.0f;
+        float returnButtonWidth = 150.0f;
+        float returnButtonHeight = 50.0f;
         returnButtonRect.setSize(sf::Vector2f(returnButtonWidth, returnButtonHeight));
         returnButtonRect.setPosition(20.0f, 20.0f);
         GUIHelper::centerText(returnButton,

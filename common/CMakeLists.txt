@@ -1,23 +1,18 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Common Components Library - Auto-discover all .cpp files in components directory
-file(GLOB_RECURSE COMMON_SOURCES "components/*.cpp")
+# Common Components Library - Header-only library for ECS components
+# Since all components are header-only, we create an INTERFACE library
 
-add_library(common STATIC ${COMMON_SOURCES})
+add_library(common INTERFACE)
 
 # Include directories
-target_include_directories(common PUBLIC
+target_include_directories(common INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/..  # Parent directory to find common/components/
     ${CMAKE_CURRENT_SOURCE_DIR}     # Current directory
 )
 
 # Link with ECS library (common components depend on ECS)
-target_link_libraries(common PUBLIC ecs)
+target_link_libraries(common INTERFACE ecs)
 
 # Set C++ standard
-target_compile_features(common PUBLIC cxx_std_17)
-
-# Set output directory for library
-set_target_properties(common PROPERTIES
-    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-)
+target_compile_features(common INTERFACE cxx_std_17)
