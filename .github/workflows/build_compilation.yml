@@ -25,6 +25,9 @@ jobs:
   compilation_tests:
     name: "CMake Build & Compilation"
     runs-on: ubuntu-latest
+    container: 
+      image: epitechcontent/epitest-docker:latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
