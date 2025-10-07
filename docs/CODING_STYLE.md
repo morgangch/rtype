@@ -27,7 +27,7 @@ Toutes les classes, fonctions et méthodes doivent être documentées en utilisa
 
 * Les fichiers de code sont suffixés en **`.cpp`**, les headers en **`.h`**.
 * Chaque fichier source `.cpp` doit avoir un header associé, sauf les fichiers `main`.
-* Utiliser `#ifndef` dans tous les headers. JAMAIS pragma once
+* Utiliser `#ifndef` dans tous les headers. JAMAIS pragma once.
 * Pas de `using namespace std;`.
 * Toujours initialiser les variables.
 * Respecter les normes **MISRA C++** et **CERT C++** validées via `cppcheck` et `clang-tidy`.
