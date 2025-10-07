@@ -154,20 +154,74 @@ namespace rtype::client::gui {
          */
         void renderDebris(sf::RenderWindow& window);
         
-        // Screen dimensions
-        float m_screenWidth;   ///< Screen width in pixels
-        float m_screenHeight;  ///< Screen height in pixels
+        /**
+         * @name Screen Configuration
+         * @brief Core screen dimensions for the parallax system
+         * @{
+         */
         
-        // Background gradient
-        sf::VertexArray m_backgroundGradient;  ///< Gradient background vertex array
+        /** @brief Screen width in pixels - defines the horizontal bounds for parallax rendering */
+        float m_screenWidth;
         
-        // Parallax layers (far to near)
-        ParallaxLayer m_farStars;     ///< Distant, slow-moving stars
-        ParallaxLayer m_mediumStars;  ///< Medium distance stars
-        ParallaxLayer m_nearStars;    ///< Close, fast-moving stars
+        /** @brief Screen height in pixels - defines the vertical bounds for parallax rendering */
+        float m_screenHeight;
         
-        // Foreground elements
-        std::vector<SpaceDebris> m_debris;  ///< Rotating space debris
+        /** @} */
+        
+        /**
+         * @name Background Rendering
+         * @brief Background gradient system for space atmosphere
+         * @{
+         */
+        
+        /** 
+         * @brief Gradient background vertex array
+         * 
+         * SFML VertexArray containing a quad with color interpolation from dark blue
+         * at the top to black at the bottom, creating a deep space atmosphere effect.
+         */
+        sf::VertexArray m_backgroundGradient;
+        
+        /** @} */
+        
+        /**
+         * @name Parallax Star Layers
+         * @brief Multi-layered star system ordered from far to near
+         * 
+         * The three star layers create depth perception through different movement speeds:
+         * - Far stars: Slowest movement (20 px/s), smallest size, dimmest
+         * - Medium stars: Medium movement (60 px/s), medium size, moderate brightness  
+         * - Near stars: Fastest movement (120 px/s), largest size, brightest
+         * @{
+         */
+        
+        /** @brief Distant, slow-moving background stars (20 px/s) */
+        ParallaxLayer m_farStars;
+        
+        /** @brief Medium distance stars with moderate speed (60 px/s) */
+        ParallaxLayer m_mediumStars;
+        
+        /** @brief Close, fast-moving foreground stars (120 px/s) */
+        ParallaxLayer m_nearStars;
+        
+        /** @} */
+        
+        /**
+         * @name Foreground Elements
+         * @brief Dynamic space debris for enhanced visual depth
+         * @{
+         */
+        
+        /** 
+         * @brief Rotating space debris objects
+         * 
+         * Vector of SpaceDebris objects that provide foreground visual elements.
+         * Each debris piece has individual rotation, size, color, and movement speed
+         * to create varied and dynamic space environment effects.
+         */
+        std::vector<SpaceDebris> m_debris;
+        
+        /** @} */
     };
     
 } // namespace rtype::client::gui
