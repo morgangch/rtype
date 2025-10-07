@@ -113,6 +113,7 @@ jobs:
 
       - name: Generate test coverage with consistent GCC version
         if: ${{ inputs.generate_coverage }}
+        shell: bash
         run: |
           echo "Setting up test coverage with consistent compiler versions..."
           
