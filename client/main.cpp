@@ -32,43 +32,50 @@
 #include <cstdlib>
 #include <ctime>
 
+#include "network.h"
+
 int main() {
     // Initialize random seed for username generation
     srand(static_cast<unsigned int>(time(nullptr)));
-    
+
     // Create window with fixed size (non-resizable)
-    sf::RenderWindow window(sf::VideoMode(1280, 720), "R-TYPE - Main Menu", 
-                           sf::Style::Titlebar | sf::Style::Close);
+    sf::RenderWindow window(sf::VideoMode(1280, 720), "R-TYPE - Main Menu",
+                            sf::Style::Titlebar | sf::Style::Close);
     window.setFramerateLimit(60);
-    
+
     // Create state manager
     rtype::client::gui::StateManager stateManager(window);
-    
+
     // Push initial state (main menu)
     stateManager.pushState(std::make_unique<rtype::client::gui::MainMenuState>(stateManager));
-    
+
     sf::Clock clock;
-    
+
     // Main loop
     while (window.isOpen() && !stateManager.isEmpty()) {
         float deltaTime = clock.restart().asSeconds();
-        
+
         sf::Event event;
         while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed) {
                 window.close();
             }
-            
+
             stateManager.handleEvent(event);
         }
-        
+
         stateManager.update(deltaTime);
-        
+
         // Clear and render
         window.clear(sf::Color::Black);
         stateManager.render();
         window.display();
+
+        if (rtype::client::network::udp_fd != -1) {
+            rtype::client::network::loop_recv();
+            rtype::client::network::loop_send();
+        }
     }
-    
+
     return 0;
 }

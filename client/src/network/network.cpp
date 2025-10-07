@@ -20,7 +20,7 @@ using namespace rtype::client;
 namespace rtype::client::network {
     PacketManager pm;
     PacketHandler ph;
-    int udp_fd;
+    int udp_fd = -1;
 }
 
 void network::loop_recv() {
@@ -91,12 +91,12 @@ int network::init_udp_socket(const std::string &server_ip, int server_port) {
     return udp_fd;
 }
 
-int network::start_room_connection(const std::string &ip, int port, const std::string &player_name, uint32_t room_id) {
+int network::start_room_connection(const std::string &ip, int port, const std::string &player_name, uint32_t room_code) {
     init_udp_socket(ip, port);
 
     // Build and send the JoinRoomPacket
-    JoinRoomPacket p;
-    p.roomId = room_id;
+    JoinRoomPacket p{};
+    p.joinCode = room_code;
 
     // Secure the player name to avoid overflow
     strncpy(p.name, player_name.c_str(), 31);
