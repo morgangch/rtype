@@ -597,7 +597,7 @@ namespace rtype::client::gui {
         /**
          * @brief Input state: Fire key (Space) is pressed
          * 
-         * @note Not yet implemented in gameplay
+         * Used to trigger projectile firing with rate limiting via FIRE_COOLDOWN.
          */
         bool m_keyFire{false};
         

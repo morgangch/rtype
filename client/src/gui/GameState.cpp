@@ -592,15 +592,7 @@ void GameState::renderEnemyProjectiles(sf::RenderWindow& window) {
 }
 
 void GameState::renderHUD(sf::RenderWindow& window) {
-    // Create text for lives display
-    sf::Font font; // Using default font
-    sf::Text livesText;
-    livesText.setString("Lives: " + std::to_string(m_player.lives));
-    livesText.setCharacterSize(24);
-    livesText.setFillColor(sf::Color::White);
-    livesText.setPosition(10.0f, 10.0f);
-    
-    // Draw lives as hearts/icons
+    // Draw lives as icons (green squares)
     for (int i = 0; i < m_player.lives; ++i) {
         sf::RectangleShape lifeIcon(sf::Vector2f(20.0f, 20.0f));
         lifeIcon.setPosition(10.0f + i * 30.0f, 10.0f);
