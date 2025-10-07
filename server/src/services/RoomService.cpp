@@ -84,7 +84,6 @@ void room_service::kickPlayer(ECS::EntityID player) {
     auto *playerComp = root.world.GetComponent<components::PlayerConn>(player);
 
     if (playerComp) {
-        ECS::EntityID room = playerComp->room_code;
         PlayerDisconnectPacket p;
         p.playerId = player;
         root.packetManager.sendPacketBytesSafe(&p, sizeof(PlayerDisconnectPacket), Packets::PLAYER_DISCONNECT, nullptr,
