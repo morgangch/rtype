@@ -1,0 +1,15 @@
+80,40
+Les assets par défaut pour les tuiles.
+. ./assets/default/empty.png
+# ./assets/default/block.png
+* ./assets/default/star.png
+W ./assets/default/letter.png
+E ./assets/default/letter.png
+L ./assets/default/letter.png
+C ./assets/default/letter.png
+O ./assets/default/letter.png
+M ./assets/default/letter.png
+T ./assets/default/letter.png
+R ./assets/default/letter.png
+Y ./assets/default/letter.png
+P ./assets/default/letter.png
