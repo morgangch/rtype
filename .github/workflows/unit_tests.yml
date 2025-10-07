@@ -149,37 +149,40 @@ jobs:
           mkdir -p coverage_html
           mkdir -p public/coverage
           
+          # Define exclusion patterns
+          EXCLUDE_PATTERNS=(
+            --exclude='tests/'
+            --exclude='build.*/'
+            --exclude='/usr/'
+            --exclude='.*CMakeFiles.*'
+            --exclude='examples/'
+            --exclude='.*_test\.cpp'
+            --exclude='.*test_.*\.cpp'
+            --exclude='.*\.hpp'
+          )
+
           # Generate coverage reports
           gcovr --root . \
-            --exclude=".*/tests/.*" \
-            --exclude=".*/build.*" \
-            --exclude=".*/usr/.*" \
-            --exclude=".*CMakeFiles.*" \
+            "${EXCLUDE_PATTERNS[@]}" \
             --html --html-details \
             -o coverage_html/index.html
           
           # Also generate for public directory (GitHub Pages)
           gcovr --root . \
-            --exclude=".*/tests/.*" \
-            --exclude=".*/build.*" \
-            --exclude=".*/usr/.*" \
-            --exclude=".*CMakeFiles.*" \
+            "${EXCLUDE_PATTERNS[@]}" \
             --html --html-details \
             -o public/coverage/index.html
           
           # Generate XML and text reports for CI/CD
           gcovr --root . \
-            --exclude=".*/tests/.*" \
-            --exclude=".*/build.*" \
-            --exclude=".*/usr/.*" \
-            --exclude=".*CMakeFiles.*" \
+            "${EXCLUDE_PATTERNS[@]}" \
             --xml coverage.xml \
             --txt coverage.txt
           
           # Generate simple coverage summary
           echo "## Coverage Summary" > coverage_summary.md
           echo "" >> coverage_summary.md
-          gcovr --root . --exclude=".*/tests/.*" --exclude=".*/build.*" --exclude=".*/usr/.*" --exclude=".*CMakeFiles.*" >> coverage_summary.md
+          gcovr --root . "${EXCLUDE_PATTERNS[@]}" >> coverage_summary.md
           
           echo "✅ Coverage generation completed successfully"
         continue-on-error: true
