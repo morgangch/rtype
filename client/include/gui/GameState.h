@@ -15,6 +15,7 @@
 
 #include "State.h"
 #include "StateManager.h"
+#include "ParallaxSystem.h"
 #include <SFML/Graphics.hpp>
 #include <vector>
 
@@ -260,6 +261,11 @@ namespace rtype::client::gui {
          * and removed when they move off-screen or on collision.
          */
         std::vector<Enemy> m_enemies;
+        
+        /**
+         * @brief Parallax background system for space environment
+         */
+        ParallaxSystem m_parallaxSystem;
         
         /**
          * @brief Timer for enemy spawning

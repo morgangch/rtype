@@ -29,7 +29,7 @@
 namespace rtype::client::gui {
 
 GameState::GameState(StateManager& stateManager)
-    : m_stateManager(stateManager) {
+    : m_stateManager(stateManager), m_parallaxSystem(SCREEN_WIDTH, SCREEN_HEIGHT) {
 }
 
 void GameState::handleEvent(const sf::Event& event) {
@@ -105,15 +105,18 @@ void GameState::update(float deltaTime) {
     
     updatePlayer(deltaTime);
     updateEnemies(deltaTime);
+    m_parallaxSystem.update(deltaTime);
     checkCollisions();
 }
 
 void GameState::render(sf::RenderWindow& window) {
     // Clear with space background
-    window.clear(sf::Color(5, 5, 15));
+    window.clear(sf::Color::Black);
+    
+    // Render parallax background
+    m_parallaxSystem.render(window);
     
     // Render game elements
-    renderStarfield(window);
     renderPlayer(window);
     renderEnemies(window);
 }
@@ -227,6 +230,9 @@ void GameState::resetGame() {
     
     // Reset spawn timer
     m_enemySpawnTimer = 0.0f;
+    
+    // Reset parallax system
+    m_parallaxSystem.reset();
     
     std::cout << "Game reset!" << std::endl;
 }
