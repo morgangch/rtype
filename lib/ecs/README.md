@@ -14,7 +14,7 @@ A lightweight Entity Component System (ECS) library designed for game developmen
 
 ### 1. Include the library
 ```cpp
-#include <ECS/ECS.hpp>
+#include <ECS/ECS.h>
 ```
 
 ### 2. Define Components

@@ -1,4 +1,4 @@
-#include "ECS/ComponentManager.hpp"
+#include "ECS/ComponentManager.h"
 #include <algorithm>
 
 namespace ECS {
