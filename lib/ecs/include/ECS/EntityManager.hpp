@@ -113,6 +113,12 @@ namespace ECS {
          * @return size_t The count of entities that are currently active
          */
         size_t GetAliveEntityCount() const;
+
+        /**
+         * @brief Get a vector of all currently alive entities.
+         * @return Vector of EntityID representing all alive entities.
+         */
+        std::vector<std::uint32_t> GetAllEntities() const;
     };
 }
 

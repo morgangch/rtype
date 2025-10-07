@@ -7,6 +7,16 @@ namespace ECS {
         m_aliveEntities.reserve(1000);
     }
 
+    std::vector<std::uint32_t> EntityManager::GetAllEntities() const {
+        std::vector<std::uint32_t> entities;
+        for (EntityID id = 0; id < m_aliveEntities.size(); ++id) {
+            if (m_aliveEntities[id]) {
+                entities.push_back(id);
+            }
+        }
+        return entities;
+    }
+
     EntityID EntityManager::CreateEntity() {
         EntityID entityID;
 

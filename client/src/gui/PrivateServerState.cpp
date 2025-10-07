@@ -23,9 +23,8 @@
 #include "gui/PrivateServerState.h"
 #include "gui/PrivateServerLobbyState.h"
 #include "gui/MainMenuState.h"
-#include "gui/NetworkManager.h"
 #include <iostream>
-#include <cstdlib>
+#include "network.h"
 
 namespace rtype::client::gui {
     PrivateServerState::PrivateServerState(StateManager& stateManager, const std::string& username)
@@ -258,11 +257,11 @@ namespace rtype::client::gui {
             
             // Convert server code to room ID (assuming server code maps to room ID)
             uint32_t roomId = static_cast<uint32_t>(std::stoi(serverCode));
+
+            rtype::client::network::start_room_connection("127.0.0.1", 8080, username, roomId);
             
-            // Connect to the private server using the NetworkManager
-            bool connected = stateManager.getNetworkManager().connectToServer("127.0.0.1", 8080, username, roomId);
-            
-            if (connected) {
+            // TODO: update the logic of the connection successful from a packet.
+            if (false) {
                 std::cout << "Successfully connected to private server!" << std::endl;
                 // Switch to private lobby state as a regular player
                 stateManager.changeState(std::make_unique<PrivateServerLobbyState>(stateManager, username, serverCode, false));
@@ -283,10 +282,9 @@ namespace rtype::client::gui {
         
         std::cout << "Creating new private server with code: " << generatedCode << std::endl;
         
-        // Connect to the server as admin to create the room
-        bool connected = stateManager.getNetworkManager().connectToServer("127.0.0.1", 8080, username, roomId);
-        
-        if (connected) {
+        rtype::client::network::start_room_connection("127.0.0.1", 8080, username, roomId);
+        // TODO: update the logic of the connection successful from a packet.
+        if (false) {
             std::cout << "Successfully created private server!" << std::endl;
             // Switch to private lobby state as the admin
             stateManager.changeState(std::make_unique<PrivateServerLobbyState>(stateManager, username, generatedCode, true));
