@@ -11,8 +11,6 @@ target_include_directories(common INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}     # Current directory
 )
 
-find_package(SFML 2.5 COMPONENTS system window graphics audio network REQUIRED)
-
 # Link with ECS library (common components depend on ECS)
 target_link_libraries(common INTERFACE ecs)
 
