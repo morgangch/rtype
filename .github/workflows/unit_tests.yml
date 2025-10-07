@@ -59,8 +59,7 @@ jobs:
             gcc g++ \
             doxygen python3 python3-pip \
             clang clang-tidy cppcheck \
-            unzip curl \
-            libsfml-dev libsfml-audio2.6 libsfml-graphics2.6 libsfml-window2.6 libsfml-system2.6
+            unzip curl
       
       - name: Install CodeChecker for advanced analysis
         run: |
