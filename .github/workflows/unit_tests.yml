@@ -246,11 +246,10 @@ jobs:
         if: ${{ inputs.deploy_pages }}
         run: |
           echo "Preparing GitHub Pages content..."
-          mkdir -p public
           
           # Copy documentation from your Doxyfile output directory (public/doxygen)
           if [ -d "public/doxygen" ]; then
-            mv public/doxygen/html public/doxygen
+            mv public/doxygen/html/* public/doxygen
             rm -rf public/doxygen/html
           fi
           
