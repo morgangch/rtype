@@ -156,7 +156,7 @@ int test_welcome_map() {
     parser.clear();
     
     try {
-        (void)parser.loadFromDirectory("assets/maps/welcome");
+        parser.loadFromDirectory("assets/maps/welcome");
         assert(parser.isMapLoaded());
         const MapDefinition &map_def = parser.getMapDefinition();
         assert(map_def.width == 10);
@@ -471,7 +471,7 @@ int test_map_comments() {
         MapParser &parser = MapParser::getInstance();
         parser.clear();
         
-        (void)parser.loadFromDirectory(test_dir);
+        parser.loadFromDirectory(test_dir);
         
         assert(parser.isMapLoaded());
         const MapDefinition &map_def = parser.getMapDefinition();
@@ -509,7 +509,7 @@ int test_empty_lines() {
         MapParser &parser = MapParser::getInstance();
         parser.clear();
 
-        (void)parser.loadFromDirectory(test_dir);
+        parser.loadFromDirectory(test_dir);
 
         assert(parser.isMapLoaded());
         
