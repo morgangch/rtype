@@ -3,7 +3,7 @@
  * @brief Implementation of GUI utility functions and constants
  * 
  * This file implements the static utility functions and constants defined in
- * GUIHelper.hpp. It provides common GUI operations, standardized colors and
+ * GUIHelper.h. It provides common GUI operations, standardized colors and
  * sizes, and helper functions used throughout the R-TYPE client interface.
  * 
  * @author R-TYPE Development Team

@@ -1,4 +1,4 @@
-#include "ECS/Types.hpp"
+#include "ECS/Types.h"
 
 namespace ECS {
     // Empty implementation file for Entity - all functionality is in the header

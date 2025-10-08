@@ -9,7 +9,7 @@
 
 #include "packets.h"
 #include "rtype.h"
-#include "../../../common/components/Player.hpp"
+#include "../../../common/components/Player.h"
 #include "components/PlayerConn.h"
 #include "components/RoomProperties.h"
 

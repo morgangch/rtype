@@ -13,7 +13,7 @@
 
 #include "network.h"
 #include "packets.h"
-#include "../../../common/components/Player.hpp"
+#include "../../../common/components/Player.h"
 #include "components/PlayerConn.h"
 #include "services/PlayerService.h"
 

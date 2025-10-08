@@ -10,7 +10,7 @@
 #include "rtype.h"
 #include "tools.h"
 #include "components/RoomProperties.h"
-#include "ECS/Types.hpp"
+#include "ECS/Types.h"
 #include "services/PlayerService.h"
 #include "services/RoomService.h"
 

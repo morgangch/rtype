@@ -8,7 +8,7 @@
 #define NETWORKADDRESS_H
 
 #include <string>
-#include "ECS/Component.hpp"
+#include "ECS/Component.h"
 
 namespace rtype::server::components {
     class PlayerConn : public ECS::Component<PlayerConn> {

@@ -1,4 +1,4 @@
-#include <ECS/ECS.hpp>
+#include <ECS/ECS.h>
 #include <iostream>
 
 // Test components
