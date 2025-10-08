@@ -1,0 +1,12 @@
+10,6
+Welcome screen with default assets (no custom overrides).
+W /assets/sprites/letters/w.png
+E /assets/sprites/letters/e.png
+L /assets/sprites/letters/l.png
+C /assets/sprites/letters/c.png
+O /assets/sprites/letters/o.png
+M /assets/sprites/letters/m.png
+R /assets/sprites/letters/r.png
+T /assets/sprites/letters/t.png
+Y /assets/sprites/letters/y.png
+P /assets/sprites/letters/p.png

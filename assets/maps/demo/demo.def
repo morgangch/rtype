@@ -1,0 +1,4 @@
+12,7
+Demo map showing terrain, walls, and objects.
+~ ./assets/demo/water.png
+@ ./assets/demo/player.png

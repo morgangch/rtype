@@ -1,19 +1,20 @@
-# 🧩 Norme Code
+# 🧩 Coding Standard
+*French version: [docs/CODING_STYLE_FR.md](./CODING_STYLE_FR.md)*
 
-## 🧠 Pratiques de documentation
+## 🧠 Documentation Practices
 
-Toutes les classes, fonctions et méthodes doivent être documentées en utilisant **Doxygen**, selon le format suivant :
+All classes, functions, and methods must be documented using **Doxygen**, following this format:
 ```cpp
 /**
- * @brief Courte description de la fonction ou de la classe.
- * @param param_name Description du paramètre.
- * @return Description de la valeur de retour.
- * @throws Exception(s) éventuelle(s).
+ * @brief Short description of the function or class.
+ * @param param_name Parameter description.
+ * @return Return value description.
+ * @throws Possible exception(s).
  */
 ```
 
-* Les docstrings doivent être écrites **en anglais** pour assurer la cohérence avec le code.
-* Chaque fichier `.h` doit commencer par un bloc `@file` décrivant brièvement son rôle :
+* Docstrings must be written **in English** to ensure consistency with the code.
+* Each `.h` file must start with a `@file` block briefly describing its purpose:
 ```cpp
 /**
  * @file PlayerManager.h
@@ -23,52 +24,53 @@ Toutes les classes, fonctions et méthodes doivent être documentées en utilisa
 
 ---
 
-## ⚙️ Pratiques générales
+## ⚙️ General Practices
 
-* Les fichiers de code sont suffixés en **`.cpp`**, les headers en **`.h`**.
-* Chaque fichier source `.cpp` doit avoir un header associé, sauf les fichiers `main`.
-* Utiliser `#ifndef` dans tous les headers. JAMAIS pragma once.
-* Pas de `using namespace std;`.
-* Toujours initialiser les variables.
-* Respecter les normes **MISRA C++** et **CERT C++** validées via `cppcheck` et `clang-tidy`.
+* Code files have **`.cpp`** suffix, headers have **`.h`**.
+* Each `.cpp` source file must have an associated header, except `main` files.
+* Use `#ifndef` in all headers. NEVER pragma once.
+* No `using namespace std;`.
+* Always initialize variables.
+* Follow **MISRA C++** and **CERT C++** standards validated via `cppcheck` and `clang-tidy`.
 
-### 🧱 Conventions de nommage
+### 🧱 Naming Conventions
 
-| Élément        | Convention | Exemple                     |
-| -------------- | ---------- | --------------------------- |
-| Classes        | PascalCase | `PlayerManager`             |
-| Méthodes       | camelCase  | `getPlayerName()`           |
-| Variables      | snake_case | `player_count`              |
-| Constantes     | MAJUSCULES | `MAX_PLAYERS`               |
-| Espaces de nom | lowercase  | `namespace network { ... }` |
+| Element    | Convention | Example                     |
+| ---------- | ---------- | --------------------------- |
+| Classes    | PascalCase | `PlayerManager`             |
+| Methods    | camelCase  | `getPlayerName()`           |
+| Variables  | snake_case | `player_count`              |
+| Constants  | UPPERCASE  | `MAX_PLAYERS`               |
+| Namespaces | lowercase  | `namespace network { ... }` |
 
 ---
 
-## 🧩 Modularité et librairies
+## 🧩 Modularity and Libraries
 
-* Chaque fonctionnalité réutilisable doit être isolée dans une librairie interne (`/libs`).
-* Les librairies doivent être **autonomes** avec un `CMakeLists.txt` dédié.
-* Chaque librairie doit inclure :
+* Each reusable feature must be isolated in an internal library (`/libs`).
+* Libraries must be **autonomous** with a dedicated `CMakeLists.txt`.
+* Each library must include:
 
-  * Un header public dans `/include/libname/`
-  * Un namespace propre :
+  * A public header in `/include/libname/`
+  * A proper namespace:
 
     ```cpp
     namespace libname {
         ...
     }
     ```
-* Les dépendances entre modules doivent être **minimales et explicites** (importer uniquement ce qui est nécessaire).
+* Dependencies between modules must be **minimal and explicit** (import only what is necessary).
 
 ---
 
-## 🧪 Tests et CI/CD
+## 🧪 Testing and CI/CD
 
-* Les tests unitaires sont placés dans `/tests`.
-* Chaque PR déclenche une **pipeline GitHub Actions** :
-  * Compilation du projet (CMake)
-  * Exécution des tests unitaires
-  * Vérification du style avec `cppcheck` / `clang-tidy`
-* Aucun merge n’est autorisé si :
-  * Les tests échouent,
-  * Ou si les outils de vérification retournent des erreurs.
+* Unit tests are placed in `/tests`.
+* Each PR triggers a **GitHub Actions pipeline**:
+  * Project compilation (CMake)
+  * Unit tests execution
+  * Style verification with `cppcheck` / `clang-tidy`
+* No merge is allowed if:
+  * Tests fail,
+  * Or if verification tools return errors.
+```

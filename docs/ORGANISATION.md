@@ -1,77 +1,77 @@
-# 🗂️ Norme d’organisation
+# 🗂️ Organization Standard
 
-## 🕘 Réunions d’équipe
+## 🕘 Team Meetings
 
 ### 🔹 **Daily Stand-up**
 
-* **Fréquence** : Chaque jour de travail **sauf le lundi** (mardi et mercredi).
-* **Heure** : 10h00 **dernier délai**.
-* **Durée maximale** : 15 minutes.
-* **Format** : stand-up (chacun répond à 3 questions) : 
-  1. Ce que j’ai fait hier
-  2. Ce que je vais faire aujourd’hui
-  3. Problèmes ou blocages éventuels
-* **Retranscription obligatoire** sur **Notion** après chaque daily.
-* **Présence** : non obligatoire mais **fortement recommandée**.
-* **Absents** : doivent **rattraper la retranscription** de manière autonome sur Notion.
+* **Frequency**: Every working day **except Monday** (Tuesday and Wednesday).
+* **Time**: 10:00 AM **at the latest**.
+* **Maximum duration**: 15 minutes.
+* **Format**: stand-up (everyone answers 3 questions): 
+  1. What I did yesterday
+  2. What I will do today
+  3. Potential problems or blockers
+* **Mandatory transcription** on **Notion** after each daily.
+* **Attendance**: not mandatory but **strongly recommended**.
+* **Absent members**: must **catch up on the transcription** autonomously on Notion.
 
 ---
 
 ### 🔹 **Weekly Meeting**
 
-* **Fréquence** : une fois par semaine, le **lundi** (remplace le daily).
-* **Heure** : 14h00 **dernier délai**.
-* **Durée** : variable (30 à 60 minutes).
-* **Objectifs** :
-  * Définir les objectifs et tâches du sprint hebdomadaire.
-  * Répartir les rôles et tickets.
-  * Effectuer le **merge `dev → main`** si les conditions sont remplies.
-* **Présence obligatoire** pour tous les membres actifs.
-* **Retranscription obligatoire** sur **Notion** après chaque weekly.
+* **Frequency**: once a week, on **Monday** (replaces the daily).
+* **Time**: 2:00 PM **at the latest**.
+* **Duration**: variable (30 to 60 minutes).
+* **Objectives**:
+  * Define objectives and tasks for the weekly sprint.
+  * Distribute roles and tickets.
+  * Perform the **`dev → main` merge** if conditions are met.
+* **Mandatory attendance** for all active members.
+* **Mandatory transcription** on **Notion** after each weekly.
 
 ---
 
-## 🧩 Gestion des tâches et de l’avancement
+## 🧩 Task and Progress Management
 
-### 🔹 **Tickets & suivi**
+### 🔹 **Tickets & tracking**
 
-* La gestion des tâches se fait via **GitHub Projects**.
-* Chaque ticket doit comporter :
+* Task management is done via **GitHub Projects**.
+* Each ticket must include:
 
-  * Une **description claire** du besoin.
-  * Une ou plusieurs **assignations**.
-  * Une **deadline réaliste**.
-  * Si applicable : une **milestone** (sprint).
-* Les tickets doivent être **liés aux Pull Requests correspondantes** via l’onglet *Development*.
-
----
-
-### 🔹 **Rushs / Sprints**
-
-* Chaque **weekly** marque le début d’un nouveau **sprint**.
-* Les tickets sont regroupés par **rush** dans GitHub Projects.
-* Les tâches prioritaires doivent être placées dans la colonne **“In Progress”**.
-* Les tickets terminés doivent être déplacés dans **“Done”** une fois la PR mergée.
+  * A **clear description** of the need.
+  * One or more **assignees**.
+  * A **realistic deadline**.
+  * If applicable: a **milestone** (sprint).
+* Tickets must be **linked to corresponding Pull Requests** via the *Development* tab.
 
 ---
 
-## 💬 Communication interne
+### 🔹 **Rushes / Sprints**
 
-* Toute communication technique se fait sur le **Discord** du projet.
-* Un salon spécifique `#absent-retard` est prévu pour :
-
-  * Signaler toute **absence prévue**.
-  * Prévenir tout **retard**.
-* Les discussions importantes ou décisions techniques doivent être **résumées et archivées sur Notion**.
+* Each **weekly** marks the beginning of a new **sprint**.
+* Tickets are grouped by **rush** in GitHub Projects.
+* Priority tasks must be placed in the **"In Progress"** column.
+* Completed tickets must be moved to **"Done"** once the PR is merged.
 
 ---
 
-## 🧾 Bonnes pratiques d’équipe
+## 💬 Internal Communication
 
-* Respecter les horaires de réunion et **éviter les digressions** pendant les stand-ups.
-* Ne jamais bloquer un autre membre sans communication (prévenir sur Discord en cas d’imprévu).
-* Mettre à jour les tickets GitHub Projects dès qu’une tâche change d’état.
-* En cas de désaccord technique :
+* All technical communication is done on the project's **Discord**.
+* A specific `#absent-retard` channel is provided for:
 
-  * Prévenir le **chef de projet** (`@mrGonzalezGomez`),
-  * Si aucun consensus n’est trouvé, un **vote interne** peut être organisé sur le salon Discord `#sondage`.
+  * Reporting any **planned absence**.
+  * Notifying any **delay**.
+* Important discussions or technical decisions must be **summarized and archived on Notion**.
+
+---
+
+## 🧾 Team Best Practices
+
+* Respect meeting schedules and **avoid digressions** during stand-ups.
+* Never block another member without communication (notify on Discord in case of unexpected issues).
+* Update GitHub Projects tickets as soon as a task changes state.
+* In case of technical disagreement:
+
+  * Notify the **project lead** (`@mrGonzalezGomez`),
+  * If no consensus is reached, an **internal vote** can be organized on the Discord `#sondage` channel.

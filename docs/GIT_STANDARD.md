@@ -1,64 +1,65 @@
-# Norme Git
+# Git Standard
+*French version: [docs/GIT_STANDARD_FR.md](./GIT_STANDARD_FR.md)*
 
-## Nomenclatures
-Inspirée de la norme Conventional Commit [ici](https://www.conventionalcommits.org/fr/v1.0.0-beta.3/).  
-Elle est organisée en deux parties.
+## Nomenclature
+Inspired by the Conventional Commit standard [here](https://www.conventionalcommits.org/en/v1.0.0-beta.3/).  
+It is organized in two parts.
 
-### Norme de commits
-Format :
+### Commit Standard
+Format:
 `{action}: {brief} {related issue(s)}`
 
-- **{action}** = Type d’action du commit parmi :
+- **{action}** = Type of commit action among:
   - feat
   - fix
   - refacto
   - docs
-- **{brief}** = Résumé clair et concis de l’action
-- **{related issue(s)}** = Référence(s) des issues concernées sous forme : `#numéro`
+- **{brief}** = Clear and concise summary of the action
+- **{related issue(s)}** = Reference(s) to related issues in format: `#number`
 
-Exemple :  
-`feat: ajout du formulaire de connexion #42`
+Example:  
+`feat: add login form #42`
 
 ---
 
-### Norme de branches
-Format :
+### Branch Standard
+Format:
 `{type}/{scope}/{topic}`
 
-- **{type}** = Type d’action :
+- **{type}** = Type of action:
   - feat
   - fix
   - refacto
   - docs
-- **{scope}** = Domaine ou composant concerné (exemples) :
+- **{scope}** = Domain or component concerned (examples):
   - cicd
   - graphic
   - core
   - server
-  - (extensible selon les besoins)
-- **{topic}** = Sujet de la branche (max 3 mots-clés simples)
+  - (extensible as needed)
+- **{topic}** = Branch topic (max 3 simple keywords)
 
-Exemple :  
+Example:  
 `feat/server/login-api`
 
 ---
 
-## Norme de merges
-*Note : les Pull Requests sont parfois appelées PR ou MR (Merge Request).*
+## Merge Standard
+*Note: Pull Requests are sometimes called PR or MR (Merge Request).*
 
-1. **Tous les merges passent par une Pull Request**, avec review de Copilot + 1 à 2 personnes selon l’importance.
-1.2. **Exception : les merges vers `main`** se font en daily et nécessitent validation collective (de `dev` vers `main`).
+1. **All merges go through a Pull Request**, with review by Copilot + 1 to 2 people depending on importance.
+1.2. **Exception: merges to `main`** are done daily and require collective validation (from `dev` to `main`).
 
-2. **Les merges se font toujours avec _squash and commit_**, après :
-   - validation des reviewers humains,
-   - prise en compte des retours IA.
+2. **Merges are always done with _squash and commit_**, after:
+   - validation from human reviewers,
+   - taking AI feedback into account.
 
-3. **Toujours générer un résumé Copilot** dans la description de la PR.
-3.2. En bas de la description de la PR, ajouter :
+3. **Always generate a Copilot summary** in the PR description.
+3.2. At the bottom of the PR description, add:
 ```md
-closes #numéro_issue
+closes #issue_number
 ```
 
-4. **Ajouter la PR dans le GitHub Project** :
-   - Via l’onglet “Development”,
-   - Déplacer le ticket créé dans la colonne **“In Review”**.
+4. **Add the PR to the GitHub Project**:
+   - Via the "Development" tab,
+   - Move the created ticket to the **"In Review"** column.
