@@ -44,6 +44,12 @@ namespace rtype::client::network {
      */
     int init_udp_socket(const std::string &server_ip, int server_port);
 
+    /**
+     * @brief Check if the UDP socket is connected.
+     * @return true if connected, false otherwise.
+     */
+    bool is_udp_connected();
+
     extern PacketManager pm;
     extern PacketHandler ph;
     extern int udp_fd;

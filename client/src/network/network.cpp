@@ -105,3 +105,7 @@ int network::start_room_connection(const std::string &ip, int port, const std::s
     pm.sendPacketBytesSafe(&p, sizeof(JoinRoomPacket), JOIN_ROOM, nullptr, true);
     return 0;
 }
+
+bool network::is_udp_connected() {
+    return udp_fd != -1;
+}
