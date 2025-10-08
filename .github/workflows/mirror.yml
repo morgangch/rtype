@@ -2,10 +2,9 @@ name: Simple Mirroring
 
 on:
   push:
-    branches-ignore:
-      - 'ga-ignore-*'
+    branches:
       - 'main'
-      - 'dev'
+  workflow_dispatch:
 
 jobs:
   repository_validation:
