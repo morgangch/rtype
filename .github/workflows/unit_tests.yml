@@ -42,12 +42,14 @@ jobs:
   comprehensive_tests_and_coverage:
     name: "Unit Tests, Coverage & Documentation"
     runs-on: ubuntu-latest
-    # Use standard Ubuntu to avoid Docker overhead and GCC version issues
-    
+    container: 
+      image: epitechcontent/epitest-docker:latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+    
+
       - name: Install comprehensive dependencies
         run: |
           sudo apt-get update
@@ -55,14 +57,13 @@ jobs:
             cmake build-essential ninja-build pkg-config \
             libcriterion-dev lcov gcovr \
             gcc g++ \
-            doxygen python3 python3-pip \
+            doxygen graphviz python3 python3-pip \
             clang clang-tidy cppcheck \
-            unzip curl \
-            libsfml-dev libsfml-audio2.6 libsfml-graphics2.6 libsfml-window2.6 libsfml-system2.6
+            unzip curl
       
       - name: Install CodeChecker for advanced analysis
         run: |
-          pip3 install CodeChecker || echo "CodeChecker installation skipped"
+          pip3 install CodeChecker --break-system-packages || echo "CodeChecker installation skipped"
         continue-on-error: true
       
       - name: Configure CMake project for testing
@@ -112,6 +113,7 @@ jobs:
 
       - name: Generate test coverage with consistent GCC version
         if: ${{ inputs.generate_coverage }}
+        shell: bash
         run: |
           echo "Setting up test coverage with consistent compiler versions..."
           
@@ -146,40 +148,36 @@ jobs:
           echo "Generating coverage report with gcovr..."
           
           # Create coverage output directories
-          mkdir -p coverage_html
           mkdir -p public/coverage
           
-          # Generate coverage reports
-          gcovr --root . \
-            --exclude=".*/tests/.*" \
-            --exclude=".*/build.*" \
-            --exclude=".*/usr/.*" \
-            --exclude=".*CMakeFiles.*" \
-            --html --html-details \
-            -o coverage_html/index.html
-          
+          # Define exclusion patterns
+          EXCLUDE_PATTERNS=(
+            --exclude='tests/'
+            --exclude='build.*/'
+            --exclude='/usr/'
+            --exclude='.*CMakeFiles.*'
+            --exclude='examples/'
+            --exclude='.*_test\.cpp'
+            --exclude='.*test_.*\.cpp'
+            --exclude='.*\.hpp'
+          )
+
           # Also generate for public directory (GitHub Pages)
           gcovr --root . \
-            --exclude=".*/tests/.*" \
-            --exclude=".*/build.*" \
-            --exclude=".*/usr/.*" \
-            --exclude=".*CMakeFiles.*" \
+            "${EXCLUDE_PATTERNS[@]}" \
             --html --html-details \
             -o public/coverage/index.html
           
           # Generate XML and text reports for CI/CD
           gcovr --root . \
-            --exclude=".*/tests/.*" \
-            --exclude=".*/build.*" \
-            --exclude=".*/usr/.*" \
-            --exclude=".*CMakeFiles.*" \
+            "${EXCLUDE_PATTERNS[@]}" \
             --xml coverage.xml \
             --txt coverage.txt
           
           # Generate simple coverage summary
           echo "## Coverage Summary" > coverage_summary.md
           echo "" >> coverage_summary.md
-          gcovr --root . --exclude=".*/tests/.*" --exclude=".*/build.*" --exclude=".*/usr/.*" --exclude=".*CMakeFiles.*" >> coverage_summary.md
+          gcovr --root . "${EXCLUDE_PATTERNS[@]}" >> coverage_summary.md
           
           echo "✅ Coverage generation completed successfully"
         continue-on-error: true
@@ -242,17 +240,11 @@ jobs:
         if: ${{ inputs.deploy_pages }}
         run: |
           echo "Preparing GitHub Pages content..."
-          mkdir -p public
           
           # Copy documentation from your Doxyfile output directory (public/doxygen)
           if [ -d "public/doxygen" ]; then
-            cp -r public/doxygen/* public/
-          fi
-          
-          # Copy coverage reports
-          if [ -d "coverage_html" ]; then
-            mkdir -p public/coverage
-            cp -r coverage_html/* public/coverage/
+            mv public/doxygen/html/* public/doxygen
+            rm -rf public/doxygen/html
           fi
           
           # Create index page
@@ -275,7 +267,7 @@ jobs:
                   
                   <div class="section">
                       <h2>📖 Code Documentation</h2>
-                      <p><a href="doxygen/html">Browse API Documentation</a></p>
+                      <p><a href="doxygen/index.html">Browse API Documentation</a></p>
                       <p>Generated with Doxygen - Complete code documentation and API reference.</p>
                   </div>
                   
@@ -377,7 +369,7 @@ jobs:
           name: comprehensive-test-results-${{ env.BUILD_TYPE }}
           path: |
             comprehensive_results/
-            coverage_html/
+            public/coverage/
             docs/
           retention-days: 30
         continue-on-error: true

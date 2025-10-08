@@ -1,10 +1,20 @@
-#include "ECS/EntityManager.hpp"
+#include "ECS/EntityManager.h"
 #include <algorithm>
 
 namespace ECS {
     EntityManager::EntityManager() : m_nextEntityID(1) {
         // Reserve space for better performance
         m_aliveEntities.reserve(1000);
+    }
+
+    std::vector<std::uint32_t> EntityManager::GetAllEntities() const {
+        std::vector<std::uint32_t> entities;
+        for (EntityID id = 0; id < m_aliveEntities.size(); ++id) {
+            if (m_aliveEntities[id]) {
+                entities.push_back(id);
+            }
+        }
+        return entities;
     }
 
     EntityID EntityManager::CreateEntity() {

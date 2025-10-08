@@ -12,29 +12,18 @@
  */
 
 #include "gui/StateManager.h"
-#include "gui/NetworkManager.h"
 
 namespace rtype::client::gui {
-    
-    // Custom deleter implementation
-    void NetworkManagerDeleter::operator()(NetworkManager* ptr) {
-        delete ptr;
-    }
+
     
     StateManager::StateManager(sf::RenderWindow& window) 
-        : window(window), networkManager(new NetworkManager(), NetworkManagerDeleter()) {}
+        : window(window) {}
     
     StateManager::~StateManager() {
-        // Clean up network connections
-        if (networkManager) {
-            networkManager->disconnect();
-        }
+
     }
     
-    NetworkManager& StateManager::getNetworkManager() {
-        return *networkManager;
-    }
-    
+
     void StateManager::pushState(std::unique_ptr<State> state) {
         // Pause the current state by calling onExit()
         if (!states.empty()) {
@@ -73,11 +62,6 @@ namespace rtype::client::gui {
     }
     
     void StateManager::update(float deltaTime) {
-        // Update network manager first
-        if (networkManager) {
-            networkManager->update();
-        }
-        
         // Then update the active state
         if (!states.empty()) {
             states.top()->update(deltaTime);

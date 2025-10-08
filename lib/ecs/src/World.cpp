@@ -1,4 +1,4 @@
-#include "ECS/World.hpp"
+#include "ECS/World.h"
 
 namespace ECS {
     EntityID World::CreateEntity() {

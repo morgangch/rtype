@@ -8,6 +8,7 @@
 #ifndef PACKETS_H
 #define PACKETS_H
 #define MAX_PACKET_SIZE 2048
+#include "../../lib/ecs/include/ECS/Types.h"
 
 /**
  * Packet types
@@ -16,16 +17,10 @@
 
 enum Packets {
     JOIN_ROOM = 2,
-    PING = 3,
-    PONG = 4,
-    PLAYER_JOIN = 5,
-    PLAYER_LEAVE = 6,
-    PLAYER_INPUT = 7,
-    PLAYER_SHOOT = 8,
-    PLAYER_STATE = 9,
-    SPAWN_ENEMY = 10,
-    ENEMY_STATE = 11,
-    MISSILE_SPAWN = 12,
+    JOIN_ROOM_ACCEPTED = 3,
+    GAME_START_REQUEST = 4,
+    GAME_START = 5,
+    PLAYER_DISCONNECT = 6,
 };
 
 
@@ -34,12 +29,49 @@ enum Packets {
  * Client → Server
  * Packet type 2
  * @param name Player name (max 32 bytes)
- * @param roomId Room ID to join. Use 0 to create a new room, 1 to join a public room.
+ * @param joinCode Room ID to join. Use 0 to create a new room, 1 to join a public room.
  */
 struct JoinRoomPacket {
     char name[32];
-    uint32_t roomId;
+    uint32_t joinCode;
 };
+
+/**
+ * When the server accepts a player to join a room
+ * Server → Client
+ * Packet type 3
+ * @param roomCode The ID of the room the player joined
+ * @param admin If the user is an admin, the value is true.
+ */
+struct JoinRoomAcceptedPacket {
+    uint32_t roomCode;
+    bool admin;
+};
+
+/**
+ * When the owner of a room is starting a game
+ * Client → Server
+ * Packet type 4
+ */
+struct GameStartRequestPacket {
+};
+
+/**
+ * When the game is starting
+ * Server → All clients in the room
+ */
+struct GameStartPacket {
+};
+
+/**
+ * To disconnect a player.
+ * If the player is on the game, it will leave after the reception of this packet.
+ * Server → Client
+ */
+struct PlayerDisconnectPacket {
+    ECS::EntityID playerId;
+};
+
 
 struct PingPacket {
 };
