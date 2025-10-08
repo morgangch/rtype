@@ -1,15 +1,15 @@
 80,40
 Default tile assets.
-. ./assets/default/empty.png
-# ./assets/default/block.png
-* ./assets/default/star.png
-W ./assets/default/letter.png
-E ./assets/default/letter.png
-L ./assets/default/letter.png
-C ./assets/default/letter.png
-O ./assets/default/letter.png
-M ./assets/default/letter.png
-T ./assets/default/letter.png
-R ./assets/default/letter.png
-Y ./assets/default/letter.png
-P ./assets/default/letter.png
+. ./assets/sprites/default/empty.png
+# ./assets/sprites/default/block.png
+* ./assets/sprites/default/star.png
+W ./assets/sprites/letters/W.png
+E ./assets/sprites/letters/E.png
+L ./assets/sprites/letters/L.png
+C ./assets/sprites/letters/C.png
+O ./assets/sprites/letters/O.png
+M ./assets/sprites/letters/M.png
+T ./assets/sprites/letters/T.png
+R ./assets/sprites/letters/R.png
+Y ./assets/sprites/letters/Y.png
+P ./assets/sprites/letters/P.png
