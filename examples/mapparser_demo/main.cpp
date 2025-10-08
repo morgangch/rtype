@@ -11,6 +11,7 @@
 #include <string>
 #include <set>
 #include <algorithm>
+#include <limits>
 
 /**
  * @brief Print a separator line for visual clarity.
@@ -224,12 +225,12 @@ void interactive_mode() {
         
         if (!(std::cin >> choice)) {
             std::cin.clear();
-            std::cin.ignore(10000, '\n');
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             std::cout << "Invalid input. Please enter a number." << std::endl;
             continue;
         }
-        
-        std::cin.ignore(10000, '\n');
+
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         
         switch (choice) {
             case 0:

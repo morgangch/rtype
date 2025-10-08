@@ -59,8 +59,8 @@ std::string MapParser::trim(const std::string &str) {
 }
 
 void MapParser::validateLine(const std::string &line, int line_number) {
-    for (char c : line) {
-        if (c < 0 || c > 127) {
+    for (signed char c : line) {
+        if (c < 0) {
             throw std::invalid_argument(
                 "Invalid character (non-ASCII) found at line " + 
                 std::to_string(line_number) + 
@@ -71,7 +71,7 @@ void MapParser::validateLine(const std::string &line, int line_number) {
 }
 
 void MapParser::loadDefaultDefinitions(MapDefinition &map_def) {
-    const std::string default_def_path = "assets/maps/default.def";
+    const std::string default_def_path = DEFAULT_DEF_PATH;
     
     if (!fs::exists(default_def_path)) {
         return; // Default definitions are optional
@@ -192,11 +192,6 @@ void MapParser::parseDefFile(const std::string &filepath, MapDefinition &map_def
         }
         
         char tile_char = char_str[0];
-        
-        // Check for duplicate definitions (only warn, last one wins)
-        if (map_def.tile_mapping.find(tile_char) != map_def.tile_mapping.end() && !is_default) {
-            // Silently override - this is expected behavior
-        }
         
         if (asset_path.empty()) {
             throw std::invalid_argument(

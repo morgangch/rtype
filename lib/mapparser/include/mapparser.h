@@ -18,6 +18,8 @@
 #include <string>
 #include <stdexcept>
 
+#define DEFAULT_DEF_PATH "assets/maps/default.def"
+
 /**
  * @struct Tile
  * @brief Represents a single tile in the map with its position and asset path.
