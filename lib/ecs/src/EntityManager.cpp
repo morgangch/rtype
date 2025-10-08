@@ -1,4 +1,4 @@
-#include "ECS/EntityManager.hpp"
+#include "ECS/EntityManager.h"
 #include <algorithm>
 
 namespace ECS {

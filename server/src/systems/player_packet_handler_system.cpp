@@ -6,7 +6,7 @@
 */
 
 #include "rtype.h"
-#include "ECS/Types.hpp"
+#include "ECS/Types.h"
 #include "systems.h"
 #include "components/PlayerConn.h"
 

@@ -6,7 +6,7 @@
 */
 #ifndef SYSTEMS_H
 #define SYSTEMS_H
-#include "ECS/Types.hpp"
+#include "ECS/Types.h"
 
 namespace rtype::server::systems {
 

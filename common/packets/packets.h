@@ -8,7 +8,7 @@
 #ifndef PACKETS_H
 #define PACKETS_H
 #define MAX_PACKET_SIZE 2048
-#include "../../lib/ecs/include/ECS/Types.hpp"
+#include "../../lib/ecs/include/ECS/Types.h"
 
 /**
  * Packet types

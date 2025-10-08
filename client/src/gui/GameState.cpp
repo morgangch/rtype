@@ -6,7 +6,7 @@
  * Space Invaders style game with player movement, enemy spawning,
  * collision detection, and rendering.
  * 
- * The implementation follows the State pattern interface defined in State.hpp
+ * The implementation follows the State pattern interface defined in State.h
  * and integrates seamlessly with the StateManager for state transitions.
  * 
  * Key implementation details:

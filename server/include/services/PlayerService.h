@@ -10,7 +10,7 @@
 #include <vector>
 #include <netinet/in.h>
 
-#include "ECS/Types.hpp"
+#include "ECS/Types.h"
 
 namespace rtype::server::services::player_service {
     /**
