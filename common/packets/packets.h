@@ -52,5 +52,13 @@ struct JoinRoomAcceptedPacket {
 struct GameStartRequestPacket {
 };
 
+/**
+ * To disconnect a player.
+ * If the player is on the game, it will leave after the reception of this packet.
+ * Server → Client
+ */
+struct PlayerDisconnectPacket {
+    ECS::EntityID playerId;
+};
 
 #endif //PACKETS_H
