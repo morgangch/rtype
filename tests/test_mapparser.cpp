@@ -156,10 +156,8 @@ int test_welcome_map() {
     parser.clear();
     
     try {
-        const std::vector<Tile> &tiles = parser.loadFromDirectory("assets/maps/welcome");
-        
+        (void)parser.loadFromDirectory("assets/maps/welcome");
         assert(parser.isMapLoaded());
-        
         const MapDefinition &map_def = parser.getMapDefinition();
         assert(map_def.width == 10);
         assert(map_def.height == 6);
@@ -473,7 +471,7 @@ int test_map_comments() {
         MapParser &parser = MapParser::getInstance();
         parser.clear();
         
-        const std::vector<Tile> &tiles = parser.loadFromDirectory(test_dir);
+        (void)parser.loadFromDirectory(test_dir);
         
         assert(parser.isMapLoaded());
         const MapDefinition &map_def = parser.getMapDefinition();
@@ -510,9 +508,9 @@ int test_empty_lines() {
         
         MapParser &parser = MapParser::getInstance();
         parser.clear();
-        
-        const std::vector<Tile> &tiles = parser.loadFromDirectory(test_dir);
-        
+
+        (void)parser.loadFromDirectory(test_dir);
+
         assert(parser.isMapLoaded());
         
         cleanup_test_dir(test_dir);
