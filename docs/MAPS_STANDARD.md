@@ -1,21 +1,22 @@
-## 🌍 Norme de Mapping
+## 🌍 Map Standard
+*French version: [docs/MAPS_STANDARD_FR.md](./MAPS_STANDARD_FR.md)*
 
-### 🗂️ **Organisation des cartes**
+### 🗂️ **Map Organization**
 
-Toutes les cartes doivent être placées dans le dossier racine :
+All maps must be placed in the root folder:
 
 ```
 /assets/maps/
 ```
 
-Chaque carte doit avoir **son propre dossier**, nommé selon la **convention de nommage suivante** :
+Each map must have **its own folder**, named according to the **following naming convention**:
 
-| Élément           | Format                                      | Exemple                                    |
-| ----------------- | ------------------------------------------- | ------------------------------------------ |
-| Nom de la carte   | `map-name` *(minuscules, chiffres, tirets)* | `space-invaders`, `alien-planet`           |
-| Fichiers de carte | `.map` et `.def`                            | `space-invaders.map`, `space-invaders.def` |
+| Element       | Format                                        | Example                                    |
+| ------------- | --------------------------------------------- | ------------------------------------------ |
+| Map name      | `map-name` *(lowercase, numbers, hyphens)*    | `space-invaders`, `alien-planet`           |
+| Map files     | `.map` and `.def`                             | `space-invaders.map`, `space-invaders.def` |
 
-**Structure attendue :**
+**Expected structure:**
 
 ```
 assets/
@@ -27,70 +28,70 @@ assets/
 
 ---
 
-### 📄 **Fichier `.def` — Map Definition**
+### 📄 **`.def` File — Map Definition**
 
-Le fichier `.def` décrit les **métadonnées** et la **correspondance symboles → assets** de la carte.
+The `.def` file describes the **metadata** and **symbol → assets mapping** of the map.
 
-#### 🧩 Format général :
+#### 🧩 General format:
 
-1. **Première ligne** : dimensions de la carte
-   * Format : `width,height` (ex : `10,5`)
-   * Ou `inf`,`height` pour carte infinie en largeur. (ex : `inf,5`)
+1. **First line**: map dimensions
+   * Format: `width,height` (e.g.: `10,5`)
+   * Or `inf`,`height` for infinite width map. (e.g.: `inf,5`)
 
-2. **Deuxième ligne** : description textuelle de la carte.
+2. **Second line**: textual description of the map.
 
-   * Exemple : `A space-themed map`
+   * Example: `A space-themed map`
 
-3. **Lignes suivantes** : définitions de tuiles
+3. **Following lines**: tile definitions
 
-   * Format : `character asset_path`
-   * Exemples :
+   * Format: `character asset_path`
+   * Examples:
 
      ```
-     . ./assets/space/empty.png
-     # ./assets/space/asteroid.png
-     * ./assets/space/planet.png
+     . ./assets/sprites/space/empty.png
+     # ./assets/sprites/space/asteroid.png
+     * ./assets/sprites/space/planet.png
      ```
 
-#### ⚙️ Règles et contraintes :
+#### ⚙️ Rules and constraints:
 
-* Chaque caractère de définition doit être **unique**.
-* Les chemins d’assets sont **relatifs à la racine du projet**.
-* Les caractères non définis dans le `.def` :
-  * Sont remplacés par **l’asset par défaut dans `assets/maps/default.def`**, s’il existe.
-  * Sinon, sont considérés comme **zone vide** (background).
+* Each definition character must be **unique**.
+* Asset paths are **relative to the project root**.
+* Characters not defined in the `.def`:
+  * Are replaced by **the default asset in `assets/maps/default.def`**, if it exists.
+  * Otherwise, are considered as **empty area** (background).
 
-Le moteur charge d’abord assets/maps/default.def (si présent), puis surcharge les caractères définis dans la map locale.
+The engine first loads assets/maps/default.def (if present), then overrides characters defined in the local map.
 
-#### 🧠 Exemple :
+#### 🧠 Example:
 
 ```txt
 10,5
 A space-themed map
-. ./assets/space/empty.png
-# ./assets/space/asteroid.png
-* ./assets/space/planet.png
+. ./assets/sprites/space/empty.png
+# ./assets/sprites/space/asteroid.png
+* ./assets/sprites/space/planet.png
 ```
 
 ---
 
-### 🗺️ **Fichier `.map` — Map Layout**
+### 🗺️ **`.map` File — Map Layout**
 
-Le fichier `.map` décrit la **disposition des tuiles** à partir des définitions du `.def`.
+The `.map` file describes the **tile layout** based on the `.def` definitions.
 
-#### 🧩 Format général :
+#### 🧩 General format:
 
-* Chaque caractère correspond à une **tuile**.
-* Chaque **ligne** correspond à une **rangée** de tuiles.
-* Les **espaces** (` `) servent de séparateurs entre les tuiles.
-* Les **commentaires** commencent par `///` et sont **ignorés**.
-* Les caractères spéciaux (accentués, emoji, etc.) sont **interdits** dans les fichiers `.def` et `.map`. Seuls les caractères ASCII standards sont autorisés.
+* Each character corresponds to a **tile**.
+* Each **line** corresponds to a **row** of tiles.
+* **Spaces** (` `) serve as separators between tiles.
+* **Comments** start with `///` and are **ignored**.
+* Special characters (accented, emoji, etc.) are **forbidden** in `.def` and `.map` files. Only standard ASCII characters are allowed.
 
-#### 📐 Cartes finies :
+#### 📐 Finite maps:
 
-* Le nombre de colonnes et de lignes doit correspondre à la largeur et hauteur définies dans le `.def`.
+* The number of columns and rows must match the width and height defined in the `.def`.
 
-* Exemple :
+* Example:
   ```txt
   . . . . . . . . . .
   . . # # . . * * . .
@@ -99,18 +100,18 @@ Le fichier `.map` décrit la **disposition des tuiles** à partir des définitio
   . . . . . . . . . .
   ```
 
-#### ♾️ Cartes infinies :
-* La **largeur** est infinie, la **hauteur** reste fixe.
-* Le contenu du `.map` est interprété comme un **motif répétitif horizontalement**.
-* Il est possible d’utiliser des **groupes aléatoires** :
-  * Syntaxe : `[chars]`
-    → Chaque tuile sera choisie **aléatoirement** parmi les caractères contenus.
-  * Exemple :
+#### ♾️ Infinite maps:
+* The **width** is infinite, the **height** remains fixed.
+* The `.map` content is interpreted as a **repeating horizontal pattern**.
+* It is possible to use **random groups**:
+  * Syntax: `[chars]`
+    → Each tile will be **randomly chosen** from the contained characters.
+  * Example:
     ```txt
-    [.*] signifie que chaque occurence de cette tuile peut être '.' ou '*'.
+    [.*] means that each occurrence of this tile can be '.' or '*'.
     ```
 
-* Exemple complet :
+* Complete example:
   ```txt
   [.*] . . [.*]
   [.*] * * [.*]
@@ -118,34 +119,34 @@ Le fichier `.map` décrit la **disposition des tuiles** à partir des définitio
 
 ---
 
-### 🧾 **Règles supplémentaires**
+### 🧾 **Additional rules**
 
-* Tous les fichiers `.def` et `.map` doivent être **UTF-8 sans BOM**.
-* Les fichiers `.map` ne doivent **jamais contenir de tabulations** (`\t`) — uniquement des **espaces simples**.
-* Les chemins d’assets ne doivent **jamais contenir d’espaces**.
-
----
-
-### 📚 **Bonnes pratiques**
-
-* Toujours valider le format du `.def` avant de commencer la création du `.map`.
-* Tester les cartes avec une **map de test minimaliste** avant de les envoyer dans le repo.
-* En cas de modification d’un symbole ou d’un asset dans un `.def`, vérifier :
-  * que le caractère est cohérent dans tout le `.map`,
-  * et qu’aucun autre fichier `.def` ne définit le même caractère pour un autre usage (cohérence inter-maps).
+* All `.def` and `.map` files must be **UTF-8 without BOM**.
+* `.map` files must **never contain tabs** (`\t`) — only **simple spaces**.
+* Asset paths must **never contain spaces**.
 
 ---
 
-### 💡 **Exemple complet**
+### 📚 **Best practices**
+
+* Always validate the `.def` format before starting the `.map` creation.
+* Test maps with a **minimal test map** before pushing them to the repo.
+* When modifying a symbol or asset in a `.def`, verify:
+  * that the character is consistent throughout the `.map`,
+  * and that no other `.def` file defines the same character for another use (inter-map consistency).
+
+---
+
+### 💡 **Complete example**
 
 #### `/assets/maps/space-invaders/space-invaders.def`
 
 ```txt
 10,5
 A space-themed map
-. ./assets/space/empty.png
-# ./assets/space/asteroid.png
-* ./assets/space/planet.png
+. ./assets/sprites/space/empty.png
+# ./assets/sprites/space/asteroid.png
+* ./assets/sprites/space/planet.png
 ```
 
 #### `/assets/maps/space-invaders/space-invaders.map`
