@@ -5,7 +5,7 @@
 ** TODO: add description
 */
 
-#include "network.h"
+#include "../../include/network/network.h"
 #include <iostream>
 #include <sys/socket.h>
 #include <netinet/in.h>

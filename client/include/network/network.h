@@ -7,9 +7,11 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 #include <string>
-
 #include "packethandler.h"
 #include "packetmanager.h"
+
+#define DEV_SERVER_IP "127.0.0.1"
+#define DEV_SERVER_PORT 4242
 
 namespace rtype::client::network {
     /**
@@ -49,6 +51,11 @@ namespace rtype::client::network {
      * @return true if connected, false otherwise.
      */
     bool is_udp_connected();
+
+    /**
+     * @brief Register all controllers
+     */
+     void register_controllers();
 
     extern PacketManager pm;
     extern PacketHandler ph;

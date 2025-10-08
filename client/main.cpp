@@ -32,7 +32,7 @@
 #include <cstdlib>
 #include <ctime>
 
-#include "network.h"
+#include "include/network/network.h"
 
 int main() {
     // Initialize random seed for username generation
@@ -50,6 +50,9 @@ int main() {
     stateManager.pushState(std::make_unique<rtype::client::gui::MainMenuState>(stateManager));
 
     sf::Clock clock;
+
+    // Initialize network
+    rtype::client::network::register_controllers();
 
     // Main loop
     while (window.isOpen() && !stateManager.isEmpty()) {
