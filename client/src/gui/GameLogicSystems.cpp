@@ -21,7 +21,6 @@
 #include "gui/GameState.h"
 #include <cmath>
 #include <vector>
-#include <iostream>
 
 namespace rtype::client::gui {
 
@@ -228,10 +227,6 @@ void GameState::updateCleanupSystem(float deltaTime) {
     for (auto entity : toDestroy) {
         m_world.DestroyEntity(entity);
     }
-    
-    if (!toDestroy.empty()) {
-        std::cout << "[CleanupSystem] Removed " << toDestroy.size() << " off-screen entities\n";
-    }
 }
 
 // =============================================================================
@@ -284,7 +279,6 @@ void GameState::updateCollisionSystem() {
                     if (checkAABB(playerBounds, enemyBounds)) {
                         damagePlayer(1);
                         // Ne PAS détruire l'ennemi - il continue à vivre
-                        std::cout << "[Collision] Player hit by enemy!\n";
                     }
                 }
             }
@@ -320,9 +314,6 @@ void GameState::updateCollisionSystem() {
                     if (enemyHealth->currentHp <= 0) {
                         enemyHealth->isAlive = false;
                         toDestroy.push_back(enemyEntity); // Destroy enemy
-                        std::cout << "[Collision] Enemy destroyed!\n";
-                    } else {
-                        std::cout << "[Collision] Enemy hit! HP: " << enemyHealth->currentHp << "\n";
                     }
                     break; // Projectile can only hit one target
                 }
@@ -349,7 +340,6 @@ void GameState::updateCollisionSystem() {
                     if (checkAABB(playerBounds, projBounds)) {
                         damagePlayer(projData->damage);
                         toDestroy.push_back(projEntity); // Destroy projectile
-                        std::cout << "[Collision] Player hit by enemy projectile!\n";
                     }
                 }
             }

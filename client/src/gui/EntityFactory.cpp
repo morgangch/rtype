@@ -14,7 +14,6 @@
 
 #include "gui/GameState.h"
 #include <cstdlib>
-#include <iostream>
 
 namespace rtype::client::gui {
 
@@ -53,7 +52,6 @@ ECS::EntityID GameState::createPlayer() {
     // FireRate - 0.2s cooldown between shots
     m_world.AddComponent<rtype::common::components::FireRate>(entity, FIRE_COOLDOWN);
     
-    std::cout << "[EntityFactory] Created player entity: " << entity << "\n";
     return entity;
 }
 
@@ -89,8 +87,6 @@ ECS::EntityID GameState::createEnemy(float x, float y) {
         entity, ENEMY_FIRE_INTERVAL);
     fireRate->cooldown = randomCooldown;
     
-    std::cout << "[EntityFactory] Created enemy entity: " << entity 
-              << " at (" << x << ", " << y << ")\n";
     return entity;
 }
 
@@ -119,7 +115,6 @@ ECS::EntityID GameState::createPlayerProjectile(float x, float y) {
     // Projectile - 1 damage
     m_world.AddComponent<rtype::common::components::Projectile>(entity, 1);
     
-    std::cout << "[EntityFactory] Created player projectile: " << entity << "\n";
     return entity;
 }
 
@@ -148,7 +143,6 @@ ECS::EntityID GameState::createEnemyProjectile(float x, float y) {
     // Projectile - 1 damage
     m_world.AddComponent<rtype::common::components::Projectile>(entity, 1);
     
-    std::cout << "[EntityFactory] Created enemy projectile: " << entity << "\n";
     return entity;
 }
 
