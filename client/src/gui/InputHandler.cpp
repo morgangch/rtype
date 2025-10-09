@@ -210,16 +210,18 @@ void GameState::handleKeyReleased(sf::Keyboard::Key key) {
                         auto* fireRate = m_world.GetComponent<rtype::common::components::FireRate>(entity);
                         
                         if (chargedShot && pos && fireRate && chargedShot->isCharging) {
-                            // Fire charged shot if fully charged, otherwise normal shot
-                            if (chargedShot->isFullyCharged && fireRate->canFire()) {
-                                createChargedProjectile(pos->x + 32.0f, pos->y);
-                                fireRate->shoot();
-                            } else if (fireRate->canFire()) {
-                                // Normal shot if not fully charged
-                                createPlayerProjectile(pos->x + 32.0f, pos->y);
+                            // Release charge and get if it was fully charged
+                            bool wasFullyCharged = chargedShot->release();
+                            
+                            if (fireRate->canFire()) {
+                                // Fire appropriate projectile type
+                                if (wasFullyCharged) {
+                                    createChargedProjectile(pos->x + 32.0f, pos->y);
+                                } else {
+                                    createPlayerProjectile(pos->x + 32.0f, pos->y);
+                                }
                                 fireRate->shoot();
                             }
-                            chargedShot->release();
                         }
                     }
                 }

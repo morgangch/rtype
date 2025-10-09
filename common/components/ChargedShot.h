@@ -53,12 +53,14 @@ namespace rtype::common::components {
         
         /**
          * @brief Release charge and reset
+         * @return true if shot was fully charged when released
          */
-        void release() {
+        bool release() {
             bool wasCharged = isFullyCharged;
             chargeTime = 0.0f;
             isCharging = false;
             isFullyCharged = false;
+            return wasCharged;
         }
         
         /**

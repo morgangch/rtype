@@ -29,6 +29,7 @@
 #include <common/components/ChargedShot.h>
 #include <client/components/Sprite.h>
 #include <vector>
+#include <functional>
 
 namespace rtype::client::gui {
     
@@ -342,14 +343,41 @@ namespace rtype::client::gui {
         /**
          * @brief Collision System - Detect and handle collisions
          * 
-         * Checks for AABB collisions between:
-         * - Player and enemies
-         * - Player projectiles and enemies
-         * - Enemy projectiles and player
-         * 
-         * Applies damage, destroys entities, and updates health.
+         * Orchestrates all collision detection subsystems.
+         * Collects entities to destroy and processes destruction.
          */
         void updateCollisionSystem();
+        
+        /**
+         * @brief Check player vs enemies collision
+         * @param positions Map of all entity positions
+         * @param getBounds Lambda to get entity bounding box
+         */
+        void checkPlayerVsEnemiesCollision(
+            ECS::ComponentArray<rtype::common::components::Position>& positions,
+            const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds);
+        
+        /**
+         * @brief Check player projectiles vs enemies collision
+         * @param positions Map of all entity positions
+         * @param getBounds Lambda to get entity bounding box
+         * @param toDestroy Vector to collect entities to destroy
+         */
+        void checkPlayerProjectilesVsEnemiesCollision(
+            ECS::ComponentArray<rtype::common::components::Position>& positions,
+            const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds,
+            std::vector<ECS::EntityID>& toDestroy);
+        
+        /**
+         * @brief Check enemy projectiles vs player collision
+         * @param positions Map of all entity positions
+         * @param getBounds Lambda to get entity bounding box
+         * @param toDestroy Vector to collect entities to destroy
+         */
+        void checkEnemyProjectilesVsPlayerCollision(
+            ECS::ComponentArray<rtype::common::components::Position>& positions,
+            const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds,
+            std::vector<ECS::EntityID>& toDestroy);
         
         /**
          * @brief Handle player firing a projectile

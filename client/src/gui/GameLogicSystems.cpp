@@ -21,12 +21,9 @@
 #include "gui/GameState.h"
 #include <cmath>
 #include <vector>
+#include <functional>
 
 namespace rtype::client::gui {
-
-// =============================================================================
-// MOVEMENT SYSTEM
-// =============================================================================
 
 void GameState::updateMovementSystem(float deltaTime) {
     auto* positions = m_world.GetAllComponents<rtype::common::components::Position>();
@@ -68,10 +65,6 @@ void GameState::updateMovementSystem(float deltaTime) {
         }
     }
 }
-
-// =============================================================================
-// INPUT SYSTEM
-// =============================================================================
 
 void GameState::updateInputSystem(float deltaTime) {
     // Find player entity (has Player component)
@@ -116,10 +109,6 @@ void GameState::updateInputSystem(float deltaTime) {
     }
 }
 
-// =============================================================================
-// FIRE RATE SYSTEM
-// =============================================================================
-
 void GameState::updateFireRateSystem(float deltaTime) {
     auto* fireRates = m_world.GetAllComponents<rtype::common::components::FireRate>();
     if (!fireRates) return;
@@ -129,10 +118,6 @@ void GameState::updateFireRateSystem(float deltaTime) {
     }
 }
 
-// =============================================================================
-// CHARGED SHOT SYSTEM
-// =============================================================================
-
 void GameState::updateChargedShotSystem(float deltaTime) {
     auto* chargedShots = m_world.GetAllComponents<rtype::common::components::ChargedShot>();
     if (!chargedShots) return;
@@ -141,10 +126,6 @@ void GameState::updateChargedShotSystem(float deltaTime) {
         chargedShotPtr->update(deltaTime);
     }
 }
-
-// =============================================================================
-// INVULNERABILITY SYSTEM - Uses Health.invulnerable
-// =============================================================================
 
 void GameState::updateInvulnerabilitySystem(float deltaTime) {
     auto* healths = m_world.GetAllComponents<rtype::common::components::Health>();
@@ -160,10 +141,6 @@ void GameState::updateInvulnerabilitySystem(float deltaTime) {
         }
     }
 }
-
-// =============================================================================
-// ENEMY SPAWN SYSTEM
-// =============================================================================
 
 void GameState::updateEnemySpawnSystem(float deltaTime) {
     m_enemySpawnTimer += deltaTime;
@@ -207,10 +184,6 @@ void GameState::updateEnemySpawnSystem(float deltaTime) {
         }
     }
 }
-
-// =============================================================================
-// ENEMY AI SYSTEM
-// =============================================================================
 
 void GameState::updateEnemyAISystem(float deltaTime) {
     auto* teams = m_world.GetAllComponents<rtype::common::components::Team>();
@@ -300,10 +273,6 @@ void GameState::updateEnemyAISystem(float deltaTime) {
     }
 }
 
-// =============================================================================
-// CLEANUP SYSTEM
-// =============================================================================
-
 void GameState::updateCleanupSystem(float deltaTime) {
     std::vector<ECS::EntityID> toDestroy;
     
@@ -340,9 +309,113 @@ void GameState::updateCleanupSystem(float deltaTime) {
     }
 }
 
-// =============================================================================
-// COLLISION SYSTEM
-// =============================================================================
+void GameState::checkPlayerVsEnemiesCollision(
+    ECS::ComponentArray<rtype::common::components::Position>& positions,
+    const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds) {
+    
+    if (m_playerEntity == 0) return;
+    
+    auto* playerPos = m_world.GetComponent<rtype::common::components::Position>(m_playerEntity);
+    auto* playerHealth = m_world.GetComponent<rtype::common::components::Health>(m_playerEntity);
+    
+    if (!playerPos || !playerHealth || playerHealth->invulnerable) return;
+    
+    sf::FloatRect playerBounds = getBounds(m_playerEntity, *playerPos);
+    
+    for (const auto& [entity, posPtr] : positions) {
+        if (entity == m_playerEntity) continue;
+        
+        auto* team = m_world.GetComponent<rtype::common::components::Team>(entity);
+        auto* health = m_world.GetComponent<rtype::common::components::Health>(entity);
+        
+        // Check collision with enemies
+        if (team && health && team->team == rtype::common::components::TeamType::Enemy) {
+            sf::FloatRect enemyBounds = getBounds(entity, *posPtr);
+            
+            if (playerBounds.intersects(enemyBounds)) {
+                damagePlayer(1);
+                // Ne PAS détruire l'ennemi - il continue à vivre
+            }
+        }
+    }
+}
+
+void GameState::checkPlayerProjectilesVsEnemiesCollision(
+    ECS::ComponentArray<rtype::common::components::Position>& positions,
+    const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds,
+    std::vector<ECS::EntityID>& toDestroy) {
+    
+    for (const auto& [projEntity, projPosPtr] : positions) {
+        auto* projTeam = m_world.GetComponent<rtype::common::components::Team>(projEntity);
+        auto* projData = m_world.GetComponent<rtype::common::components::Projectile>(projEntity);
+        
+        // Skip if not a player projectile
+        if (!projTeam || !projData) continue;
+        if (projTeam->team != rtype::common::components::TeamType::Player) continue;
+        
+        sf::FloatRect projBounds = getBounds(projEntity, *projPosPtr);
+        
+        for (const auto& [enemyEntity, enemyPosPtr] : positions) {
+            if (enemyEntity == projEntity) continue;
+            
+            auto* enemyTeam = m_world.GetComponent<rtype::common::components::Team>(enemyEntity);
+            auto* enemyHealth = m_world.GetComponent<rtype::common::components::Health>(enemyEntity);
+            
+            // Check collision with enemies
+            if (enemyTeam && enemyHealth && enemyTeam->team == rtype::common::components::TeamType::Enemy) {
+                sf::FloatRect enemyBounds = getBounds(enemyEntity, *enemyPosPtr);
+                
+                if (projBounds.intersects(enemyBounds)) {
+                    // Damage enemy
+                    enemyHealth->currentHp -= projData->damage;
+                    
+                    if (enemyHealth->currentHp <= 0) {
+                        enemyHealth->isAlive = false;
+                        toDestroy.push_back(enemyEntity);
+                    }
+                    
+                    // Check if projectile is piercing
+                    if (!projData->piercing) {
+                        // Normal projectile - destroy after first hit
+                        toDestroy.push_back(projEntity);
+                        break; // Projectile destroyed, stop checking
+                    }
+                    // Piercing projectile continues through enemies
+                }
+            }
+        }
+    }
+}
+
+void GameState::checkEnemyProjectilesVsPlayerCollision(
+    ECS::ComponentArray<rtype::common::components::Position>& positions,
+    const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds,
+    std::vector<ECS::EntityID>& toDestroy) {
+    
+    if (m_playerEntity == 0) return;
+    
+    auto* playerPos = m_world.GetComponent<rtype::common::components::Position>(m_playerEntity);
+    auto* playerHealth = m_world.GetComponent<rtype::common::components::Health>(m_playerEntity);
+    
+    if (!playerPos || !playerHealth || playerHealth->invulnerable) return;
+    
+    sf::FloatRect playerBounds = getBounds(m_playerEntity, *playerPos);
+    
+    for (const auto& [projEntity, projPosPtr] : positions) {
+        auto* projTeam = m_world.GetComponent<rtype::common::components::Team>(projEntity);
+        auto* projData = m_world.GetComponent<rtype::common::components::Projectile>(projEntity);
+        
+        // Check if it's an enemy projectile
+        if (projTeam && projData && projTeam->team == rtype::common::components::TeamType::Enemy) {
+            sf::FloatRect projBounds = getBounds(projEntity, *projPosPtr);
+            
+            if (playerBounds.intersects(projBounds)) {
+                damagePlayer(projData->damage);
+                toDestroy.push_back(projEntity);
+            }
+        }
+    }
+}
 
 void GameState::updateCollisionSystem() {
     std::vector<ECS::EntityID> toDestroy;
@@ -350,11 +423,6 @@ void GameState::updateCollisionSystem() {
     // Get all positions for collision checks
     auto* positions = m_world.GetAllComponents<rtype::common::components::Position>();
     if (!positions) return;
-    
-    // Helper lambda for AABB collision
-    auto checkAABB = [](const sf::FloatRect& a, const sf::FloatRect& b) -> bool {
-        return a.intersects(b);
-    };
     
     // Helper lambda to get entity bounds
     auto getBounds = [this](ECS::EntityID entity, const rtype::common::components::Position& pos) -> sf::FloatRect {
@@ -369,112 +437,16 @@ void GameState::updateCollisionSystem() {
         );
     };
     
-    // 1. PLAYER vs ENEMIES collision
-    if (m_playerEntity != 0) {
-        auto* playerPos = m_world.GetComponent<rtype::common::components::Position>(m_playerEntity);
-        auto* playerHealth = m_world.GetComponent<rtype::common::components::Health>(m_playerEntity);
-        
-        if (playerPos && playerHealth && !playerHealth->invulnerable) {
-            sf::FloatRect playerBounds = getBounds(m_playerEntity, *playerPos);
-            
-            for (auto& [entity, posPtr] : *positions) {
-                if (entity == m_playerEntity) continue;
-                
-                auto* team = m_world.GetComponent<rtype::common::components::Team>(entity);
-                auto* health = m_world.GetComponent<rtype::common::components::Health>(entity);
-                
-                // Check collision with enemies
-                if (team && health && team->team == rtype::common::components::TeamType::Enemy) {
-                    sf::FloatRect enemyBounds = getBounds(entity, *posPtr);
-                    
-                    if (checkAABB(playerBounds, enemyBounds)) {
-                        damagePlayer(1);
-                        // Ne PAS détruire l'ennemi - il continue à vivre
-                    }
-                }
-            }
-        }
-    }
-    
-    // 2. PLAYER PROJECTILES vs ENEMIES collision
-    for (auto& [projEntity, projPosPtr] : *positions) {
-        auto* projTeam = m_world.GetComponent<rtype::common::components::Team>(projEntity);
-        auto* projData = m_world.GetComponent<rtype::common::components::Projectile>(projEntity);
-        
-        // Skip if not a player projectile
-        if (!projTeam || !projData) continue;
-        if (projTeam->team != rtype::common::components::TeamType::Player) continue;
-        
-        sf::FloatRect projBounds = getBounds(projEntity, *projPosPtr);
-        bool projectileHit = false;
-        
-        for (auto& [enemyEntity, enemyPosPtr] : *positions) {
-            if (enemyEntity == projEntity) continue;
-            
-            auto* enemyTeam = m_world.GetComponent<rtype::common::components::Team>(enemyEntity);
-            auto* enemyHealth = m_world.GetComponent<rtype::common::components::Health>(enemyEntity);
-            
-            // Check collision with enemies
-            if (enemyTeam && enemyHealth && enemyTeam->team == rtype::common::components::TeamType::Enemy) {
-                sf::FloatRect enemyBounds = getBounds(enemyEntity, *enemyPosPtr);
-                
-                if (checkAABB(projBounds, enemyBounds)) {
-                    // Damage enemy
-                    enemyHealth->currentHp -= projData->damage;
-                    
-                    if (enemyHealth->currentHp <= 0) {
-                        enemyHealth->isAlive = false;
-                        toDestroy.push_back(enemyEntity); // Destroy enemy
-                        // No need to manually track boss death - isBossActive() queries ECS
-                    }
-                    
-                    // Check if projectile is piercing
-                    if (!projData->piercing) {
-                        // Normal projectile - destroy after first hit
-                        toDestroy.push_back(projEntity);
-                        projectileHit = true;
-                        break; // Projectile destroyed, stop checking
-                    }
-                    // Piercing projectile continues through enemies
-                }
-            }
-        }
-    }
-    
-    // 3. ENEMY PROJECTILES vs PLAYER collision
-    if (m_playerEntity != 0) {
-        auto* playerPos = m_world.GetComponent<rtype::common::components::Position>(m_playerEntity);
-        auto* playerHealth = m_world.GetComponent<rtype::common::components::Health>(m_playerEntity);
-        
-        if (playerPos && playerHealth && !playerHealth->invulnerable) {
-            sf::FloatRect playerBounds = getBounds(m_playerEntity, *playerPos);
-            
-            for (auto& [projEntity, projPosPtr] : *positions) {
-                auto* projTeam = m_world.GetComponent<rtype::common::components::Team>(projEntity);
-                auto* projData = m_world.GetComponent<rtype::common::components::Projectile>(projEntity);
-                
-                // Check if it's an enemy projectile
-                if (projTeam && projData && projTeam->team == rtype::common::components::TeamType::Enemy) {
-                    sf::FloatRect projBounds = getBounds(projEntity, *projPosPtr);
-                    
-                    if (checkAABB(playerBounds, projBounds)) {
-                        damagePlayer(projData->damage);
-                        toDestroy.push_back(projEntity); // Destroy projectile
-                    }
-                }
-            }
-        }
-    }
+    // Run collision detection subsystems
+    checkPlayerVsEnemiesCollision(*positions, getBounds);
+    checkPlayerProjectilesVsEnemiesCollision(*positions, getBounds, toDestroy);
+    checkEnemyProjectilesVsPlayerCollision(*positions, getBounds, toDestroy);
     
     // Destroy all marked entities
     for (auto entity : toDestroy) {
         m_world.DestroyEntity(entity);
     }
 }
-
-// =============================================================================
-// PLAYER FIRE HANDLER
-// =============================================================================
 
 void GameState::handlePlayerFire() {
     if (m_playerEntity == 0) return;
