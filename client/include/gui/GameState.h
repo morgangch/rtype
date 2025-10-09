@@ -26,7 +26,7 @@
 #include <common/components/Player.h>
 #include <common/components/FireRate.h>
 #include <common/components/EnemyType.h>
-#include <common/components/ChargedShot.h>
+#include <common/systems/ChargedShot.h>
 #include <client/components/Sprite.h>
 #include <vector>
 #include <functional>
@@ -124,9 +124,6 @@ namespace rtype::client::gui {
         void onExit() override;
         
     private:
-        // =================================================================
-        // ECS CORE - Pure Entity Component System Architecture
-        // =================================================================
         
         /**
          * @brief ECS World instance for entity management
@@ -143,10 +140,6 @@ namespace rtype::client::gui {
          * - Position, Velocity, Health, Sprite, Controllable, FireRate, Invulnerability
          */
         ECS::EntityID m_playerEntity{0};
-        
-        // =================================================================
-        // ENTITY FACTORY METHODS - Create entities with proper components
-        // =================================================================
         
         /**
          * @brief Create the player entity with all required components
@@ -260,10 +253,6 @@ namespace rtype::client::gui {
          * - Projectile (1 damage)
          */
         ECS::EntityID createEnemyProjectile(float x, float y, float vx = -300.0f, float vy = 0.0f);
-        
-        // =================================================================        // =================================================================
-        // ECS SYSTEMS - Update logic for entities with specific components
-        // =================================================================
         
         /**
          * @brief Movement System - Updates positions based on velocity
@@ -473,9 +462,6 @@ namespace rtype::client::gui {
          * no keys remain in "pressed" state from the menu.
          */
         void resumeGame();
-        // =================================================================
-        // STATE MANAGEMENT
-        // =================================================================
         
         /**
          * @brief Reference to the state manager for state transitions
