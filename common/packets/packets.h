@@ -8,6 +8,7 @@
 #ifndef PACKETS_H
 #define PACKETS_H
 #define MAX_PACKET_SIZE 2048
+
 #include "ECS/ECS.h"
 
 /**
