@@ -169,7 +169,7 @@ namespace rtype::client::gui {
                 }
             }
             else if (event.text.unicode >= 32 && event.text.unicode < 127) {
-                if (username.length() < 20) { // Max username length
+                if (username.length() < 15) { // Max username length
                     username += static_cast<char>(event.text.unicode);
                 }
             }

@@ -13,3 +13,4 @@ add_subdirectory(lib)
 add_subdirectory(server)
 add_subdirectory(client)
 add_subdirectory(tests)
+add_subdirectory(examples/mapparser_demo)  # MapParser demo program

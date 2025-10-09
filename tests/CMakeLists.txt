@@ -68,6 +68,10 @@ if(CRITERION_FOUND)
     add_executable(test_packethandler test_packethandler.cpp)
     target_link_libraries(test_packethandler packethandler packetmanager)
 
+    # MapParser test
+    add_executable(test_mapparser test_mapparser.cpp)
+    target_link_libraries(test_mapparser mapparser)
+
     # Add tests to CTest
     add_test(NAME ECSTest COMMAND test_ecs)
     add_test(NAME ServerTest COMMAND test_server)
@@ -75,9 +79,10 @@ if(CRITERION_FOUND)
     add_test(NAME BasicTest COMMAND test_basic)
     add_test(NAME PacketManagerTest COMMAND test_packetmanager)
     add_test(NAME PacketHandlerTest COMMAND test_packethandler)
+    add_test(NAME MapParserTest COMMAND test_mapparser WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
     # Set test output directory for all test executables
-    set_target_properties(test_ecs test_server test_client test_basic test_packetmanager test_packethandler PROPERTIES
+    set_target_properties(test_ecs test_server test_client test_basic test_packetmanager test_packethandler test_mapparser PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests
     )
 else()
@@ -95,11 +100,16 @@ else()
     add_executable(test_packethandler test_packethandler.cpp)
     target_link_libraries(test_packethandler packethandler packetmanager)
 
+    # MapParser test
+    add_executable(test_mapparser test_mapparser.cpp)
+    target_link_libraries(test_mapparser mapparser)
+
     add_test(NAME BasicTest COMMAND test_basic)
     add_test(NAME PacketManagerTest COMMAND test_packetmanager)
     add_test(NAME PacketHandlerTest COMMAND test_packethandler)
+    add_test(NAME MapParserTest COMMAND test_mapparser WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
-    set_target_properties(test_basic test_packetmanager test_packethandler PROPERTIES
+    set_target_properties(test_basic test_packetmanager test_packethandler test_mapparser PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests
     )
 endif()
