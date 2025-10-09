@@ -1,10 +1,10 @@
 /**
  * @file GameState.h
- * @brief Space Invaders game state implementation for R-TYPE
+ * @brief Space Invaders game state implementation for R-TYPE using ECS
  * 
  * This file contains the GameState class which implements the actual gameplay
- * for a Space Invaders style game. The player controls a ship and must avoid
- * enemies scrolling from right to left.
+ * for a Space Invaders style game using a pure ECS architecture.
+ * All game entities (player, enemies, projectiles) are managed through the ECS.
  * 
  * @author R-TYPE Development Team
  * @date 2025
@@ -21,30 +21,33 @@
 #include <common/components/Position.h>
 #include <common/components/Velocity.h>
 #include <common/components/Health.h>
+#include <common/components/Team.h>
+#include <common/components/Projectile.h>
+#include <common/components/Player.h>
+#include <common/components/FireRate.h>
+#include <client/components/Sprite.h>
 #include <vector>
-#include <unordered_map>
 
 namespace rtype::client::gui {
     
     /**
      * @class GameState
-     * @brief The in-game state for Space Invaders gameplay
+     * @brief The in-game state for Space Invaders gameplay using pure ECS
      * 
-     * GameState handles the core game loop including:
-     * - Player ship movement (ZQSD/Arrow keys)
-     * - Projectile firing (Space bar)
-     * - Enemy spawning and movement
-     * - Collision detection (player-enemy and projectile-enemy)
-     * - Game rendering
+     * GameState handles the core game loop using Entity Component System architecture:
+     * - All entities (player, enemies, projectiles) are ECS entities
+     * - Components define entity properties (Position, Velocity, Health, etc.)
+     * - Systems update entity behavior each frame
      * 
-     * Features:
-     * - Smooth player movement in all directions
-     * - Projectile system with fire rate cooldown
-     * - Automatic enemy spawning from the right
-     * - Simple AABB collision detection
-     * - Enemy health system with damage
-     * - Space-themed visuals with starfield background
-     * - ESC to return to main menu
+     * ECS Components Used:
+     * - Position: Entity location in 2D space
+     * - Velocity: Movement speed and direction
+     * - Health: Hit points, alive state, and invulnerability (common)
+     * - Team: Distinguishes player/enemy entities (common)
+     * - Player: Marks player-controlled entities (common)
+     * - FireRate: Shooting cooldown timer (common)
+     * - Projectile: Projectile-specific data (common)
+     * - Sprite: Visual representation for rendering (client)
      * 
      * Controls:
      * - Z/Up: Move up
@@ -88,6 +91,12 @@ namespace rtype::client::gui {
          * @param key The SFML key code that was released
          */
         void handleKeyReleased(sf::Keyboard::Key key);
+        
+        /**
+         * @brief Handle input events while in menu state
+         * @param event The SFML event to process
+         */
+        void handleMenuInput(const sf::Event& event);
 
         /**
          * @brief Update game logic (player, enemies, collisions)
@@ -113,357 +122,196 @@ namespace rtype::client::gui {
         
     private:
         // =================================================================
-        // ECS BACKEND - Modular data storage using Entity Component System
+        // ECS CORE - Pure Entity Component System Architecture
         // =================================================================
         
         /**
          * @brief ECS World instance for entity management
+         * 
+         * The world manages all entities and their components.
+         * All game objects (player, enemies, projectiles) are entities in this world.
          */
         ECS::World m_world;
         
         /**
          * @brief Entity ID for the player
+         * 
+         * The player is a single entity with components:
+         * - Position, Velocity, Health, Sprite, Controllable, FireRate, Invulnerability
          */
-        ECS::EntityID m_playerEntityID{0};
-        
-        /**
-         * @brief Map of enemy entity IDs for easy iteration
-         */
-        std::vector<ECS::EntityID> m_enemyEntities;
-        
-        /**
-         * @brief Map of projectile entity IDs for easy iteration
-         */
-        std::vector<ECS::EntityID> m_projectileEntities;
-        
-        /**
-         * @brief Map of enemy projectile entity IDs for easy iteration
-         */
-        std::vector<ECS::EntityID> m_enemyProjectileEntities;
+        ECS::EntityID m_playerEntity{0};
         
         // =================================================================
-        // WRAPPER STRUCTURES - Keep original API while using ECS internally
+        // ENTITY FACTORY METHODS - Create entities with proper components
         // =================================================================
         
         /**
-         * @struct Player
-         * @brief Represents the player's ship in the game
+         * @brief Create the player entity with all required components
+         * @return EntityID of the created player
          * 
-         * The Player structure contains all data related to the player's ship including
-         * position, size, speed, health/lives, and collision bounds calculation.
-         * MODULAR: Now uses ECS backend for data storage.
+         * Creates player with:
+         * - Position (100, 360)
+         * - Velocity (0, 0, maxSpeed=300)
+         * - Health (3 HP, with invulnerability support)
+         * - Sprite (32x32, green)
+         * - Player (marks as player-controlled)
+         * - FireRate (0.2s cooldown)
+         * - Team (Player team)
          */
-        struct Player {
-            ECS::World* world;
-            ECS::EntityID entityID;
-            
-            /** @brief Current position of the player (center point) */
-            sf::Vector2f position{100.0f, 360.0f};  // Centered vertically
-            
-            /** @brief Size of the player ship (width, height) */
-            sf::Vector2f size{32.0f, 32.0f};
-            
-            /** @brief Movement speed in pixels per second */
-            float speed{300.0f};
-            
-            /** @brief Current number of lives remaining */
-            int lives{3};
-            
-            /** @brief Invulnerability timer after taking damage (seconds) */
-            float invulnerabilityTimer{0.0f};
-            
-            /**
-             * @brief Sync data FROM ECS to local cache
-             */
-            void syncFromECS();
-            
-            /**
-             * @brief Sync data TO ECS from local cache
-             */
-            void syncToECS();
-            
-            /**
-             * @brief Check if player is currently invulnerable
-             * @return True if player has temporary invulnerability
-             */
-            bool isInvulnerable() const {
-                return invulnerabilityTimer > 0.0f;
-            }
-            
-            /**
-             * @brief Get the axis-aligned bounding box for collision detection
-             * @return sf::FloatRect representing the player's collision box
-             * 
-             * Calculates the bounding rectangle centered on the player's position.
-             * Used for AABB collision detection with enemies and enemy projectiles.
-             */
-            sf::FloatRect getBounds() const {
-                return sf::FloatRect(
-                    position.x - size.x * 0.5f,
-                    position.y - size.y * 0.5f,
-                    size.x,
-                    size.y
-                );
-            }
-        };
+        ECS::EntityID createPlayer();
         
         /**
-         * @struct Enemy
-         * @brief Represents an enemy ship in the game
+         * @brief Create an enemy entity at a specific position
+         * @param x X coordinate (typically right edge of screen)
+         * @param y Y coordinate (random vertical position)
+         * @return EntityID of the created enemy
          * 
-         * The Enemy structure contains all data for enemy ships that move from
-         * right to left across the screen and can fire projectiles.
-         * MODULAR: Now uses ECS backend for data storage.
+         * Creates enemy with:
+         * - Position (x, y)
+         * - Velocity (-100, 0) - moves left
+         * - Health (1 HP)
+         * - Sprite (24x24, red)
+         * - Team (Enemy)
+         * - FireRate (2.5s cooldown)
          */
-        struct Enemy {
-            ECS::World* world;
-            ECS::EntityID entityID;
-            
-            /** @brief Current position of the enemy (center point) */
-            sf::Vector2f position;
-            
-            /** @brief Size of the enemy ship (width, height) */
-            sf::Vector2f size{24.0f, 24.0f};
-            
-            /** @brief Movement speed in pixels per second (leftward) */
-            float speed{100.0f};
-            
-            /** @brief Health points of the enemy */
-            int health{1};
-            
-            /** @brief Timer for enemy fire rate */
-            float fireTimer{0.0f};
-            
-            /**
-             * @brief Sync data FROM ECS to local cache
-             */
-            void syncFromECS();
-            
-            /**
-             * @brief Sync data TO ECS from local cache
-             */
-            void syncToECS();
-            
-            /**
-             * @brief Get the axis-aligned bounding box for collision detection
-             * @return sf::FloatRect representing the enemy's collision box
-             * 
-             * Calculates the bounding rectangle centered on the enemy's position.
-             * Used for AABB collision detection with the player and projectiles.
-             */
-            sf::FloatRect getBounds() const {
-                return sf::FloatRect(
-                    position.x - size.x * 0.5f,
-                    position.y - size.y * 0.5f,
-                    size.x,
-                    size.y
-                );
-            }
-        };
+        ECS::EntityID createEnemy(float x, float y);
         
         /**
-         * @struct Projectile
-         * @brief Represents a projectile fired by the player
+         * @brief Create a player projectile at a specific position
+         * @param x X coordinate (player's position)
+         * @param y Y coordinate (player's position)
+         * @return EntityID of the created projectile
          * 
-         * The Projectile structure contains data for player projectiles that
-         * move from left to right across the screen to destroy enemies.
-         * MODULAR: Now uses ECS backend for data storage.
+         * Creates projectile with:
+         * - Position (x, y)
+         * - Velocity (500, 0) - moves right
+         * - Sprite (12x4, yellow)
+         * - Team (Player)
+         * - Projectile (1 damage)
          */
-        struct Projectile {
-            ECS::World* world;
-            ECS::EntityID entityID;
-            
-            /** @brief Current position of the projectile (center point) */
-            sf::Vector2f position;
-            
-            /** @brief Size of the projectile (width, height) */
-            sf::Vector2f size{12.0f, 4.0f};
-            
-            /** @brief Movement speed in pixels per second (rightward) */
-            float speed{500.0f};
-            
-            /** @brief Damage dealt to enemies on hit */
-            int damage{1};
-            
-            /**
-             * @brief Sync data FROM ECS to local cache
-             */
-            void syncFromECS();
-            
-            /**
-             * @brief Sync data TO ECS from local cache
-             */
-            void syncToECS();
-            
-            /**
-             * @brief Get the axis-aligned bounding box for collision detection
-             * @return sf::FloatRect representing the projectile's collision box
-             * 
-             * Calculates the bounding rectangle centered on the projectile's position.
-             * Used for AABB collision detection with enemies.
-             */
-            sf::FloatRect getBounds() const {
-                return sf::FloatRect(
-                    position.x - size.x * 0.5f,
-                    position.y - size.y * 0.5f,
-                    size.x,
-                    size.y
-                );
-            }
-        };
+        ECS::EntityID createPlayerProjectile(float x, float y);
         
         /**
-         * @struct EnemyProjectile
-         * @brief Represents a projectile fired by enemies
+         * @brief Create an enemy projectile at a specific position
+         * @param x X coordinate (enemy's position)
+         * @param y Y coordinate (enemy's position)
+         * @return EntityID of the created enemy projectile
          * 
-         * The EnemyProjectile structure contains data for enemy projectiles that
-         * move from right to left across the screen to damage the player.
-         * MODULAR: Now uses ECS backend for data storage.
+         * Creates projectile with:
+         * - Position (x, y)
+         * - Velocity (-300, 0) - moves left
+         * - Sprite (10x4, red/pink)
+         * - Team (Enemy)
+         * - Projectile (1 damage)
          */
-        struct EnemyProjectile {
-            ECS::World* world;
-            ECS::EntityID entityID;
-            
-            /** @brief Current position of the enemy projectile (center point) */
-            sf::Vector2f position;
-            
-            /** @brief Size of the projectile (width, height) */
-            sf::Vector2f size{10.0f, 4.0f};
-            
-            /** @brief Movement speed in pixels per second (leftward, slower than player shots) */
-            float speed{300.0f};
-            
-            /** @brief Damage dealt to player on hit */
-            int damage{1};
-            
-            /**
-             * @brief Sync data FROM ECS to local cache
-             */
-            void syncFromECS();
-            
-            /**
-             * @brief Sync data TO ECS from local cache
-             */
-            void syncToECS();
-            
-            /**
-             * @brief Get the axis-aligned bounding box for collision detection
-             * @return sf::FloatRect representing the enemy projectile's collision box
-             * 
-             * Calculates the bounding rectangle centered on the projectile's position.
-             * Used for AABB collision detection with the player.
-             */
-            sf::FloatRect getBounds() const {
-                return sf::FloatRect(
-                    position.x - size.x * 0.5f,
-                    position.y - size.y * 0.5f,
-                    size.x,
-                    size.y
-                );
-            }
-        };
+        ECS::EntityID createEnemyProjectile(float x, float y);
+        
+        // =================================================================
+        // ECS SYSTEMS - Update logic for entities with specific components
+        // =================================================================
         
         /**
-         * @brief Update the player's position based on input
-         * @param deltaTime Time elapsed since last frame in seconds
+         * @brief Movement System - Updates positions based on velocity
+         * @param deltaTime Time elapsed since last frame
          * 
-         * Moves the player ship based on current input state (ZQSD/Arrow keys).
-         * Handles diagonal movement normalization and screen boundary clamping.
-         * Player can move freely across the entire screen.
-         * Also updates invulnerability timer.
+         * Iterates all entities with Position + Velocity components.
+         * Updates position: position += velocity * deltaTime
          */
-        void updatePlayer(float deltaTime);
+        void updateMovementSystem(float deltaTime);
         
         /**
-         * @brief Update all enemies' positions and remove off-screen ones
-         * @param deltaTime Time elapsed since last frame in seconds
+         * @brief Input System - Process player input and update velocity
+         * @param deltaTime Time elapsed since last frame
          * 
-         * Moves all enemies from right to left. Removes enemies that have
-         * moved completely off the left side of the screen.
-         * Updates enemy fire timers and triggers enemy shots.
+         * Finds entities with Controllable component (player).
+         * Updates velocity based on keyboard input (ZQSD/Arrows).
+         * Handles diagonal movement normalization and screen bounds.
          */
-        void updateEnemies(float deltaTime);
+        void updateInputSystem(float deltaTime);
         
         /**
-         * @brief Update all projectiles' positions and remove off-screen ones
-         * @param deltaTime Time elapsed since last frame in seconds
+         * @brief Fire Rate System - Update shooting cooldowns
+         * @param deltaTime Time elapsed since last frame
          * 
-         * Moves all projectiles from left to right. Removes projectiles that have
-         * moved completely off the right side of the screen.
+         * Iterates all entities with FireRate component.
+         * Decreases cooldown timers to allow shooting.
          */
-        void updateProjectiles(float deltaTime);
+        void updateFireRateSystem(float deltaTime);
         
         /**
-         * @brief Update all enemy projectiles' positions and remove off-screen ones
-         * @param deltaTime Time elapsed since last frame in seconds
+         * @brief Invulnerability System - Update invulnerability timers
+         * @param deltaTime Time elapsed since last frame
          * 
-         * Moves all enemy projectiles from right to left. Removes projectiles that have
-         * moved completely off the left side of the screen.
+         * Iterates all entities with Invulnerability component.
+         * Decreases timers and disables invulnerability when expired.
          */
-        void updateEnemyProjectiles(float deltaTime);
+        void updateInvulnerabilitySystem(float deltaTime);
         
         /**
-         * @brief Check for collisions between player and enemies
+         * @brief Enemy Spawning System - Spawn enemies periodically
+         * @param deltaTime Time elapsed since last frame
          * 
-         * Uses AABB (Axis-Aligned Bounding Box) collision detection.
-         * If a collision is detected and player is not invulnerable,
-         * the player loses one life.
+         * Uses spawn timer to create new enemies at intervals.
+         * Spawns enemies at random Y positions on the right edge.
+         * Respects MAX_ENEMIES limit.
          */
-        void checkCollisions();
+        void updateEnemySpawnSystem(float deltaTime);
         
         /**
-         * @brief Check for collisions between projectiles and enemies
+         * @brief Enemy AI System - Handle enemy shooting
+         * @param deltaTime Time elapsed since last frame
          * 
-         * Uses AABB collision detection. When a projectile hits an enemy:
-         * - The enemy takes damage
-         * - The projectile is destroyed
-         * - If enemy health reaches 0, the enemy is destroyed
+         * Iterates all enemy entities (Team::Enemy + FireRate).
+         * Fires enemy projectiles when cooldown allows.
          */
-        void checkProjectileCollisions();
+        void updateEnemyAISystem(float deltaTime);
         
         /**
-         * @brief Check for collisions between enemy projectiles and player
+         * @brief Cleanup System - Remove off-screen entities
+         * @param deltaTime Time elapsed since last frame
          * 
-         * Uses AABB collision detection. When an enemy projectile hits the player:
-         * - The player loses one life if not invulnerable
-         * - The projectile is destroyed
-         * - Player gains temporary invulnerability
-         * - If player lives reach 0, game over
+         * Removes entities that have moved beyond screen boundaries:
+         * - Enemies that go too far left
+         * - Projectiles that go too far right/left
          */
-        void checkEnemyProjectileCollisions();
+        void updateCleanupSystem(float deltaTime);
         
         /**
-         * @brief Spawn a new enemy at a random vertical position
+         * @brief Collision System - Detect and handle collisions
          * 
-         * Creates a new enemy on the right edge of the screen at a random
-         * Y position. Only spawns if the current enemy count is below MAX_ENEMIES.
+         * Checks for AABB collisions between:
+         * - Player and enemies
+         * - Player projectiles and enemies
+         * - Enemy projectiles and player
+         * 
+         * Applies damage, destroys entities, and updates health.
          */
-        void spawnEnemy();
+        void updateCollisionSystem();
         
         /**
-         * @brief Fire a projectile from the player's position
+         * @brief Handle player firing a projectile
          * 
-         * Creates a new projectile at the player's current position,
-         * shooting to the right. Respects the fire rate cooldown.
+         * Called when space bar is pressed and fire cooldown allows.
+         * Creates a player projectile entity at player's position.
          */
-        void fireProjectile();
-        
-        /**
-         * @brief Fire an enemy projectile from an enemy's position
-         * @param enemyPosition Position of the enemy firing the projectile
-         * 
-         * Creates a new enemy projectile at the specified position,
-         * shooting to the left towards the player.
-         */
-        void fireEnemyProjectile(const sf::Vector2f& enemyPosition);
+        void handlePlayerFire();
         
         /**
          * @brief Handle player taking damage
+         * @param damage Amount of damage to apply
          * 
-         * Reduces player lives by 1, grants invulnerability,
-         * and checks for game over condition.
+         * Reduces player health, grants invulnerability, checks for game over.
+         * Only applies damage if player is not currently invulnerable.
          */
-        void damagePlayer();
+        void damagePlayer(int damage = 1);
+        
+        /**
+         * @brief Get the player's current number of lives
+         * @return Number of hit points remaining (0 if player is dead/doesn't exist)
+         * 
+         * Helper method to access player health for HUD rendering.
+         */
+        int getPlayerLives() const;
         
         /**
          * @brief Reset the game to initial state
@@ -474,37 +322,14 @@ namespace rtype::client::gui {
         void resetGame();
         
         /**
-         * @brief Render the player ship
+         * @brief Render System - Draw all entities with Sprite components
          * @param window The render window to draw to
          * 
-         * Draws the player's ship as a green rectangle.
-         * Flashes the ship during invulnerability period.
+         * Iterates all entities with Position + Sprite components.
+         * Draws each entity as a rectangle with appropriate color.
+         * Handles invulnerability blinking for entities with Invulnerability component.
          */
-        void renderPlayer(sf::RenderWindow& window);
-        
-        /**
-         * @brief Render all enemy ships
-         * @param window The render window to draw to
-         * 
-         * Draws all active enemies as red triangles pointing left.
-         */
-        void renderEnemies(sf::RenderWindow& window);
-        
-        /**
-         * @brief Render all projectiles
-         * @param window The render window to draw to
-         * 
-         * Draws all active projectiles as yellow/white rectangles moving right.
-         */
-        void renderProjectiles(sf::RenderWindow& window);
-        
-        /**
-         * @brief Render all enemy projectiles
-         * @param window The render window to draw to
-         * 
-         * Draws all active enemy projectiles as red rectangles moving left.
-         */
-        void renderEnemyProjectiles(sf::RenderWindow& window);
+        void renderEntities(sf::RenderWindow& window);
         
         /**
          * @brief Render the player's lives/HUD
@@ -548,20 +373,12 @@ namespace rtype::client::gui {
          * no keys remain in "pressed" state from the menu.
          */
         void resumeGame();
-        
-        /**
-         * @brief Get the current movement vector from input state
-         * @return sf::Vector2f Normalized movement direction vector
-         * 
-         * Combines keyboard input (ZQSD/Arrow keys) into a movement vector.
-         * The vector is normalized for diagonal movement to prevent faster diagonal speed.
-         */
-        sf::Vector2f getMovementInput() const;
+        // =================================================================
+        // STATE MANAGEMENT
+        // =================================================================
         
         /**
          * @brief Reference to the state manager for state transitions
-         * 
-         * Used to switch between game states (e.g., return to main menu).
          */
         StateManager& m_stateManager;
         
@@ -596,37 +413,6 @@ namespace rtype::client::gui {
         sf::Text m_menuText;
         
         /**
-         * @brief The player's ship data
-         * 
-         * Contains position, size, speed, and collision information for the player.
-         */
-        Player m_player;
-        
-        /**
-         * @brief Active enemy ships in the game
-         * 
-         * Vector of all currently active enemies. Enemies are added via spawnEnemy()
-         * and removed when they move off-screen or on collision.
-         */
-        std::vector<Enemy> m_enemies;
-        
-        /**
-         * @brief Active projectiles fired by the player
-         * 
-         * Vector of all currently active projectiles. Projectiles are added via fireProjectile()
-         * and removed when they move off-screen or hit an enemy.
-         */
-        std::vector<Projectile> m_projectiles;
-        
-        /**
-         * @brief Active projectiles fired by enemies
-         * 
-         * Vector of all currently active enemy projectiles. Projectiles are added when enemies fire
-         * and removed when they move off-screen or hit the player.
-         */
-        std::vector<EnemyProjectile> m_enemyProjectiles;
-        
-        /**
          * @brief Parallax background system for space environment
          */
         ParallaxSystem m_parallaxSystem;
@@ -638,14 +424,6 @@ namespace rtype::client::gui {
          * a new enemy is spawned and the timer resets.
          */
         float m_enemySpawnTimer{0.0f};
-        
-        /**
-         * @brief Timer for fire rate cooldown
-         * 
-         * Tracks time since last shot. When it reaches FIRE_COOLDOWN,
-         * the player can fire again.
-         */
-        float m_fireCooldown{0.0f};
         
         /**
          * @brief Interval between enemy spawns in seconds

@@ -12,7 +12,7 @@
 #ifndef CLIENT_SYSTEMS_TIMER_SYSTEM_H
 #define CLIENT_SYSTEMS_TIMER_SYSTEM_H
 
-#include <ECS/ECS.hpp>
+#include <ECS/ECS.h>
 #include <client/components/Invulnerability.h>
 
 namespace rtype::client::systems {

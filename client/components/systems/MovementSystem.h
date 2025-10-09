@@ -12,7 +12,7 @@
 #ifndef CLIENT_SYSTEMS_MOVEMENT_SYSTEM_H
 #define CLIENT_SYSTEMS_MOVEMENT_SYSTEM_H
 
-#include <ECS/ECS.hpp>
+#include <ECS/ECS.h>
 #include <common/components/Position.h>
 #include <common/components/Velocity.h>
 #include <cmath>

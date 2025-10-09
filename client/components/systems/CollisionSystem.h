@@ -12,7 +12,7 @@
 #ifndef CLIENT_SYSTEMS_COLLISION_SYSTEM_H
 #define CLIENT_SYSTEMS_COLLISION_SYSTEM_H
 
-#include <ECS/ECS.hpp>
+#include <ECS/ECS.h>
 
 namespace rtype::client::systems {
     /**

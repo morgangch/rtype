@@ -9,10 +9,10 @@
  * @date 2025
  */
 
-#ifndef CLIENT_COMPONENTS_SPRITE_HPP
-#define CLIENT_COMPONENTS_SPRITE_HPP
+#ifndef CLIENT_COMPONENTS_SPRITE_H
+#define CLIENT_COMPONENTS_SPRITE_H
 
-#include <ECS/ECS.hpp>
+#include <ECS/ECS.h>
 #include <SFML/Graphics.hpp>
 
 namespace rtype::client::components {
@@ -61,4 +61,4 @@ namespace rtype::client::components {
     };
 }
 
-#endif // CLIENT_COMPONENTS_SPRITE_HPP
+#endif // CLIENT_COMPONENTS_SPRITE_H

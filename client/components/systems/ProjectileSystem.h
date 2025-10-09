@@ -12,7 +12,7 @@
 #ifndef CLIENT_SYSTEMS_PROJECTILE_SYSTEM_H
 #define CLIENT_SYSTEMS_PROJECTILE_SYSTEM_H
 
-#include <ECS/ECS.hpp>
+#include <ECS/ECS.h>
 #include <SFML/Graphics.hpp>
 #include <common/components/Position.h>
 #include <common/components/Velocity.h>

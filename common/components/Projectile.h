@@ -19,7 +19,8 @@ namespace rtype::common::components {
 
         Projectile(int damage = 10,
                    float speed = 200.0f,
-                   ProjectileType type = ProjectileType::Basic);
+                   ProjectileType type = ProjectileType::Basic)
+            : damage(damage), speed(speed), maxDistance(1000.0f), distanceTraveled(0.0f), type(type), ownerId(0) {}
     };
 }
 
