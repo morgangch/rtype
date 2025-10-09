@@ -139,20 +139,6 @@ void GameState::renderGameOverMenu(sf::RenderWindow& window) {
         button2Y + (buttonHeight - menuBounds.height) * 0.5f - 5.0f
     );
     window.draw(m_menuText);
-    
-    // Instructions
-    const sf::Font& font = GUIHelper::getFont();
-    sf::Text instructionText;
-    instructionText.setFont(font);
-    instructionText.setCharacterSize(20);
-    instructionText.setFillColor(GUIHelper::Colors::TEXT);
-    instructionText.setString("Use Arrow Keys or Z/S to navigate, Enter to select");
-    sf::FloatRect instrBounds = instructionText.getLocalBounds();
-    instructionText.setPosition(
-        (SCREEN_WIDTH - instrBounds.width) * 0.5f,
-        550.0f
-    );
-    window.draw(instructionText);
 }
 
 } // namespace rtype::client::gui

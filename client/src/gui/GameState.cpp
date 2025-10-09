@@ -25,7 +25,6 @@
 #include "gui/GUIHelper.h"
 #include <algorithm>
 #include <cmath>
-#include <iostream>
 
 namespace rtype::client::gui {
 
@@ -52,9 +51,9 @@ void GameState::setupGameOverUI() {
     m_restartText.setFillColor(GUIHelper::Colors::TEXT);
     GUIHelper::centerText(m_restartText, SCREEN_WIDTH / 2.0f, 300.0f);
     
-    // Return to Menu button
+    // Leave button
     m_menuText.setFont(font);
-    m_menuText.setString("Return to Menu");
+    m_menuText.setString("Leave");
     m_menuText.setCharacterSize(GUIHelper::Sizes::BUTTON_FONT_SIZE);
     m_menuText.setFillColor(GUIHelper::Colors::TEXT);
     GUIHelper::centerText(m_menuText, SCREEN_WIDTH / 2.0f, 380.0f);

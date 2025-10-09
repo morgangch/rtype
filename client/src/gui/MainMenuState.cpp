@@ -180,7 +180,7 @@ namespace rtype::client::gui {
     void MainMenuState::handleKeyPressEvent(const sf::Event& event) {
         // Debug mode: D to launch game directly
         if (event.key.code == sf::Keyboard::D) {
-            std::cout << "DEBUG MODE: Launching game directly with D" << std::endl;
+            std::cout << "DEBUG MODE Launching game directly with D" << std::endl;
             stateManager.changeState(std::make_unique<GameState>(stateManager));
             return;
         }
@@ -231,7 +231,7 @@ namespace rtype::client::gui {
         // Debug mode indicator
         sf::Text debugText;
         debugText.setFont(GUIHelper::getFont());
-        debugText.setString("DEBUG: Press D to launch game directly");
+        debugText.setString("DEBUG MODE Press D to launch game directly");
         debugText.setCharacterSize(16);
         debugText.setFillColor(sf::Color(100, 100, 100, 200));
         debugText.setPosition(10.0f, window.getSize().y - 30.0f);
