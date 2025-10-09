@@ -26,7 +26,7 @@
 #include <iostream>
 #include <cstdlib>
 
-#include "network.h"
+#include "network/network.h"
 
 namespace rtype::client::gui {
     PublicServerState::PublicServerState(StateManager& stateManager, const std::string& username)
