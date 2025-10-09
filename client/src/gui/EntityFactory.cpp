@@ -53,6 +53,9 @@ ECS::EntityID GameState::createPlayer() {
     // FireRate - 0.2s cooldown between shots
     m_world.AddComponent<rtype::common::components::FireRate>(entity, FIRE_COOLDOWN);
     
+    // ChargedShot - Enable charged shooting mechanic
+    m_world.AddComponent<rtype::common::components::ChargedShot>(entity);
+    
     return entity;
 }
 
@@ -226,7 +229,37 @@ ECS::EntityID GameState::createEnemyProjectile(float x, float y, float vx, float
         entity, rtype::common::components::TeamType::Enemy);
     
     // Projectile - 1 damage
-    m_world.AddComponent<rtype::common::components::Projectile>(entity, 1);
+    m_world.AddComponent<rtype::common::components::Projectile>(entity, 1, 300.0f, 
+        rtype::common::components::ProjectileType::Basic, false);
+    
+    return entity;
+}
+
+ECS::EntityID GameState::createChargedProjectile(float x, float y) {
+    auto entity = m_world.CreateEntity();
+    
+    // Position
+    m_world.AddComponent<rtype::common::components::Position>(
+        entity, x, y, 0.0f);
+    
+    // Velocity - Faster than normal (600 vs 500)
+    m_world.AddComponent<rtype::common::components::Velocity>(
+        entity, 600.0f, 0.0f, 600.0f);
+    
+    // Sprite - Larger (20x8) cyan projectile for visual distinction
+    m_world.AddComponent<rtype::client::components::Sprite>(
+        entity, 
+        sf::Vector2f(20.0f, 8.0f),
+        sf::Color::Cyan,
+        true);
+    
+    // Team - Player team
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Player);
+    
+    // Projectile - 2 damage, PIERCING
+    m_world.AddComponent<rtype::common::components::Projectile>(entity, 2, 600.0f, 
+        rtype::common::components::ProjectileType::Piercing, true);
     
     return entity;
 }

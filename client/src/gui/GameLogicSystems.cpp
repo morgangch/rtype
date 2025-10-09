@@ -111,11 +111,8 @@ void GameState::updateInputSystem(float deltaTime) {
         if (pos->y < halfSize) pos->y = halfSize;
         if (pos->y > SCREEN_HEIGHT - halfSize) pos->y = SCREEN_HEIGHT - halfSize;
         
-        // Handle firing
-        if (m_keyFire && fireRate && fireRate->canFire()) {
-            handlePlayerFire();
-            fireRate->shoot();
-        }
+        // NOTE: Firing is now handled in handleKeyReleased() for charged shot mechanic
+        // The old automatic firing system is disabled to allow charge accumulation
     }
 }
 
@@ -129,6 +126,19 @@ void GameState::updateFireRateSystem(float deltaTime) {
     
     for (auto& [entity, fireRatePtr] : *fireRates) {
         fireRatePtr->update(deltaTime);
+    }
+}
+
+// =============================================================================
+// CHARGED SHOT SYSTEM
+// =============================================================================
+
+void GameState::updateChargedShotSystem(float deltaTime) {
+    auto* chargedShots = m_world.GetAllComponents<rtype::common::components::ChargedShot>();
+    if (!chargedShots) return;
+    
+    for (auto& [entity, chargedShotPtr] : *chargedShots) {
+        chargedShotPtr->update(deltaTime);
     }
 }
 
@@ -396,6 +406,7 @@ void GameState::updateCollisionSystem() {
         if (projTeam->team != rtype::common::components::TeamType::Player) continue;
         
         sf::FloatRect projBounds = getBounds(projEntity, *projPosPtr);
+        bool projectileHit = false;
         
         for (auto& [enemyEntity, enemyPosPtr] : *positions) {
             if (enemyEntity == projEntity) continue;
@@ -410,14 +421,21 @@ void GameState::updateCollisionSystem() {
                 if (checkAABB(projBounds, enemyBounds)) {
                     // Damage enemy
                     enemyHealth->currentHp -= projData->damage;
-                    toDestroy.push_back(projEntity); // Destroy projectile
                     
                     if (enemyHealth->currentHp <= 0) {
                         enemyHealth->isAlive = false;
                         toDestroy.push_back(enemyEntity); // Destroy enemy
                         // No need to manually track boss death - isBossActive() queries ECS
                     }
-                    break; // Projectile can only hit one target
+                    
+                    // Check if projectile is piercing
+                    if (!projData->piercing) {
+                        // Normal projectile - destroy after first hit
+                        toDestroy.push_back(projEntity);
+                        projectileHit = true;
+                        break; // Projectile destroyed, stop checking
+                    }
+                    // Piercing projectile continues through enemies
                 }
             }
         }

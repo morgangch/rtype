@@ -140,9 +140,21 @@ void GameState::handleKeyPressed(sf::Keyboard::Key key) {
             m_keyRight = true;
             break;
         
-        // Fire key
+        // Fire key - Start charging
         case sf::Keyboard::Space:
             m_keyFire = true;
+            // Start charging for player
+            {
+                auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
+                if (players) {
+                    for (auto& [entity, playerPtr] : *players) {
+                        auto* chargedShot = m_world.GetComponent<rtype::common::components::ChargedShot>(entity);
+                        if (chargedShot) {
+                            chargedShot->startCharge();
+                        }
+                    }
+                }
+            }
             break;
         
         // DEBUG: Spawn boss with B key
@@ -185,9 +197,33 @@ void GameState::handleKeyReleased(sf::Keyboard::Key key) {
             m_keyRight = false;
             break;
         
-        // Fire key
+        // Fire key - Release charged shot
         case sf::Keyboard::Space:
             m_keyFire = false;
+            // Fire charged shot if applicable
+            {
+                auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
+                if (players) {
+                    for (auto& [entity, playerPtr] : *players) {
+                        auto* chargedShot = m_world.GetComponent<rtype::common::components::ChargedShot>(entity);
+                        auto* pos = m_world.GetComponent<rtype::common::components::Position>(entity);
+                        auto* fireRate = m_world.GetComponent<rtype::common::components::FireRate>(entity);
+                        
+                        if (chargedShot && pos && fireRate && chargedShot->isCharging) {
+                            // Fire charged shot if fully charged, otherwise normal shot
+                            if (chargedShot->isFullyCharged && fireRate->canFire()) {
+                                createChargedProjectile(pos->x + 32.0f, pos->y);
+                                fireRate->shoot();
+                            } else if (fireRate->canFire()) {
+                                // Normal shot if not fully charged
+                                createPlayerProjectile(pos->x + 32.0f, pos->y);
+                                fireRate->shoot();
+                            }
+                            chargedShot->release();
+                        }
+                    }
+                }
+            }
             break;
         
         default:

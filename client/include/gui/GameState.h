@@ -26,6 +26,7 @@
 #include <common/components/Player.h>
 #include <common/components/FireRate.h>
 #include <common/components/EnemyType.h>
+#include <common/components/ChargedShot.h>
 #include <client/components/Sprite.h>
 #include <vector>
 
@@ -228,6 +229,21 @@ namespace rtype::client::gui {
         ECS::EntityID createPlayerProjectile(float x, float y);
         
         /**
+         * @brief Create a charged player projectile at a specific position
+         * @param x X coordinate (player's position)
+         * @param y Y coordinate (player's position)
+         * @return EntityID of the created charged projectile
+         * 
+         * Creates charged projectile with:
+         * - Position (x, y)
+         * - Velocity (600, 0) - moves faster than normal
+         * - Sprite (20x8, cyan) - larger and distinctive color
+         * - Team (Player)
+         * - Projectile (2 damage, piercing = true)
+         */
+        ECS::EntityID createChargedProjectile(float x, float y);
+        
+        /**
          * @brief Create an enemy projectile at a specific position
          * @param x X coordinate (enemy's position)
          * @param y Y coordinate (enemy's position)
@@ -275,6 +291,15 @@ namespace rtype::client::gui {
          * Decreases cooldown timers to allow shooting.
          */
         void updateFireRateSystem(float deltaTime);
+        
+        /**
+         * @brief Charged Shot System - Update charged shot timers
+         * @param deltaTime Time elapsed since last frame
+         * 
+         * Iterates all entities with ChargedShot component.
+         * Updates charge accumulation and fully charged state.
+         */
+        void updateChargedShotSystem(float deltaTime);
         
         /**
          * @brief Invulnerability System - Update invulnerability timers

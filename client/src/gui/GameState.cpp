@@ -185,6 +185,7 @@ void GameState::update(float deltaTime) {
     // Run ECS systems in order
     updateInputSystem(deltaTime);
     updateFireRateSystem(deltaTime);
+    updateChargedShotSystem(deltaTime);
     updateInvulnerabilitySystem(deltaTime);
     updateMovementSystem(deltaTime);
     updateEnemySpawnSystem(deltaTime);
