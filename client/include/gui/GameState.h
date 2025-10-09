@@ -196,6 +196,23 @@ namespace rtype::client::gui {
         ECS::EntityID createShooterEnemy(float x, float y);
         
         /**
+         * @brief Create a boss enemy entity
+         * @param x X coordinate (typically right edge of screen)
+         * @param y Y coordinate (center of screen)
+         * @return EntityID of the created boss
+         * 
+         * Creates boss enemy "CORE GUARDIAN" with:
+         * - Position (x, y)
+         * - Velocity (0, 50) - moves vertically
+         * - Health (20 HP - very tough!)
+         * - Sprite (80x80, magenta/violet)
+         * - Team (Enemy)
+         * - FireRate (0.8s cooldown - rapid fire)
+         * - EnemyType (Boss - shoots in spread pattern)
+         */
+        ECS::EntityID createBoss(float x, float y);
+        
+        /**
          * @brief Create a player projectile at a specific position
          * @param x X coordinate (player's position)
          * @param y Y coordinate (player's position)
@@ -335,6 +352,15 @@ namespace rtype::client::gui {
         int getPlayerLives() const;
         
         /**
+         * @brief Check if a boss is currently active in the game
+         * @return True if a boss entity exists, false otherwise
+         * 
+         * Pure ECS approach: queries the world for entities with Boss type.
+         * Replaces the need for a m_bossActive flag.
+         */
+        bool isBossActive();
+        
+        /**
          * @brief Reset the game to initial state
          * 
          * Resets player position, lives to 3, and clears all enemies and projectiles.
@@ -447,9 +473,22 @@ namespace rtype::client::gui {
         float m_enemySpawnTimer{0.0f};
         
         /**
+         * @brief Timer for boss spawning
+         * 
+         * Accumulates delta time. When it exceeds BOSS_SPAWN_INTERVAL (180s = 3 min),
+         * a boss is spawned and the timer resets.
+         */
+        float m_bossSpawnTimer{0.0f};
+        
+        /**
          * @brief Interval between enemy spawns in seconds
          */
         static constexpr float ENEMY_SPAWN_INTERVAL{2.0f};
+        
+        /**
+         * @brief Interval between boss spawns in seconds (3 minutes)
+         */
+        static constexpr float BOSS_SPAWN_INTERVAL{180.0f};
         
         /**
          * @brief Interval between enemy shots in seconds

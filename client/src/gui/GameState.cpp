@@ -114,6 +114,7 @@ void GameState::resetGame() {
     
     // Reset timers
     m_enemySpawnTimer = 0.0f;
+    m_bossSpawnTimer = 0.0f;
     
     // Reset flags
     m_isGameOver = false;
@@ -153,6 +154,24 @@ void GameState::damagePlayer(int damage) {
     if (health->currentHp <= 0) {
         showInGameMenu(true); // Game Over
     }
+}
+
+bool GameState::isBossActive() {
+    // Pure ECS approach: query the world for boss entities
+    auto* enemyTypes = m_world.GetAllComponents<rtype::common::components::EnemyTypeComponent>();
+    if (!enemyTypes) return false;
+    
+    for (auto& [entity, enemyTypePtr] : *enemyTypes) {
+        if (enemyTypePtr->type == rtype::common::components::EnemyType::Boss) {
+            // Check if the boss is still alive (has Health component with HP > 0)
+            auto* health = m_world.GetComponent<rtype::common::components::Health>(entity);
+            if (health && health->currentHp > 0) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
 }
 
 void GameState::update(float deltaTime) {

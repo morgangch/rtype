@@ -19,8 +19,9 @@ namespace rtype::common::components {
      * @brief Different types of enemies with varying behaviors
      */
     enum class EnemyType {
-        Basic,      ///< Basic enemy - moves left, doesn't shoot
-        Shooter     ///< Shooter enemy - moves left and shoots at player
+        Basic,      ///< Basic enemy - moves left, shoots straight
+        Shooter,    ///< Shooter enemy - moves left and shoots at player
+        Boss        ///< Boss enemy - high HP, shoots in spread pattern
     };
     
     /**

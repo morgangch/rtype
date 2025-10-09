@@ -145,6 +145,13 @@ void GameState::handleKeyPressed(sf::Keyboard::Key key) {
             m_keyFire = true;
             break;
         
+        // DEBUG: Spawn boss with B key
+        case sf::Keyboard::B:
+            if (!isBossActive()) {
+                createBoss(SCREEN_WIDTH - 100.0f, SCREEN_HEIGHT * 0.5f);
+            }
+            break;
+        
         // Pause/Menu key
         case sf::Keyboard::Escape:
             showInGameMenu(false); // Pause game

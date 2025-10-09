@@ -42,6 +42,23 @@ void GameState::updateMovementSystem(float deltaTime) {
         pos.x += vel->vx * deltaTime;
         pos.y += vel->vy * deltaTime;
         
+        // Boss bounce logic (vertical oscillation)
+        auto* enemyType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(entity);
+        if (enemyType && enemyType->type == rtype::common::components::EnemyType::Boss) {
+            auto* sprite = m_world.GetComponent<rtype::client::components::Sprite>(entity);
+            if (sprite) {
+                float halfHeight = sprite->size.y / 2.0f;
+                // Bounce at top or bottom of screen
+                if (pos.y - halfHeight <= 0.0f) {
+                    pos.y = halfHeight;
+                    vel->vy = std::abs(vel->vy);  // Go down
+                } else if (pos.y + halfHeight >= SCREEN_HEIGHT) {
+                    pos.y = SCREEN_HEIGHT - halfHeight;
+                    vel->vy = -std::abs(vel->vy);  // Go up
+                }
+            }
+        }
+        
         // Clamp velocity to max speed
         float speed = std::sqrt(vel->vx * vel->vx + vel->vy * vel->vy);
         if (speed > vel->maxSpeed && vel->maxSpeed > 0.0f) {
@@ -140,6 +157,13 @@ void GameState::updateInvulnerabilitySystem(float deltaTime) {
 
 void GameState::updateEnemySpawnSystem(float deltaTime) {
     m_enemySpawnTimer += deltaTime;
+    m_bossSpawnTimer += deltaTime;
+    
+    // Boss spawn system (every 3 minutes)
+    if (m_bossSpawnTimer >= BOSS_SPAWN_INTERVAL && !isBossActive()) {
+        createBoss(SCREEN_WIDTH - 100.0f, SCREEN_HEIGHT * 0.5f);
+        m_bossSpawnTimer = 0.0f;
+    }
     
     if (m_enemySpawnTimer >= ENEMY_SPAWN_INTERVAL) {
         // Count current enemies
@@ -208,7 +232,39 @@ void GameState::updateEnemyAISystem(float deltaTime) {
         
         if (!fireRate || !pos || !fireRate->canFire()) continue;
         
-        if (enemyType && enemyType->type == rtype::common::components::EnemyType::Shooter) {
+        if (enemyType && enemyType->type == rtype::common::components::EnemyType::Boss) {
+            // BOSS: Shoot in spread pattern (3 projectiles)
+            if (playerFound) {
+                // Calculate direction to player
+                float dx = playerPos.x - pos->x;
+                float dy = playerPos.y - pos->y;
+                float distance = std::sqrt(dx * dx + dy * dy);
+                
+                if (distance > 0.0f) {
+                    const float PROJECTILE_SPEED = 350.0f;
+                    float baseVx = (dx / distance) * PROJECTILE_SPEED;
+                    float baseVy = (dy / distance) * PROJECTILE_SPEED;
+                    
+                    // Center projectile - aimed at player
+                    createEnemyProjectile(pos->x, pos->y, baseVx, baseVy);
+                    
+                    // Spread pattern: ±15 degrees from center
+                    const float spreadAngle = 0.26f; // ~15 degrees in radians
+                    
+                    // Upper projectile (rotate counter-clockwise)
+                    float upperVx = baseVx * std::cos(spreadAngle) - baseVy * std::sin(spreadAngle);
+                    float upperVy = baseVx * std::sin(spreadAngle) + baseVy * std::cos(spreadAngle);
+                    createEnemyProjectile(pos->x, pos->y, upperVx, upperVy);
+                    
+                    // Lower projectile (rotate clockwise)
+                    float lowerVx = baseVx * std::cos(-spreadAngle) - baseVy * std::sin(-spreadAngle);
+                    float lowerVy = baseVx * std::sin(-spreadAngle) + baseVy * std::cos(-spreadAngle);
+                    createEnemyProjectile(pos->x, pos->y, lowerVx, lowerVy);
+                    
+                    fireRate->shoot();
+                }
+            }
+        } else if (enemyType && enemyType->type == rtype::common::components::EnemyType::Shooter) {
             // Shooter enemy: aim at player
             if (playerFound) {
                 // Calculate direction to player
@@ -359,6 +415,7 @@ void GameState::updateCollisionSystem() {
                     if (enemyHealth->currentHp <= 0) {
                         enemyHealth->isAlive = false;
                         toDestroy.push_back(enemyEntity); // Destroy enemy
+                        // No need to manually track boss death - isBossActive() queries ECS
                     }
                     break; // Projectile can only hit one target
                 }

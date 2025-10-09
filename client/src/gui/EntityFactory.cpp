@@ -135,6 +135,45 @@ ECS::EntityID GameState::createShooterEnemy(float x, float y) {
     return entity;
 }
 
+ECS::EntityID GameState::createBoss(float x, float y) {
+    auto entity = m_world.CreateEntity();
+    
+    // Position
+    m_world.AddComponent<rtype::common::components::Position>(
+        entity, x, y, 0.0f);
+    
+    // Velocity - Moves vertically (oscillates up and down)
+    // Starts moving down, will bounce at screen edges
+    m_world.AddComponent<rtype::common::components::Velocity>(
+        entity, 0.0f, 50.0f, 50.0f);
+    
+    // Health - 20 HP (BOSS - very tough!)
+    m_world.AddComponent<rtype::common::components::Health>(entity, 20);
+    
+    // Sprite - 80x80 magenta/violet rectangle (BIG!)
+    m_world.AddComponent<rtype::client::components::Sprite>(
+        entity,
+        sf::Vector2f(80.0f, 80.0f),
+        sf::Color(200, 0, 200),  // Magenta/Violet
+        true);
+    
+    // Team - Enemy team
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Enemy);
+    
+    // EnemyType - Boss (shoots in spread pattern)
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
+        entity, rtype::common::components::EnemyType::Boss);
+    
+    // FireRate - Boss shoots every 0.8 seconds (rapid fire!)
+    const float BOSS_FIRE_INTERVAL = 0.8f;
+    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(
+        entity, BOSS_FIRE_INTERVAL);
+    fireRate->cooldown = 0.0f;  // Can shoot immediately
+    
+    return entity;
+}
+
 ECS::EntityID GameState::createPlayerProjectile(float x, float y) {
     auto entity = m_world.CreateEntity();
     
