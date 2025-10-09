@@ -143,6 +143,12 @@ namespace rtype::client::gui {
          */
         void handleMouseMoveEvent(const sf::Event& event);
         
+        /**
+         * @brief Handle key press events (including debug mode F1)
+         * @param event The key press event
+         */
+        void handleKeyPressEvent(const sf::Event& event);
+        
         // Button action handlers
         /**
          * @brief Handle public servers button click

@@ -111,6 +111,9 @@ namespace rtype::client::gui {
             case sf::Event::MouseMoved:
                 handleMouseMoveEvent(event);
                 break;
+            case sf::Event::KeyPressed:
+                handleKeyPressEvent(event);
+                break;
             default:
                 break;
         }
@@ -174,6 +177,20 @@ namespace rtype::client::gui {
                                   GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
     }
     
+    void MainMenuState::handleKeyPressEvent(const sf::Event& event) {
+        // Debug mode: D to launch game directly
+        if (event.key.code == sf::Keyboard::D) {
+            std::cout << "DEBUG MODE: Launching game directly with D" << std::endl;
+            stateManager.changeState(std::make_unique<GameState>(stateManager));
+            return;
+        }
+        
+        // Escape key to exit
+        if (event.key.code == sf::Keyboard::Escape) {
+            std::exit(0);
+        }
+    }
+    
     void MainMenuState::update(float deltaTime) {
         // Cursor blinking animation
         cursorTimer += deltaTime;
@@ -210,6 +227,15 @@ namespace rtype::client::gui {
         window.draw(publicServersButton);
         window.draw(privateButtonRect);
         window.draw(privateServersButton);
+        
+        // Debug mode indicator
+        sf::Text debugText;
+        debugText.setFont(GUIHelper::getFont());
+        debugText.setString("DEBUG: Press D to launch game directly");
+        debugText.setCharacterSize(16);
+        debugText.setFillColor(sf::Color(100, 100, 100, 200));
+        debugText.setPosition(10.0f, window.getSize().y - 30.0f);
+        window.draw(debugText);
     }
     
     void MainMenuState::onPublicServersClick() {
