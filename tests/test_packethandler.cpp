@@ -11,6 +11,7 @@
 #include <netinet/in.h>
 #include "packethandler.h"
 #include "packetmanager.h"
+#include "packets.h"
 
 // Test callback counters
 int pingCallbackCount = 0;
