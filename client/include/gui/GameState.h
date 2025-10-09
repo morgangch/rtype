@@ -25,6 +25,7 @@
 #include <common/components/Projectile.h>
 #include <common/components/Player.h>
 #include <common/components/FireRate.h>
+#include <common/components/EnemyType.h>
 #include <client/components/Sprite.h>
 #include <vector>
 
@@ -166,15 +167,33 @@ namespace rtype::client::gui {
          * @param y Y coordinate (random vertical position)
          * @return EntityID of the created enemy
          * 
-         * Creates enemy with:
+         * Creates basic enemy with:
          * - Position (x, y)
          * - Velocity (-100, 0) - moves left
          * - Health (1 HP)
          * - Sprite (24x24, red)
          * - Team (Enemy)
          * - FireRate (2.5s cooldown)
+         * - EnemyType (Basic - doesn't shoot)
          */
         ECS::EntityID createEnemy(float x, float y);
+        
+        /**
+         * @brief Create a shooter enemy entity at a specific position
+         * @param x X coordinate (typically right edge of screen)
+         * @param y Y coordinate (random vertical position)
+         * @return EntityID of the created shooter enemy
+         * 
+         * Creates shooter enemy with:
+         * - Position (x, y)
+         * - Velocity (-80, 0) - moves left slower
+         * - Health (2 HP)
+         * - Sprite (28x28, orange)
+         * - Team (Enemy)
+         * - FireRate (1.5s cooldown)
+         * - EnemyType (Shooter - shoots at player)
+         */
+        ECS::EntityID createShooterEnemy(float x, float y);
         
         /**
          * @brief Create a player projectile at a specific position
@@ -195,18 +214,20 @@ namespace rtype::client::gui {
          * @brief Create an enemy projectile at a specific position
          * @param x X coordinate (enemy's position)
          * @param y Y coordinate (enemy's position)
+         * @param vx X velocity (direction and speed)
+         * @param vy Y velocity (direction and speed)
          * @return EntityID of the created enemy projectile
          * 
          * Creates projectile with:
          * - Position (x, y)
-         * - Velocity (-300, 0) - moves left
-         * - Sprite (10x4, red/pink)
+         * - Velocity (vx, vy) - custom direction
+         * - Sprite (10x4, pink)
          * - Team (Enemy)
          * - Projectile (1 damage)
          */
-        ECS::EntityID createEnemyProjectile(float x, float y);
+        ECS::EntityID createEnemyProjectile(float x, float y, float vx = -300.0f, float vy = 0.0f);
         
-        // =================================================================
+        // =================================================================        // =================================================================
         // ECS SYSTEMS - Update logic for entities with specific components
         // =================================================================
         

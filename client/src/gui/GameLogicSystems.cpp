@@ -159,7 +159,16 @@ void GameState::updateEnemySpawnSystem(float deltaTime) {
         // Spawn if under limit
         if (enemyCount < MAX_ENEMIES) {
             float randomY = 50.0f + static_cast<float>(rand() % static_cast<int>(SCREEN_HEIGHT - 100.0f));
-            createEnemy(SCREEN_WIDTH + 24.0f, randomY);
+            
+            // Alternate between basic enemies and shooter enemies
+            // 40% chance for shooter enemy, 60% for basic enemy
+            int randomType = rand() % 100;
+            if (randomType < 40) {
+                createShooterEnemy(SCREEN_WIDTH + 28.0f, randomY);
+            } else {
+                createEnemy(SCREEN_WIDTH + 24.0f, randomY);
+            }
+            
             m_enemySpawnTimer = 0.0f;
         }
     }
@@ -173,17 +182,53 @@ void GameState::updateEnemyAISystem(float deltaTime) {
     auto* teams = m_world.GetAllComponents<rtype::common::components::Team>();
     if (!teams) return;
     
+    // Find player position first
+    sf::Vector2f playerPos(0.0f, 0.0f);
+    bool playerFound = false;
+    auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
+    if (players) {
+        for (auto& [playerEntity, playerPtr] : *players) {
+            auto* pos = m_world.GetComponent<rtype::common::components::Position>(playerEntity);
+            if (pos) {
+                playerPos = sf::Vector2f(pos->x, pos->y);
+                playerFound = true;
+                break;
+            }
+        }
+    }
+    
     for (auto& [entity, teamPtr] : *teams) {
         // Only process enemies (not enemy projectiles)
         if (teamPtr->team != rtype::common::components::TeamType::Enemy) continue;
         if (!m_world.GetComponent<rtype::common::components::Health>(entity)) continue;
         
+        auto* enemyType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(entity);
         auto* fireRate = m_world.GetComponent<rtype::common::components::FireRate>(entity);
         auto* pos = m_world.GetComponent<rtype::common::components::Position>(entity);
         
-        if (fireRate && pos && fireRate->canFire()) {
-            // Fire enemy projectile
-            createEnemyProjectile(pos->x, pos->y);
+        if (!fireRate || !pos || !fireRate->canFire()) continue;
+        
+        if (enemyType && enemyType->type == rtype::common::components::EnemyType::Shooter) {
+            // Shooter enemy: aim at player
+            if (playerFound) {
+                // Calculate direction to player
+                float dx = playerPos.x - pos->x;
+                float dy = playerPos.y - pos->y;
+                float distance = std::sqrt(dx * dx + dy * dy);
+                
+                if (distance > 0.0f) {
+                    // Normalize and apply speed
+                    const float PROJECTILE_SPEED = 300.0f;
+                    float vx = (dx / distance) * PROJECTILE_SPEED;
+                    float vy = (dy / distance) * PROJECTILE_SPEED;
+                    
+                    createEnemyProjectile(pos->x, pos->y, vx, vy);
+                    fireRate->shoot();
+                }
+            }
+        } else {
+            // Basic red enemy: shoot straight left
+            createEnemyProjectile(pos->x, pos->y, -300.0f, 0.0f);
             fireRate->shoot();
         }
     }
