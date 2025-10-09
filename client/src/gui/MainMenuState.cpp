@@ -14,6 +14,7 @@
 #include "gui/MainMenuState.h"
 #include "gui/PublicServerState.h"
 #include "gui/PrivateServerState.h"
+#include "gui/GameState.h"
 #include <iostream>
 #include <cstdlib>
 
@@ -33,6 +34,12 @@ namespace rtype::client::gui {
         titleText.setCharacterSize(GUIHelper::Sizes::TITLE_FONT_SIZE);
         titleText.setFillColor(GUIHelper::Colors::TEXT);
         titleText.setStyle(sf::Text::Bold);
+        
+        // DEBUG hint text
+        debugHintText.setFont(font);
+        debugHintText.setString("Press F1 to test game offline (DEBUG)");
+        debugHintText.setCharacterSize(20);
+        debugHintText.setFillColor(sf::Color(100, 255, 100)); // Light green
         
         // Username input setup
         usernameBox.setFillColor(GUIHelper::Colors::INPUT_BOX);
@@ -63,6 +70,9 @@ namespace rtype::client::gui {
         
         // Title positioning (center top)
         GUIHelper::centerText(titleText, centerX, windowSize.y * 0.2f);
+        
+        // Debug hint positioning (top right corner)
+        debugHintText.setPosition(10.0f, 10.0f);
         
         // Username box positioning (middle)
         float boxWidth = std::min(400.0f, windowSize.x * 0.6f);
@@ -109,6 +119,13 @@ namespace rtype::client::gui {
                 break;
             case sf::Event::MouseMoved:
                 handleMouseMoveEvent(event);
+                break;
+            case sf::Event::KeyPressed:
+                // DEBUG: Press F1 to launch game directly (offline mode)
+                if (event.key.code == sf::Keyboard::F1) {
+                    std::cout << "[DEBUG] F1 pressed - Launching game in offline mode!" << std::endl;
+                    launchOfflineGame();
+                }
                 break;
             default:
                 break;
@@ -193,6 +210,9 @@ namespace rtype::client::gui {
         // Update layout if needed
         updateLayout(window.getSize());
         
+        // Render debug hint
+        window.draw(debugHintText);
+        
         // Render title
         window.draw(titleText);
         
@@ -221,5 +241,11 @@ namespace rtype::client::gui {
         std::cout << "Switching to Private Server state" << std::endl;
         std::string finalUsername = username.empty() ? GUIHelper::generateRandomUsername() : username;
         stateManager.changeState(std::make_unique<PrivateServerState>(stateManager, finalUsername));
+    }
+    
+    void MainMenuState::launchOfflineGame() {
+        std::cout << "=== LAUNCHING OFFLINE GAME (DEBUG MODE) ===" << std::endl;
+        std::cout << "Press F1 anytime from main menu to test the game!" << std::endl;
+        stateManager.changeState(std::make_unique<GameState>(stateManager));
     }
 }

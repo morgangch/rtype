@@ -1,0 +1,272 @@
+/**
+ * @file GameStateECS.h
+ * @brief ECS-based Space Invaders game state implementation for R-TYPE
+ * 
+ * This file contains the refactored GameState class that uses the Entity
+ * Component System architecture. The GameState now focuses on state management
+ * (Playing, Paused, GameOver) while delegating game logic to specialized systems.
+ * 
+ * @author R-TYPE Development Team
+ * @date 2025
+ */
+
+#ifndef CLIENT_GAME_STATE_ECS_HPP
+#define CLIENT_GAME_STATE_ECS_HPP
+
+#include "State.h"
+#include "StateManager.h"
+#include "ParallaxSystem.h"
+#include <SFML/Graphics.hpp>
+#include <ECS/ECS.hpp>
+
+// Common components
+#include <common/components/Position.hpp>
+#include <common/components/Velocity.hpp>
+#include <common/components/Health.hpp>
+#include <common/components/Player.hpp>
+#include <common/components/Team.hpp>
+#include <common/components/Projectile.hpp>
+
+// Client components
+#include <client/components/Components.h>
+
+// Systems
+#include <client/components/Systems.h>
+
+namespace rtype::client::gui {
+    
+    /**
+     * @class GameState
+     * @brief ECS-based game state focusing on state management
+     * 
+     * The refactored GameState delegates game logic to specialized systems:
+     * - InputSystem: Handles player input
+     * - MovementSystem: Updates positions based on velocity
+     * - ProjectileSystem: Manages projectile spawning and lifecycle
+     * - EnemySystem: Handles enemy AI and spawning
+     * - CollisionSystem: Detects and resolves collisions
+     * - RenderSystem: Draws all entities
+     * - TimerSystem: Updates time-based effects
+     * 
+     * GameState now focuses on:
+     * - State transitions (Playing ↔ Paused ↔ GameOver)
+     * - UI rendering (menus)
+     * - Entity lifecycle for major events (player death, restart)
+     * 
+     * Controls:
+     * - ZQSD/Arrows: Move
+     * - Space: Fire
+     * - ESC: Pause/Resume
+     */
+    class GameState : public State {
+    public:
+        /**
+         * @enum GameStatus
+         * @brief Represents the current state of the game
+         */
+        enum class GameStatus {
+            Playing,     ///< Game is active
+            InGameMenu   ///< Paused or game over, showing in-game menu
+        };
+        
+        /**
+         * @brief Construct a new GameState with ECS architecture
+         * @param stateManager Reference to the state manager for transitions
+         */
+        GameState(StateManager& stateManager);
+        
+        /**
+         * @brief Destructor
+         */
+        ~GameState() = default;
+        
+        /**
+         * @brief Handle input events (keyboard, window)
+         * @param event The SFML event to process
+         */
+        void handleEvent(const sf::Event& event) override;
+        
+        /**
+         * @brief Update game logic using ECS systems
+         * @param deltaTime Time elapsed since last update
+         */
+        void update(float deltaTime) override;
+        
+        /**
+         * @brief Render the game to the screen
+         * @param window The render window to draw to
+         */
+        void render(sf::RenderWindow& window) override;
+        
+        /**
+         * @brief Called when entering this state
+         */
+        void onEnter() override;
+        
+        /**
+         * @brief Called when exiting this state
+         */
+        void onExit() override;
+        
+    private:
+        // ===== State Management =====
+        
+        /**
+         * @brief Reference to the state manager
+         */
+        StateManager& m_stateManager;
+        
+        /**
+         * @brief Current game status (Playing or InGameMenu)
+         */
+        GameStatus m_gameStatus;
+        
+        /**
+         * @brief Whether in-game menu is showing game over (vs pause)
+         */
+        bool m_isGameOver;
+        
+        /**
+         * @brief Selected menu option (0 = Resume/Restart, 1 = Leave)
+         */
+        int m_selectedMenuOption;
+        
+        // ===== ECS Core =====
+        
+        /**
+         * @brief The ECS world managing all entities and components
+         */
+        ECS::World m_world;
+        
+        /**
+         * @brief Entity ID of the player
+         */
+        ECS::EntityID m_playerEntity;
+        
+        // ===== Systems =====
+        
+        /**
+         * @brief Input processing system
+         */
+        rtype::client::systems::InputSystem m_inputSystem;
+        
+        /**
+         * @brief Movement/physics system
+         */
+        rtype::client::systems::MovementSystem m_movementSystem;
+        
+        /**
+         * @brief Projectile management system
+         */
+        rtype::client::systems::ProjectileSystem m_projectileSystem;
+        
+        /**
+         * @brief Enemy AI and spawning system
+         */
+        rtype::client::systems::EnemySystem m_enemySystem;
+        
+        /**
+         * @brief Collision detection system
+         */
+        rtype::client::systems::CollisionSystem m_collisionSystem;
+        
+        /**
+         * @brief Rendering system
+         */
+        rtype::client::systems::RenderSystem m_renderSystem;
+        
+        /**
+         * @brief Timer update system
+         */
+        rtype::client::systems::TimerSystem m_timerSystem;
+        
+        /**
+         * @brief Parallax background system
+         */
+        ParallaxSystem m_parallaxSystem;
+        
+        // ===== UI Elements =====
+        
+        /**
+         * @brief Text for game over title
+         */
+        sf::Text m_gameOverTitleText;
+        
+        /**
+         * @brief Text for restart button
+         */
+        sf::Text m_restartText;
+        
+        /**
+         * @brief Text for menu button
+         */
+        sf::Text m_menuText;
+        
+        // ===== Constants =====
+        
+        /** @brief Screen width */
+        static constexpr float SCREEN_WIDTH = 1280.0f;
+        
+        /** @brief Screen height */
+        static constexpr float SCREEN_HEIGHT = 720.0f;
+        
+        /** @brief Invulnerability duration after damage */
+        static constexpr float INVULNERABILITY_DURATION = 2.0f;
+        
+        /** @brief Player fire cooldown */
+        static constexpr float FIRE_COOLDOWN = 0.2f;
+        
+        // ===== Helper Methods =====
+        
+        /**
+         * @brief Setup the game over UI elements
+         */
+        void setupGameOverUI();
+        
+        /**
+         * @brief Initialize the player entity with all components
+         */
+        void createPlayerEntity();
+        
+        /**
+         * @brief Show in-game menu (pause or game over)
+         * @param isGameOver True if game over, false if paused
+         */
+        void showInGameMenu(bool isGameOver);
+        
+        /**
+         * @brief Resume game from in-game menu
+         */
+        void resumeGame();
+        
+        /**
+         * @brief Reset game to initial state
+         */
+        void resetGame();
+        
+        /**
+         * @brief Render the in-game menu (pause or game over)
+         * @param window Render window
+         */
+        void renderInGameMenu(sf::RenderWindow& window);
+        
+        /**
+         * @brief Handle player damage event
+         * 
+         * Called by collision system when player takes damage.
+         * Manages lives, invulnerability, and game over condition.
+         */
+        void onPlayerDamaged();
+        
+        /**
+         * @brief Handle enemy destroyed event
+         * 
+         * Called by collision system when enemy is killed.
+         * Can be used for score tracking, effects, etc.
+         */
+        void onEnemyDestroyed();
+    };
+    
+} // namespace rtype::client::gui
+
+#endif // CLIENT_GAME_STATE_ECS_HPP

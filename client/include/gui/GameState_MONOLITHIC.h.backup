@@ -17,12 +17,7 @@
 #include "StateManager.h"
 #include "ParallaxSystem.h"
 #include <SFML/Graphics.hpp>
-#include <ECS/ECS.h>
-#include <common/components/Position.h>
-#include <common/components/Velocity.h>
-#include <common/components/Health.h>
 #include <vector>
-#include <unordered_map>
 
 namespace rtype::client::gui {
     
@@ -112,51 +107,14 @@ namespace rtype::client::gui {
         void onExit() override;
         
     private:
-        // =================================================================
-        // ECS BACKEND - Modular data storage using Entity Component System
-        // =================================================================
-        
-        /**
-         * @brief ECS World instance for entity management
-         */
-        ECS::World m_world;
-        
-        /**
-         * @brief Entity ID for the player
-         */
-        ECS::EntityID m_playerEntityID{0};
-        
-        /**
-         * @brief Map of enemy entity IDs for easy iteration
-         */
-        std::vector<ECS::EntityID> m_enemyEntities;
-        
-        /**
-         * @brief Map of projectile entity IDs for easy iteration
-         */
-        std::vector<ECS::EntityID> m_projectileEntities;
-        
-        /**
-         * @brief Map of enemy projectile entity IDs for easy iteration
-         */
-        std::vector<ECS::EntityID> m_enemyProjectileEntities;
-        
-        // =================================================================
-        // WRAPPER STRUCTURES - Keep original API while using ECS internally
-        // =================================================================
-        
         /**
          * @struct Player
          * @brief Represents the player's ship in the game
          * 
          * The Player structure contains all data related to the player's ship including
          * position, size, speed, health/lives, and collision bounds calculation.
-         * MODULAR: Now uses ECS backend for data storage.
          */
         struct Player {
-            ECS::World* world;
-            ECS::EntityID entityID;
-            
             /** @brief Current position of the player (center point) */
             sf::Vector2f position{100.0f, 360.0f};  // Centered vertically
             
@@ -171,16 +129,6 @@ namespace rtype::client::gui {
             
             /** @brief Invulnerability timer after taking damage (seconds) */
             float invulnerabilityTimer{0.0f};
-            
-            /**
-             * @brief Sync data FROM ECS to local cache
-             */
-            void syncFromECS();
-            
-            /**
-             * @brief Sync data TO ECS from local cache
-             */
-            void syncToECS();
             
             /**
              * @brief Check if player is currently invulnerable
@@ -213,12 +161,8 @@ namespace rtype::client::gui {
          * 
          * The Enemy structure contains all data for enemy ships that move from
          * right to left across the screen and can fire projectiles.
-         * MODULAR: Now uses ECS backend for data storage.
          */
         struct Enemy {
-            ECS::World* world;
-            ECS::EntityID entityID;
-            
             /** @brief Current position of the enemy (center point) */
             sf::Vector2f position;
             
@@ -233,16 +177,6 @@ namespace rtype::client::gui {
             
             /** @brief Timer for enemy fire rate */
             float fireTimer{0.0f};
-            
-            /**
-             * @brief Sync data FROM ECS to local cache
-             */
-            void syncFromECS();
-            
-            /**
-             * @brief Sync data TO ECS from local cache
-             */
-            void syncToECS();
             
             /**
              * @brief Get the axis-aligned bounding box for collision detection
@@ -267,12 +201,8 @@ namespace rtype::client::gui {
          * 
          * The Projectile structure contains data for player projectiles that
          * move from left to right across the screen to destroy enemies.
-         * MODULAR: Now uses ECS backend for data storage.
          */
         struct Projectile {
-            ECS::World* world;
-            ECS::EntityID entityID;
-            
             /** @brief Current position of the projectile (center point) */
             sf::Vector2f position;
             
@@ -284,16 +214,6 @@ namespace rtype::client::gui {
             
             /** @brief Damage dealt to enemies on hit */
             int damage{1};
-            
-            /**
-             * @brief Sync data FROM ECS to local cache
-             */
-            void syncFromECS();
-            
-            /**
-             * @brief Sync data TO ECS from local cache
-             */
-            void syncToECS();
             
             /**
              * @brief Get the axis-aligned bounding box for collision detection
@@ -318,12 +238,8 @@ namespace rtype::client::gui {
          * 
          * The EnemyProjectile structure contains data for enemy projectiles that
          * move from right to left across the screen to damage the player.
-         * MODULAR: Now uses ECS backend for data storage.
          */
         struct EnemyProjectile {
-            ECS::World* world;
-            ECS::EntityID entityID;
-            
             /** @brief Current position of the enemy projectile (center point) */
             sf::Vector2f position;
             
@@ -335,16 +251,6 @@ namespace rtype::client::gui {
             
             /** @brief Damage dealt to player on hit */
             int damage{1};
-            
-            /**
-             * @brief Sync data FROM ECS to local cache
-             */
-            void syncFromECS();
-            
-            /**
-             * @brief Sync data TO ECS from local cache
-             */
-            void syncToECS();
             
             /**
              * @brief Get the axis-aligned bounding box for collision detection
@@ -666,6 +572,28 @@ namespace rtype::client::gui {
          * @brief Minimum time between shots in seconds
          */
         static constexpr float FIRE_COOLDOWN{0.2f};
+        
+        /**
+         * @brief Horizontal offset for enemy projectile spawn position
+         * 
+         * Distance to the left of the enemy center where projectiles spawn.
+         */
+        static constexpr float ENEMY_PROJECTILE_SPAWN_OFFSET{12.0f};
+        
+        /**
+         * @brief Flash interval for invulnerability visual effect (seconds)
+         * 
+         * Controls how fast the player sprite flashes during invulnerability.
+         */
+        static constexpr float INVULNERABILITY_FLASH_INTERVAL{0.15f};
+        
+        /**
+         * @brief Random timer resolution for enemy fire timing
+         * 
+         * Used to generate random delays between 0 and ENEMY_FIRE_INTERVAL.
+         * Higher values provide finer granularity in randomization.
+         */
+        static constexpr int RANDOM_TIMER_RESOLUTION{1000};
         
         /**
          * @brief Maximum number of simultaneous enemies

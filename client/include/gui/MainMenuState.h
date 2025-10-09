@@ -90,6 +90,7 @@ namespace rtype::client::gui {
         
         // UI Text Elements
         sf::Text titleText;             ///< "THE TOP R-TYPE" title
+        sf::Text debugHintText;         ///< DEBUG: F1 hint text
         sf::Text usernameText;          ///< User-entered username display
         sf::Text usernameHintText;      ///< Placeholder text for username field
         sf::Text publicServersButton;  ///< "Public servers" button text
@@ -155,6 +156,12 @@ namespace rtype::client::gui {
          * Transitions to PrivateServerState with current username
          */
         void onPrivateServersClick();
+        
+        /**
+         * @brief Launch game directly in offline mode (DEBUG)
+         * Press F1 to test the game without server connection
+         */
+        void launchOfflineGame();
     };
 }
 

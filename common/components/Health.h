@@ -85,7 +85,12 @@ namespace rtype::common::components {
          * - invulnerable = false
          * - invulnerabilityTimer = 0.0
          */
-        Health(int maxHp = 100);
+        Health(int maxHp = 100)
+            : currentHp(maxHp)
+            , maxHp(maxHp)
+            , isAlive(true)
+            , invulnerable(false)
+            , invulnerabilityTimer(0.0f) {}
     };
 }
 
