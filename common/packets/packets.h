@@ -9,6 +9,9 @@
 #define PACKETS_H
 #define MAX_PACKET_SIZE 2048
 
+#include <cstdint>
+#include <cstring>
+
 /**
  * Packet types
  * Linking a packet type with the packet type id.
