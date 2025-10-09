@@ -14,6 +14,7 @@
 #include "gui/MainMenuState.h"
 #include "gui/PublicServerState.h"
 #include "gui/PrivateServerState.h"
+#include "gui/GameState.h"
 #include <iostream>
 #include <cstdlib>
 

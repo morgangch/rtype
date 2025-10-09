@@ -12,7 +12,8 @@ namespace rtype::common::components {
         TeamType team;
         bool friendlyFire;
 
-        Team(TeamType team = TeamType::Neutral, bool friendlyFire = false);
+        Team(TeamType team = TeamType::Neutral, bool friendlyFire = false)
+            : team(team), friendlyFire(friendlyFire) {}
     };
 }
 #endif // COMMON_COMPONENTS_TEAM_HPP
