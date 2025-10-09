@@ -5,7 +5,7 @@
 ** TODO: add description
 */
 
-#include "network.h"
+#include "../../include/network/network.h"
 #include <iostream>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -104,4 +104,8 @@ int network::start_room_connection(const std::string &ip, int port, const std::s
 
     pm.sendPacketBytesSafe(&p, sizeof(JoinRoomPacket), JOIN_ROOM, nullptr, true);
     return 0;
+}
+
+bool network::is_udp_connected() {
+    return udp_fd != -1;
 }
