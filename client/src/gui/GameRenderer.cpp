@@ -20,10 +20,6 @@
 
 namespace rtype::client::gui {
 
-// =============================================================================
-// ENTITY RENDERING SYSTEM
-// =============================================================================
-
 void GameState::renderEntities(sf::RenderWindow& window) {
     auto* positions = m_world.GetAllComponents<rtype::common::components::Position>();
     if (!positions) return;
@@ -53,9 +49,6 @@ void GameState::renderEntities(sf::RenderWindow& window) {
         window.draw(shape);
     }
 }
-// =============================================================================
-// HUD RENDERING
-// =============================================================================
 
 void GameState::renderHUD(sf::RenderWindow& window) {
     // Get player lives
@@ -73,10 +66,6 @@ void GameState::renderHUD(sf::RenderWindow& window) {
         window.draw(heart);
     }
 }
-
-// =============================================================================
-// GAME OVER MENU RENDERING
-// =============================================================================
 
 void GameState::renderGameOverMenu(sf::RenderWindow& window) {
     // Semi-transparent overlay

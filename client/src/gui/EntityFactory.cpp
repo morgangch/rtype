@@ -18,10 +18,6 @@
 
 namespace rtype::client::gui {
 
-// =============================================================================
-// ENTITY FACTORIES
-// =============================================================================
-
 ECS::EntityID GameState::createPlayer() {
     auto entity = m_world.CreateEntity();
     

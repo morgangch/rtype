@@ -18,10 +18,6 @@
 
 namespace rtype::client::gui {
 
-// =============================================================================
-// EVENT HANDLING
-// =============================================================================
-
 void GameState::handleEvent(const sf::Event& event) {
     // Handle in-game menu (pause or game over)
     if (m_gameStatus == GameStatus::InGameMenu) {
@@ -36,10 +32,6 @@ void GameState::handleEvent(const sf::Event& event) {
         handleKeyReleased(event.key.code);
     }
 }
-
-// =============================================================================
-// MENU INPUT HANDLING
-// =============================================================================
 
 void GameState::handleMenuInput(const sf::Event& event) {
     // Keyboard navigation
@@ -112,10 +104,6 @@ void GameState::handleMenuInput(const sf::Event& event) {
         }
     }
 }
-
-// =============================================================================
-// GAMEPLAY KEY PRESS/RELEASE
-// =============================================================================
 
 void GameState::handleKeyPressed(sf::Keyboard::Key key) {
     switch (key) {
