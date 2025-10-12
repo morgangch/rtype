@@ -25,7 +25,6 @@
 #include "gui/GUIHelper.h"
 #include <algorithm>
 #include <cmath>
-#include <iostream>
 
 namespace rtype::client::gui {
 
@@ -52,9 +51,9 @@ void GameState::setupGameOverUI() {
     m_restartText.setFillColor(GUIHelper::Colors::TEXT);
     GUIHelper::centerText(m_restartText, SCREEN_WIDTH / 2.0f, 300.0f);
     
-    // Return to Menu button
+    // Leave button
     m_menuText.setFont(font);
-    m_menuText.setString("Return to Menu");
+    m_menuText.setString("Leave");
     m_menuText.setCharacterSize(GUIHelper::Sizes::BUTTON_FONT_SIZE);
     m_menuText.setFillColor(GUIHelper::Colors::TEXT);
     GUIHelper::centerText(m_menuText, SCREEN_WIDTH / 2.0f, 380.0f);
@@ -115,6 +114,7 @@ void GameState::resetGame() {
     
     // Reset timers
     m_enemySpawnTimer = 0.0f;
+    m_bossSpawnTimer = 0.0f;
     
     // Reset flags
     m_isGameOver = false;
@@ -156,6 +156,24 @@ void GameState::damagePlayer(int damage) {
     }
 }
 
+bool GameState::isBossActive() {
+    // Pure ECS approach: query the world for boss entities
+    auto* enemyTypes = m_world.GetAllComponents<rtype::common::components::EnemyTypeComponent>();
+    if (!enemyTypes) return false;
+    
+    for (auto& [entity, enemyTypePtr] : *enemyTypes) {
+        if (enemyTypePtr->type == rtype::common::components::EnemyType::Boss) {
+            // Check if the boss is still alive (has Health component with HP > 0)
+            auto* health = m_world.GetComponent<rtype::common::components::Health>(entity);
+            if (health && health->currentHp > 0) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
 void GameState::update(float deltaTime) {
     if (m_gameStatus == GameStatus::InGameMenu) {
         return; // Don't update game logic when in menu
@@ -167,6 +185,7 @@ void GameState::update(float deltaTime) {
     // Run ECS systems in order
     updateInputSystem(deltaTime);
     updateFireRateSystem(deltaTime);
+    updateChargedShotSystem(deltaTime);
     updateInvulnerabilitySystem(deltaTime);
     updateMovementSystem(deltaTime);
     updateEnemySpawnSystem(deltaTime);

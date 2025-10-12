@@ -1,6 +1,17 @@
 /**
  * @file GameState.h
- * @brief Space Invaders game state implementation for R-TYPE using ECS
+ *#include <common/components/EnemyType.h>
+#include <common/components/ChargedShot.h>
+#include <client/components/Sprite.h>
+#include <vector>
+#include <functional>
+
+// Modular headers for factories and systems
+#include "EntityFactories.h"
+#include "ECSSystems.h"
+#include "CollisionSystems.h"
+
+namespace rtype::client::gui { Space Invaders game state implementation for R-TYPE using ECS
  * 
  * This file contains the GameState class which implements the actual gameplay
  * for a Space Invaders style game using a pure ECS architecture.
@@ -25,8 +36,11 @@
 #include <common/components/Projectile.h>
 #include <common/components/Player.h>
 #include <common/components/FireRate.h>
+#include <common/components/EnemyType.h>
+#include <common/systems/ChargedShot.h>
 #include <client/components/Sprite.h>
 #include <vector>
+#include <functional>
 
 namespace rtype::client::gui {
     
@@ -121,9 +135,6 @@ namespace rtype::client::gui {
         void onExit() override;
         
     private:
-        // =================================================================
-        // ECS CORE - Pure Entity Component System Architecture
-        // =================================================================
         
         /**
          * @brief ECS World instance for entity management
@@ -140,153 +151,128 @@ namespace rtype::client::gui {
          * - Position, Velocity, Health, Sprite, Controllable, FireRate, Invulnerability
          */
         ECS::EntityID m_playerEntity{0};
-        
-        // =================================================================
-        // ENTITY FACTORY METHODS - Create entities with proper components
-        // =================================================================
-        
+
         /**
-         * @brief Create the player entity with all required components
-         * @return EntityID of the created player
-         * 
-         * Creates player with:
-         * - Position (100, 360)
-         * - Velocity (0, 0, maxSpeed=300)
-         * - Health (3 HP, with invulnerability support)
-         * - Sprite (32x32, green)
-         * - Player (marks as player-controlled)
-         * - FireRate (0.2s cooldown)
-         * - Team (Player team)
+         * @brief Create the player entity
+         * @note Wrapper around rtype::client::factories::createPlayer()
          */
         ECS::EntityID createPlayer();
         
         /**
-         * @brief Create an enemy entity at a specific position
-         * @param x X coordinate (typically right edge of screen)
-         * @param y Y coordinate (random vertical position)
-         * @return EntityID of the created enemy
-         * 
-         * Creates enemy with:
-         * - Position (x, y)
-         * - Velocity (-100, 0) - moves left
-         * - Health (1 HP)
-         * - Sprite (24x24, red)
-         * - Team (Enemy)
-         * - FireRate (2.5s cooldown)
+         * @brief Create a basic enemy entity
+         * @note Wrapper around rtype::client::factories::createEnemy()
          */
         ECS::EntityID createEnemy(float x, float y);
         
         /**
-         * @brief Create a player projectile at a specific position
-         * @param x X coordinate (player's position)
-         * @param y Y coordinate (player's position)
-         * @return EntityID of the created projectile
-         * 
-         * Creates projectile with:
-         * - Position (x, y)
-         * - Velocity (500, 0) - moves right
-         * - Sprite (12x4, yellow)
-         * - Team (Player)
-         * - Projectile (1 damage)
+         * @brief Create a shooter enemy entity
+         * @note Wrapper around rtype::client::factories::createShooterEnemy()
+         */
+        ECS::EntityID createShooterEnemy(float x, float y);
+        
+        /**
+         * @brief Create a boss enemy entity
+         * @note Wrapper around rtype::client::factories::createBoss()
+         */
+        ECS::EntityID createBoss(float x, float y);
+        
+        /**
+         * @brief Create a player projectile
+         * @note Wrapper around rtype::client::factories::createPlayerProjectile()
          */
         ECS::EntityID createPlayerProjectile(float x, float y);
         
         /**
-         * @brief Create an enemy projectile at a specific position
-         * @param x X coordinate (enemy's position)
-         * @param y Y coordinate (enemy's position)
-         * @return EntityID of the created enemy projectile
-         * 
-         * Creates projectile with:
-         * - Position (x, y)
-         * - Velocity (-300, 0) - moves left
-         * - Sprite (10x4, red/pink)
-         * - Team (Enemy)
-         * - Projectile (1 damage)
+         * @brief Create a charged player projectile
+         * @note Wrapper around rtype::client::factories::createChargedProjectile()
          */
-        ECS::EntityID createEnemyProjectile(float x, float y);
-        
-        // =================================================================
-        // ECS SYSTEMS - Update logic for entities with specific components
-        // =================================================================
+        ECS::EntityID createChargedProjectile(float x, float y);
         
         /**
+         * @brief Create an enemy projectile
+         * @note Wrapper around rtype::client::factories::createEnemyProjectile()
+         */
+        ECS::EntityID createEnemyProjectile(float x, float y, float vx = -300.0f, float vy = 0.0f);
+
+        /**
          * @brief Movement System - Updates positions based on velocity
-         * @param deltaTime Time elapsed since last frame
-         * 
-         * Iterates all entities with Position + Velocity components.
-         * Updates position: position += velocity * deltaTime
+         * @note Wrapper around rtype::client::systems::updateMovementSystem()
          */
         void updateMovementSystem(float deltaTime);
         
         /**
-         * @brief Input System - Process player input and update velocity
-         * @param deltaTime Time elapsed since last frame
-         * 
-         * Finds entities with Controllable component (player).
-         * Updates velocity based on keyboard input (ZQSD/Arrows).
-         * Handles diagonal movement normalization and screen bounds.
+         * @brief Input System - Process player input
+         * @note Wrapper around rtype::client::systems::updateInputSystem()
          */
         void updateInputSystem(float deltaTime);
         
         /**
          * @brief Fire Rate System - Update shooting cooldowns
-         * @param deltaTime Time elapsed since last frame
-         * 
-         * Iterates all entities with FireRate component.
-         * Decreases cooldown timers to allow shooting.
+         * @note Wrapper around rtype::client::systems::updateFireRateSystem()
          */
         void updateFireRateSystem(float deltaTime);
         
         /**
+         * @brief Charged Shot System - Update charge accumulation
+         * @note Wrapper around rtype::client::systems::updateChargedShotSystem()
+         */
+        void updateChargedShotSystem(float deltaTime);
+        
+        /**
          * @brief Invulnerability System - Update invulnerability timers
-         * @param deltaTime Time elapsed since last frame
-         * 
-         * Iterates all entities with Invulnerability component.
-         * Decreases timers and disables invulnerability when expired.
+         * @note Wrapper around rtype::client::systems::updateInvulnerabilitySystem()
          */
         void updateInvulnerabilitySystem(float deltaTime);
         
         /**
          * @brief Enemy Spawning System - Spawn enemies periodically
-         * @param deltaTime Time elapsed since last frame
-         * 
-         * Uses spawn timer to create new enemies at intervals.
-         * Spawns enemies at random Y positions on the right edge.
-         * Respects MAX_ENEMIES limit.
+         * @note Wrapper around rtype::client::systems::updateEnemySpawnSystem()
          */
         void updateEnemySpawnSystem(float deltaTime);
         
         /**
          * @brief Enemy AI System - Handle enemy shooting
-         * @param deltaTime Time elapsed since last frame
-         * 
-         * Iterates all enemy entities (Team::Enemy + FireRate).
-         * Fires enemy projectiles when cooldown allows.
+         * @note Wrapper around rtype::client::systems::updateEnemyAISystem()
          */
         void updateEnemyAISystem(float deltaTime);
         
         /**
          * @brief Cleanup System - Remove off-screen entities
-         * @param deltaTime Time elapsed since last frame
-         * 
-         * Removes entities that have moved beyond screen boundaries:
-         * - Enemies that go too far left
-         * - Projectiles that go too far right/left
+         * @note Wrapper around rtype::client::systems::updateCleanupSystem()
          */
         void updateCleanupSystem(float deltaTime);
         
         /**
-         * @brief Collision System - Detect and handle collisions
-         * 
-         * Checks for AABB collisions between:
-         * - Player and enemies
-         * - Player projectiles and enemies
-         * - Enemy projectiles and player
-         * 
-         * Applies damage, destroys entities, and updates health.
+         * @brief Collision System - Detect and handle all collisions
+         * @note Wrapper around rtype::client::collision::updateCollisionSystem()
          */
         void updateCollisionSystem();
+        
+        /**
+         * @brief Check player vs enemies collision
+         * @note Wrapper around rtype::client::collision::checkPlayerVsEnemiesCollision()
+         */
+        void checkPlayerVsEnemiesCollision(
+            ECS::ComponentArray<rtype::common::components::Position>& positions,
+            const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds);
+        
+        /**
+         * @brief Check player projectiles vs enemies collision
+         * @note Wrapper around rtype::client::collision::checkPlayerProjectilesVsEnemiesCollision()
+         */
+        void checkPlayerProjectilesVsEnemiesCollision(
+            ECS::ComponentArray<rtype::common::components::Position>& positions,
+            const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds,
+            std::vector<ECS::EntityID>& toDestroy);
+        
+        /**
+         * @brief Check enemy projectiles vs player collision
+         * @note Wrapper around rtype::client::collision::checkEnemyProjectilesVsPlayerCollision()
+         */
+        void checkEnemyProjectilesVsPlayerCollision(
+            ECS::ComponentArray<rtype::common::components::Position>& positions,
+            const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds,
+            std::vector<ECS::EntityID>& toDestroy);
         
         /**
          * @brief Handle player firing a projectile
@@ -312,6 +298,15 @@ namespace rtype::client::gui {
          * Helper method to access player health for HUD rendering.
          */
         int getPlayerLives() const;
+        
+        /**
+         * @brief Check if a boss is currently active in the game
+         * @return True if a boss entity exists, false otherwise
+         * 
+         * Pure ECS approach: queries the world for entities with Boss type.
+         * Replaces the need for a m_bossActive flag.
+         */
+        bool isBossActive();
         
         /**
          * @brief Reset the game to initial state
@@ -373,9 +368,6 @@ namespace rtype::client::gui {
          * no keys remain in "pressed" state from the menu.
          */
         void resumeGame();
-        // =================================================================
-        // STATE MANAGEMENT
-        // =================================================================
         
         /**
          * @brief Reference to the state manager for state transitions
@@ -426,9 +418,22 @@ namespace rtype::client::gui {
         float m_enemySpawnTimer{0.0f};
         
         /**
+         * @brief Timer for boss spawning
+         * 
+         * Accumulates delta time. When it exceeds BOSS_SPAWN_INTERVAL (180s = 3 min),
+         * a boss is spawned and the timer resets.
+         */
+        float m_bossSpawnTimer{0.0f};
+        
+        /**
          * @brief Interval between enemy spawns in seconds
          */
         static constexpr float ENEMY_SPAWN_INTERVAL{2.0f};
+        
+        /**
+         * @brief Interval between boss spawns in seconds (3 minutes)
+         */
+        static constexpr float BOSS_SPAWN_INTERVAL{180.0f};
         
         /**
          * @brief Interval between enemy shots in seconds

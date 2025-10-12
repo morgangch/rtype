@@ -18,10 +18,6 @@
 
 namespace rtype::client::gui {
 
-// =============================================================================
-// EVENT HANDLING
-// =============================================================================
-
 void GameState::handleEvent(const sf::Event& event) {
     // Handle in-game menu (pause or game over)
     if (m_gameStatus == GameStatus::InGameMenu) {
@@ -36,10 +32,6 @@ void GameState::handleEvent(const sf::Event& event) {
         handleKeyReleased(event.key.code);
     }
 }
-
-// =============================================================================
-// MENU INPUT HANDLING
-// =============================================================================
 
 void GameState::handleMenuInput(const sf::Event& event) {
     // Keyboard navigation
@@ -113,10 +105,6 @@ void GameState::handleMenuInput(const sf::Event& event) {
     }
 }
 
-// =============================================================================
-// GAMEPLAY KEY PRESS/RELEASE
-// =============================================================================
-
 void GameState::handleKeyPressed(sf::Keyboard::Key key) {
     switch (key) {
         // Movement keys
@@ -140,9 +128,28 @@ void GameState::handleKeyPressed(sf::Keyboard::Key key) {
             m_keyRight = true;
             break;
         
-        // Fire key
+        // Fire key - Start charging
         case sf::Keyboard::Space:
             m_keyFire = true;
+            // Start charging for player
+            {
+                auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
+                if (players) {
+                    for (auto& [entity, playerPtr] : *players) {
+                        auto* chargedShot = m_world.GetComponent<rtype::common::components::ChargedShot>(entity);
+                        if (chargedShot) {
+                            chargedShot->startCharge();
+                        }
+                    }
+                }
+            }
+            break;
+        
+        // DEBUG: Spawn boss with B key
+        case sf::Keyboard::B:
+            if (!isBossActive()) {
+                createBoss(SCREEN_WIDTH - 100.0f, SCREEN_HEIGHT * 0.5f);
+            }
             break;
         
         // Pause/Menu key
@@ -178,9 +185,35 @@ void GameState::handleKeyReleased(sf::Keyboard::Key key) {
             m_keyRight = false;
             break;
         
-        // Fire key
+        // Fire key - Release charged shot
         case sf::Keyboard::Space:
             m_keyFire = false;
+            // Fire charged shot if applicable
+            {
+                auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
+                if (players) {
+                    for (auto& [entity, playerPtr] : *players) {
+                        auto* chargedShot = m_world.GetComponent<rtype::common::components::ChargedShot>(entity);
+                        auto* pos = m_world.GetComponent<rtype::common::components::Position>(entity);
+                        auto* fireRate = m_world.GetComponent<rtype::common::components::FireRate>(entity);
+                        
+                        if (chargedShot && pos && fireRate && chargedShot->isCharging) {
+                            // Release charge and get if it was fully charged
+                            bool wasFullyCharged = chargedShot->release();
+                            
+                            if (fireRate->canFire()) {
+                                // Fire appropriate projectile type
+                                if (wasFullyCharged) {
+                                    createChargedProjectile(pos->x + 32.0f, pos->y);
+                                } else {
+                                    createPlayerProjectile(pos->x + 32.0f, pos->y);
+                                }
+                                fireRate->shoot();
+                            }
+                        }
+                    }
+                }
+            }
             break;
         
         default:
