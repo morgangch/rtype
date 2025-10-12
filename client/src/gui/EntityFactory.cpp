@@ -12,6 +12,7 @@
  */
 
 #include "gui/GameState.h"
+#include "gui/AssetPaths.h"
 #include <cstdlib>
 #include <cmath>
 
@@ -35,7 +36,7 @@ ECS::EntityID GameState::createPlayer() {
     // Player spritesheet has 5 frames horizontally: 166/5 = ~33 pixels per frame
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity, 
-        "assets/sprites/PlayerVessel/PLAYER.gif",
+        rtype::client::assets::player::PLAYER_SPRITE,
         sf::Vector2f(33.0f, 17.0f),
         true,
         sf::IntRect(0, 0, 33, 17),  // First frame of spritesheet
@@ -83,7 +84,7 @@ ECS::EntityID GameState::createEnemy(float x, float y) {
     // Enemy spritesheet has ~16 frames: 533/33 = ~16 frames
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        "assets/sprites/BasicEnemy/BASICENEMY_1.gif",
+        rtype::client::assets::enemies::BASIC_ENEMY_1,
         sf::Vector2f(33.0f, 36.0f),
         true,
         sf::IntRect(0, 0, 33, 36),  // First frame
@@ -124,7 +125,7 @@ ECS::EntityID GameState::createShooterEnemy(float x, float y) {
     // Sprite - Shooter enemy with texture (first frame from BASICENEMY_2)
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        "assets/sprites/BasicEnemy/BASICENEMY_2.gif",
+        rtype::client::assets::enemies::BASIC_ENEMY_2,
         sf::Vector2f(33.0f, 36.0f),
         true,
         sf::IntRect(0, 0, 33, 36),  // First frame
@@ -167,7 +168,7 @@ ECS::EntityID GameState::createBoss(float x, float y) {
     // Sprite - Boss enemy with texture (first frame from BASICENEMY_4)
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        "assets/sprites/BasicEnemy/BASICENEMY_4.gif",
+        rtype::client::assets::enemies::BASIC_ENEMY_4,
         sf::Vector2f(33.0f, 36.0f),
         true,
         sf::IntRect(0, 0, 33, 36),  // First frame

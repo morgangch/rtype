@@ -1,17 +1,6 @@
 /**
  * @file GameState.h
- *#include <common/components/EnemyType.h>
-#include <common/components/ChargedShot.h>
-#include <client/components/Sprite.h>
-#include <vector>
-#include <functional>
-
-// Modular headers for factories and systems
-#include "EntityFactories.h"
-#include "ECSSystems.h"
-#include "CollisionSystems.h"
-
-namespace rtype::client::gui { Space Invaders game state implementation for R-TYPE using ECS
+ * @brief Space Invaders game state implementation for R-TYPE using ECS
  * 
  * This file contains the GameState class which implements the actual gameplay
  * for a Space Invaders style game using a pure ECS architecture.

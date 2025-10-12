@@ -59,6 +59,9 @@ namespace rtype::client::components {
         /** @brief Whether to use texture or colored shape */
         bool useTexture;
         
+        /** @brief Flag to track if texture has been successfully loaded */
+        bool textureLoaded;
+        
         /** @brief Rectangle defining which part of the texture to use (for spritesheets) */
         sf::IntRect textureRect;
         
@@ -82,10 +85,10 @@ namespace rtype::client::components {
               size(size), 
               color(sf::Color::White), 
               visible(visible), 
-              useTexture(true), 
+              useTexture(true),
+              textureLoaded(false),
               textureRect(frameRect), 
               scale(scale) {
-            // No logic in constructor - just initialize member variables
         }
         
         /**
@@ -98,7 +101,7 @@ namespace rtype::client::components {
                const sf::Color& color = sf::Color::White,
                bool visible = true)
             : texturePath(""), size(size), color(color), visible(visible), 
-              useTexture(false), textureRect(0, 0, 0, 0), scale(1.0f) {}
+              useTexture(false), textureLoaded(false), textureRect(0, 0, 0, 0), scale(1.0f) {}
     };
 }
 

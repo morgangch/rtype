@@ -102,8 +102,9 @@ void GameState::updateInputSystem(float deltaTime) {
         auto* sprite = m_world.GetComponent<rtype::client::components::Sprite>(entity);
         if (animation && sprite) {
             if (m_keyUp) {
-                // Moving up: play animation from frame 1 to 5 (no loop)
-                // Only start animation if not already playing or finished
+                // Moving up: play animation from frame 0 to 4 (frames 1-5 visually)
+                // Only start animation if it hasn't started yet (currentFrame == 0 and not playing)
+                // Once it reaches the last frame, it stays there
                 if (!animation->isPlaying && animation->currentFrame == 0) {
                     animation->isPlaying = true;
                     animation->currentFrame = 0;  // Start at frame index 0 (which is frame 1 visually)
@@ -111,7 +112,7 @@ void GameState::updateInputSystem(float deltaTime) {
                     animation->loop = false;  // Don't loop, stop at frame 5
                     animation->direction = 1;  // Forward
                 }
-                // If animation finished (at last frame), keep it there
+                // If animation finished (at last frame), keep it there and don't restart
             } else {
                 // Not moving up: reset to frame 1
                 animation->isPlaying = false;
@@ -490,14 +491,16 @@ void GameState::updateCollisionSystem() {
         auto* sprite = m_world.GetComponent<rtype::client::components::Sprite>(entity);
         if (!sprite) return sf::FloatRect(pos.x, pos.y, 1.0f, 1.0f);
         
-        // Calculate real size: base size * scale for textured sprites
-        float realWidth = sprite->size.x;
-        float realHeight = sprite->size.y;
+        float realWidth, realHeight;
         
         if (sprite->useTexture) {
-            // For textured sprites, multiply by scale
-            realWidth *= sprite->scale;
-            realHeight *= sprite->scale;
+            // For textured sprites: use textureRect dimensions (actual frame size) * scale
+            realWidth = sprite->textureRect.width * sprite->scale;
+            realHeight = sprite->textureRect.height * sprite->scale;
+        } else {
+            // For colored shapes: use size directly (no scale)
+            realWidth = sprite->size.x;
+            realHeight = sprite->size.y;
         }
         
         return sf::FloatRect(
