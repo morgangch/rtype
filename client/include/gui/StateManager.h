@@ -120,6 +120,27 @@ namespace rtype::client::gui {
         sf::RenderWindow& window;           ///< Reference to the render window
         std::stack<std::unique_ptr<State>> states;  ///< Stack of states (top = active)
     };
+
+    /**
+     * @brief Global accessor for the active StateManager instance
+     *
+     * Some subsystems (for example network controllers) run as free functions
+     * and need a way to request a state change. The application sets this
+     * global pointer once during initialization (see main.cpp).
+     */
+    extern StateManager* g_stateManager;
+
+    /**
+     * @brief Set the global StateManager pointer
+     * @param mgr Pointer to the StateManager constructed in main()
+     */
+    void setGlobalStateManager(StateManager* mgr);
+
+    /**
+     * @brief Get the global StateManager pointer
+     * @return Pointer to the global StateManager or nullptr if not set
+     */
+    StateManager* getGlobalStateManager();
 }
 
 #endif // CLIENT_STATE_MANAGER_HPP

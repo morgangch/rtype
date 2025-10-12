@@ -11,7 +11,7 @@
 #include "packetmanager.h"
 
 #define DEV_SERVER_IP "127.0.0.1"
-#define DEV_SERVER_PORT 4242
+#define DEV_SERVER_PORT 8080
 
 namespace rtype::client::network {
     /**
