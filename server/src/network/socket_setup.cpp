@@ -52,8 +52,8 @@ int rtype::server::network::setupUDPServer(int port) {
 
 void rtype::server::network::loop_send(int udp_server_fd) {
     std::vector<std::unique_ptr<packet_t> > packets = root.packetManager.fetchPacketsToSend();
-
     auto *players = root.world.GetAllComponents<rtype::server::components::PlayerConn>();
+
     for (const auto &pair: *players) {
         auto *p = root.world.GetComponent<components::PlayerConn>(pair.first);
         if (p) {
@@ -121,9 +121,11 @@ void rtype::server::network::loop_recv(int udp_server_fd) {
         // Redirect to the appropriate player or to the global packet manager
         auto pid = rtype::server::services::player_service::findPlayerByNetwork(cliaddr);
         if (pid) {
+            std::cout << "[INFO] Packet associated with player ID " << pid << std::endl;
             auto p = root.world.GetComponent<components::PlayerConn>(pid);
             p->packet_manager.handlePacketBytes(buffer, n, cliaddr);
         } else {
+            std::cout << "[INFO] Packet not associated with any player, handling globally" << std::endl;
             root.packetManager.handlePacketBytes(buffer, n, cliaddr);
         }
     }

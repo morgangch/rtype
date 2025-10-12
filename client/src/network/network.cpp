@@ -13,6 +13,7 @@
 #include <cstring>
 #include <arpa/inet.h>
 #include "packets/packets.h"
+#include "utils/bytes_printer.h"
 
 using namespace rtype::client;
 
@@ -57,6 +58,9 @@ void network::loop_send() {
         // For client, we send packets directly to the connected server
         // Since we used connect() in init_udp_socket, we can use send() instead of sendto()
         int bytes_sent = send(rtype::client::network::udp_fd, serialized.data(), serialized.size(), 0);
+        //print_bytes(packet.data, sizeof(packet_t) + packet.header.data_size);
+        print_bytes(serialized.data(), serialized.size());
+
 
         if (bytes_sent < 0) {
             std::cerr << "[ERROR] Failed to send UDP packet to server: " << strerror(errno) << std::endl;
