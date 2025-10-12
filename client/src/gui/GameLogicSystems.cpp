@@ -20,6 +20,7 @@
 
 #include "gui/GameState.h"
 #include <cmath>
+#include <iostream>
 #include <vector>
 #include <functional>
 
@@ -442,8 +443,24 @@ void GameState::updateCollisionSystem() {
     checkPlayerProjectilesVsEnemiesCollision(*positions, getBounds, toDestroy);
     checkEnemyProjectilesVsPlayerCollision(*positions, getBounds, toDestroy);
     
-    // Destroy all marked entities
+    // Destroy all marked entities and play death sounds
     for (auto entity : toDestroy) {
+        // Determine if this was a boss or regular enemy
+        auto* enemyType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(entity);
+        if (enemyType) {
+            if (enemyType->type == rtype::common::components::EnemyType::Boss) {
+                // Play boss death sound
+                if (m_soundManager.has(AudioFactory::SfxId::BossDeath)) {
+                    m_soundManager.play(AudioFactory::SfxId::BossDeath);
+                }
+                // Restore level background music after boss death
+                loadLevelMusic();
+            } else if (m_soundManager.has(AudioFactory::SfxId::EnemyDeath)) {
+                // Regular enemy death
+                m_soundManager.play(AudioFactory::SfxId::EnemyDeath);
+            }
+        }
+
         m_world.DestroyEntity(entity);
     }
 }
