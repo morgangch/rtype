@@ -23,14 +23,38 @@
 #include "gui/GameState.h"
 #include "gui/MainMenuState.h"
 #include "gui/GUIHelper.h"
+#include "gui/AssetPaths.h"
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 
 namespace rtype::client::gui {
 
 GameState::GameState(StateManager& stateManager)
     : m_stateManager(stateManager), m_parallaxSystem(SCREEN_WIDTH, SCREEN_HEIGHT) {
     setupGameOverUI();
+    
+    // Load heart texture for HUD
+    if (!m_heartTexture.loadFromFile(rtype::client::assets::hearts::HEART_SPRITE)) {
+        std::cerr << "Failed to load heart texture!" << std::endl;
+    } else {
+        // Heart spritesheet: 3072x4096, frames are 248x216
+        // Starting at (32, 256)
+        const int frameWidth = 248;
+        const int frameHeight = 216;
+        const int startX = 32;
+        const int startY = 256;
+        
+        // Frame 1 (col 0-3, row 0-1): Full heart - s'étend sur 4 colonnes x 2 lignes
+        m_fullHeartSprite.setTexture(m_heartTexture);
+        m_fullHeartSprite.setTextureRect(sf::IntRect(startX, startY, frameWidth * 4, frameHeight * 2));
+        m_fullHeartSprite.setScale(0.08f, 0.08f);  // Scale down (992*0.08 = 79px, 432*0.08 = 35px)
+        
+        // Frame 3 (col 8-11, row 0-1): Empty/lost heart - 4 colonnes x 2 lignes
+        m_emptyHeartSprite.setTexture(m_heartTexture);
+        m_emptyHeartSprite.setTextureRect(sf::IntRect(startX + frameWidth * 8, startY, frameWidth * 4, frameHeight * 2));
+        m_emptyHeartSprite.setScale(0.08f, 0.08f);  // Scale down (992*0.08 = 79px, 432*0.08 = 35px)
+    }
 }
 
 void GameState::setupGameOverUI() {

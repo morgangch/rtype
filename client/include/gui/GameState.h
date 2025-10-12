@@ -412,6 +412,21 @@ namespace rtype::client::gui {
         sf::Text m_menuText;
         
         /**
+         * @brief Texture for heart sprites (HUD lives display)
+         */
+        sf::Texture m_heartTexture;
+        
+        /**
+         * @brief Sprite for full heart (alive)
+         */
+        sf::Sprite m_fullHeartSprite;
+        
+        /**
+         * @brief Sprite for empty heart (lost life)
+         */
+        sf::Sprite m_emptyHeartSprite;
+        
+        /**
          * @brief Parallax background system for space environment
          */
         ParallaxSystem m_parallaxSystem;

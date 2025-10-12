@@ -91,17 +91,27 @@ void GameState::renderEntities(sf::RenderWindow& window) {
 void GameState::renderHUD(sf::RenderWindow& window) {
     // Get player lives
     int lives = getPlayerLives();
+    int maxLives = 3;  // Maximum player lives
     
-    // Draw hearts for lives
-    const float heartSize = 20.0f;
-    const float heartSpacing = 25.0f;
+    // Draw hearts for lives (full hearts + empty hearts)
+    // Both hearts are 992x432px (4 cols x 2 rows)
+    // At scale 0.08: ~79x35px
+    const float heartWidth = 992 * 0.08f;    // ~79 pixels
+    const float heartHeight = 432 * 0.08f;   // ~35 pixels
+    const float heartSpacing = 50.0f;  // Spacing between hearts
+    const float heartX = 20.0f;
     const float heartY = 20.0f;
     
-    for (int i = 0; i < lives; ++i) {
-        sf::CircleShape heart(heartSize * 0.5f);
-        heart.setFillColor(sf::Color::Red);
-        heart.setPosition(20.0f + i * heartSpacing, heartY);
-        window.draw(heart);
+    for (int i = 0; i < maxLives; ++i) {
+        if (i < lives) {
+            // Draw full heart (frame 1 - cols 0-3, rows 0-1)
+            m_fullHeartSprite.setPosition(heartX + i * heartSpacing, heartY);
+            window.draw(m_fullHeartSprite);
+        } else {
+            // Draw empty heart (frame 3 - cols 8-11, rows 0-1) for lost lives
+            m_emptyHeartSprite.setPosition(heartX + i * heartSpacing, heartY);
+            window.draw(m_emptyHeartSprite);
+        }
     }
 }
 

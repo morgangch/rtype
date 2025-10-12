@@ -50,6 +50,13 @@ namespace rtype::client::assets {
     }
 
     /**
+     * @brief Heart/life icon sprite paths
+     */
+    namespace hearts {
+        constexpr const char* HEART_SPRITE = "assets/sprites/Heart/Heart_red.png";
+    }
+
+    /**
      * @brief Font paths
      */
     namespace fonts {
