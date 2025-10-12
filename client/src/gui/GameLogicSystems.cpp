@@ -455,11 +455,9 @@ void GameState::updateCollisionSystem() {
                 }
                 // Restore level background music after boss death
                 loadLevelMusic();
-            } else {
+            } else if (m_enemyDeathBuffer.getSampleCount() > 0) {
                 // Regular enemy death
-                if (m_enemyDeathBuffer.getSampleCount() > 0) {
-                    m_enemyDeathSound.play();
-                }
+                m_enemyDeathSound.play();
             }
         }
 
