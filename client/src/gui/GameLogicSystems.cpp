@@ -454,11 +454,7 @@ void GameState::updateCollisionSystem() {
                     m_bossDeathSound.play();
                 }
                 // Restore level background music after boss death
-                const std::string levelMusic = "assets/audio/music/level.mp3";
-                if (m_musicManager.loadFromFile(levelMusic)) {
-                    m_musicManager.setVolume(30.0f);
-                    m_musicManager.play(true);
-                }
+                loadLevelMusic();
             } else {
                 // Regular enemy death
                 if (m_enemyDeathBuffer.getSampleCount() > 0) {

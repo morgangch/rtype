@@ -60,8 +60,6 @@ float MusicManager::getVolume() const {
 }
 
 void MusicManager::setMuted(bool muted) {
-    static bool wasPlayingBeforeMute = false;
-
     if (m_muted == muted)
         return;
 
@@ -71,12 +69,12 @@ void MusicManager::setMuted(bool muted) {
     }
 
     if (muted) {
-        wasPlayingBeforeMute = m_music.getStatus() == sf::Music::Playing;
+        m_wasPlayingBeforeMute = m_music.getStatus() == sf::Music::Playing;
         m_music.pause();
         m_muted = true;
     } else {
         m_music.setVolume(m_volume);
-        if (wasPlayingBeforeMute) {
+        if (m_wasPlayingBeforeMute) {
             m_music.play();
         }
         m_muted = false;

@@ -389,6 +389,14 @@ namespace rtype::client::gui {
          * the boss is gone.
          */
         void updateBossMusicState();
+
+        /**
+         * @brief Load and start the level background music (looping).
+         *
+         * Centralized helper to avoid duplicated load/play code across
+         * GameState methods.
+         */
+        void loadLevelMusic();
         
         /**
          * @brief Reference to the state manager for state transitions

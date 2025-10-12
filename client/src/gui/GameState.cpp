@@ -64,14 +64,8 @@ void GameState::onEnter() {
     resetGame();
     m_gameStatus = GameStatus::Playing;
 
-    // Load and play background music for the level
-    const std::string musicPath = "assets/audio/music/level.mp3";
-    if (m_musicManager.loadFromFile(musicPath)) {
-        m_musicManager.setVolume(30.0f); // sensible default
-        m_musicManager.play(true);
-    } else {
-        std::cerr << "GameState: could not load music: " << musicPath << std::endl;
-    }
+    // Start level music
+    loadLevelMusic();
 
     // Load game sounds (lose life sound)
     if (!loadGameSounds()) {
@@ -164,13 +158,7 @@ void GameState::resetGame() {
     m_gameStatus = GameStatus::Playing;
 
     // Ensure level background music is playing after a reset
-    const std::string levelMusic = "assets/audio/music/level.mp3";
-    if (m_musicManager.loadFromFile(levelMusic)) {
-        m_musicManager.setVolume(30.0f);
-        m_musicManager.play(true);
-    } else {
-        std::cerr << "GameState: could not load level music: " << levelMusic << std::endl;
-    }
+    loadLevelMusic();
 }
 
 int GameState::getPlayerLives() const {
@@ -318,12 +306,18 @@ void GameState::updateBossMusicState() {
         }
     } else if (!bossAlive && m_bossMusicActive) {
         // Boss died: restore level music
-        const std::string levelMusic = "assets/audio/music/level.mp3";
-        if (m_musicManager.loadFromFile(levelMusic)) {
-            m_musicManager.setVolume(30.0f);
-            m_musicManager.play(true);
-        }
+        loadLevelMusic();
         m_bossMusicActive = false;
+    }
+}
+
+void GameState::loadLevelMusic() {
+    const std::string levelMusic = "assets/audio/music/level.mp3";
+    if (m_musicManager.loadFromFile(levelMusic)) {
+        m_musicManager.setVolume(30.0f);
+        m_musicManager.play(true);
+    } else {
+        std::cerr << "GameState: could not load level music: " << levelMusic << std::endl;
     }
 }
 

@@ -184,6 +184,14 @@ private:
      * @brief Whether a music file has been successfully loaded into m_music.
      */
     bool m_loaded{false};
+
+    /**
+     * @brief Remember whether this music was playing before muting.
+     *
+     * Stored per-instance to avoid static/global state when multiple
+     * MusicManager objects are used concurrently.
+     */
+    bool m_wasPlayingBeforeMute{false};
 };
 
 } // namespace rtype::client::gui
