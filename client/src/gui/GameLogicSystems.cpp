@@ -97,34 +97,10 @@ void GameState::updateInputSystem(float deltaTime) {
         vel->vx = moveX * vel->maxSpeed;
         vel->vy = moveY * vel->maxSpeed;
         
-        // Update animation based on movement
+        // Update player animation based on movement (extracted for better maintainability)
         auto* animation = m_world.GetComponent<rtype::client::components::Animation>(entity);
         auto* sprite = m_world.GetComponent<rtype::client::components::Sprite>(entity);
-        if (animation && sprite) {
-            if (m_keyUp) {
-                // Moving up: play animation from frame 0 to 4 (frames 1-5 visually)
-                // Only start animation if it hasn't started yet (currentFrame == 0 and not playing)
-                // Once it reaches the last frame, it stays there
-                if (!animation->isPlaying && animation->currentFrame == 0) {
-                    animation->isPlaying = true;
-                    animation->currentFrame = 0;  // Start at frame index 0 (which is frame 1 visually)
-                    animation->frameTimer = 0.0f;
-                    animation->loop = false;  // Don't loop, stop at frame 5
-                    animation->direction = 1;  // Forward
-                }
-                // If animation finished (at last frame), keep it there and don't restart
-            } else {
-                // Not moving up: reset to frame 1
-                animation->isPlaying = false;
-                animation->currentFrame = 0;  // Frame index 0 = visual frame 1
-                animation->frameTimer = 0.0f;
-                
-                // Immediately update sprite to show frame 1
-                if (sprite->useTexture) {
-                    sprite->textureRect.left = 0;  // First frame (X=0)
-                }
-            }
-        }
+        updatePlayerAnimation(entity, animation, sprite, m_keyUp);
         
         // Clamp position to screen bounds (with sprite size consideration)
         const float halfSize = 16.0f; // Half of player size (32/2)
@@ -135,6 +111,32 @@ void GameState::updateInputSystem(float deltaTime) {
         
         // NOTE: Firing is now handled in handleKeyReleased() for charged shot mechanic
         // The old automatic firing system is disabled to allow charge accumulation
+    }
+}
+
+void GameState::updatePlayerAnimation(ECS::EntityID entity,
+                                      rtype::client::components::Animation* animation,
+                                      rtype::client::components::Sprite* sprite,
+                                      bool isMovingUp) {
+    if (!animation || !sprite) return;
+    
+    if (isMovingUp) {
+        if (!animation->isPlaying && animation->currentFrame == 0) {
+            animation->isPlaying = true;
+            animation->currentFrame = 0;
+            animation->frameTimer = 0.0f;
+            animation->loop = false;
+            animation->direction = 1;
+        }
+    } else {
+        // Not moving up: reset to frame 1
+        animation->isPlaying = false;
+        animation->currentFrame = 0;
+        animation->frameTimer = 0.0f;
+        
+        if (sprite->useTexture) {
+            sprite->textureRect.left = 0;
+        }
     }
 }
 

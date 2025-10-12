@@ -68,8 +68,10 @@ void GameState::renderEntities(sf::RenderWindow& window) {
             
             // Draw sprite with texture (if loaded successfully)
             if (sprite->useTexture) {
-                // Update texture rect (in case animation changed it)
-                sprite->sprite.setTextureRect(sprite->textureRect);
+                // Only update texture rect if it has changed (optimization for animations)
+                if (sprite->sprite.getTextureRect() != sprite->textureRect) {
+                    sprite->sprite.setTextureRect(sprite->textureRect);
+                }
                 sprite->sprite.setPosition(pos.x, pos.y);
                 window.draw(sprite->sprite);
             }

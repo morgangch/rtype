@@ -220,6 +220,18 @@ namespace rtype::client::gui {
         void updateAnimationSystem(float deltaTime);
         
         /**
+         * @brief Handle player animation based on movement input
+         * @param entity The entity to update animation for
+         * @param animation The animation component
+         * @param sprite The sprite component
+         * @param isMovingUp Whether the UP key is pressed
+         */
+        void updatePlayerAnimation(ECS::EntityID entity, 
+                                   rtype::client::components::Animation* animation,
+                                   rtype::client::components::Sprite* sprite,
+                                   bool isMovingUp);
+        
+        /**
          * @brief Enemy Spawning System - Spawn enemies periodically
          * @note Wrapper around rtype::client::systems::updateEnemySpawnSystem()
          */
