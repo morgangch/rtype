@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <cstring>
 
 #include "network.h"
 #include "packets.h"
@@ -83,11 +84,8 @@ void rtype::server::network::loop_send(int udp_server_fd) {
         struct sockaddr_in clientaddr;
         clientaddr.sin_family = AF_INET;
 
-        // Convert client_addr[4] bytes to IP address - fix byte order
-        clientaddr.sin_addr.s_addr = ((uint32_t) packet->header.client_addr[0] << 0) |
-                                     ((uint32_t) packet->header.client_addr[1] << 8) |
-                                     ((uint32_t) packet->header.client_addr[2] << 16) |
-                                     ((uint32_t) packet->header.client_addr[3] << 24);
+        // Convert client_addr[4] bytes to IP address - simply copy the bytes directly
+        memcpy(&clientaddr.sin_addr.s_addr, packet->header.client_addr, 4);
 
         // Set client port (convert from host to network byte order)
         clientaddr.sin_port = htons(packet->header.client_port);

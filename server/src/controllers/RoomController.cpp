@@ -77,3 +77,5 @@ void room_controller::handleJoinRoomPacket(const packet_t &packet) {
         return;
     playernet->packet_manager.sendPacketBytesSafe(&a, sizeof(a), JOIN_ROOM_ACCEPTED, nullptr, true);
 }
+
+

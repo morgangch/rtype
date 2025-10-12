@@ -79,6 +79,8 @@ int main() {
         if (rtype::client::network::udp_fd != -1) {
             rtype::client::network::loop_recv();
             rtype::client::network::loop_send();
+            // Process received packets through the PacketHandler
+            rtype::client::network::ph.processPackets(rtype::client::network::pm.fetchReceivedPackets());
         }
     }
 

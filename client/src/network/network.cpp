@@ -24,25 +24,26 @@ namespace rtype::client::network {
 
 void network::loop_recv() {
     uint8_t buffer[MAX_PACKET_SIZE];
-    struct sockaddr_in cliaddr{};
-    socklen_t len = sizeof(cliaddr);
     packet_t packet;
 
-    // Non-blocking receive - returns immediately if no data available
-    int n = recvfrom(rtype::client::network::udp_fd, buffer, sizeof(buffer), MSG_DONTWAIT, reinterpret_cast<struct sockaddr *>(&cliaddr), &len);
+    // Use recv() instead of recvfrom() since we used connect() on the UDP socket
+    int n = recv(rtype::client::network::udp_fd, buffer, sizeof(buffer), MSG_DONTWAIT);
 
     if (n > 0) {
         std::cout << "[INFO] Received UDP packet of size " << n << std::endl;
         PacketManager::deserializePacket(buffer, n, packet);
         std::cout << "[INFO] Packet seqid: " << packet.header.seqid << ", type: " << static_cast<int>(packet.header.type) <<
                 std::endl;
-        pm.handlePacketBytes(buffer, n, cliaddr);
+
+        // For connected UDP socket, we need to create a dummy sockaddr_in for the packet manager
+        struct sockaddr_in servaddr{};
+        pm.handlePacketBytes(buffer, n, servaddr);
     } else if (n < 0) {
         // Check if it's just no data available (non-blocking behavior)
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
             std::cerr << "[ERROR] UDP receive error: " << strerror(errno) << std::endl;
         }
-        // If errno is EAGAIN or EWOULDBLOCK, it just means no data is available - this is normal
+        // Don't spam debug messages for normal EAGAIN/EWOULDBLOCK errors
     }
     // n == 0 means the connection was closed gracefully (shouldn't happen with UDP)
 }
