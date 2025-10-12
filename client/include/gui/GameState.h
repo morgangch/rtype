@@ -357,6 +357,14 @@ namespace rtype::client::gui {
          * Called once in the constructor.
          */
         void setupGameOverUI();
+
+        /**
+         * @brief Load HUD textures and related sprites
+         *
+         * Separated from the constructor to avoid performing file I/O during
+         * object construction. Call from `onEnter()` or initialization path.
+         */
+        void loadHUDTextures();
         
         /**
          * @brief Show the in-game menu (pause or game over)
@@ -415,6 +423,11 @@ namespace rtype::client::gui {
          * @brief Texture for heart sprites (HUD lives display)
          */
         sf::Texture m_heartTexture;
+
+        /**
+         * @brief Whether HUD textures have been loaded already
+         */
+        bool m_texturesLoaded{false};
         
         /**
          * @brief Sprite for full heart (alive)

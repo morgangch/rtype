@@ -13,6 +13,7 @@
 
 #include "gui/GameState.h"
 #include "gui/AssetPaths.h"
+#include "gui/TextureCache.h"
 #include <cstdlib>
 #include <cmath>
 
@@ -34,6 +35,8 @@ ECS::EntityID GameState::createPlayer() {
     
     // Sprite - Player ship with texture (first frame: 33x17 from 166x86 spritesheet)
     // Player spritesheet has 5 frames horizontally: 166/5 = ~33 pixels per frame
+    // Preload texture to avoid first-frame hitch
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::player::PLAYER_SPRITE);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity, 
         rtype::client::assets::player::PLAYER_SPRITE,
@@ -82,6 +85,8 @@ ECS::EntityID GameState::createEnemy(float x, float y) {
     
     // Sprite - Basic enemy with texture (first frame: 33x36 from 533x36 spritesheet)
     // Enemy spritesheet has ~16 frames: 533/33 = ~16 frames
+    // Preload enemy sprite
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BASIC_ENEMY_1);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
         rtype::client::assets::enemies::BASIC_ENEMY_1,
@@ -123,6 +128,8 @@ ECS::EntityID GameState::createShooterEnemy(float x, float y) {
     m_world.AddComponent<rtype::common::components::Health>(entity, 2);
     
     // Sprite - Shooter enemy with texture (first frame from BASICENEMY_2)
+    // Preload shooter enemy sprite
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BASIC_ENEMY_2);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
         rtype::client::assets::enemies::BASIC_ENEMY_2,
@@ -166,6 +173,8 @@ ECS::EntityID GameState::createBoss(float x, float y) {
     m_world.AddComponent<rtype::common::components::Health>(entity, 20);
     
     // Sprite - Boss enemy with texture (first frame from BASICENEMY_4)
+    // Preload boss sprite
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BASIC_ENEMY_4);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
         rtype::client::assets::enemies::BASIC_ENEMY_4,
@@ -203,6 +212,8 @@ ECS::EntityID GameState::createPlayerProjectile(float x, float y) {
         entity, 500.0f, 0.0f, 500.0f);
     
     // Sprite - PROJECTILE_2, frame 2, première ligne seulement
+    // Preload projectile textures
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_1);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
         rtype::client::assets::projectiles::PROJECTILE_1,
@@ -234,6 +245,7 @@ ECS::EntityID GameState::createEnemyProjectile(float x, float y, float vx, float
         entity, vx, vy, speed);
     
     // Sprite - PROJECTILE_1 (orange), frame 2, première ligne
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_2);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
         rtype::client::assets::projectiles::PROJECTILE_2,
@@ -265,6 +277,7 @@ ECS::EntityID GameState::createChargedProjectile(float x, float y) {
         entity, 600.0f, 0.0f, 600.0f);
     
     // Sprite - PROJECTILE_4 (rose/magenta), frame 2, ligne 2 (plus dense et imposant)
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_4);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
         rtype::client::assets::projectiles::PROJECTILE_4,

@@ -15,6 +15,7 @@
 
 #include "gui/GameState.h"
 #include "gui/GUIHelper.h"
+#include "gui/TextureCache.h"
 #include <sstream>
 #include <cmath>
 
@@ -43,20 +44,26 @@ void GameState::renderEntities(sf::RenderWindow& window) {
         
         // Draw entity with texture or colored rectangle
         if (sprite->useTexture) {
-            // Load texture if not already loaded
+            // Use TextureCache instead of loading file per-frame
             if (!sprite->textureLoaded) {
-                if (!sprite->texture.loadFromFile(sprite->texturePath)) {
+                auto texPtr = rtype::client::gui::TextureCache::getInstance().getTexture(sprite->texturePath);
+                if (!texPtr) {
+                    // If factory didn't preload, try to load once now (still avoids repeated disk I/O)
+                    texPtr = rtype::client::gui::TextureCache::getInstance().loadTexture(sprite->texturePath);
+                }
+
+                if (!texPtr) {
                     // Failed to load - fallback to colored shape
                     sprite->useTexture = false;
                     sprite->textureLoaded = false;
                 } else {
-                    // Texture loaded successfully - configure sprite
-                    sprite->sprite.setTexture(sprite->texture);
+                    // Configure sprite to reference cached texture (cache owns texture memory)
+                    sprite->sprite.setTexture(*texPtr);
                     
                     // Set texture rect (use full texture if not specified)
                     if (sprite->textureRect.width == 0 || sprite->textureRect.height == 0) {
                         sprite->textureRect = sf::IntRect(0, 0, 
-                            sprite->texture.getSize().x, sprite->texture.getSize().y);
+                            sprite->sprite.getTexture()->getSize().x, sprite->sprite.getTexture()->getSize().y);
                     }
                     sprite->sprite.setTextureRect(sprite->textureRect);
                     sprite->sprite.setOrigin(sprite->textureRect.width / 2.0f, 
@@ -65,7 +72,7 @@ void GameState::renderEntities(sf::RenderWindow& window) {
                     sprite->textureLoaded = true;
                 }
             }
-            
+
             // Draw sprite with texture (if loaded successfully)
             if (sprite->useTexture) {
                 // Only update texture rect if it has changed (optimization for animations)
