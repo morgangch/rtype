@@ -202,11 +202,14 @@ ECS::EntityID GameState::createPlayerProjectile(float x, float y) {
     m_world.AddComponent<rtype::common::components::Velocity>(
         entity, 500.0f, 0.0f, 500.0f);
     
-    // Sprite - Simple yellow rectangle for player projectile
+    // Sprite - PROJECTILE_2, frame 2, première ligne seulement
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        sf::Vector2f(20.0f, 5.0f),
-        sf::Color::Yellow);
+        rtype::client::assets::projectiles::PROJECTILE_1,
+        sf::Vector2f(81.0f, 17.0f),
+        true,
+        sf::IntRect(185, 0, 81, 17),
+        0.5f);
     
     // Team - Player team
     m_world.AddComponent<rtype::common::components::Team>(
@@ -230,11 +233,14 @@ ECS::EntityID GameState::createEnemyProjectile(float x, float y, float vx, float
     m_world.AddComponent<rtype::common::components::Velocity>(
         entity, vx, vy, speed);
     
-    // Sprite - Simple red rectangle for enemy projectile
+    // Sprite - PROJECTILE_1 (orange), frame 2, première ligne
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        sf::Vector2f(15.0f, 5.0f),
-        sf::Color::Red);
+        rtype::client::assets::projectiles::PROJECTILE_2,
+        sf::Vector2f(81.0f, 17.0f),
+        true,
+        sf::IntRect(185, 0, 81, 17),  // Frame 2, ligne 1: orange
+        0.4f);  // Scale 0.4x (81*0.4 = 32px de large, 17*0.4 = 7px de haut)
     
     // Team - Enemy team
     m_world.AddComponent<rtype::common::components::Team>(
@@ -258,11 +264,14 @@ ECS::EntityID GameState::createChargedProjectile(float x, float y) {
     m_world.AddComponent<rtype::common::components::Velocity>(
         entity, 600.0f, 0.0f, 600.0f);
     
-    // Sprite - Simple cyan rectangle for charged projectile (bigger)
+    // Sprite - PROJECTILE_4 (rose/magenta), frame 2, ligne 2 (plus dense et imposant)
     m_world.AddComponent<rtype::client::components::Sprite>(
-        entity, 
-        sf::Vector2f(30.0f, 8.0f),
-        sf::Color::Cyan);
+        entity,
+        rtype::client::assets::projectiles::PROJECTILE_4,
+        sf::Vector2f(81.0f, 17.0f),
+        true,
+        sf::IntRect(185, 17, 81, 17),  // Frame 2, ligne 2: plus dense (31.1% vs 15.2%)
+        0.6f);  // Scale 0.6x (81*0.6 = 49px de large, 17*0.6 = 10px de haut) - plus gros
     
     // Team - Player team
     m_world.AddComponent<rtype::common::components::Team>(

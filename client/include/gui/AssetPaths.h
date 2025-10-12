@@ -43,10 +43,13 @@ namespace rtype::client::assets {
     }
 
     /**
-     * @brief Projectile sprite paths (currently unused - using colored rectangles)
+     * @brief Projectile sprite paths
      */
     namespace projectiles {
-        // Reserved for future projectile sprites
+        constexpr const char* PROJECTILE_1 = "assets/sprites/Projectile/PROJECTILE_1.gif";
+        constexpr const char* PROJECTILE_2 = "assets/sprites/Projectile/PROJECTILE_2.gif";
+        constexpr const char* PROJECTILE_3 = "assets/sprites/Projectile/PROJECTILE_3.gif";
+        constexpr const char* PROJECTILE_4 = "assets/sprites/Projectile/PROJECTILE_4.gif";
     }
 
     /**
