@@ -55,7 +55,7 @@ namespace rtype::client::gui {
         
         // Connect to the public server using the NetworkManager
         // Public server uses room ID 0 by convention
-        network::start_room_connection("127.0.0.1", 8080, username, 0);
+// network::start_room_connection("127.0.0.1", 8080, username, 0);
     }
     
     void PublicServerState::onExit() {

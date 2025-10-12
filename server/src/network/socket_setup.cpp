@@ -52,6 +52,30 @@ int rtype::server::network::setupUDPServer(int port) {
 void rtype::server::network::loop_send(int udp_server_fd) {
     std::vector<std::unique_ptr<packet_t> > packets = root.packetManager.fetchPacketsToSend();
 
+    auto *players = root.world.GetAllComponents<rtype::server::components::PlayerConn>();
+    for (const auto &pair: *players) {
+        auto *p = root.world.GetComponent<components::PlayerConn>(pair.first);
+        if (p) {
+            std::vector<std::unique_ptr<packet_t> > player_packets = p->packet_manager.fetchPacketsToSend();
+            // Force the ip address to each packet
+            for (auto &packet: player_packets) {
+                std::string addr = p->address;
+                int port = p->port;
+                packet->header.client_addr[0] = std::stoi(addr.substr(0, addr.find('.')));
+                addr = addr.substr(addr.find('.') + 1);
+                packet->header.client_addr[1] = std::stoi(addr.substr(0, addr.find('.')));
+                addr = addr.substr(addr.find('.') + 1);
+                packet->header.client_addr[2] = std::stoi(addr.substr(0, addr.find('.')));
+                addr = addr.substr(addr.find('.') + 1);
+                packet->header.client_addr[3] = std::stoi(addr);
+                packet->header.client_port = port;
+            }
+            packets.insert(packets.end(),
+                           std::make_move_iterator(player_packets.begin()),
+                           std::make_move_iterator(player_packets.end()));
+        }
+    }
+
     for (auto &packet: packets) {
         std::vector<uint8_t> serialized = PacketManager::serializePacket(*packet);
 

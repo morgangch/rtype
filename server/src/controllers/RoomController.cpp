@@ -9,10 +9,13 @@
 #include "packets.h"
 #include "rtype.h"
 #include "tools.h"
+#include "components/PlayerConn.h"
 #include "components/RoomProperties.h"
 #include "ECS/Types.h"
 #include "services/PlayerService.h"
 #include "services/RoomService.h"
+#include <cstring>
+#include <netinet/in.h>
 
 using namespace rtype::server::controllers;
 using namespace rtype::server::services;
@@ -69,5 +72,8 @@ void room_controller::handleJoinRoomPacket(const packet_t &packet) {
     auto *rp = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
     a.admin = (rp->ownerId == player);
     a.roomCode = rp->joinCode;
-    root.packetManager.sendPacketBytesSafe(&a, sizeof(a), JOIN_ROOM_ACCEPTED, nullptr, true);
+    auto playernet = root.world.GetComponent<components::PlayerConn>(player);
+    if (!playernet)
+        return;
+    playernet->packet_manager.sendPacketBytesSafe(&a, sizeof(a), JOIN_ROOM_ACCEPTED, nullptr, true);
 }

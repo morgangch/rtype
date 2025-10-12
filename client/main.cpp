@@ -32,7 +32,7 @@
 #include <cstdlib>
 #include <ctime>
 
-#include "include/network/network.h"
+#include "network/network.h"
 
 int main() {
     // Initialize random seed for username generation
