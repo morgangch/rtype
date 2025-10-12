@@ -56,6 +56,18 @@ namespace rtype::client::gui {
     
     void MainMenuState::onEnter() {
         // Called when this state becomes active
+        const std::string menuMusic = "assets/audio/music/menu.mp3";
+        if (m_musicManager.loadFromFile(menuMusic)) {
+            m_musicManager.setVolume(35.0f);
+            m_musicManager.play(true);
+        } else {
+            std::cerr << "MainMenuState: could not load menu music: " << menuMusic << std::endl;
+        }
+    }
+
+    void MainMenuState::onExit() {
+        // Stop menu music when leaving main menu
+        m_musicManager.stop();
     }
     
     void MainMenuState::updateLayout(const sf::Vector2u& windowSize) {

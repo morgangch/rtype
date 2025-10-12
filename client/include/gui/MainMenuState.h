@@ -19,6 +19,7 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <functional>
+#include "MusicManager.h"
 
 namespace rtype::client::gui {
     
@@ -78,6 +79,11 @@ namespace rtype::client::gui {
          * @brief Called when entering this state
          */
         void onEnter() override;
+
+        /**
+         * @brief Called when exiting this state
+         */
+        void onExit() override;
         
         /**
          * @brief Get the current username
@@ -87,6 +93,7 @@ namespace rtype::client::gui {
         
     private:
         StateManager& stateManager;     ///< Reference to state manager for transitions
+        MusicManager m_musicManager;    ///< Local music manager for menu music
         
         // UI Text Elements
         sf::Text titleText;             ///< "THE TOP R-TYPE" title
