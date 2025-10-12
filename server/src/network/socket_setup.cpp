@@ -113,7 +113,7 @@ void rtype::server::network::loop_recv(int udp_server_fd) {
     struct sockaddr_in cliaddr{};
     socklen_t len = sizeof(cliaddr);
     packet_t packet;
-    int n = recvfrom(udp_server_fd, buffer, sizeof(buffer), 0, (struct sockaddr *) &cliaddr, &len);
+    int n = recvfrom(udp_server_fd, buffer, sizeof(buffer), MSG_DONTWAIT, (struct sockaddr *) &cliaddr, &len);
 
     if (n > 0) {
         std::cout << "[INFO] Received UDP packet of size " << n << std::endl;
@@ -128,5 +128,11 @@ void rtype::server::network::loop_recv(int udp_server_fd) {
             std::cout << "[INFO] Packet not associated with any player, handling globally" << std::endl;
             root.packetManager.handlePacketBytes(buffer, n, cliaddr);
         }
+    } else if (n < 0) {
+        // Check if it's just no data available (non-blocking behavior)
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            std::cerr << "[ERROR] UDP receive error: " << strerror(errno) << std::endl;
+        }
+        // Don't spam debug messages for normal EAGAIN/EWOULDBLOCK errors
     }
 }
