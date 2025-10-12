@@ -33,13 +33,14 @@ bool MusicManager::loadFromFile(const std::string& path) {
 }
 
 void MusicManager::play(bool loop) {
-    if (!m_loaded) return;
-    m_music.setLoop(loop);
-    if (m_muted) {
-        // don't start if muted
+    if (!m_loaded)
         return;
-    }
+
+    m_music.setLoop(loop);
     m_music.play();
+
+    if (m_muted)
+        m_music.pause();
 }
 
 void MusicManager::stop() {
@@ -59,14 +60,26 @@ float MusicManager::getVolume() const {
 }
 
 void MusicManager::setMuted(bool muted) {
-    if (m_muted == muted) return;
-    m_muted = muted;
-    if (!m_loaded) return;
-    if (m_muted) {
+    static bool wasPlayingBeforeMute = false;
+
+    if (m_muted == muted)
+        return;
+
+    if (!m_loaded) {
+        m_muted = muted;
+        return;
+    }
+
+    if (muted) {
+        wasPlayingBeforeMute = m_music.getStatus() == sf::Music::Playing;
         m_music.pause();
+        m_muted = true;
     } else {
         m_music.setVolume(m_volume);
-        m_music.play();
+        if (wasPlayingBeforeMute) {
+            m_music.play();
+        }
+        m_muted = false;
     }
 }
 
