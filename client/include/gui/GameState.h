@@ -1,17 +1,6 @@
 /**
  * @file GameState.h
- *#include <common/components/EnemyType.h>
-#include <common/components/ChargedShot.h>
-#include <client/components/Sprite.h>
-#include <vector>
-#include <functional>
-
-// Modular headers for factories and systems
-#include "EntityFactories.h"
-#include "ECSSystems.h"
-#include "CollisionSystems.h"
-
-namespace rtype::client::gui { Space Invaders game state implementation for R-TYPE using ECS
+ * @brief Space Invaders game state implementation for R-TYPE using ECS
  * 
  * This file contains the GameState class which implements the actual gameplay
  * for a Space Invaders style game using a pure ECS architecture.
@@ -40,6 +29,7 @@ namespace rtype::client::gui { Space Invaders game state implementation for R-TY
 #include <common/components/EnemyType.h>
 #include <common/systems/ChargedShot.h>
 #include <client/components/Sprite.h>
+#include <client/components/Animation.h>
 #include <vector>
 #include <functional>
 #include "MusicManager.h"
@@ -238,6 +228,23 @@ namespace rtype::client::gui {
         void updateInvulnerabilitySystem(float deltaTime);
         
         /**
+         * @brief Animation System - Update sprite animations (frame cycling)
+         */
+        void updateAnimationSystem(float deltaTime);
+        
+        /**
+         * @brief Handle player animation based on movement input
+         * @param entity The entity to update animation for
+         * @param animation The animation component
+         * @param sprite The sprite component
+         * @param isMovingUp Whether the UP key is pressed
+         */
+        void updatePlayerAnimation(ECS::EntityID entity, 
+                                   rtype::client::components::Animation* animation,
+                                   rtype::client::components::Sprite* sprite,
+                                   bool isMovingUp);
+        
+        /**
          * @brief Enemy Spawning System - Spawn enemies periodically
          * @note Wrapper around rtype::client::systems::updateEnemySpawnSystem()
          */
@@ -363,6 +370,14 @@ namespace rtype::client::gui {
          * Called once in the constructor.
          */
         void setupGameOverUI();
+
+        /**
+         * @brief Load HUD textures and related sprites
+         *
+         * Separated from the constructor to avoid performing file I/O during
+         * object construction. Call from `onEnter()` or initialization path.
+         */
+        void loadHUDTextures();
         
         /**
          * @brief Show the in-game menu (pause or game over)
@@ -452,6 +467,26 @@ namespace rtype::client::gui {
          * @brief Text object for "Return to Menu" button in game over menu
          */
         sf::Text m_menuText;
+        
+        /**
+         * @brief Texture for heart sprites (HUD lives display)
+         */
+        sf::Texture m_heartTexture;
+
+        /**
+         * @brief Whether HUD textures have been loaded already
+         */
+        bool m_texturesLoaded{false};
+        
+        /**
+         * @brief Sprite for full heart (alive)
+         */
+        sf::Sprite m_fullHeartSprite;
+        
+        /**
+         * @brief Sprite for empty heart (lost life)
+         */
+        sf::Sprite m_emptyHeartSprite;
         
         /**
          * @brief Parallax background system for space environment

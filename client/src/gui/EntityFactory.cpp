@@ -2,8 +2,7 @@
  * @file EntityFactory.cpp
  * @brief Entity factory methods for creating game entities
  * 
- * This file contains all entity creation logic using ECS components.
- * Each factory method creates an entity with the appropriate components
+ * This file contains all entity creation logic using ECS components 
  * for player, enemies, and projectiles.
  * 
  * Part of the modular GameState implementation.
@@ -13,6 +12,8 @@
  */
 
 #include "gui/GameState.h"
+#include "gui/AssetPaths.h"
+#include "gui/TextureCache.h"
 #include <cstdlib>
 #include <cmath>
 
@@ -32,12 +33,25 @@ ECS::EntityID GameState::createPlayer() {
     // Health - 3 HP (invulnerability built-in)
     m_world.AddComponent<rtype::common::components::Health>(entity, 3);
     
-    // Sprite - 32x32 green rectangle
+    // Sprite - Player ship with texture (first frame: 33x17 from 166x86 spritesheet)
+    // Player spritesheet has 5 frames horizontally: 166/5 = ~33 pixels per frame
+    // Preload texture to avoid first-frame hitch
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::player::PLAYER_SPRITE);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity, 
-        sf::Vector2f(32.0f, 32.0f),
-        sf::Color::Green,
-        true);
+        rtype::client::assets::player::PLAYER_SPRITE,
+        sf::Vector2f(33.0f, 17.0f),
+        true,
+        sf::IntRect(0, 0, 33, 17),  // First frame of spritesheet
+        3.0f);  // Scale 3x for better visibility (33*3 = 99 pixels)
+    
+    // Animation - 5 frames, 0.08s per frame (smooth animation when moving up)
+    m_world.AddComponent<rtype::client::components::Animation>(
+        entity,
+        5,      // 5 frames total
+        0.08f,  // 0.08s per frame (fast animation)
+        33,     // Frame width
+        17);    // Frame height
     
     // Player - Marks as player-controlled
     m_world.AddComponent<rtype::common::components::Player>(entity, "Player1", 0);
@@ -69,12 +83,17 @@ ECS::EntityID GameState::createEnemy(float x, float y) {
     // Health - 1 HP (dies in one hit)
     m_world.AddComponent<rtype::common::components::Health>(entity, 1);
     
-    // Sprite - 24x24 red rectangle
+    // Sprite - Basic enemy with texture (first frame: 33x36 from 533x36 spritesheet)
+    // Enemy spritesheet has ~16 frames: 533/33 = ~16 frames
+    // Preload enemy sprite
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BASIC_ENEMY_1);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        sf::Vector2f(24.0f, 24.0f),
-        sf::Color::Red,
-        true);
+        rtype::client::assets::enemies::BASIC_ENEMY_1,
+        sf::Vector2f(33.0f, 36.0f),
+        true,
+        sf::IntRect(0, 0, 33, 36),  // First frame
+        2.5f);  // Scale 2.5x (33*2.5 = 82 pixels)
     
     // Team - Enemy team
     m_world.AddComponent<rtype::common::components::Team>(
@@ -108,12 +127,16 @@ ECS::EntityID GameState::createShooterEnemy(float x, float y) {
     // Health - 2 HP (more resistant)
     m_world.AddComponent<rtype::common::components::Health>(entity, 2);
     
-    // Sprite - 28x28 orange rectangle
+    // Sprite - Shooter enemy with texture (first frame from BASICENEMY_2)
+    // Preload shooter enemy sprite
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BASIC_ENEMY_2);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        sf::Vector2f(28.0f, 28.0f),
-        sf::Color(255, 140, 0),  // Orange
-        true);
+        rtype::client::assets::enemies::BASIC_ENEMY_2,
+        sf::Vector2f(33.0f, 36.0f),
+        true,
+        sf::IntRect(0, 0, 33, 36),  // First frame
+        2.5f);  // Scale 2.5x
     
     // Team - Enemy team
     m_world.AddComponent<rtype::common::components::Team>(
@@ -149,12 +172,16 @@ ECS::EntityID GameState::createBoss(float x, float y) {
     // Health - 20 HP (BOSS - very tough!)
     m_world.AddComponent<rtype::common::components::Health>(entity, 20);
     
-    // Sprite - 80x80 magenta/violet rectangle (BIG!)
+    // Sprite - Boss enemy with texture (first frame from BASICENEMY_4)
+    // Preload boss sprite
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BASIC_ENEMY_4);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        sf::Vector2f(80.0f, 80.0f),
-        sf::Color(200, 0, 200),  // Magenta/Violet
-        true);
+        rtype::client::assets::enemies::BASIC_ENEMY_4,
+        sf::Vector2f(33.0f, 36.0f),
+        true,
+        sf::IntRect(0, 0, 33, 36),  // First frame
+        5.0f);  // Scale 5x for boss (33*5 = 165 pixels - LARGE!)
     
     // Team - Enemy team
     m_world.AddComponent<rtype::common::components::Team>(
@@ -184,12 +211,16 @@ ECS::EntityID GameState::createPlayerProjectile(float x, float y) {
     m_world.AddComponent<rtype::common::components::Velocity>(
         entity, 500.0f, 0.0f, 500.0f);
     
-    // Sprite - 12x4 yellow rectangle
+    // Sprite - PROJECTILE_2, frame 2, première ligne seulement
+    // Preload projectile textures
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_1);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        sf::Vector2f(12.0f, 4.0f),
-        sf::Color::Yellow,
-        true);
+        rtype::client::assets::projectiles::PROJECTILE_1,
+        sf::Vector2f(81.0f, 17.0f),
+        true,
+        sf::IntRect(185, 0, 81, 17),
+        0.5f);
     
     // Team - Player team
     m_world.AddComponent<rtype::common::components::Team>(
@@ -213,12 +244,15 @@ ECS::EntityID GameState::createEnemyProjectile(float x, float y, float vx, float
     m_world.AddComponent<rtype::common::components::Velocity>(
         entity, vx, vy, speed);
     
-    // Sprite - 10x4 red/pink rectangle
+    // Sprite - PROJECTILE_1 (orange), frame 2, première ligne
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_2);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        sf::Vector2f(10.0f, 4.0f),
-        sf::Color(255, 100, 100), // Light red/pink
-        true);
+        rtype::client::assets::projectiles::PROJECTILE_2,
+        sf::Vector2f(81.0f, 17.0f),
+        true,
+        sf::IntRect(185, 0, 81, 17),  // Frame 2, ligne 1: orange
+        0.4f);  // Scale 0.4x (81*0.4 = 32px de large, 17*0.4 = 7px de haut)
     
     // Team - Enemy team
     m_world.AddComponent<rtype::common::components::Team>(
@@ -242,12 +276,15 @@ ECS::EntityID GameState::createChargedProjectile(float x, float y) {
     m_world.AddComponent<rtype::common::components::Velocity>(
         entity, 600.0f, 0.0f, 600.0f);
     
-    // Sprite - Larger (20x8) cyan projectile for visual distinction
+    // Sprite - PROJECTILE_4 (rose/magenta), frame 2, ligne 2 (plus dense et imposant)
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_4);
     m_world.AddComponent<rtype::client::components::Sprite>(
-        entity, 
-        sf::Vector2f(20.0f, 8.0f),
-        sf::Color::Cyan,
-        true);
+        entity,
+        rtype::client::assets::projectiles::PROJECTILE_4,
+        sf::Vector2f(81.0f, 17.0f),
+        true,
+        sf::IntRect(185, 17, 81, 17),  // Frame 2, ligne 2: plus dense (31.1% vs 15.2%)
+        0.6f);  // Scale 0.6x (81*0.6 = 49px de large, 17*0.6 = 10px de haut) - plus gros
     
     // Team - Player team
     m_world.AddComponent<rtype::common::components::Team>(
