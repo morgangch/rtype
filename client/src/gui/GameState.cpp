@@ -113,6 +113,20 @@ void GameState::showInGameMenu(bool isGameOver) {
     m_keyLeft = false;
     m_keyRight = false;
     m_keyFire = false;
+
+    // Play game-over music when death (non-looping). Pause/mute otherwise.
+    if (isGameOver) {
+        const std::string gameOverMusic = "assets/audio/music/gameover.mp3";
+        if (m_musicManager.loadFromFile(gameOverMusic)) {
+            m_musicManager.setVolume(40.0f); // adjust level if needed
+            m_musicManager.play(false); // do not loop
+        } else {
+            std::cerr << "GameState: could not load game over music: " << gameOverMusic << std::endl;
+        }
+    } else {
+        // Pause background music while paused
+        m_musicManager.setMuted(true);
+    }
 }
 
 void GameState::resumeGame() {
@@ -124,6 +138,9 @@ void GameState::resumeGame() {
     m_keyLeft = false;
     m_keyRight = false;
     m_keyFire = false;
+
+    // Unmute / resume level music when resuming from pause
+    m_musicManager.setMuted(false);
 }
 
 void GameState::resetGame() {
@@ -140,6 +157,15 @@ void GameState::resetGame() {
     // Reset flags
     m_isGameOver = false;
     m_gameStatus = GameStatus::Playing;
+
+    // Ensure level background music is playing after a reset
+    const std::string levelMusic = "assets/audio/music/level.mp3";
+    if (m_musicManager.loadFromFile(levelMusic)) {
+        m_musicManager.setVolume(30.0f);
+        m_musicManager.play(true);
+    } else {
+        std::cerr << "GameState: could not load level music: " << levelMusic << std::endl;
+    }
 }
 
 int GameState::getPlayerLives() const {
