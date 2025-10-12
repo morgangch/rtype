@@ -2,16 +2,7 @@
  * @file EntityFactory.cpp
  * @brief Entity factory methods for creating game entities
  * 
- * This file contains all entity creation logic using ECS components.
- * Each factory method creates an entity with the appropriate co    // Sprite - Enemy projectile (tire vers la GAUCHE)
-    // Animation de la derniere bande: 80x16 pixels
-    m_world.AddComponent<rtype::client::components::Sprite>(
-        entity,
-        "assets/sprites/Projectile/PROJECTILE_2_LEFT.png",
-        sf::Vector2f(80.0f, 16.0f),
-        true,
-        sf::IntRect(0, 0, 80, 16),          // Toute l'animation
-        2.0f);                               // Scale 2x -> 160x32 pixels
+ * This file contains all entity creation logic using ECS components 
  * for player, enemies, and projectiles.
  * 
  * Part of the modular GameState implementation.
