@@ -25,6 +25,7 @@
 #include "gui/GUIHelper.h"
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 
 namespace rtype::client::gui {
 
@@ -62,12 +63,32 @@ void GameState::setupGameOverUI() {
 void GameState::onEnter() {
     resetGame();
     m_gameStatus = GameStatus::Playing;
+
+    // Load and play background music for the level
+    const std::string musicPath = "assets/audio/music/level.mp3";
+    if (m_musicManager.loadFromFile(musicPath)) {
+        m_musicManager.setVolume(30.0f); // sensible default
+        m_musicManager.play(true);
+    } else {
+        std::cerr << "GameState: could not load music: " << musicPath << std::endl;
+    }
 }
 
 void GameState::onExit() {
     // Clear ECS world
     m_world.Clear();
     m_playerEntity = 0;
+
+    // Stop music when leaving the game state
+    m_musicManager.stop();
+}
+
+void GameState::setMusicMuted(bool muted) {
+    m_musicManager.setMuted(muted);
+}
+
+bool GameState::isMusicMuted() const {
+    return m_musicManager.isMuted();
 }
 
 void GameState::showInGameMenu(bool isGameOver) {

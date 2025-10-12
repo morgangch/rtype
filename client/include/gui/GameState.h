@@ -41,6 +41,7 @@ namespace rtype::client::gui { Space Invaders game state implementation for R-TY
 #include <client/components/Sprite.h>
 #include <vector>
 #include <functional>
+#include "MusicManager.h"
 
 namespace rtype::client::gui {
     
@@ -133,6 +134,16 @@ namespace rtype::client::gui {
          * @brief Called when exiting this state
          */
         void onExit() override;
+
+        /**
+         * @brief Toggle background music mute state
+         */
+        void setMusicMuted(bool muted);
+
+        /**
+         * @brief Check if music is muted
+         */
+        bool isMusicMuted() const;
         
     private:
         
@@ -373,6 +384,11 @@ namespace rtype::client::gui {
          * @brief Reference to the state manager for state transitions
          */
         StateManager& m_stateManager;
+
+        /**
+         * @brief Manager for background music and mute state
+         */
+        MusicManager m_musicManager;
         
         /**
          * @brief Current game status (Playing or InGameMenu)
