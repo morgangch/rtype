@@ -205,8 +205,16 @@ void GameState::handleKeyReleased(sf::Keyboard::Key key) {
                                 // Fire appropriate projectile type
                                 if (wasFullyCharged) {
                                     createChargedProjectile(pos->x + 32.0f, pos->y);
+                                    // Play charged shoot sound if available
+                                    if (m_chargedShootBuffer.getSampleCount() > 0) {
+                                        m_chargedShootSound.play();
+                                    }
                                 } else {
                                     createPlayerProjectile(pos->x + 32.0f, pos->y);
+                                    // Play regular shoot sound if available
+                                    if (m_shootBuffer.getSampleCount() > 0) {
+                                        m_shootSound.play();
+                                    }
                                 }
                                 fireRate->shoot();
                             }

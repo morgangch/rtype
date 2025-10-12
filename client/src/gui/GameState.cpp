@@ -221,6 +221,25 @@ bool GameState::loadGameSounds() {
     }
     m_loseLifeSound.setBuffer(m_loseLifeBuffer);
     m_loseLifeSound.setVolume(80.0f);
+
+    // Load regular shoot sound
+    const std::string shootPath = "assets/audio/particles/shoot.mp3";
+    if (!m_shootBuffer.loadFromFile(shootPath)) {
+        std::cerr << "GameState: could not load shoot sound: " << shootPath << std::endl;
+        // non-fatal; continue loading other sounds
+    } else {
+        m_shootSound.setBuffer(m_shootBuffer);
+        m_shootSound.setVolume(70.0f);
+    }
+
+    // Load charged shoot sound
+    const std::string chargedPath = "assets/audio/particles/chargedshoot.mp3";
+    if (!m_chargedShootBuffer.loadFromFile(chargedPath)) {
+        std::cerr << "GameState: could not load charged shoot sound: " << chargedPath << std::endl;
+    } else {
+        m_chargedShootSound.setBuffer(m_chargedShootBuffer);
+        m_chargedShootSound.setVolume(75.0f);
+    }
     return true;
 }
 

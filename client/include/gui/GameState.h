@@ -402,6 +402,26 @@ namespace rtype::client::gui {
         sf::Sound m_loseLifeSound;
 
         /**
+         * @brief Sound buffer for regular shooting (short particle sound)
+         */
+        sf::SoundBuffer m_shootBuffer;
+
+        /**
+         * @brief Sound instance for playing the regular shoot sound
+         */
+        sf::Sound m_shootSound;
+
+        /**
+         * @brief Sound buffer for charged shoot particle sound
+         */
+        sf::SoundBuffer m_chargedShootBuffer;
+
+        /**
+         * @brief Sound instance for playing the charged shoot sound
+         */
+        sf::Sound m_chargedShootSound;
+
+        /**
          * @brief Load sound assets used by the gameplay state. Returns true
          * if all required sounds were loaded successfully.
          */
