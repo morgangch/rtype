@@ -16,10 +16,14 @@ namespace rtype::common::components {
         float distanceTraveled;
         ProjectileType type;
         ECS::EntityID ownerId;
+        bool piercing;  ///< If true, projectile passes through enemies
 
         Projectile(int damage = 10,
                    float speed = 200.0f,
-                   ProjectileType type = ProjectileType::Basic);
+                   ProjectileType type = ProjectileType::Basic,
+                   bool piercing = false)
+            : damage(damage), speed(speed), maxDistance(1000.0f), 
+              distanceTraveled(0.0f), type(type), ownerId(0), piercing(piercing) {}
     };
 }
 

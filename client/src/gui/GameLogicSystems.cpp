@@ -1,0 +1,460 @@
+/**
+ * @file GameLogicSystems.cpp
+ * @brief ECS systems implementation for game logic
+ * 
+ * This file contains all ECS system update logic:
+ * - Movement System: Updates positions based on velocity
+ * - Input System: Processes player keyboard input
+ * - Fire Rate System: Manages shooting cooldowns
+ * - Invulnerability System: Manages damage immunity
+ * - Enemy Spawn System: Spawns enemies periodically
+ * - Enemy AI System: Enemy shooting logic
+ * - Cleanup System: Removes off-screen entities
+ * - Collision System: Detects and handles collisions
+ * 
+ * Part of the modular GameState implementation.
+ * 
+ * @author R-TYPE Development Team
+ * @date 2025
+ */
+
+#include "gui/GameState.h"
+#include <cmath>
+#include <vector>
+#include <functional>
+
+namespace rtype::client::gui {
+
+void GameState::updateMovementSystem(float deltaTime) {
+    auto* positions = m_world.GetAllComponents<rtype::common::components::Position>();
+    if (!positions) return;
+    
+    for (auto& [entity, posPtr] : *positions) {
+        auto& pos = *posPtr;
+        auto* vel = m_world.GetComponent<rtype::common::components::Velocity>(entity);
+        
+        if (!vel) continue;
+        
+        // Update position
+        pos.x += vel->vx * deltaTime;
+        pos.y += vel->vy * deltaTime;
+        
+        // Boss bounce logic (vertical oscillation)
+        auto* enemyType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(entity);
+        if (enemyType && enemyType->type == rtype::common::components::EnemyType::Boss) {
+            auto* sprite = m_world.GetComponent<rtype::client::components::Sprite>(entity);
+            if (sprite) {
+                float halfHeight = sprite->size.y / 2.0f;
+                // Bounce at top or bottom of screen
+                if (pos.y - halfHeight <= 0.0f) {
+                    pos.y = halfHeight;
+                    vel->vy = std::abs(vel->vy);  // Go down
+                } else if (pos.y + halfHeight >= SCREEN_HEIGHT) {
+                    pos.y = SCREEN_HEIGHT - halfHeight;
+                    vel->vy = -std::abs(vel->vy);  // Go up
+                }
+            }
+        }
+        
+        // Clamp velocity to max speed
+        float speed = std::sqrt(vel->vx * vel->vx + vel->vy * vel->vy);
+        if (speed > vel->maxSpeed && vel->maxSpeed > 0.0f) {
+            float scale = vel->maxSpeed / speed;
+            vel->vx *= scale;
+            vel->vy *= scale;
+        }
+    }
+}
+
+void GameState::updateInputSystem(float deltaTime) {
+    // Find player entity (has Player component)
+    auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
+    if (!players) return;
+    
+    for (auto& [entity, playerPtr] : *players) {
+        auto* vel = m_world.GetComponent<rtype::common::components::Velocity>(entity);
+        auto* pos = m_world.GetComponent<rtype::common::components::Position>(entity);
+        auto* fireRate = m_world.GetComponent<rtype::common::components::FireRate>(entity);
+        
+        if (!vel || !pos) continue;
+        
+        // Calculate movement direction from input
+        float moveX = 0.0f, moveY = 0.0f;
+        
+        if (m_keyUp) moveY -= 1.0f;
+        if (m_keyDown) moveY += 1.0f;
+        if (m_keyLeft) moveX -= 1.0f;
+        if (m_keyRight) moveX += 1.0f;
+        
+        // Normalize diagonal movement
+        float magnitude = std::sqrt(moveX * moveX + moveY * moveY);
+        if (magnitude > 0.0f) {
+            moveX /= magnitude;
+            moveY /= magnitude;
+        }
+        
+        // Apply velocity
+        vel->vx = moveX * vel->maxSpeed;
+        vel->vy = moveY * vel->maxSpeed;
+        
+        // Clamp position to screen bounds (with sprite size consideration)
+        const float halfSize = 16.0f; // Half of player size (32/2)
+        if (pos->x < halfSize) pos->x = halfSize;
+        if (pos->x > SCREEN_WIDTH - halfSize) pos->x = SCREEN_WIDTH - halfSize;
+        if (pos->y < halfSize) pos->y = halfSize;
+        if (pos->y > SCREEN_HEIGHT - halfSize) pos->y = SCREEN_HEIGHT - halfSize;
+        
+        // NOTE: Firing is now handled in handleKeyReleased() for charged shot mechanic
+        // The old automatic firing system is disabled to allow charge accumulation
+    }
+}
+
+void GameState::updateFireRateSystem(float deltaTime) {
+    auto* fireRates = m_world.GetAllComponents<rtype::common::components::FireRate>();
+    if (!fireRates) return;
+    
+    for (auto& [entity, fireRatePtr] : *fireRates) {
+        fireRatePtr->update(deltaTime);
+    }
+}
+
+void GameState::updateChargedShotSystem(float deltaTime) {
+    auto* chargedShots = m_world.GetAllComponents<rtype::common::components::ChargedShot>();
+    if (!chargedShots) return;
+    
+    for (auto& [entity, chargedShotPtr] : *chargedShots) {
+        chargedShotPtr->update(deltaTime);
+    }
+}
+
+void GameState::updateInvulnerabilitySystem(float deltaTime) {
+    auto* healths = m_world.GetAllComponents<rtype::common::components::Health>();
+    if (!healths) return;
+    
+    for (auto& [entity, healthPtr] : *healths) {
+        if (healthPtr->invulnerable && healthPtr->invulnerabilityTimer > 0.0f) {
+            healthPtr->invulnerabilityTimer -= deltaTime;
+            if (healthPtr->invulnerabilityTimer <= 0.0f) {
+                healthPtr->invulnerable = false;
+                healthPtr->invulnerabilityTimer = 0.0f;
+            }
+        }
+    }
+}
+
+void GameState::updateEnemySpawnSystem(float deltaTime) {
+    m_enemySpawnTimer += deltaTime;
+    m_bossSpawnTimer += deltaTime;
+    
+    // Boss spawn system (every 3 minutes)
+    if (m_bossSpawnTimer >= BOSS_SPAWN_INTERVAL && !isBossActive()) {
+        createBoss(SCREEN_WIDTH - 100.0f, SCREEN_HEIGHT * 0.5f);
+        m_bossSpawnTimer = 0.0f;
+    }
+    
+    if (m_enemySpawnTimer >= ENEMY_SPAWN_INTERVAL) {
+        // Count current enemies
+        size_t enemyCount = 0;
+        auto* teams = m_world.GetAllComponents<rtype::common::components::Team>();
+        if (teams) {
+            for (auto& [entity, teamPtr] : *teams) {
+                if (teamPtr->team == rtype::common::components::TeamType::Enemy) {
+                    // Check if it's actually an enemy (has Health, not a projectile)
+                    if (m_world.GetComponent<rtype::common::components::Health>(entity)) {
+                        enemyCount++;
+                    }
+                }
+            }
+        }
+        
+        // Spawn if under limit
+        if (enemyCount < MAX_ENEMIES) {
+            float randomY = 50.0f + static_cast<float>(rand() % static_cast<int>(SCREEN_HEIGHT - 100.0f));
+            
+            // Alternate between basic enemies and shooter enemies
+            // 40% chance for shooter enemy, 60% for basic enemy
+            int randomType = rand() % 100;
+            if (randomType < 40) {
+                createShooterEnemy(SCREEN_WIDTH + 28.0f, randomY);
+            } else {
+                createEnemy(SCREEN_WIDTH + 24.0f, randomY);
+            }
+            
+            m_enemySpawnTimer = 0.0f;
+        }
+    }
+}
+
+void GameState::updateEnemyAISystem(float deltaTime) {
+    auto* teams = m_world.GetAllComponents<rtype::common::components::Team>();
+    if (!teams) return;
+    
+    // Find player position first
+    sf::Vector2f playerPos(0.0f, 0.0f);
+    bool playerFound = false;
+    auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
+    if (players) {
+        for (auto& [playerEntity, playerPtr] : *players) {
+            auto* pos = m_world.GetComponent<rtype::common::components::Position>(playerEntity);
+            if (pos) {
+                playerPos = sf::Vector2f(pos->x, pos->y);
+                playerFound = true;
+                break;
+            }
+        }
+    }
+    
+    for (auto& [entity, teamPtr] : *teams) {
+        // Only process enemies (not enemy projectiles)
+        if (teamPtr->team != rtype::common::components::TeamType::Enemy) continue;
+        if (!m_world.GetComponent<rtype::common::components::Health>(entity)) continue;
+        
+        auto* enemyType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(entity);
+        auto* fireRate = m_world.GetComponent<rtype::common::components::FireRate>(entity);
+        auto* pos = m_world.GetComponent<rtype::common::components::Position>(entity);
+        
+        if (!fireRate || !pos || !fireRate->canFire()) continue;
+        
+        if (enemyType && enemyType->type == rtype::common::components::EnemyType::Boss) {
+            // BOSS: Shoot in spread pattern (3 projectiles)
+            if (playerFound) {
+                // Calculate direction to player
+                float dx = playerPos.x - pos->x;
+                float dy = playerPos.y - pos->y;
+                float distance = std::sqrt(dx * dx + dy * dy);
+                
+                if (distance > 0.0f) {
+                    const float PROJECTILE_SPEED = 350.0f;
+                    float baseVx = (dx / distance) * PROJECTILE_SPEED;
+                    float baseVy = (dy / distance) * PROJECTILE_SPEED;
+                    
+                    // Center projectile - aimed at player
+                    createEnemyProjectile(pos->x, pos->y, baseVx, baseVy);
+                    
+                    // Spread pattern: ±15 degrees from center
+                    const float spreadAngle = 0.26f; // ~15 degrees in radians
+                    
+                    // Upper projectile (rotate counter-clockwise)
+                    float upperVx = baseVx * std::cos(spreadAngle) - baseVy * std::sin(spreadAngle);
+                    float upperVy = baseVx * std::sin(spreadAngle) + baseVy * std::cos(spreadAngle);
+                    createEnemyProjectile(pos->x, pos->y, upperVx, upperVy);
+                    
+                    // Lower projectile (rotate clockwise)
+                    float lowerVx = baseVx * std::cos(-spreadAngle) - baseVy * std::sin(-spreadAngle);
+                    float lowerVy = baseVx * std::sin(-spreadAngle) + baseVy * std::cos(-spreadAngle);
+                    createEnemyProjectile(pos->x, pos->y, lowerVx, lowerVy);
+                    
+                    fireRate->shoot();
+                }
+            }
+        } else if (enemyType && enemyType->type == rtype::common::components::EnemyType::Shooter) {
+            // Shooter enemy: aim at player
+            if (playerFound) {
+                // Calculate direction to player
+                float dx = playerPos.x - pos->x;
+                float dy = playerPos.y - pos->y;
+                float distance = std::sqrt(dx * dx + dy * dy);
+                
+                if (distance > 0.0f) {
+                    // Normalize and apply speed
+                    const float PROJECTILE_SPEED = 300.0f;
+                    float vx = (dx / distance) * PROJECTILE_SPEED;
+                    float vy = (dy / distance) * PROJECTILE_SPEED;
+                    
+                    createEnemyProjectile(pos->x, pos->y, vx, vy);
+                    fireRate->shoot();
+                }
+            }
+        } else {
+            // Basic red enemy: shoot straight left
+            createEnemyProjectile(pos->x, pos->y, -300.0f, 0.0f);
+            fireRate->shoot();
+        }
+    }
+}
+
+void GameState::updateCleanupSystem(float deltaTime) {
+    std::vector<ECS::EntityID> toDestroy;
+    
+    auto* positions = m_world.GetAllComponents<rtype::common::components::Position>();
+    if (!positions) return;
+    
+    for (auto& [entity, posPtr] : *positions) {
+        auto& pos = *posPtr;
+        
+        // Skip player
+        if (entity == m_playerEntity) continue;
+        
+        // Remove entities far off-screen
+        bool offScreen = false;
+        
+        // Check if entity is moving left (enemies and enemy projectiles)
+        auto* vel = m_world.GetComponent<rtype::common::components::Velocity>(entity);
+        if (vel && vel->vx < 0.0f) {
+            // Remove if too far left
+            if (pos.x < -100.0f) offScreen = true;
+        } else if (vel && vel->vx > 0.0f) {
+            // Remove if too far right (player projectiles)
+            if (pos.x > SCREEN_WIDTH + 100.0f) offScreen = true;
+        }
+        
+        if (offScreen) {
+            toDestroy.push_back(entity);
+        }
+    }
+    
+    // Destroy off-screen entities
+    for (auto entity : toDestroy) {
+        m_world.DestroyEntity(entity);
+    }
+}
+
+void GameState::checkPlayerVsEnemiesCollision(
+    ECS::ComponentArray<rtype::common::components::Position>& positions,
+    const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds) {
+    
+    if (m_playerEntity == 0) return;
+    
+    auto* playerPos = m_world.GetComponent<rtype::common::components::Position>(m_playerEntity);
+    auto* playerHealth = m_world.GetComponent<rtype::common::components::Health>(m_playerEntity);
+    
+    if (!playerPos || !playerHealth || playerHealth->invulnerable) return;
+    
+    sf::FloatRect playerBounds = getBounds(m_playerEntity, *playerPos);
+    
+    for (const auto& [entity, posPtr] : positions) {
+        if (entity == m_playerEntity) continue;
+        
+        auto* team = m_world.GetComponent<rtype::common::components::Team>(entity);
+        auto* health = m_world.GetComponent<rtype::common::components::Health>(entity);
+        
+        // Check collision with enemies
+        if (team && health && team->team == rtype::common::components::TeamType::Enemy) {
+            sf::FloatRect enemyBounds = getBounds(entity, *posPtr);
+            
+            if (playerBounds.intersects(enemyBounds)) {
+                damagePlayer(1);
+                // Ne PAS détruire l'ennemi - il continue à vivre
+            }
+        }
+    }
+}
+
+void GameState::checkPlayerProjectilesVsEnemiesCollision(
+    ECS::ComponentArray<rtype::common::components::Position>& positions,
+    const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds,
+    std::vector<ECS::EntityID>& toDestroy) {
+    
+    for (const auto& [projEntity, projPosPtr] : positions) {
+        auto* projTeam = m_world.GetComponent<rtype::common::components::Team>(projEntity);
+        auto* projData = m_world.GetComponent<rtype::common::components::Projectile>(projEntity);
+        
+        // Skip if not a player projectile
+        if (!projTeam || !projData) continue;
+        if (projTeam->team != rtype::common::components::TeamType::Player) continue;
+        
+        sf::FloatRect projBounds = getBounds(projEntity, *projPosPtr);
+        
+        for (const auto& [enemyEntity, enemyPosPtr] : positions) {
+            if (enemyEntity == projEntity) continue;
+            
+            auto* enemyTeam = m_world.GetComponent<rtype::common::components::Team>(enemyEntity);
+            auto* enemyHealth = m_world.GetComponent<rtype::common::components::Health>(enemyEntity);
+            
+            // Check collision with enemies
+            if (enemyTeam && enemyHealth && enemyTeam->team == rtype::common::components::TeamType::Enemy) {
+                sf::FloatRect enemyBounds = getBounds(enemyEntity, *enemyPosPtr);
+                
+                if (projBounds.intersects(enemyBounds)) {
+                    // Damage enemy
+                    enemyHealth->currentHp -= projData->damage;
+                    
+                    if (enemyHealth->currentHp <= 0) {
+                        enemyHealth->isAlive = false;
+                        toDestroy.push_back(enemyEntity);
+                    }
+                    
+                    // Check if projectile is piercing
+                    if (!projData->piercing) {
+                        // Normal projectile - destroy after first hit
+                        toDestroy.push_back(projEntity);
+                        break; // Projectile destroyed, stop checking
+                    }
+                    // Piercing projectile continues through enemies
+                }
+            }
+        }
+    }
+}
+
+void GameState::checkEnemyProjectilesVsPlayerCollision(
+    ECS::ComponentArray<rtype::common::components::Position>& positions,
+    const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds,
+    std::vector<ECS::EntityID>& toDestroy) {
+    
+    if (m_playerEntity == 0) return;
+    
+    auto* playerPos = m_world.GetComponent<rtype::common::components::Position>(m_playerEntity);
+    auto* playerHealth = m_world.GetComponent<rtype::common::components::Health>(m_playerEntity);
+    
+    if (!playerPos || !playerHealth || playerHealth->invulnerable) return;
+    
+    sf::FloatRect playerBounds = getBounds(m_playerEntity, *playerPos);
+    
+    for (const auto& [projEntity, projPosPtr] : positions) {
+        auto* projTeam = m_world.GetComponent<rtype::common::components::Team>(projEntity);
+        auto* projData = m_world.GetComponent<rtype::common::components::Projectile>(projEntity);
+        
+        // Check if it's an enemy projectile
+        if (projTeam && projData && projTeam->team == rtype::common::components::TeamType::Enemy) {
+            sf::FloatRect projBounds = getBounds(projEntity, *projPosPtr);
+            
+            if (playerBounds.intersects(projBounds)) {
+                damagePlayer(projData->damage);
+                toDestroy.push_back(projEntity);
+            }
+        }
+    }
+}
+
+void GameState::updateCollisionSystem() {
+    std::vector<ECS::EntityID> toDestroy;
+    
+    // Get all positions for collision checks
+    auto* positions = m_world.GetAllComponents<rtype::common::components::Position>();
+    if (!positions) return;
+    
+    // Helper lambda to get entity bounds
+    auto getBounds = [this](ECS::EntityID entity, const rtype::common::components::Position& pos) -> sf::FloatRect {
+        auto* sprite = m_world.GetComponent<rtype::client::components::Sprite>(entity);
+        if (!sprite) return sf::FloatRect(pos.x, pos.y, 1.0f, 1.0f);
+        
+        return sf::FloatRect(
+            pos.x - sprite->size.x * 0.5f,
+            pos.y - sprite->size.y * 0.5f,
+            sprite->size.x,
+            sprite->size.y
+        );
+    };
+    
+    // Run collision detection subsystems
+    checkPlayerVsEnemiesCollision(*positions, getBounds);
+    checkPlayerProjectilesVsEnemiesCollision(*positions, getBounds, toDestroy);
+    checkEnemyProjectilesVsPlayerCollision(*positions, getBounds, toDestroy);
+    
+    // Destroy all marked entities
+    for (auto entity : toDestroy) {
+        m_world.DestroyEntity(entity);
+    }
+}
+
+void GameState::handlePlayerFire() {
+    if (m_playerEntity == 0) return;
+    
+    auto* pos = m_world.GetComponent<rtype::common::components::Position>(m_playerEntity);
+    if (!pos) return;
+    
+    createPlayerProjectile(pos->x, pos->y);
+}
+
+} // namespace rtype::client::gui

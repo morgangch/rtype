@@ -1,20 +1,20 @@
 /**
  * @file GameState.cpp
- * @brief Implementation of the Space Invaders game state
+ * @brief Core GameState implementation - Orchestration and lifecycle
  * 
- * This file implements the GameState class which provides a playable
- * Space Invaders style game with player movement, enemy spawning,
- * collision detection, and rendering.
+ * This file contains the main GameState implementation including:
+ * - Constructor and initialization
+ * - State lifecycle (onEnter/onExit)
+ * - Main update and render orchestration
+ * - Game reset logic
+ * - Helper methods
  * 
- * The implementation follows the State pattern interface defined in State.h
- * and integrates seamlessly with the StateManager for state transitions.
- * 
- * Key implementation details:
- * - Uses SFML for rendering and input handling
- * - Implements normalized diagonal movement for consistent speed
- * - Static starfield for optimized rendering
- * - Simple AABB collision detection
- * - Automatic enemy cleanup when off-screen
+ * The modular implementation splits GameState into 5 files:
+ * - GameState.cpp (this file): Core orchestration and lifecycle
+ * - EntityFactory.cpp: Entity creation methods
+ * - GameLogicSystems.cpp: ECS systems implementation
+ * - GameRenderer.cpp: Rendering logic
+ * - InputHandler.cpp: Input event processing
  * 
  * @author R-TYPE Development Team
  * @date 2025
@@ -22,283 +22,192 @@
 
 #include "gui/GameState.h"
 #include "gui/MainMenuState.h"
+#include "gui/GUIHelper.h"
 #include <algorithm>
 #include <cmath>
-#include <iostream>
 
 namespace rtype::client::gui {
 
 GameState::GameState(StateManager& stateManager)
     : m_stateManager(stateManager), m_parallaxSystem(SCREEN_WIDTH, SCREEN_HEIGHT) {
+    setupGameOverUI();
 }
 
-void GameState::handleEvent(const sf::Event& event) {
-    // Handle ESC to return to menu
-    if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
-        std::cout << "Returning to main menu..." << std::endl;
-        m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
-        return;
-    }
-
-    if (event.type == sf::Event::KeyPressed) {
-        handleKeyPressed(event.key.code);
-    } else if (event.type == sf::Event::KeyReleased) {
-        handleKeyReleased(event.key.code);
-    }
-}
-
-void GameState::handleKeyPressed(sf::Keyboard::Key key) {
-    switch (key) {
-        case sf::Keyboard::Z:
-        case sf::Keyboard::Up:
-            m_keyUp = true;
-            break;
-        case sf::Keyboard::S:
-        case sf::Keyboard::Down:
-            m_keyDown = true;
-            break;
-        case sf::Keyboard::Q:
-        case sf::Keyboard::Left:
-            m_keyLeft = true;
-            break;
-        case sf::Keyboard::D:
-        case sf::Keyboard::Right:
-            m_keyRight = true;
-            break;
-        case sf::Keyboard::Space:
-            m_keyFire = true;
-            break;
-        default:
-            break;
-    }
-}
-
-void GameState::handleKeyReleased(sf::Keyboard::Key key) {
-    switch (key) {
-        case sf::Keyboard::Z:
-        case sf::Keyboard::Up:
-            m_keyUp = false;
-            break;
-        case sf::Keyboard::S:
-        case sf::Keyboard::Down:
-            m_keyDown = false;
-            break;
-        case sf::Keyboard::Q:
-        case sf::Keyboard::Left:
-            m_keyLeft = false;
-            break;
-        case sf::Keyboard::D:
-        case sf::Keyboard::Right:
-            m_keyRight = false;
-            break;
-        case sf::Keyboard::Space:
-            m_keyFire = false;
-            break;
-        default:
-            break;
-    }
-}
-
-void GameState::update(float deltaTime) {
-    // Cap delta time to prevent physics issues
-    deltaTime = std::min(deltaTime, 0.016f);
+void GameState::setupGameOverUI() {
+    const sf::Font& font = GUIHelper::getFont();
     
-    updatePlayer(deltaTime);
-    updateEnemies(deltaTime);
-    m_parallaxSystem.update(deltaTime);
-    checkCollisions();
-}
-
-void GameState::render(sf::RenderWindow& window) {
-    // Clear with space background
-    window.clear(sf::Color::Black);
+    // Game Over title
+    m_gameOverTitleText.setFont(font);
+    m_gameOverTitleText.setString("GAME OVER");
+    m_gameOverTitleText.setCharacterSize(GUIHelper::Sizes::TITLE_FONT_SIZE);
+    m_gameOverTitleText.setFillColor(GUIHelper::Colors::TEXT);
+    m_gameOverTitleText.setStyle(sf::Text::Bold);
+    GUIHelper::centerText(m_gameOverTitleText, SCREEN_WIDTH / 2.0f, 150.0f);
     
-    // Render parallax background
-    m_parallaxSystem.render(window);
+    // Restart/Resume button
+    m_restartText.setFont(font);
+    m_restartText.setString("Restart");  // Will change to "Resume" if paused
+    m_restartText.setCharacterSize(GUIHelper::Sizes::BUTTON_FONT_SIZE);
+    m_restartText.setFillColor(GUIHelper::Colors::TEXT);
+    GUIHelper::centerText(m_restartText, SCREEN_WIDTH / 2.0f, 300.0f);
     
-    // Render game elements
-    renderPlayer(window);
-    renderEnemies(window);
+    // Leave button
+    m_menuText.setFont(font);
+    m_menuText.setString("Leave");
+    m_menuText.setCharacterSize(GUIHelper::Sizes::BUTTON_FONT_SIZE);
+    m_menuText.setFillColor(GUIHelper::Colors::TEXT);
+    GUIHelper::centerText(m_menuText, SCREEN_WIDTH / 2.0f, 380.0f);
 }
 
 void GameState::onEnter() {
-    std::cout << "=== Space Invaders Game ===" << std::endl;
-    std::cout << "Controls:" << std::endl;
-    std::cout << "  ZQSD/Arrow keys - Move ship" << std::endl;
-    std::cout << "  SPACE - Fire (not implemented yet)" << std::endl;
-    std::cout << "  ESC - Return to menu" << std::endl;
-    
     resetGame();
+    m_gameStatus = GameStatus::Playing;
 }
 
 void GameState::onExit() {
-    std::cout << "Exiting game state..." << std::endl;
+    // Clear ECS world
+    m_world.Clear();
+    m_playerEntity = 0;
 }
 
-// Private methods
-
-void GameState::updatePlayer(float deltaTime) {
-    // Get movement direction
-    sf::Vector2f movement = getMovementInput();
+void GameState::showInGameMenu(bool isGameOver) {
+    m_gameStatus = GameStatus::InGameMenu;
+    m_isGameOver = isGameOver;
+    m_selectedMenuOption = 0;
     
-    // Apply movement if any
-    if (movement.x != 0.0f || movement.y != 0.0f) {
-        // Normalize diagonal movement to maintain constant speed
-        float length = std::sqrt(movement.x * movement.x + movement.y * movement.y);
-        if (length > 0.0f) {
-            movement /= length;
-        }
-        
-        // Update position
-        m_player.position += movement * m_player.speed * deltaTime;
-        
-        // Clamp to screen bounds (full screen movement)
-        m_player.position.x = std::max(m_player.size.x * 0.5f, 
-                                       std::min(m_player.position.x, SCREEN_WIDTH - m_player.size.x * 0.5f));
-        m_player.position.y = std::max(m_player.size.y * 0.5f, 
-                                       std::min(m_player.position.y, SCREEN_HEIGHT - m_player.size.y * 0.5f));
-    }
-    
-    // Handle fire input (placeholder for future implementation)
-    if (m_keyFire) {
-        // TODO: Spawn projectile
-        // For now, just print
-        static bool fired = false;
-        if (!fired) {
-            std::cout << "FIRE! (Projectile system not yet implemented)" << std::endl;
-            fired = true;
-        }
+    // Update restart button text based on context
+    if (isGameOver) {
+        m_restartText.setString("Restart");
+        m_gameOverTitleText.setString("GAME OVER");
     } else {
-        static bool fired = false;
-        fired = false;
+        m_restartText.setString("Resume");
+        m_gameOverTitleText.setString("PAUSED");
     }
+    GUIHelper::centerText(m_restartText, SCREEN_WIDTH / 2.0f, 300.0f);
+    GUIHelper::centerText(m_gameOverTitleText, SCREEN_WIDTH / 2.0f, 150.0f);
+    
+    // Reset input states to prevent stuck keys
+    m_keyUp = false;
+    m_keyDown = false;
+    m_keyLeft = false;
+    m_keyRight = false;
+    m_keyFire = false;
 }
 
-void GameState::updateEnemies(float deltaTime) {
-    // Spawn new enemies
-    m_enemySpawnTimer += deltaTime;
-    if (m_enemySpawnTimer >= ENEMY_SPAWN_INTERVAL) {
-        m_enemySpawnTimer = 0.0f;
-        spawnEnemy();
-    }
+void GameState::resumeGame() {
+    m_gameStatus = GameStatus::Playing;
     
-    // Update enemy positions
-    for (auto& enemy : m_enemies) {
-        enemy.position.x -= enemy.speed * deltaTime;
-    }
-    
-    // Remove off-screen enemies
-    m_enemies.erase(
-        std::remove_if(m_enemies.begin(), m_enemies.end(),
-            [](const Enemy& e) { return e.position.x < -e.size.x; }),
-        m_enemies.end()
-    );
-}
-
-void GameState::checkCollisions() {
-    auto playerBounds = m_player.getBounds();
-    
-    for (auto& enemy : m_enemies) {
-        if (playerBounds.intersects(enemy.getBounds())) {
-            std::cout << "Collision! Restarting game..." << std::endl;
-            resetGame();
-            return;
-        }
-    }
-}
-
-void GameState::spawnEnemy() {
-    // Limit total number of enemies
-    if (m_enemies.size() >= MAX_ENEMIES) {
-        return;
-    }
-    
-    Enemy newEnemy;
-    newEnemy.position.x = SCREEN_WIDTH + newEnemy.size.x;
-    // Random Y position with padding from edges
-    newEnemy.position.y = 50.0f + static_cast<float>(rand() % static_cast<int>(SCREEN_HEIGHT - 100.0f));
-    
-    m_enemies.push_back(newEnemy);
+    // Reset input states to prevent stuck keys
+    m_keyUp = false;
+    m_keyDown = false;
+    m_keyLeft = false;
+    m_keyRight = false;
+    m_keyFire = false;
 }
 
 void GameState::resetGame() {
-    // Reset player to starting position
-    m_player.position = sf::Vector2f(100.0f, SCREEN_HEIGHT * 0.5f);
+    // Clear ECS world
+    m_world.Clear();
     
-    // Clear all enemies
-    m_enemies.clear();
+    // Create player entity
+    m_playerEntity = createPlayer();
     
-    // Reset spawn timer
+    // Reset timers
     m_enemySpawnTimer = 0.0f;
+    m_bossSpawnTimer = 0.0f;
     
-    // Reset parallax system
-    m_parallaxSystem.reset();
-    
-    std::cout << "Game reset!" << std::endl;
+    // Reset flags
+    m_isGameOver = false;
+    m_gameStatus = GameStatus::Playing;
 }
 
-void GameState::renderStarfield(sf::RenderWindow& window) {
-    // Create a simple starfield effect
-    static std::vector<sf::CircleShape> stars;
+int GameState::getPlayerLives() const {
+    if (m_playerEntity == 0) return 0;
     
-    // Generate stars on first call
-    if (stars.empty()) {
-        stars.reserve(50);
-        for (int x = 0; x < static_cast<int>(SCREEN_WIDTH); x += 150) {
-            for (int y = 0; y < static_cast<int>(SCREEN_HEIGHT); y += 150) {
-                sf::CircleShape star(1.0f);
-                star.setPosition(
-                    static_cast<float>(x + (rand() % 50)),
-                    static_cast<float>(y + (rand() % 50))
-                );
-                star.setFillColor(sf::Color(255, 255, 255, 128));
-                stars.push_back(star);
+    // Cast away const to access component (ECS::World doesn't have const GetComponent)
+    auto* health = const_cast<ECS::World&>(m_world).GetComponent<rtype::common::components::Health>(m_playerEntity);
+    if (!health) return 0;
+    
+    return health->currentHp;
+}
+
+void GameState::damagePlayer(int damage) {
+    if (m_playerEntity == 0) return;
+    
+    // Get health component
+    auto* health = m_world.GetComponent<rtype::common::components::Health>(m_playerEntity);
+    if (!health) return;
+    
+    // Check invulnerability (built into Health component)
+    if (health->invulnerable) {
+        return; // Player is invulnerable
+    }
+    
+    // Apply damage
+    health->currentHp -= damage;
+    
+    // Grant invulnerability
+    health->invulnerable = true;
+    health->invulnerabilityTimer = INVULNERABILITY_DURATION;
+    
+    // Check for game over
+    if (health->currentHp <= 0) {
+        showInGameMenu(true); // Game Over
+    }
+}
+
+bool GameState::isBossActive() {
+    // Pure ECS approach: query the world for boss entities
+    auto* enemyTypes = m_world.GetAllComponents<rtype::common::components::EnemyTypeComponent>();
+    if (!enemyTypes) return false;
+    
+    for (auto& [entity, enemyTypePtr] : *enemyTypes) {
+        if (enemyTypePtr->type == rtype::common::components::EnemyType::Boss) {
+            // Check if the boss is still alive (has Health component with HP > 0)
+            auto* health = m_world.GetComponent<rtype::common::components::Health>(entity);
+            if (health && health->currentHp > 0) {
+                return true;
             }
         }
     }
     
-    // Draw all stars
-    for (const auto& star : stars) {
-        window.draw(star);
+    return false;
+}
+
+void GameState::update(float deltaTime) {
+    if (m_gameStatus == GameStatus::InGameMenu) {
+        return; // Don't update game logic when in menu
     }
-}
-
-void GameState::renderPlayer(sf::RenderWindow& window) {
-    // Draw player ship (green rectangle)
-    sf::RectangleShape playerShip(m_player.size);
-    playerShip.setPosition(m_player.position - m_player.size * 0.5f);
-    playerShip.setFillColor(sf::Color::Green);
-    window.draw(playerShip);
     
-    // Draw engine effect (orange)
-    sf::RectangleShape engine(sf::Vector2f(8.0f, 8.0f));
-    engine.setPosition(
-        m_player.position.x - m_player.size.x * 0.5f - 8.0f,
-        m_player.position.y - 4.0f
-    );
-    engine.setFillColor(sf::Color(255, 136, 0));
-    window.draw(engine);
+    // Update parallax background
+    m_parallaxSystem.update(deltaTime);
+    
+    // Run ECS systems in order
+    updateInputSystem(deltaTime);
+    updateFireRateSystem(deltaTime);
+    updateChargedShotSystem(deltaTime);
+    updateInvulnerabilitySystem(deltaTime);
+    updateMovementSystem(deltaTime);
+    updateEnemySpawnSystem(deltaTime);
+    updateEnemyAISystem(deltaTime);
+    updateCleanupSystem(deltaTime);
+    updateCollisionSystem();
 }
 
-void GameState::renderEnemies(sf::RenderWindow& window) {
-    // Draw all enemies (red rectangles)
-    for (const auto& enemy : m_enemies) {
-        sf::RectangleShape enemyShape(enemy.size);
-        enemyShape.setPosition(enemy.position - enemy.size * 0.5f);
-        enemyShape.setFillColor(sf::Color::Red);
-        window.draw(enemyShape);
+void GameState::render(sf::RenderWindow& window) {
+    // Render parallax background
+    m_parallaxSystem.render(window);
+    
+    // Render all entities
+    renderEntities(window);
+    
+    // Render HUD
+    renderHUD(window);
+    
+    // Render menu if in menu state
+    if (m_gameStatus == GameStatus::InGameMenu) {
+        renderGameOverMenu(window);
     }
-}
-
-sf::Vector2f GameState::getMovementInput() const {
-    sf::Vector2f movement(0.0f, 0.0f);
-    
-    if (m_keyUp) movement.y -= 1.0f;
-    if (m_keyDown) movement.y += 1.0f;
-    if (m_keyLeft) movement.x -= 1.0f;
-    if (m_keyRight) movement.x += 1.0f;
-    
-    return movement;
 }
 
 } // namespace rtype::client::gui

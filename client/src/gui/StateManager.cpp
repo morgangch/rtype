@@ -15,6 +15,17 @@
 
 namespace rtype::client::gui {
 
+    // Global pointer definition
+    StateManager* g_stateManager = nullptr;
+
+    void setGlobalStateManager(StateManager* mgr) {
+        g_stateManager = mgr;
+    }
+
+    StateManager* getGlobalStateManager() {
+        return g_stateManager;
+    }
+
     
     StateManager::StateManager(sf::RenderWindow& window) 
         : window(window) {}

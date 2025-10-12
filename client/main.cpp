@@ -45,6 +45,8 @@ int main() {
 
     // Create state manager
     rtype::client::gui::StateManager stateManager(window);
+    // Expose the StateManager to other subsystems (network controllers)
+    rtype::client::gui::setGlobalStateManager(&stateManager);
 
     // Push initial state (main menu)
     stateManager.pushState(std::make_unique<rtype::client::gui::MainMenuState>(stateManager));
