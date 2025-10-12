@@ -41,6 +41,14 @@ ECS::EntityID GameState::createPlayer() {
         sf::IntRect(0, 0, 33, 17),  // First frame of spritesheet
         3.0f);  // Scale 3x for better visibility (33*3 = 99 pixels)
     
+    // Animation - 5 frames, 0.08s per frame (smooth animation when moving up)
+    m_world.AddComponent<rtype::client::components::Animation>(
+        entity,
+        5,      // 5 frames total
+        0.08f,  // 0.08s per frame (fast animation)
+        33,     // Frame width
+        17);    // Frame height
+    
     // Player - Marks as player-controlled
     m_world.AddComponent<rtype::common::components::Player>(entity, "Player1", 0);
     

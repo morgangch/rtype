@@ -43,11 +43,38 @@ void GameState::renderEntities(sf::RenderWindow& window) {
         
         // Draw entity with texture or colored rectangle
         if (sprite->useTexture) {
-            // Draw sprite with texture
-            sprite->sprite.setPosition(pos.x, pos.y);
-            window.draw(sprite->sprite);
-        } else {
-            // Fallback: Draw entity as colored rectangle
+            // Load texture if not already loaded
+            if (sprite->texture.getSize().x == 0) {
+                if (!sprite->texture.loadFromFile(sprite->texturePath)) {
+                    // Failed to load - fallback to colored shape
+                    sprite->useTexture = false;
+                } else {
+                    // Texture loaded successfully - configure sprite
+                    sprite->sprite.setTexture(sprite->texture);
+                    
+                    // Set texture rect (use full texture if not specified)
+                    if (sprite->textureRect.width == 0 || sprite->textureRect.height == 0) {
+                        sprite->textureRect = sf::IntRect(0, 0, 
+                            sprite->texture.getSize().x, sprite->texture.getSize().y);
+                    }
+                    sprite->sprite.setTextureRect(sprite->textureRect);
+                    sprite->sprite.setOrigin(sprite->textureRect.width / 2.0f, 
+                                            sprite->textureRect.height / 2.0f);
+                    sprite->sprite.setScale(sprite->scale, sprite->scale);
+                }
+            }
+            
+            // Draw sprite with texture (if loaded successfully)
+            if (sprite->useTexture) {
+                // Update texture rect (in case animation changed it)
+                sprite->sprite.setTextureRect(sprite->textureRect);
+                sprite->sprite.setPosition(pos.x, pos.y);
+                window.draw(sprite->sprite);
+            }
+        }
+        
+        // Draw as colored rectangle if no texture or texture loading failed
+        if (!sprite->useTexture) {
             sf::RectangleShape shape(sprite->size);
             shape.setPosition(pos.x - sprite->size.x * 0.5f, 
                              pos.y - sprite->size.y * 0.5f);

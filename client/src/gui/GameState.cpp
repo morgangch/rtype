@@ -187,6 +187,7 @@ void GameState::update(float deltaTime) {
     updateFireRateSystem(deltaTime);
     updateChargedShotSystem(deltaTime);
     updateInvulnerabilitySystem(deltaTime);
+    updateAnimationSystem(deltaTime);
     updateMovementSystem(deltaTime);
     updateEnemySpawnSystem(deltaTime);
     updateEnemyAISystem(deltaTime);

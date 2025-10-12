@@ -97,6 +97,34 @@ void GameState::updateInputSystem(float deltaTime) {
         vel->vx = moveX * vel->maxSpeed;
         vel->vy = moveY * vel->maxSpeed;
         
+        // Update animation based on movement
+        auto* animation = m_world.GetComponent<rtype::client::components::Animation>(entity);
+        auto* sprite = m_world.GetComponent<rtype::client::components::Sprite>(entity);
+        if (animation && sprite) {
+            if (m_keyUp) {
+                // Moving up: play animation from frame 1 to 5 (no loop)
+                // Only start animation if not already playing or finished
+                if (!animation->isPlaying && animation->currentFrame == 0) {
+                    animation->isPlaying = true;
+                    animation->currentFrame = 0;  // Start at frame index 0 (which is frame 1 visually)
+                    animation->frameTimer = 0.0f;
+                    animation->loop = false;  // Don't loop, stop at frame 5
+                    animation->direction = 1;  // Forward
+                }
+                // If animation finished (at last frame), keep it there
+            } else {
+                // Not moving up: reset to frame 1
+                animation->isPlaying = false;
+                animation->currentFrame = 0;  // Frame index 0 = visual frame 1
+                animation->frameTimer = 0.0f;
+                
+                // Immediately update sprite to show frame 1
+                if (sprite->useTexture) {
+                    sprite->textureRect.left = 0;  // First frame (X=0)
+                }
+            }
+        }
+        
         // Clamp position to screen bounds (with sprite size consideration)
         const float halfSize = 16.0f; // Half of player size (32/2)
         if (pos->x < halfSize) pos->x = halfSize;
@@ -106,6 +134,39 @@ void GameState::updateInputSystem(float deltaTime) {
         
         // NOTE: Firing is now handled in handleKeyReleased() for charged shot mechanic
         // The old automatic firing system is disabled to allow charge accumulation
+    }
+}
+
+void GameState::updateAnimationSystem(float deltaTime) {
+    auto* animations = m_world.GetAllComponents<rtype::client::components::Animation>();
+    if (!animations) return;
+    
+    for (auto& [entity, animPtr] : *animations) {
+        if (!animPtr->isPlaying) continue;
+        
+        // Update frame timer
+        animPtr->frameTimer += deltaTime;
+        
+        // Check if it's time to advance to next frame
+        if (animPtr->frameTimer >= animPtr->frameDuration) {
+            animPtr->frameTimer -= animPtr->frameDuration;
+            
+            // Only advance if not at last frame
+            if (animPtr->currentFrame < animPtr->frameCount - 1) {
+                animPtr->currentFrame++;
+                
+                // Update sprite's textureRect based on current frame
+                auto* sprite = m_world.GetComponent<rtype::client::components::Sprite>(entity);
+                if (sprite && sprite->useTexture) {
+                    sprite->textureRect.left = animPtr->currentFrame * animPtr->frameWidth;
+                    sprite->textureRect.width = animPtr->frameWidth;
+                    sprite->textureRect.height = animPtr->frameHeight;
+                }
+            } else {
+                // Reached last frame (frame 5) - stay there
+                animPtr->isPlaying = false;
+            }
+        }
     }
 }
 
@@ -429,11 +490,21 @@ void GameState::updateCollisionSystem() {
         auto* sprite = m_world.GetComponent<rtype::client::components::Sprite>(entity);
         if (!sprite) return sf::FloatRect(pos.x, pos.y, 1.0f, 1.0f);
         
+        // Calculate real size: base size * scale for textured sprites
+        float realWidth = sprite->size.x;
+        float realHeight = sprite->size.y;
+        
+        if (sprite->useTexture) {
+            // For textured sprites, multiply by scale
+            realWidth *= sprite->scale;
+            realHeight *= sprite->scale;
+        }
+        
         return sf::FloatRect(
-            pos.x - sprite->size.x * 0.5f,
-            pos.y - sprite->size.y * 0.5f,
-            sprite->size.x,
-            sprite->size.y
+            pos.x - realWidth * 0.5f,
+            pos.y - realHeight * 0.5f,
+            realWidth,
+            realHeight
         );
     };
     

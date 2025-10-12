@@ -39,6 +39,7 @@ namespace rtype::client::gui { Space Invaders game state implementation for R-TY
 #include <common/components/EnemyType.h>
 #include <common/systems/ChargedShot.h>
 #include <client/components/Sprite.h>
+#include <client/components/Animation.h>
 #include <vector>
 #include <functional>
 
@@ -223,6 +224,11 @@ namespace rtype::client::gui {
          * @note Wrapper around rtype::client::systems::updateInvulnerabilitySystem()
          */
         void updateInvulnerabilitySystem(float deltaTime);
+        
+        /**
+         * @brief Animation System - Update sprite animations (frame cycling)
+         */
+        void updateAnimationSystem(float deltaTime);
         
         /**
          * @brief Enemy Spawning System - Spawn enemies periodically

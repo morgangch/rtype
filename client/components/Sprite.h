@@ -78,22 +78,14 @@ namespace rtype::client::components {
                bool visible = true,
                const sf::IntRect& frameRect = sf::IntRect(0, 0, 0, 0),
                float scale = 2.0f)
-            : texturePath(texturePath), size(size), color(sf::Color::White), 
-              visible(visible), useTexture(true), textureRect(frameRect), scale(scale) {
-            if (texture.loadFromFile(texturePath)) {
-                sprite.setTexture(texture);
-                
-                // If no frame rect specified, use entire texture
-                if (frameRect.width == 0 || frameRect.height == 0) {
-                    textureRect = sf::IntRect(0, 0, texture.getSize().x, texture.getSize().y);
-                }
-                
-                sprite.setTextureRect(textureRect);
-                sprite.setOrigin(textureRect.width / 2.0f, textureRect.height / 2.0f);
-                sprite.setScale(scale, scale);
-            } else {
-                useTexture = false; // Fallback to colored shape
-            }
+            : texturePath(texturePath), 
+              size(size), 
+              color(sf::Color::White), 
+              visible(visible), 
+              useTexture(true), 
+              textureRect(frameRect), 
+              scale(scale) {
+            // No logic in constructor - just initialize member variables
         }
         
         /**
