@@ -5,7 +5,7 @@
 ** TODO: add description
 */
 
-#include "../../include/network/network.h"
+#include "network/network.h"
 #include <iostream>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -13,37 +13,38 @@
 #include <cstring>
 #include <arpa/inet.h>
 #include "packets/packets.h"
+#include "utils/bytes_printer.h"
 
 using namespace rtype::client;
 
-// Define the global variables in this source file only
 namespace rtype::client::network {
-    PacketManager pm;
-    PacketHandler ph;
     int udp_fd = -1;
+    PacketHandler ph;
+    PacketManager pm;
 }
 
 void network::loop_recv() {
     uint8_t buffer[MAX_PACKET_SIZE];
-    struct sockaddr_in cliaddr;
-    socklen_t len = sizeof(cliaddr);
     packet_t packet;
 
-    // Non-blocking receive - returns immediately if no data available
-    int n = recvfrom(udp_fd, buffer, sizeof(buffer), MSG_DONTWAIT, (struct sockaddr *) &cliaddr, &len);
+    // Use recv() instead of recvfrom() since we used connect() on the UDP socket
+    int n = recv(rtype::client::network::udp_fd, buffer, sizeof(buffer), MSG_DONTWAIT);
 
     if (n > 0) {
         std::cout << "[INFO] Received UDP packet of size " << n << std::endl;
         PacketManager::deserializePacket(buffer, n, packet);
         std::cout << "[INFO] Packet seqid: " << packet.header.seqid << ", type: " << static_cast<int>(packet.header.type) <<
                 std::endl;
-        pm.handlePacketBytes(buffer, n, cliaddr);
+
+        // For connected UDP socket, we need to create a dummy sockaddr_in for the packet manager
+        struct sockaddr_in servaddr{};
+        pm.handlePacketBytes(buffer, n, servaddr);
     } else if (n < 0) {
         // Check if it's just no data available (non-blocking behavior)
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
             std::cerr << "[ERROR] UDP receive error: " << strerror(errno) << std::endl;
         }
-        // If errno is EAGAIN or EWOULDBLOCK, it just means no data is available - this is normal
+        // Don't spam debug messages for normal EAGAIN/EWOULDBLOCK errors
     }
     // n == 0 means the connection was closed gracefully (shouldn't happen with UDP)
 }
@@ -53,17 +54,14 @@ void network::loop_send() {
 
     for (auto& packet : packets) {
         std::vector<uint8_t> serialized = PacketManager::serializePacket(*packet);
-
-        // For client, we send packets directly to the connected server
-        // Since we used connect() in init_udp_socket, we can use send() instead of sendto()
-        int bytes_sent = send(udp_fd, serialized.data(), serialized.size(), 0);
+        int bytes_sent = send(rtype::client::network::udp_fd, serialized.data(), serialized.size(), 0);
 
         if (bytes_sent < 0) {
             std::cerr << "[ERROR] Failed to send UDP packet to server: " << strerror(errno) << std::endl;
             std::cerr << "[DEBUG] bytes_sent: " << bytes_sent << ", errno: " << errno << std::endl;
         } else {
             std::cout << "[INFO] Sent UDP packet of size " << serialized.size()
-                      << " bytes to server (packet type: " << (int)packet->header.type << ")" << std::endl;
+                      << " bytes to server (packet type: " << static_cast<int>(packet->header.type) << ")" << std::endl;
         }
     }
 }
@@ -87,8 +85,8 @@ int network::init_udp_socket(const std::string &server_ip, int server_port) {
         close(sockfd);
         return -1;
     }
-    udp_fd = sockfd;
-    return udp_fd;
+    rtype::client::network::udp_fd = sockfd;
+    return rtype::client::network::udp_fd;
 }
 
 int network::start_room_connection(const std::string &ip, int port, const std::string &player_name, uint32_t room_code) {
@@ -107,5 +105,5 @@ int network::start_room_connection(const std::string &ip, int port, const std::s
 }
 
 bool network::is_udp_connected() {
-    return udp_fd != -1;
+    return rtype::client::network::udp_fd != -1;
 }

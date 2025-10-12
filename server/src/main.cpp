@@ -18,7 +18,7 @@ void rtype::server::Rtype::loop() {
 
 int main() {
     rtype::server::Rtype &r = root;
-    r.udp_server_fd = rtype::server::network::setupUDPServer(8080);
+    r.udp_server_fd = rtype::server::network::setupUDPServer(4242);
 
     root.packetHandler.registerCallback(Packets::JOIN_ROOM, rtype::server::controllers::room_controller::handleJoinRoomPacket);
 
