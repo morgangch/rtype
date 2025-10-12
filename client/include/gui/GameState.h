@@ -380,6 +380,15 @@ namespace rtype::client::gui {
          * no keys remain in "pressed" state from the menu.
          */
         void resumeGame();
+
+        /**
+         * @brief Update boss music state based on whether a boss is alive.
+         *
+         * Called frequently (e.g. once per frame) to ensure boss music
+         * starts when a boss exists and stops/restores level music when
+         * the boss is gone.
+         */
+        void updateBossMusicState();
         
         /**
          * @brief Reference to the state manager for state transitions
@@ -390,6 +399,11 @@ namespace rtype::client::gui {
          * @brief Manager for background music and mute state
          */
         MusicManager m_musicManager;
+
+        /**
+         * @brief Whether the boss music is currently active (we loaded/playing bossfight)
+         */
+        bool m_bossMusicActive{false};
 
         /**
          * @brief Sound played when the player loses a life (non-fatal)
@@ -420,6 +434,26 @@ namespace rtype::client::gui {
          * @brief Sound instance for playing the charged shoot sound
          */
         sf::Sound m_chargedShootSound;
+
+        /**
+         * @brief Sound buffer for regular enemy death (non-boss)
+         */
+        sf::SoundBuffer m_enemyDeathBuffer;
+
+        /**
+         * @brief Sound instance for regular enemy death
+         */
+        sf::Sound m_enemyDeathSound;
+
+        /**
+         * @brief Sound buffer for boss death
+         */
+        sf::SoundBuffer m_bossDeathBuffer;
+
+        /**
+         * @brief Sound instance for boss death
+         */
+        sf::Sound m_bossDeathSound;
 
         /**
          * @brief Load sound assets used by the gameplay state. Returns true

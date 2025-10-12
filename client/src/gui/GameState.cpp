@@ -240,6 +240,26 @@ bool GameState::loadGameSounds() {
         m_chargedShootSound.setBuffer(m_chargedShootBuffer);
         m_chargedShootSound.setVolume(75.0f);
     }
+
+    // Load regular enemy death sound
+    const std::string enemyDeathPath = "assets/audio/enemy/effect/regulardeath.mp3";
+    if (!m_enemyDeathBuffer.loadFromFile(enemyDeathPath)) {
+        std::cerr << "GameState: could not load enemy death sound: " << enemyDeathPath << std::endl;
+    } else {
+        m_enemyDeathSound.setBuffer(m_enemyDeathBuffer);
+        m_enemyDeathSound.setVolume(80.0f);
+    }
+
+    // Load boss death sound
+    const std::string bossDeathPath = "assets/audio/enemy/effect/bossdeath.mp3";
+    if (!m_bossDeathBuffer.loadFromFile(bossDeathPath)) {
+        std::cerr << "GameState: could not load boss death sound: " << bossDeathPath << std::endl;
+    } else {
+        m_bossDeathSound.setBuffer(m_bossDeathBuffer);
+        m_bossDeathSound.setVolume(85.0f);
+    }
+
+    // Note: bossfight music is handled by the MusicManager; we will load it on boss spawn
     return true;
 }
 
@@ -262,6 +282,9 @@ bool GameState::isBossActive() {
 }
 
 void GameState::update(float deltaTime) {
+    // Ensure boss music follows boss alive state (covers debug spawn)
+    updateBossMusicState();
+
     if (m_gameStatus == GameStatus::InGameMenu) {
         return; // Don't update game logic when in menu
     }
@@ -279,6 +302,29 @@ void GameState::update(float deltaTime) {
     updateEnemyAISystem(deltaTime);
     updateCleanupSystem(deltaTime);
     updateCollisionSystem();
+}
+
+void GameState::updateBossMusicState() {
+    bool bossAlive = isBossActive();
+    if (bossAlive && !m_bossMusicActive) {
+        // Start boss music
+        const std::string bossMusic = "assets/audio/enemy/music/bossfight.mp3";
+        if (m_musicManager.loadFromFile(bossMusic)) {
+            m_musicManager.setVolume(35.0f);
+            m_musicManager.play(true);
+            m_bossMusicActive = true;
+        } else {
+            std::cerr << "GameState: could not load boss music: " << bossMusic << std::endl;
+        }
+    } else if (!bossAlive && m_bossMusicActive) {
+        // Boss died: restore level music
+        const std::string levelMusic = "assets/audio/music/level.mp3";
+        if (m_musicManager.loadFromFile(levelMusic)) {
+            m_musicManager.setVolume(30.0f);
+            m_musicManager.play(true);
+        }
+        m_bossMusicActive = false;
+    }
 }
 
 void GameState::render(sf::RenderWindow& window) {
