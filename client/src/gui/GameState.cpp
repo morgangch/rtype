@@ -72,6 +72,11 @@ void GameState::onEnter() {
     } else {
         std::cerr << "GameState: could not load music: " << musicPath << std::endl;
     }
+
+    // Load game sounds (lose life sound)
+    if (!loadGameSounds()) {
+        std::cerr << "GameState: warning: some game sounds failed to load" << std::endl;
+    }
 }
 
 void GameState::onExit() {
@@ -200,7 +205,23 @@ void GameState::damagePlayer(int damage) {
     // Check for game over
     if (health->currentHp <= 0) {
         showInGameMenu(true); // Game Over
+    } else {
+        // Play a short sound to indicate a lost life (non-fatal hit)
+        if (m_loseLifeBuffer.getSampleCount() > 0) {
+            m_loseLifeSound.play();
+        }
     }
+}
+
+bool GameState::loadGameSounds() {
+    const std::string loseLifePath = "assets/audio/player/loselife.mp3";
+    if (!m_loseLifeBuffer.loadFromFile(loseLifePath)) {
+        std::cerr << "GameState: could not load lose-life sound: " << loseLifePath << std::endl;
+        return false;
+    }
+    m_loseLifeSound.setBuffer(m_loseLifeBuffer);
+    m_loseLifeSound.setVolume(80.0f);
+    return true;
 }
 
 bool GameState::isBossActive() {

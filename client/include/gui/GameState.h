@@ -28,6 +28,7 @@ namespace rtype::client::gui { Space Invaders game state implementation for R-TY
 #include "StateManager.h"
 #include "ParallaxSystem.h"
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <ECS/ECS.h>
 #include <common/components/Position.h>
 #include <common/components/Velocity.h>
@@ -389,6 +390,22 @@ namespace rtype::client::gui {
          * @brief Manager for background music and mute state
          */
         MusicManager m_musicManager;
+
+        /**
+         * @brief Sound played when the player loses a life (non-fatal)
+         */
+        sf::SoundBuffer m_loseLifeBuffer;
+
+        /**
+         * @brief Sound instance for playing the lose life sound effect
+         */
+        sf::Sound m_loseLifeSound;
+
+        /**
+         * @brief Load sound assets used by the gameplay state. Returns true
+         * if all required sounds were loaded successfully.
+         */
+        bool loadGameSounds();
         
         /**
          * @brief Current game status (Playing or InGameMenu)
