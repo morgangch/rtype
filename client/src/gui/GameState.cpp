@@ -22,6 +22,7 @@
 
 #include "gui/GameState.h"
 #include "gui/MainMenuState.h"
+#include "gui/AudioFactory.h"
 #include "gui/GUIHelper.h"
 #include <algorithm>
 #include <cmath>
@@ -115,7 +116,7 @@ void GameState::showInGameMenu(bool isGameOver) {
 
     // Play game-over music when death (non-looping). Pause/mute otherwise.
     if (isGameOver) {
-        const std::string gameOverMusic = "assets/audio/music/gameover.mp3";
+        const std::string gameOverMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::GameOver);
         if (m_musicManager.loadFromFile(gameOverMusic)) {
             m_musicManager.setVolume(40.0f); // adjust level if needed
             m_musicManager.play(false); // do not loop
@@ -195,60 +196,23 @@ void GameState::damagePlayer(int damage) {
         showInGameMenu(true); // Game Over
     } else {
         // Play a short sound to indicate a lost life (non-fatal hit)
-        if (m_loseLifeBuffer.getSampleCount() > 0) {
-            m_loseLifeSound.play();
+        if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) {
+            m_soundManager.play(AudioFactory::SfxId::LoseLife);
         }
     }
 }
 
 bool GameState::loadGameSounds() {
-    const std::string loseLifePath = "assets/audio/player/loselife.mp3";
-    if (!m_loseLifeBuffer.loadFromFile(loseLifePath)) {
-        std::cerr << "GameState: could not load lose-life sound: " << loseLifePath << std::endl;
-        return false;
-    }
-    m_loseLifeSound.setBuffer(m_loseLifeBuffer);
-    m_loseLifeSound.setVolume(80.0f);
-
-    // Load regular shoot sound
-    const std::string shootPath = "assets/audio/particles/shoot.mp3";
-    if (!m_shootBuffer.loadFromFile(shootPath)) {
-        std::cerr << "GameState: could not load shoot sound: " << shootPath << std::endl;
-        // non-fatal; continue loading other sounds
-    } else {
-        m_shootSound.setBuffer(m_shootBuffer);
-        m_shootSound.setVolume(70.0f);
-    }
-
-    // Load charged shoot sound
-    const std::string chargedPath = "assets/audio/particles/chargedshoot.mp3";
-    if (!m_chargedShootBuffer.loadFromFile(chargedPath)) {
-        std::cerr << "GameState: could not load charged shoot sound: " << chargedPath << std::endl;
-    } else {
-        m_chargedShootSound.setBuffer(m_chargedShootBuffer);
-        m_chargedShootSound.setVolume(75.0f);
-    }
-
-    // Load regular enemy death sound
-    const std::string enemyDeathPath = "assets/audio/enemy/effect/regulardeath.mp3";
-    if (!m_enemyDeathBuffer.loadFromFile(enemyDeathPath)) {
-        std::cerr << "GameState: could not load enemy death sound: " << enemyDeathPath << std::endl;
-    } else {
-        m_enemyDeathSound.setBuffer(m_enemyDeathBuffer);
-        m_enemyDeathSound.setVolume(80.0f);
-    }
-
-    // Load boss death sound
-    const std::string bossDeathPath = "assets/audio/enemy/effect/bossdeath.mp3";
-    if (!m_bossDeathBuffer.loadFromFile(bossDeathPath)) {
-        std::cerr << "GameState: could not load boss death sound: " << bossDeathPath << std::endl;
-    } else {
-        m_bossDeathSound.setBuffer(m_bossDeathBuffer);
-        m_bossDeathSound.setVolume(85.0f);
-    }
+    bool ok = m_soundManager.loadAll();
+    // Configure volumes (only if loaded)
+    if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) m_soundManager.setVolume(AudioFactory::SfxId::LoseLife, 80.0f);
+    if (m_soundManager.has(AudioFactory::SfxId::Shoot)) m_soundManager.setVolume(AudioFactory::SfxId::Shoot, 70.0f);
+    if (m_soundManager.has(AudioFactory::SfxId::ChargedShoot)) m_soundManager.setVolume(AudioFactory::SfxId::ChargedShoot, 75.0f);
+    if (m_soundManager.has(AudioFactory::SfxId::EnemyDeath)) m_soundManager.setVolume(AudioFactory::SfxId::EnemyDeath, 80.0f);
+    if (m_soundManager.has(AudioFactory::SfxId::BossDeath)) m_soundManager.setVolume(AudioFactory::SfxId::BossDeath, 85.0f);
 
     // Note: bossfight music is handled by the MusicManager; we will load it on boss spawn
-    return true;
+    return ok;
 }
 
 bool GameState::isBossActive() {
@@ -296,7 +260,7 @@ void GameState::updateBossMusicState() {
     bool bossAlive = isBossActive();
     if (bossAlive && !m_bossMusicActive) {
         // Start boss music
-        const std::string bossMusic = "assets/audio/enemy/music/bossfight.mp3";
+        const std::string bossMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::BossFight);
         if (m_musicManager.loadFromFile(bossMusic)) {
             m_musicManager.setVolume(35.0f);
             m_musicManager.play(true);
@@ -312,7 +276,7 @@ void GameState::updateBossMusicState() {
 }
 
 void GameState::loadLevelMusic() {
-    const std::string levelMusic = "assets/audio/music/level.mp3";
+    const std::string levelMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::Level);
     if (m_musicManager.loadFromFile(levelMusic)) {
         m_musicManager.setVolume(30.0f);
         m_musicManager.play(true);

@@ -450,14 +450,14 @@ void GameState::updateCollisionSystem() {
         if (enemyType) {
             if (enemyType->type == rtype::common::components::EnemyType::Boss) {
                 // Play boss death sound
-                if (m_bossDeathBuffer.getSampleCount() > 0) {
-                    m_bossDeathSound.play();
+                if (m_soundManager.has(AudioFactory::SfxId::BossDeath)) {
+                    m_soundManager.play(AudioFactory::SfxId::BossDeath);
                 }
                 // Restore level background music after boss death
                 loadLevelMusic();
-            } else if (m_enemyDeathBuffer.getSampleCount() > 0) {
+            } else if (m_soundManager.has(AudioFactory::SfxId::EnemyDeath)) {
                 // Regular enemy death
-                m_enemyDeathSound.play();
+                m_soundManager.play(AudioFactory::SfxId::EnemyDeath);
             }
         }
 

@@ -1,5 +1,6 @@
 // MusicManager.h
-#pragma once
+#ifndef CLIENT_INCLUDE_GUI_MUSICMANAGER_H
+#define CLIENT_INCLUDE_GUI_MUSICMANAGER_H
 
 #include <SFML/Audio.hpp>
 #include <string>
@@ -195,3 +196,5 @@ private:
 };
 
 } // namespace rtype::client::gui
+
+#endif // CLIENT_INCLUDE_GUI_MUSICMANAGER_H

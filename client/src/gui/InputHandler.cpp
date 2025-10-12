@@ -206,14 +206,14 @@ void GameState::handleKeyReleased(sf::Keyboard::Key key) {
                                 if (wasFullyCharged) {
                                     createChargedProjectile(pos->x + 32.0f, pos->y);
                                     // Play charged shoot sound if available
-                                    if (m_chargedShootBuffer.getSampleCount() > 0) {
-                                        m_chargedShootSound.play();
+                                    if (m_soundManager.has(AudioFactory::SfxId::ChargedShoot)) {
+                                        m_soundManager.play(AudioFactory::SfxId::ChargedShoot);
                                     }
                                 } else {
                                     createPlayerProjectile(pos->x + 32.0f, pos->y);
                                     // Play regular shoot sound if available
-                                    if (m_shootBuffer.getSampleCount() > 0) {
-                                        m_shootSound.play();
+                                    if (m_soundManager.has(AudioFactory::SfxId::Shoot)) {
+                                        m_soundManager.play(AudioFactory::SfxId::Shoot);
                                     }
                                 }
                                 fireRate->shoot();

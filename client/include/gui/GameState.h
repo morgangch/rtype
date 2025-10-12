@@ -43,6 +43,7 @@ namespace rtype::client::gui { Space Invaders game state implementation for R-TY
 #include <vector>
 #include <functional>
 #include "MusicManager.h"
+#include "SoundManager.h"
 
 namespace rtype::client::gui {
     
@@ -413,59 +414,12 @@ namespace rtype::client::gui {
          */
         bool m_bossMusicActive{false};
 
-        /**
-         * @brief Sound played when the player loses a life (non-fatal)
-         */
-        sf::SoundBuffer m_loseLifeBuffer;
-
-        /**
-         * @brief Sound instance for playing the lose life sound effect
-         */
-        sf::Sound m_loseLifeSound;
-
-        /**
-         * @brief Sound buffer for regular shooting (short particle sound)
-         */
-        sf::SoundBuffer m_shootBuffer;
-
-        /**
-         * @brief Sound instance for playing the regular shoot sound
-         */
-        sf::Sound m_shootSound;
-
-        /**
-         * @brief Sound buffer for charged shoot particle sound
-         */
-        sf::SoundBuffer m_chargedShootBuffer;
-
-        /**
-         * @brief Sound instance for playing the charged shoot sound
-         */
-        sf::Sound m_chargedShootSound;
-
-        /**
-         * @brief Sound buffer for regular enemy death (non-boss)
-         */
-        sf::SoundBuffer m_enemyDeathBuffer;
-
-        /**
-         * @brief Sound instance for regular enemy death
-         */
-        sf::Sound m_enemyDeathSound;
-
-        /**
-         * @brief Sound buffer for boss death
-         */
-        sf::SoundBuffer m_bossDeathBuffer;
-
-        /**
-         * @brief Sound instance for boss death
-         */
-        sf::Sound m_bossDeathSound;
+        // Sound manager for SFX
+        SoundManager m_soundManager;
 
         /**
          * @brief Load sound assets used by the gameplay state. Returns true
-         * if all required sounds were loaded successfully.
+         * if required sounds were loaded successfully.
          */
         bool loadGameSounds();
         

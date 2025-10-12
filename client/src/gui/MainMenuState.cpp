@@ -15,6 +15,7 @@
 #include "gui/PublicServerState.h"
 #include "gui/PrivateServerState.h"
 #include "gui/GameState.h"
+#include "gui/AudioFactory.h"
 #include <iostream>
 #include <cstdlib>
 
@@ -56,7 +57,7 @@ namespace rtype::client::gui {
     
     void MainMenuState::onEnter() {
         // Called when this state becomes active
-        const std::string menuMusic = "assets/audio/music/menu.mp3";
+        const std::string menuMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::Menu);
         if (m_musicManager.loadFromFile(menuMusic)) {
             m_musicManager.setVolume(35.0f);
             m_musicManager.play(true);
