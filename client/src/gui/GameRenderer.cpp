@@ -41,12 +41,19 @@ void GameState::renderEntities(sf::RenderWindow& window) {
             }
         }
         
-        // Draw entity as rectangle
-        sf::RectangleShape shape(sprite->size);
-        shape.setPosition(pos.x - sprite->size.x * 0.5f, 
-                         pos.y - sprite->size.y * 0.5f);
-        shape.setFillColor(sprite->color);
-        window.draw(shape);
+        // Draw entity with texture or colored rectangle
+        if (sprite->useTexture) {
+            // Draw sprite with texture
+            sprite->sprite.setPosition(pos.x, pos.y);
+            window.draw(sprite->sprite);
+        } else {
+            // Fallback: Draw entity as colored rectangle
+            sf::RectangleShape shape(sprite->size);
+            shape.setPosition(pos.x - sprite->size.x * 0.5f, 
+                             pos.y - sprite->size.y * 0.5f);
+            shape.setFillColor(sprite->color);
+            window.draw(shape);
+        }
     }
 }
 
