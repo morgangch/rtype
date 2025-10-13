@@ -7,10 +7,22 @@
 
 #include "rtype.h"
 #include <iostream>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
 #include <cstring>
+
+// Platform-specific network headers
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #pragma comment(lib, "ws2_32.lib")
+    // Windows doesn't have unistd.h
+    #define close closesocket
+    typedef int socklen_t;
+#else
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+    #include <unistd.h>
+#endif
 
 #include "network.h"
 #include "packets.h"
@@ -27,14 +39,47 @@ namespace rtype::server::components {
     class PlayerConn;
 }
 
+#ifdef _WIN32
+// Initialize Winsock on Windows
+static bool initializeWinsock() {
+    WSADATA wsaData;
+    int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (result != 0) {
+        std::cerr << "[ERROR] WSAStartup failed: " << result << std::endl;
+        return false;
+    }
+    return true;
+}
+
+// Cleanup Winsock on Windows
+static void cleanupWinsock() {
+    WSACleanup();
+}
+#endif
+
 int rtype::server::network::setupUDPServer(int port) {
+#ifdef _WIN32
+    // Initialize Winsock on Windows
+    static bool winsockInitialized = false;
+    if (!winsockInitialized) {
+        if (!initializeWinsock()) {
+            return -1;
+        }
+        winsockInitialized = true;
+    }
+#endif
+
     int sockfd;
     struct sockaddr_in servaddr;
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
         std::cerr << "[ERROR] Failed to create socket: ";
+#ifdef _WIN32
+        std::cerr << WSAGetLastError() << std::endl;
+#else
         perror("socket");
+#endif
         return -1;
     }
     servaddr.sin_family = AF_INET;
@@ -42,7 +87,11 @@ int rtype::server::network::setupUDPServer(int port) {
     servaddr.sin_port = htons(port);
     if (bind(sockfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0) {
         std::cerr << "[ERROR] Failed to bind socket: ";
+#ifdef _WIN32
+        std::cerr << WSAGetLastError() << std::endl;
+#else
         perror("bind");
+#endif
         close(sockfd);
         return -1;
     }
