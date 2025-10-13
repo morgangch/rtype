@@ -21,12 +21,34 @@ if(NOT SFML_FOUND)
                         "  Windows: vcpkg install sfml")
 endif()
 
+# Debug: Print SFML variables
+message(STATUS "SFML_FOUND: ${SFML_FOUND}")
+message(STATUS "SFML_VERSION: ${SFML_VERSION}")
+message(STATUS "SFML_INCLUDE_DIR: ${SFML_INCLUDE_DIR}")
+message(STATUS "SFML_LIBRARIES: ${SFML_LIBRARIES}")
+
 # Link with ECS and common libraries
 target_link_libraries(client PRIVATE ecs common packethandler packetmanager)
 
 target_include_directories(client PRIVATE include)
 
-target_link_libraries(client PRIVATE sfml-graphics sfml-window sfml-system sfml-audio)
+# Link SFML libraries - try both modern targets and legacy libraries
+if(TARGET sfml-graphics)
+    # Modern CMake targets (SFML 2.5+)
+    target_link_libraries(client PRIVATE 
+        sfml-graphics 
+        sfml-window 
+        sfml-system 
+        sfml-audio
+        sfml-network
+    )
+else()
+    # Legacy library names
+    target_link_libraries(client PRIVATE 
+        ${SFML_LIBRARIES}
+        ${SFML_DEPENDENCIES}
+    )
+endif()
 
 
 # Set output directory - handle both single and multi-config generators
