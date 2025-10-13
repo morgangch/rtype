@@ -7,10 +7,23 @@
 
 #include "rtype.h"
 #include <iostream>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
 #include <cstring>
+
+// Platform-specific network headers
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #pragma comment(lib, "ws2_32.lib")
+    // Windows doesn't have unistd.h or MSG_DONTWAIT
+    #define close closesocket
+    #define MSG_DONTWAIT 0
+    typedef int socklen_t;
+#else
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+    #include <unistd.h>
+#endif
 
 #include "network.h"
 #include "packets.h"
@@ -27,14 +40,47 @@ namespace rtype::server::components {
     class PlayerConn;
 }
 
+#ifdef _WIN32
+// Initialize Winsock on Windows
+static bool initializeWinsock() {
+    WSADATA wsaData;
+    int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (result != 0) {
+        std::cerr << "[ERROR] WSAStartup failed: " << result << std::endl;
+        return false;
+    }
+    return true;
+}
+
+// Cleanup Winsock on Windows
+static void cleanupWinsock() {
+    WSACleanup();
+}
+#endif
+
 int rtype::server::network::setupUDPServer(int port) {
+#ifdef _WIN32
+    // Initialize Winsock on Windows
+    static bool winsockInitialized = false;
+    if (!winsockInitialized) {
+        if (!initializeWinsock()) {
+            return -1;
+        }
+        winsockInitialized = true;
+    }
+#endif
+
     int sockfd;
     struct sockaddr_in servaddr;
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
         std::cerr << "[ERROR] Failed to create socket: ";
+#ifdef _WIN32
+        std::cerr << WSAGetLastError() << std::endl;
+#else
         perror("socket");
+#endif
         return -1;
     }
     servaddr.sin_family = AF_INET;
@@ -42,7 +88,11 @@ int rtype::server::network::setupUDPServer(int port) {
     servaddr.sin_port = htons(port);
     if (bind(sockfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0) {
         std::cerr << "[ERROR] Failed to bind socket: ";
+#ifdef _WIN32
+        std::cerr << WSAGetLastError() << std::endl;
+#else
         perror("bind");
+#endif
         close(sockfd);
         return -1;
     }
@@ -91,12 +141,16 @@ void rtype::server::network::loop_send(int udp_server_fd) {
         clientaddr.sin_port = htons(packet->header.client_port);
 
         // Send the serialized packet to the client
-        int bytes_sent = sendto(udp_server_fd, serialized.data(), serialized.size(), 0,
+        int bytes_sent = sendto(udp_server_fd, reinterpret_cast<const char*>(serialized.data()), serialized.size(), 0,
                                 (struct sockaddr *) &clientaddr, sizeof(clientaddr));
 
         if (bytes_sent < 0) {
             std::cerr << "[ERROR] Failed to send UDP packet to client" << std::endl;
+#ifdef _WIN32
+            std::cerr << "Error code: " << WSAGetLastError() << std::endl;
+#else
             perror("sendto");
+#endif
         } else {
             std::cout << "[INFO] Sent UDP packet of size " << serialized.size()
                     << " to " << (int) packet->header.client_addr[0] << "."
@@ -113,7 +167,11 @@ void rtype::server::network::loop_recv(int udp_server_fd) {
     struct sockaddr_in cliaddr{};
     socklen_t len = sizeof(cliaddr);
     packet_t packet;
+#ifdef _WIN32
+    int n = recvfrom(udp_server_fd, (char*)buffer, sizeof(buffer), MSG_DONTWAIT, (struct sockaddr *) &cliaddr, &len);
+#else
     int n = recvfrom(udp_server_fd, buffer, sizeof(buffer), MSG_DONTWAIT, (struct sockaddr *) &cliaddr, &len);
+#endif
 
     if (n > 0) {
         std::cout << "[INFO] Received UDP packet of size " << n << std::endl;

@@ -22,6 +22,7 @@
 #include "gui/MainMenuState.h"
 #include <iostream>
 #include <cstdlib>
+#include <string>
 
 namespace rtype::client::gui {
     PrivateServerLobbyState::PrivateServerLobbyState(StateManager& stateManager, const std::string& username, 

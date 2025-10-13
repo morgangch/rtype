@@ -25,6 +25,7 @@
 #include "gui/MainMenuState.h"
 #include <iostream>
 #include <cstdlib>
+#include <string>
 
 #include "network/network.h"
 
