@@ -66,8 +66,17 @@ jobs:
           sudo make install
           
           # Verify installation
-          ls -la /usr/local/lib/libsfml*
-          ls -la /usr/local/include/SFML/
+          echo "Installed SFML libraries:"
+          ls -la /usr/local/lib/libsfml* || echo "No libsfml libraries found"
+          
+          echo "Installed SFML headers:"
+          ls -la /usr/local/include/SFML/ || echo "No SFML headers found"
+          
+          echo "SFML CMake config:"
+          ls -la /usr/local/lib/cmake/SFML/ || echo "No SFML CMake config found"
+          
+          # Update library cache
+          sudo ldconfig 2>/dev/null || true
 
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
@@ -89,7 +98,16 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release
+          
+          # Set SFML_DIR for macOS to help CMake find SFML
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            export CMAKE_PREFIX_PATH="/usr/local"
+            export SFML_DIR="/usr/local/lib/cmake/SFML"
+            echo "SFML_DIR=$SFML_DIR"
+            echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH"
+          fi
+          
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=ON
 
       - name: Configure CMake (Windows)
         if: matrix.os == 'windows-latest'
