@@ -1,5 +1,7 @@
 @startuml
-title R-Type Architecture - UML Class Diagram
+title R-Type Architecture - Complete UML Class Diagram
+skinparam packageStyle rectangle
+skinparam linetype ortho
 
 package "Network Layer" {
     class PacketManager {
@@ -9,6 +11,11 @@ package "Network Layer" {
         + sendPacketBytesSafe(data: void*, size: size_t, type: uint8_t)
         + fetchReceivedPackets()
         + fetchPacketsToSend()
+    }
+
+    class PacketHandler {
+        + registerHandler(type: uint8_t, handler: function)
+        + processPacket(packet: packet_t)
     }
 
     class packet_t {
@@ -25,18 +32,22 @@ package "Network Layer" {
     }
 
     PacketManager --> packet_t : manages
+    PacketHandler --> packet_t : processes
     packet_t *-- packet_header_t : contains
 }
 
-package "ECS System" {
+package "ECS Core" {
     class World {
         - EntityManager m_entityManager
         - ComponentManager m_componentManager
         + CreateEntity(): EntityID
         + DestroyEntity(entity: EntityID)
-        + AddComponent<T>(entity: EntityID, args...)
+        + AddComponent<T>(entity: EntityID, args...): T*
         + GetComponent<T>(entity: EntityID): T*
         + HasComponent<T>(entity: EntityID): bool
+        + GetAllComponents<T>(): ComponentArray<T>*
+        + GetAllEntities(): vector<EntityID>
+        + Clear()
     }
 
     class EntityManager {
@@ -45,18 +56,22 @@ package "ECS System" {
         + CreateEntity(): EntityID
         + DestroyEntity(entity: EntityID)
         + IsEntityAlive(entity: EntityID): bool
+        + GetAllEntities(): vector<EntityID>
+        + Clear()
     }
 
     class ComponentManager {
-        - std::unordered_map<ComponentTypeID, std::unique_ptr<IComponentArray>> m_componentArrays
+        - std::unordered_map<ComponentTypeID, unique_ptr<IComponentArray>> m_componentArrays
         + AddComponent<T>(entity: EntityID, args...): T*
         + GetComponent<T>(entity: EntityID): T*
         + RemoveComponent<T>(entity: EntityID)
         + HasComponent<T>(entity: EntityID): bool
+        + GetAllComponents<T>(): ComponentArray<T>*
+        + Clear()
     }
 
     abstract class Component {
-        + {abstract} GetTypeID(): ComponentTypeID
+        + {static} GetStaticTypeID(): ComponentTypeID
     }
 
     World *-- EntityManager : contains
@@ -64,7 +79,7 @@ package "ECS System" {
     ComponentManager --> Component : manages
 }
 
-package "Game Components" {
+package "Common Components" {
     class Position {
         + float x, y
         + Position(x: float, y: float)
@@ -76,28 +91,144 @@ package "Game Components" {
     }
 
     class Health {
-        + int hp
+        + int current
+        + int max
         + Health(hp: int)
+        + takeDamage(amount: int)
+        + heal(amount: int)
     }
 
-    Position --|> Component : extends
-    Velocity --|> Component : extends
-    Health --|> Component : extends
+    class Player {
+        + string name
+        + unsigned int serverId
+        + Player(name: string, serverId: uint)
+    }
+
+    class Projectile {
+        + float damage
+        + EntityID owner
+    }
+
+    class FireRate {
+        + float rate
+        + float cooldown
+        + canFire(): bool
+    }
+
+    class Collision {
+        + float width, height
+        + bool isSolid
+    }
+
+    class Team {
+        + uint8_t team
+    }
+
+    class Score {
+        + int value
+    }
+
+    Position --|> Component
+    Velocity --|> Component
+    Health --|> Component
+    Player --|> Component
+    Projectile --|> Component
+    FireRate --|> Component
+    Collision --|> Component
+    Team --|> Component
+    Score --|> Component
 }
 
-package "Application Layer" {
-    class ServerMain {
-        + main(): int
+package "Client GUI System" {
+    abstract class State {
+        + {abstract} update(deltaTime: float)
+        + {abstract} render(window: RenderWindow)
+        + {abstract} handleInput(event: Event)
     }
 
-    class ClientMain {
-        + main(): int
+    class StateManager {
+        - stack<unique_ptr<State>> states
+        + pushState(state: State)
+        + popState()
+        + update(deltaTime: float)
+        + render(window: RenderWindow)
     }
 
-    ServerMain --> World : uses
-    ServerMain --> PacketManager : uses
-    ClientMain --> World : uses
-    ClientMain --> PacketManager : uses
+    class MainMenuState {
+        + update(deltaTime: float)
+        + render(window: RenderWindow)
+        + handleInput(event: Event)
+    }
+
+    class GameState {
+        - World world
+        - Network network
+        + update(deltaTime: float)
+        + render(window: RenderWindow)
+        + handleInput(event: Event)
+    }
+
+    class TextureCache {
+        - map<string, Texture> textures
+        + load(path: string): Texture
+        + get(path: string): Texture
+    }
+
+    class MusicManager {
+        - Music currentMusic
+        + play(path: string)
+        + stop()
+        + setVolume(volume: float)
+    }
+
+    State <|-- MainMenuState
+    State <|-- GameState
+    StateManager o-- State : manages
+    GameState --> World : uses
+    GameState --> TextureCache : uses
+    GameState --> MusicManager : uses
+}
+
+package "Server Systems" {
+    class RoomService {
+        - vector<Room> rooms
+        + createRoom(): RoomID
+        + joinRoom(roomId: RoomID, playerId: PlayerID)
+        + leaveRoom(roomId: RoomID, playerId: PlayerID)
+    }
+
+    class PlayerService {
+        - map<PlayerID, PlayerData> players
+        + addPlayer(id: PlayerID, data: PlayerData)
+        + removePlayer(id: PlayerID)
+        + getPlayer(id: PlayerID): PlayerData
+    }
+
+    class GameRules {
+        + checkCollisions(world: World)
+        + spawnEnemies(world: World, deltaTime: float)
+        + updateScore(world: World)
+    }
+
+    RoomService --> World : manages
+    PlayerService --> World : uses
+    GameRules --> World : operates on
+}
+
+package "Utilities" {
+    class MapParser {
+        + parseMap(path: string): MapData
+        + loadEntities(world: World, map: MapData)
+    }
+
+    class EntityFactory {
+        + {static} createPlayer(world: World, x: float, y: float): EntityID
+        + {static} createEnemy(world: World, x: float, y: float): EntityID
+        + {static} createProjectile(world: World, x: float, y: float): EntityID
+    }
+
+    MapParser --> World : populates
+    EntityFactory --> World : creates entities in
 }
 
 @enduml
