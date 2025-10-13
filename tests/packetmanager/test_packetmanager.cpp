@@ -11,6 +11,7 @@
 #include <vector>
 #include <cstring>
 #include <cstdlib>
+#include <string>
 
 // Platform-specific network headers
 #ifdef _WIN32

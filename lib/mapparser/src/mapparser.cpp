@@ -12,6 +12,7 @@
 #include <random>
 #include <filesystem>
 #include <cctype>
+#include <string>
 
 namespace fs = std::filesystem;
 

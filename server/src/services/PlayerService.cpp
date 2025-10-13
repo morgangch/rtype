@@ -7,6 +7,7 @@
 
 #include "services/PlayerService.h"
 #include "rtype.h"
+#include <string>
 //TODO: optimize the following import.
 #include "../../../common/components/Player.h"
 #include "components/PlayerConn.h"

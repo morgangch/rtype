@@ -12,6 +12,7 @@
 #include <set>
 #include <algorithm>
 #include <limits>
+#include <string>
 
 /**
  * @brief Print a separator line for visual clarity.

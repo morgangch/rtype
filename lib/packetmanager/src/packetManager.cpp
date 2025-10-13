@@ -7,6 +7,7 @@
 
 #include "packetmanager.h"
 #include <cstring>
+#include <string>
 #include <memory>
 #include <stdexcept>
 #include <algorithm>
