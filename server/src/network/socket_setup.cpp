@@ -140,12 +140,21 @@ void rtype::server::network::loop_send(int udp_server_fd) {
         clientaddr.sin_port = htons(packet->header.client_port);
 
         // Send the serialized packet to the client
+#ifdef _WIN32
+        int bytes_sent = sendto(udp_server_fd, (const char*)serialized.data(), serialized.size(), 0,
+                                (struct sockaddr *) &clientaddr, sizeof(clientaddr));
+#else
         int bytes_sent = sendto(udp_server_fd, serialized.data(), serialized.size(), 0,
                                 (struct sockaddr *) &clientaddr, sizeof(clientaddr));
+#endif
 
         if (bytes_sent < 0) {
             std::cerr << "[ERROR] Failed to send UDP packet to client" << std::endl;
+#ifdef _WIN32
+            std::cerr << "Error code: " << WSAGetLastError() << std::endl;
+#else
             perror("sendto");
+#endif
         } else {
             std::cout << "[INFO] Sent UDP packet of size " << serialized.size()
                     << " to " << (int) packet->header.client_addr[0] << "."
@@ -162,7 +171,11 @@ void rtype::server::network::loop_recv(int udp_server_fd) {
     struct sockaddr_in cliaddr{};
     socklen_t len = sizeof(cliaddr);
     packet_t packet;
+#ifdef _WIN32
+    int n = recvfrom(udp_server_fd, (char*)buffer, sizeof(buffer), MSG_DONTWAIT, (struct sockaddr *) &cliaddr, &len);
+#else
     int n = recvfrom(udp_server_fd, buffer, sizeof(buffer), MSG_DONTWAIT, (struct sockaddr *) &cliaddr, &len);
+#endif
 
     if (n > 0) {
         std::cout << "[INFO] Received UDP packet of size " << n << std::endl;

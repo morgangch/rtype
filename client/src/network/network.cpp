@@ -41,7 +41,11 @@ void network::loop_recv() {
     packet_t packet;
 
     // Use recv() instead of recvfrom() since we used connect() on the UDP socket
+#ifdef _WIN32
+    int n = recv(rtype::client::network::udp_fd, (char*)buffer, sizeof(buffer), MSG_DONTWAIT);
+#else
     int n = recv(rtype::client::network::udp_fd, buffer, sizeof(buffer), MSG_DONTWAIT);
+#endif
 
     if (n > 0) {
         std::cout << "[INFO] Received UDP packet of size " << n << std::endl;
