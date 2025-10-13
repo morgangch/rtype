@@ -59,7 +59,8 @@ jobs:
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=/usr/local \
-            -DBUILD_SHARED_LIBS=TRUE
+            -DBUILD_SHARED_LIBS=TRUE \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
           
           make -j$(sysctl -n hw.ncpu)
           sudo make install
