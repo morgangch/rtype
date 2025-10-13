@@ -59,8 +59,16 @@ jobs:
           export SFML_DIR=$(brew --prefix sfml@2)
           cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$SFML_DIR"
 
-      - name: Install dependencies (Windows)
+      - name: Cache SFML build (Windows)
         if: matrix.os == 'windows-latest'
+        id: cache-sfml
+        uses: actions/cache@v4
+        with:
+          path: C:/SFML
+          key: sfml-2.6.2-windows-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest' && steps.cache-sfml.outputs.cache-hit != 'true'
         run: |
           # Build SFML 2.6.2 from source since vcpkg only has 3.x
           Invoke-WebRequest -Uri "https://github.com/SFML/SFML/archive/refs/tags/2.6.2.zip" -OutFile "sfml-2.6.2.zip"
@@ -95,8 +103,9 @@ jobs:
       - name: Copy executables (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          copy build\bin\Release\server${{ matrix.executable_extension }} release\rtype-${{ matrix.platform }}\
-          copy build\bin\Release\client${{ matrix.executable_extension }} release\rtype-${{ matrix.platform }}\
+          copy build\bin\server${{ matrix.executable_extension }} release\rtype-${{ matrix.platform }}\
+          copy build\bin\client${{ matrix.executable_extension }} release\rtype-${{ matrix.platform }}\
+          copy C:\SFML\bin\*.dll release\rtype-${{ matrix.platform }}\
 
       - name: Copy assets directory (Linux/macOS)
         if: matrix.os != 'windows-latest'
