@@ -39,9 +39,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake build-essential libsfml-dev
-          
-          # Verify SFML version
-          dpkg -l | grep libsfml
 
       - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
@@ -49,7 +46,7 @@ jobs:
           # Install build dependencies
           brew install cmake
           
-          # Build SFML 2.5.1 from source
+          # Build SFML 2.5.1 from source for arm64 (Apple Silicon)
           cd /tmp
           wget https://www.sfml-dev.org/files/SFML-2.5.1-sources.zip
           unzip SFML-2.5.1-sources.zip
@@ -60,23 +57,25 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=/usr/local \
             -DBUILD_SHARED_LIBS=TRUE \
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DCMAKE_OSX_ARCHITECTURES=arm64
           
           make -j$(sysctl -n hw.ncpu)
           sudo make install
           
-          # Verify installation
+          # Verify installation and architecture
           echo "Installed SFML libraries:"
           ls -la /usr/local/lib/libsfml* || echo "No libsfml libraries found"
+          
+          echo "Checking architecture of SFML libraries:"
+          file /usr/local/lib/libsfml-graphics.2.5.1.dylib || echo "File not found"
+          lipo -info /usr/local/lib/libsfml-graphics.2.5.1.dylib || echo "Architecture check failed"
           
           echo "Installed SFML headers:"
           ls -la /usr/local/include/SFML/ || echo "No SFML headers found"
           
           echo "SFML CMake config:"
           ls -la /usr/local/lib/cmake/SFML/ || echo "No SFML CMake config found"
-          
-          # Update library cache
-          sudo ldconfig 2>/dev/null || true
 
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
@@ -105,9 +104,17 @@ jobs:
             export SFML_DIR="/usr/local/lib/cmake/SFML"
             echo "SFML_DIR=$SFML_DIR"
             echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH"
+            
+            # Verify SFML CMake files exist
+            ls -la /usr/local/lib/cmake/SFML/ || echo "SFML CMake files not found"
           fi
           
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=ON
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=ON 2>&1 | tee cmake_output.log
+          
+          # Check if SFML was found
+          echo "=== CMake Configuration Output ==="
+          cat cmake_output.log
+          echo "==================================="
 
       - name: Configure CMake (Windows)
         if: matrix.os == 'windows-latest'
