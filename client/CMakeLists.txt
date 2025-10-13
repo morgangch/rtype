@@ -17,7 +17,7 @@ find_package(SFML 2.5 COMPONENTS system window graphics audio network REQUIRED)
 if(NOT SFML_FOUND)
     message(FATAL_ERROR "SFML 2.5 or later is required but not found. Please install SFML:\n"
                         "  Ubuntu/Debian: sudo apt-get install libsfml-dev\n"
-                        "  macOS: brew install sfml\n"
+                        "  macOS: brew install sfml@2\n"
                         "  Windows: vcpkg install sfml")
 endif()
 
