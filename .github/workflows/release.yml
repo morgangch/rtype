@@ -37,22 +37,34 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential
+          sudo apt-get install -y cmake build-essential libsfml-dev
 
       - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          brew install cmake
+          brew install cmake sfml
 
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
-        uses: lukka/get-cmake@latest
+        run: |
+          choco install cmake -y
+          vcpkg install sfml:x64-windows
+        shell: powershell
 
-      - name: Configure CMake
+      - name: Configure CMake (Linux/macOS)
+        if: matrix.os != 'windows-latest'
         run: |
           mkdir build
           cd build
           cmake .. -DCMAKE_BUILD_TYPE=Release
+
+      - name: Configure CMake (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+        shell: powershell
 
       - name: Build project
         run: |

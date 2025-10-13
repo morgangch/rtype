@@ -13,6 +13,14 @@ target_include_directories(client PRIVATE
 
 find_package(SFML 2.5 COMPONENTS system window graphics audio network REQUIRED)
 
+# If SFML not found, provide helpful error message
+if(NOT SFML_FOUND)
+    message(FATAL_ERROR "SFML 2.5 or later is required but not found. Please install SFML:\n"
+                        "  Ubuntu/Debian: sudo apt-get install libsfml-dev\n"
+                        "  macOS: brew install sfml\n"
+                        "  Windows: vcpkg install sfml")
+endif()
+
 # Link with ECS and common libraries
 target_link_libraries(client PRIVATE ecs common packethandler packetmanager)
 
