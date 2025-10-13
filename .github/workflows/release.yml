@@ -38,96 +38,35 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential libsfml-dev
+          sudo apt-get install -y cmake build-essential ninja-build libsfml-dev
 
       - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           # Install build dependencies
-          brew install cmake
-          
-          # Build SFML 2.5.1 from source for arm64 (Apple Silicon)
-          cd /tmp
-          wget https://www.sfml-dev.org/files/SFML-2.5.1-sources.zip
-          unzip SFML-2.5.1-sources.zip
-          cd SFML-2.5.1
-          
-          mkdir build && cd build
-          cmake .. \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/usr/local \
-            -DBUILD_SHARED_LIBS=TRUE \
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-            -DCMAKE_OSX_ARCHITECTURES=arm64
-          
-          make -j$(sysctl -n hw.ncpu)
-          sudo make install
-          
-          # Verify installation and architecture
-          echo "Installed SFML libraries:"
-          ls -la /usr/local/lib/libsfml* || echo "No libsfml libraries found"
-          
-          echo "Checking architecture of SFML libraries:"
-          file /usr/local/lib/libsfml-graphics.2.5.1.dylib || echo "File not found"
-          lipo -info /usr/local/lib/libsfml-graphics.2.5.1.dylib || echo "Architecture check failed"
-          
-          echo "Installed SFML headers:"
-          ls -la /usr/local/include/SFML/ || echo "No SFML headers found"
-          
-          echo "SFML CMake config:"
-          ls -la /usr/local/lib/cmake/SFML/ || echo "No SFML CMake config found"
+          brew install cmake sfml@2
 
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          choco install cmake -y
-          
-          # Use vcpkg to install SFML 2.5.1
-          git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
-          cd C:\vcpkg
-          .\bootstrap-vcpkg.bat
-          .\vcpkg integrate install
-          
-          # Install SFML (vcpkg usually provides 2.5.x on Windows)
-          .\vcpkg install sfml:x64-windows
+          # Install SFML via vcpkg
+          vcpkg install sfml:x64-windows
         shell: powershell
 
       - name: Configure CMake (Linux/macOS)
         if: matrix.os != 'windows-latest'
         run: |
-          mkdir build
-          cd build
-          
-          # Set SFML_DIR for macOS to help CMake find SFML
-          if [ "$RUNNER_OS" == "macOS" ]; then
-            export CMAKE_PREFIX_PATH="/usr/local"
-            export SFML_DIR="/usr/local/lib/cmake/SFML"
-            echo "SFML_DIR=$SFML_DIR"
-            echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH"
-            
-            # Verify SFML CMake files exist
-            ls -la /usr/local/lib/cmake/SFML/ || echo "SFML CMake files not found"
-          fi
-          
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=ON 2>&1 | tee cmake_output.log
-          
-          # Check if SFML was found
-          echo "=== CMake Configuration Output ==="
-          cat cmake_output.log
-          echo "==================================="
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Configure CMake (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          mkdir build
-          cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
         shell: powershell
 
       - name: Build project
         run: |
-          cd build
-          cmake --build . --config Release
+          cmake --build build --config Release
 
       - name: Create release directory
         run: |

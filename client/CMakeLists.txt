@@ -11,11 +11,11 @@ target_include_directories(client PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}     # Current directory
 )
 
-find_package(SFML 2.5 COMPONENTS system window graphics audio network REQUIRED)
+find_package(SFML 2.6 COMPONENTS system window graphics audio network REQUIRED)
 
 # If SFML not found, provide helpful error message
 if(NOT SFML_FOUND)
-    message(FATAL_ERROR "SFML 2.5 or later is required but not found. Please install SFML:\n"
+    message(FATAL_ERROR "SFML 2.6 or later is required but not found. Please install SFML:\n"
                         "  Ubuntu/Debian: sudo apt-get install libsfml-dev\n"
                         "  macOS: brew install sfml@2\n"
                         "  Windows: vcpkg install sfml")
