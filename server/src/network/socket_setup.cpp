@@ -14,8 +14,9 @@
     #include <winsock2.h>
     #include <ws2tcpip.h>
     #pragma comment(lib, "ws2_32.lib")
-    // Windows doesn't have unistd.h
+    // Windows doesn't have unistd.h or MSG_DONTWAIT
     #define close closesocket
+    #define MSG_DONTWAIT 0
     typedef int socklen_t;
 #else
     #include <sys/socket.h>
