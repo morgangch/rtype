@@ -39,17 +39,48 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake build-essential libsfml-dev
+          
+          # Verify SFML version
+          dpkg -l | grep libsfml
 
       - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          brew install cmake sfml@2
+          # Install build dependencies
+          brew install cmake
+          
+          # Build SFML 2.5.1 from source
+          cd /tmp
+          wget https://www.sfml-dev.org/files/SFML-2.5.1-sources.zip
+          unzip SFML-2.5.1-sources.zip
+          cd SFML-2.5.1
+          
+          mkdir build && cd build
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DBUILD_SHARED_LIBS=TRUE
+          
+          make -j$(sysctl -n hw.ncpu)
+          sudo make install
+          
+          # Verify installation
+          ls -la /usr/local/lib/libsfml*
+          ls -la /usr/local/include/SFML/
 
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           choco install cmake -y
-          vcpkg install sfml:x64-windows
+          
+          # Use vcpkg to install SFML 2.5.1
+          git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+          cd C:\vcpkg
+          .\bootstrap-vcpkg.bat
+          .\vcpkg integrate install
+          
+          # Install SFML (vcpkg usually provides 2.5.x on Windows)
+          .\vcpkg install sfml:x64-windows
         shell: powershell
 
       - name: Configure CMake (Linux/macOS)
