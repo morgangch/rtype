@@ -1,0 +1,8 @@
+inf,6
+An infinite map demo for R-Type.
+. ./assets/desert/sand.png
+= ./assets/desert/road.png
+| ./assets/desert/road-border.png
+~ ./assets/desert/dune.png
+* ./assets/desert/rock.png
+p ./assets/desert/palm.png

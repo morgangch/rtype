@@ -38,7 +38,6 @@ jobs:
             -o -name "*#" \
             -o -name "#*" \
             -o -name "*.gcov" \
-            -o -name "core" \
             -o -name "vgcore.*" \
             -o -name "*.orig" \
             -o -name "*.rej" \

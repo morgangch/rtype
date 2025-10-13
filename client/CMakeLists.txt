@@ -1,10 +1,25 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Client executable
-add_executable(client main.cpp)
+# Client executable - Auto-discover all .cpp files in current directory and subdirectories
+file(GLOB_RECURSE CLIENT_SOURCES "*.cpp")
 
-# Link with ECS library
-target_link_libraries(client PRIVATE ecs)
+add_executable(client ${CLIENT_SOURCES})
+
+# Include directories for client headers
+target_include_directories(client PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/..  # Parent directory to find client/components/
+    ${CMAKE_CURRENT_SOURCE_DIR}     # Current directory
+)
+
+find_package(SFML 2.5 COMPONENTS system window graphics audio network REQUIRED)
+
+# Link with ECS and common libraries
+target_link_libraries(client PRIVATE ecs common packethandler packetmanager)
+
+target_include_directories(client PRIVATE include)
+
+target_link_libraries(client PRIVATE sfml-graphics sfml-window sfml-system sfml-audio)
+
 
 # Set output directory - handle both single and multi-config generators
 if(CMAKE_CONFIGURATION_TYPES)

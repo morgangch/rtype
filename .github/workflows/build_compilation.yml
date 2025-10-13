@@ -25,17 +25,17 @@ jobs:
   compilation_tests:
     name: "CMake Build & Compilation"
     runs-on: ubuntu-latest
-    container:
+    container: 
       image: epitechcontent/epitest-docker:latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
       - name: Install build dependencies
         run: |
-          apt-get update
-          apt-get install -y cmake ninja-build build-essential
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build build-essential
       
       - name: Configure CMake project
         run: |
@@ -70,7 +70,7 @@ jobs:
       
       - name: Install cppcheck for static analysis
         run: |
-          apt-get install -y cppcheck
+          sudo apt-get install -y cppcheck
       
       - name: Cppcheck Analysis - Server Code
         run: |

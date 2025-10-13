@@ -1,82 +1,88 @@
+/**
+ * @file main.cpp
+ * @brief Entry point for the R-TYPE client application
+ * 
+ * This file contains the main function that initializes the R-TYPE client
+ * application. It sets up the SFML window, initializes the state management
+ * system with integrated network functionality, and runs the main game loop.
+ * 
+ * The application starts with the MainMenuState and handles state transitions
+ * through the StateManager. Network operations are managed through the
+ * NetworkManager which runs in a background thread for non-blocking I/O.
+ * 
+ * The main loop follows the standard game loop pattern:
+ * 1. Handle events (input, window events)
+ * 2. Update game state, animations, and network operations
+ * 3. Render the current state to the screen
+ * 4. Display the frame
+ * 
+ * Network functionality has been restored and integrated into the GUI system:
+ * - Background network thread handles UDP communication
+ * - States can connect/disconnect using NetworkManager
+ * - Original network code functionality is preserved
+ * 
+ * @author R-TYPE Development Team
+ * @date 2025
+ */
+
+#include <SFML/Graphics.hpp>
+#include "gui/StateManager.h"
+#include "gui/MainMenuState.h"
 #include <iostream>
-#include <ECS/ECS.hpp>
+#include <cstdlib>
+#include <ctime>
 
-// Example components for demonstration (same as server for compatibility)
-class Position : public ECS::Component<Position> {
-public:
-    float x, y;
-    Position(float x = 0.0f, float y = 0.0f) : x(x), y(y) {}
-};
-
-class Velocity : public ECS::Component<Velocity> {
-public:
-    float vx, vy;
-    Velocity(float vx = 0.0f, float vy = 0.0f) : vx(vx), vy(vy) {}
-};
-
-class Renderable : public ECS::Component<Renderable> {
-public:
-    std::string sprite;
-    Renderable(const std::string& sprite = "default") : sprite(sprite) {}
-};
+#include "network/network.h"
 
 int main() {
-    std::cout << "Hello World from Client!" << std::endl;
-    std::cout << "Client is connecting..." << std::endl;
+    // Initialize random seed for username generation
+    srand(static_cast<unsigned int>(time(nullptr)));
 
-    // Demonstrate ECS library usage
-    std::cout << "\n=== ECS Library Demo (Client) ===" << std::endl;
+    // Create window with fixed size (non-resizable)
+    sf::RenderWindow window(sf::VideoMode(1280, 720), "R-TYPE - Main Menu",
+                            sf::Style::Titlebar | sf::Style::Close);
+    window.setFramerateLimit(60);
 
-    ECS::World world;
+    // Create state manager
+    rtype::client::gui::StateManager stateManager(window);
+    // Expose the StateManager to other subsystems (network controllers)
+    rtype::client::gui::setGlobalStateManager(&stateManager);
 
-    // Create client-side entities (UI elements, local objects)
-    auto localPlayer = world.CreateEntity();
-    auto uiElement = world.CreateEntity();
-    auto projectile = world.CreateEntity();
+    // Push initial state (main menu)
+    stateManager.pushState(std::make_unique<rtype::client::gui::MainMenuState>(stateManager));
 
-    std::cout << "Created client entities: LocalPlayer(" << localPlayer << "), UI(" << uiElement << "), Projectile(" << projectile << ")" << std::endl;
+    sf::Clock clock;
 
-    // Add components for client-specific functionality
-    world.AddComponent<Position>(localPlayer, 0.0f, 0.0f);
-    world.AddComponent<Velocity>(localPlayer, 0.0f, 0.0f);
-    world.AddComponent<Renderable>(localPlayer, "player_sprite.png");
+    // Initialize network
+    rtype::client::network::register_controllers();
 
-    world.AddComponent<Position>(uiElement, 10.0f, 10.0f);
-    world.AddComponent<Renderable>(uiElement, "ui_button.png");
+    // Main loop
+    while (window.isOpen() && !stateManager.isEmpty()) {
+        float deltaTime = clock.restart().asSeconds();
 
-    world.AddComponent<Position>(projectile, 15.0f, 25.0f);
-    world.AddComponent<Velocity>(projectile, 5.0f, 0.0f);
-    world.AddComponent<Renderable>(projectile, "bullet.png");
-
-    std::cout << "Added components to client entities" << std::endl;
-
-    // Simulate client-side updates
-    if (auto pos = world.GetComponent<Position>(localPlayer)) {
-        std::cout << "Local player position: (" << pos->x << ", " << pos->y << ")" << std::endl;
-    }
-
-    if (auto renderable = world.GetComponent<Renderable>(localPlayer)) {
-        std::cout << "Local player sprite: " << renderable->sprite << std::endl;
-    }
-
-    // Iterate through all renderable objects (typical client-side rendering loop)
-    auto* renderables = world.GetAllComponents<Renderable>();
-    if (renderables) {
-        std::cout << "Rendering objects:" << std::endl;
-        for (const auto& pair : *renderables) {
-            ECS::EntityID entity = pair.first;
-            auto* renderable = pair.second.get();
-            auto* pos = world.GetComponent<Position>(entity);
-
-            std::cout << "  Entity " << entity << ": " << renderable->sprite;
-            if (pos) {
-                std::cout << " at (" << pos->x << ", " << pos->y << ")";
+        sf::Event event;
+        while (window.pollEvent(event)) {
+            if (event.type == sf::Event::Closed) {
+                window.close();
             }
-            std::cout << std::endl;
+
+            stateManager.handleEvent(event);
+        }
+
+        stateManager.update(deltaTime);
+
+        // Clear and render
+        window.clear(sf::Color::Black);
+        stateManager.render();
+        window.display();
+
+        if (rtype::client::network::udp_fd != -1) {
+            rtype::client::network::loop_recv();
+            rtype::client::network::loop_send();
+            // Process received packets through the PacketHandler
+            rtype::client::network::ph.processPackets(rtype::client::network::pm.fetchReceivedPackets());
         }
     }
-
-    std::cout << "Total alive entities: " << world.GetAliveEntityCount() << std::endl;
 
     return 0;
 }

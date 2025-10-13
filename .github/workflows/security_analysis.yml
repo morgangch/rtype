@@ -17,7 +17,7 @@ jobs:
   codeql_analysis:
     name: "CodeQL Security Analysis"
     runs-on: ubuntu-latest
-    container:
+    container: 
       image: epitechcontent/epitest-docker:latest
     
     strategy:
@@ -44,8 +44,8 @@ jobs:
       - name: Install build dependencies
         if: matrix.build-mode == 'manual'
         run: |
-          apt-get update
-          apt-get install -y cmake build-essential ninja-build
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential ninja-build
       
       - name: Manual build for CodeQL
         if: matrix.build-mode == 'manual'
@@ -62,8 +62,6 @@ jobs:
   security_audit:
     name: "Security Audit & Vulnerability Scan"
     runs-on: ubuntu-latest
-    container:
-      image: epitechcontent/epitest-docker:latest
     
     steps:
       - name: Checkout code
@@ -71,8 +69,8 @@ jobs:
       
       - name: Install security scanning tools
         run: |
-          apt-get update
-          apt-get install -y cmake build-essential cppcheck clang-tools
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential cppcheck clang-tools
       
       - name: Security-focused cppcheck scan
         run: |
