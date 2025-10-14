@@ -1,18 +1,14 @@
 #include "network.h"
 #include "packets.h"
 #include "rtype.h"
-#include "systems.h"
 #include "controllers/RoomController.h"
+#include "systems/PacketHandlingSystem.h"
 
-void rtype::server::Rtype::loop() {
+void rtype::server::Rtype::loop(float deltaTime) {
     network::loop_recv(udp_server_fd);
     network::loop_send(udp_server_fd);
     packetHandler.processPackets(packetManager.fetchReceivedPackets());
-
-    auto entities = world.GetAllEntities();
-    for (const auto &e: entities) {
-        systems::apply_systems(e);
-    }
+    world.UpdateSystems(deltaTime);
 }
 
 
@@ -21,9 +17,15 @@ int main() {
     r.udp_server_fd = rtype::server::network::setupUDPServer(4242);
 
     root.packetHandler.registerCallback(Packets::JOIN_ROOM, rtype::server::controllers::room_controller::handleJoinRoomPacket);
+    root.world.RegisterSystem<PacketHandlingSystem>();
+
+    auto lastTime = std::chrono::high_resolution_clock::now();
 
     while (true) {
-        r.loop();
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
+        lastTime = currentTime;
+        r.loop(deltaTime);
     }
     return 0;
 }
