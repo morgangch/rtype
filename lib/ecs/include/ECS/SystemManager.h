@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <string>
 #include <algorithm>
+#include <stdexcept>
 
 namespace ECS {
     // Forward declaration
