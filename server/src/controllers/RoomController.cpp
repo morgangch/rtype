@@ -9,10 +9,23 @@
 #include "packets.h"
 #include "rtype.h"
 #include "tools.h"
+#include "components/PlayerConn.h"
 #include "components/RoomProperties.h"
 #include "ECS/Types.h"
 #include "services/PlayerService.h"
 #include "services/RoomService.h"
+#include <cstring>
+
+// Platform-specific network headers
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+#else
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+#endif
+
+#include "../../common/utils/bytes_printer.h"
 
 using namespace rtype::server::controllers;
 using namespace rtype::server::services;
@@ -41,7 +54,9 @@ void room_controller::handleJoinRoomPacket(const packet_t &packet) {
     // convert ip to string
     std::string ip_str = rtype::tools::ipToString(const_cast<uint8_t*>(packet.header.client_addr));
 
-    ECS::EntityID player = player_service::createNewPlayer(std::string(p->name), p->joinCode, ip_str,
+    ECS::EntityID player = player_service::findPlayerByNetwork(packet.header.client_addr, packet.header.client_port);
+    if (!player)
+        player = player_service::createNewPlayer(std::string(p->name), p->joinCode, ip_str,
                                                            packet.header.client_port);
 
     if (p->joinCode == 0) {
@@ -69,5 +84,10 @@ void room_controller::handleJoinRoomPacket(const packet_t &packet) {
     auto *rp = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
     a.admin = (rp->ownerId == player);
     a.roomCode = rp->joinCode;
-    root.packetManager.sendPacketBytesSafe(&a, sizeof(a), JOIN_ROOM_ACCEPTED, nullptr, true);
+    auto playernet = root.world.GetComponent<components::PlayerConn>(player);
+    if (!playernet)
+        return;
+    playernet->packet_manager.sendPacketBytesSafe(&a, sizeof(a), JOIN_ROOM_ACCEPTED, nullptr, true);
 }
+
+

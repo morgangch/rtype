@@ -20,6 +20,7 @@
 
 #include "gui/GameState.h"
 #include <cmath>
+#include <iostream>
 #include <vector>
 #include <functional>
 
@@ -97,6 +98,11 @@ void GameState::updateInputSystem(float deltaTime) {
         vel->vx = moveX * vel->maxSpeed;
         vel->vy = moveY * vel->maxSpeed;
         
+        // Update player animation based on movement (extracted for better maintainability)
+        auto* animation = m_world.GetComponent<rtype::client::components::Animation>(entity);
+        auto* sprite = m_world.GetComponent<rtype::client::components::Sprite>(entity);
+        updatePlayerAnimation(entity, animation, sprite, m_keyUp);
+        
         // Clamp position to screen bounds (with sprite size consideration)
         const float halfSize = 16.0f; // Half of player size (32/2)
         if (pos->x < halfSize) pos->x = halfSize;
@@ -106,6 +112,65 @@ void GameState::updateInputSystem(float deltaTime) {
         
         // NOTE: Firing is now handled in handleKeyReleased() for charged shot mechanic
         // The old automatic firing system is disabled to allow charge accumulation
+    }
+}
+
+void GameState::updatePlayerAnimation(ECS::EntityID entity,
+                                      rtype::client::components::Animation* animation,
+                                      rtype::client::components::Sprite* sprite,
+                                      bool isMovingUp) {
+    if (!animation || !sprite) return;
+    
+    if (isMovingUp) {
+        if (!animation->isPlaying && animation->currentFrame == 0) {
+            animation->isPlaying = true;
+            animation->currentFrame = 0;
+            animation->frameTimer = 0.0f;
+            animation->loop = false;
+            animation->direction = 1;
+        }
+    } else {
+        // Not moving up: reset to frame 1
+        animation->isPlaying = false;
+        animation->currentFrame = 0;
+        animation->frameTimer = 0.0f;
+        
+        if (sprite->useTexture) {
+            sprite->textureRect.left = 0;
+        }
+    }
+}
+
+void GameState::updateAnimationSystem(float deltaTime) {
+    auto* animations = m_world.GetAllComponents<rtype::client::components::Animation>();
+    if (!animations) return;
+    
+    for (auto& [entity, animPtr] : *animations) {
+        if (!animPtr->isPlaying) continue;
+        
+        // Update frame timer
+        animPtr->frameTimer += deltaTime;
+        
+        // Check if it's time to advance to next frame
+        if (animPtr->frameTimer >= animPtr->frameDuration) {
+            animPtr->frameTimer -= animPtr->frameDuration;
+            
+            // Only advance if not at last frame
+            if (animPtr->currentFrame < animPtr->frameCount - 1) {
+                animPtr->currentFrame++;
+                
+                // Update sprite's textureRect based on current frame
+                auto* sprite = m_world.GetComponent<rtype::client::components::Sprite>(entity);
+                if (sprite && sprite->useTexture) {
+                    sprite->textureRect.left = animPtr->currentFrame * animPtr->frameWidth;
+                    sprite->textureRect.width = animPtr->frameWidth;
+                    sprite->textureRect.height = animPtr->frameHeight;
+                }
+            } else {
+                // Reached last frame (frame 5) - stay there
+                animPtr->isPlaying = false;
+            }
+        }
     }
 }
 
@@ -429,11 +494,23 @@ void GameState::updateCollisionSystem() {
         auto* sprite = m_world.GetComponent<rtype::client::components::Sprite>(entity);
         if (!sprite) return sf::FloatRect(pos.x, pos.y, 1.0f, 1.0f);
         
+        float realWidth, realHeight;
+        
+        if (sprite->useTexture) {
+            // For textured sprites: use textureRect dimensions (actual frame size) * scale
+            realWidth = sprite->textureRect.width * sprite->scale;
+            realHeight = sprite->textureRect.height * sprite->scale;
+        } else {
+            // For colored shapes: use size directly (no scale)
+            realWidth = sprite->size.x;
+            realHeight = sprite->size.y;
+        }
+        
         return sf::FloatRect(
-            pos.x - sprite->size.x * 0.5f,
-            pos.y - sprite->size.y * 0.5f,
-            sprite->size.x,
-            sprite->size.y
+            pos.x - realWidth * 0.5f,
+            pos.y - realHeight * 0.5f,
+            realWidth,
+            realHeight
         );
     };
     
@@ -442,8 +519,24 @@ void GameState::updateCollisionSystem() {
     checkPlayerProjectilesVsEnemiesCollision(*positions, getBounds, toDestroy);
     checkEnemyProjectilesVsPlayerCollision(*positions, getBounds, toDestroy);
     
-    // Destroy all marked entities
+    // Destroy all marked entities and play death sounds
     for (auto entity : toDestroy) {
+        // Determine if this was a boss or regular enemy
+        auto* enemyType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(entity);
+        if (enemyType) {
+            if (enemyType->type == rtype::common::components::EnemyType::Boss) {
+                // Play boss death sound
+                if (m_soundManager.has(AudioFactory::SfxId::BossDeath)) {
+                    m_soundManager.play(AudioFactory::SfxId::BossDeath);
+                }
+                // Restore level background music after boss death
+                loadLevelMusic();
+            } else if (m_soundManager.has(AudioFactory::SfxId::EnemyDeath)) {
+                // Regular enemy death
+                m_soundManager.play(AudioFactory::SfxId::EnemyDeath);
+            }
+        }
+
         m_world.DestroyEntity(entity);
     }
 }

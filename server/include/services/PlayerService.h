@@ -8,7 +8,15 @@
 #define PLAYERSERVICE_H
 #include <string>
 #include <vector>
-#include <netinet/in.h>
+
+// Platform-specific network headers
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+#else
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+#endif
 
 #include "ECS/Types.h"
 

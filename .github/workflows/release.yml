@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - "*/cicd/*"
     tags:
       - 'v*'
   workflow_dispatch:
@@ -37,27 +38,57 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential
+          sudo apt-get install -y cmake build-essential ninja-build libsfml-dev
 
       - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          brew install cmake
+          # Install build dependencies - use sfml@2 for version 2.6.2
+          brew install cmake sfml@2
+          brew link --force sfml@2
+
+      - name: Configure CMake (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Configure CMake (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          # Set CMAKE_PREFIX_PATH to Homebrew's SFML@2 installation
+          export SFML_DIR=$(brew --prefix sfml@2)
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$SFML_DIR"
+
+      - name: Cache SFML build (Windows)
+        if: matrix.os == 'windows-latest'
+        id: cache-sfml
+        uses: actions/cache@v4
+        with:
+          path: C:/SFML
+          key: sfml-2.6.2-windows-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install dependencies (Windows)
-        if: matrix.os == 'windows-latest'
-        uses: lukka/get-cmake@latest
-
-      - name: Configure CMake
+        if: matrix.os == 'windows-latest' && steps.cache-sfml.outputs.cache-hit != 'true'
         run: |
-          mkdir build
-          cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release
+          # Build SFML 2.6.2 from source since vcpkg only has 3.x
+          Invoke-WebRequest -Uri "https://github.com/SFML/SFML/archive/refs/tags/2.6.2.zip" -OutFile "sfml-2.6.2.zip"
+          Expand-Archive -Path "sfml-2.6.2.zip" -DestinationPath "."
+          cd SFML-2.6.2
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX="C:/SFML"
+          cmake --build build --config Release
+          cmake --install build --config Release
+          cd ..
+        shell: powershell
+
+      - name: Configure CMake (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="C:/SFML"
+        shell: powershell
 
       - name: Build project
         run: |
-          cd build
-          cmake --build . --config Release
+          cmake --build build --config Release
 
       - name: Create release directory
         run: |
@@ -74,6 +105,18 @@ jobs:
         run: |
           copy build\bin\server${{ matrix.executable_extension }} release\rtype-${{ matrix.platform }}\
           copy build\bin\client${{ matrix.executable_extension }} release\rtype-${{ matrix.platform }}\
+          copy C:\SFML\bin\*.dll release\rtype-${{ matrix.platform }}\
+
+      - name: Copy assets directory (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cp -r assets release/rtype-${{ matrix.platform }}/
+
+      - name: Copy assets directory (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          xcopy assets release\rtype-${{ matrix.platform }}\assets /E /I /H /Y
+        shell: cmd
 
       - name: Create README for release
         run: |
@@ -84,6 +127,7 @@ jobs:
           echo "## Files included:" >> release/rtype-${{ matrix.platform }}/README.md
           echo "- server${{ matrix.executable_extension }} - The game server" >> release/rtype-${{ matrix.platform }}/README.md
           echo "- client${{ matrix.executable_extension }} - The game client" >> release/rtype-${{ matrix.platform }}/README.md
+          echo "- assets/ - Game assets (sprites, audio, fonts, maps)" >> release/rtype-${{ matrix.platform }}/README.md
           echo "" >> release/rtype-${{ matrix.platform }}/README.md
           echo "## Usage:" >> release/rtype-${{ matrix.platform }}/README.md
           echo "1. Run the server: ./server${{ matrix.executable_extension }}" >> release/rtype-${{ matrix.platform }}/README.md

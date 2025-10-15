@@ -22,7 +22,9 @@
 
 #include "gui/GameState.h"
 #include "gui/MainMenuState.h"
+#include "gui/AudioFactory.h"
 #include "gui/GUIHelper.h"
+#include "gui/AssetPaths.h"
 #include <algorithm>
 #include <cmath>
 
@@ -31,6 +33,36 @@ namespace rtype::client::gui {
 GameState::GameState(StateManager& stateManager)
     : m_stateManager(stateManager), m_parallaxSystem(SCREEN_WIDTH, SCREEN_HEIGHT) {
     setupGameOverUI();
+}
+
+void GameState::loadHUDTextures() {
+    if (m_texturesLoaded) return;
+
+    // Load heart texture for HUD
+    if (!m_heartTexture.loadFromFile(rtype::client::assets::hearts::HEART_SPRITE)) {
+        std::cerr << "Failed to load heart texture!" << std::endl;
+        m_texturesLoaded = false;
+        return;
+    }
+
+    // Heart spritesheet: 3072x4096, frames are 248x216
+    // Starting at (32, 256)
+    const int frameWidth = 248;
+    const int frameHeight = 216;
+    const int startX = 32;
+    const int startY = 256;
+
+    // Frame 1 (col 0-3, row 0-1): Full heart - s'étend sur 4 colonnes x 2 lignes
+    m_fullHeartSprite.setTexture(m_heartTexture);
+    m_fullHeartSprite.setTextureRect(sf::IntRect(startX, startY, frameWidth * 4, frameHeight * 2));
+    m_fullHeartSprite.setScale(0.08f, 0.08f);  // Scale down (992*0.08 = 79px, 432*0.08 = 35px)
+
+    // Frame 3 (col 8-11, row 0-1): Empty/lost heart - 4 colonnes x 2 lignes
+    m_emptyHeartSprite.setTexture(m_heartTexture);
+    m_emptyHeartSprite.setTextureRect(sf::IntRect(startX + frameWidth * 8, startY, frameWidth * 4, frameHeight * 2));
+    m_emptyHeartSprite.setScale(0.08f, 0.08f);  // Scale down (992*0.08 = 79px, 432*0.08 = 35px)
+
+    m_texturesLoaded = true;
 }
 
 void GameState::setupGameOverUI() {
@@ -60,14 +92,36 @@ void GameState::setupGameOverUI() {
 }
 
 void GameState::onEnter() {
+    // Load HUD textures during state entry (avoid I/O in constructor)
+    loadHUDTextures();
+
     resetGame();
     m_gameStatus = GameStatus::Playing;
+
+    // Start level music
+    loadLevelMusic();
+
+    // Load game sounds (lose life sound)
+    if (!loadGameSounds()) {
+        std::cerr << "GameState: warning: some game sounds failed to load" << std::endl;
+    }
 }
 
 void GameState::onExit() {
     // Clear ECS world
     m_world.Clear();
     m_playerEntity = 0;
+
+    // Stop music when leaving the game state
+    m_musicManager.stop();
+}
+
+void GameState::setMusicMuted(bool muted) {
+    m_musicManager.setMuted(muted);
+}
+
+bool GameState::isMusicMuted() const {
+    return m_musicManager.isMuted();
 }
 
 void GameState::showInGameMenu(bool isGameOver) {
@@ -92,6 +146,20 @@ void GameState::showInGameMenu(bool isGameOver) {
     m_keyLeft = false;
     m_keyRight = false;
     m_keyFire = false;
+
+    // Play game-over music when death (non-looping). Pause/mute otherwise.
+    if (isGameOver) {
+        const std::string gameOverMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::GameOver);
+        if (m_musicManager.loadFromFile(gameOverMusic)) {
+            m_musicManager.setVolume(40.0f); // adjust level if needed
+            m_musicManager.play(false); // do not loop
+        } else {
+            std::cerr << "GameState: could not load game over music: " << gameOverMusic << std::endl;
+        }
+    } else {
+        // Pause background music while paused
+        m_musicManager.setMuted(true);
+    }
 }
 
 void GameState::resumeGame() {
@@ -103,6 +171,9 @@ void GameState::resumeGame() {
     m_keyLeft = false;
     m_keyRight = false;
     m_keyFire = false;
+
+    // Unmute / resume level music when resuming from pause
+    m_musicManager.setMuted(false);
 }
 
 void GameState::resetGame() {
@@ -119,6 +190,9 @@ void GameState::resetGame() {
     // Reset flags
     m_isGameOver = false;
     m_gameStatus = GameStatus::Playing;
+
+    // Ensure level background music is playing after a reset
+    loadLevelMusic();
 }
 
 int GameState::getPlayerLives() const {
@@ -153,7 +227,25 @@ void GameState::damagePlayer(int damage) {
     // Check for game over
     if (health->currentHp <= 0) {
         showInGameMenu(true); // Game Over
+    } else {
+        // Play a short sound to indicate a lost life (non-fatal hit)
+        if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) {
+            m_soundManager.play(AudioFactory::SfxId::LoseLife);
+        }
     }
+}
+
+bool GameState::loadGameSounds() {
+    bool ok = m_soundManager.loadAll();
+    // Configure volumes (only if loaded)
+    if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) m_soundManager.setVolume(AudioFactory::SfxId::LoseLife, 80.0f);
+    if (m_soundManager.has(AudioFactory::SfxId::Shoot)) m_soundManager.setVolume(AudioFactory::SfxId::Shoot, 70.0f);
+    if (m_soundManager.has(AudioFactory::SfxId::ChargedShoot)) m_soundManager.setVolume(AudioFactory::SfxId::ChargedShoot, 75.0f);
+    if (m_soundManager.has(AudioFactory::SfxId::EnemyDeath)) m_soundManager.setVolume(AudioFactory::SfxId::EnemyDeath, 80.0f);
+    if (m_soundManager.has(AudioFactory::SfxId::BossDeath)) m_soundManager.setVolume(AudioFactory::SfxId::BossDeath, 85.0f);
+
+    // Note: bossfight music is handled by the MusicManager; we will load it on boss spawn
+    return ok;
 }
 
 bool GameState::isBossActive() {
@@ -175,6 +267,9 @@ bool GameState::isBossActive() {
 }
 
 void GameState::update(float deltaTime) {
+    // Ensure boss music follows boss alive state (covers debug spawn)
+    updateBossMusicState();
+
     if (m_gameStatus == GameStatus::InGameMenu) {
         return; // Don't update game logic when in menu
     }
@@ -187,11 +282,41 @@ void GameState::update(float deltaTime) {
     updateFireRateSystem(deltaTime);
     updateChargedShotSystem(deltaTime);
     updateInvulnerabilitySystem(deltaTime);
+    updateAnimationSystem(deltaTime);
     updateMovementSystem(deltaTime);
     updateEnemySpawnSystem(deltaTime);
     updateEnemyAISystem(deltaTime);
     updateCleanupSystem(deltaTime);
     updateCollisionSystem();
+}
+
+void GameState::updateBossMusicState() {
+    bool bossAlive = isBossActive();
+    if (bossAlive && !m_bossMusicActive) {
+        // Start boss music
+        const std::string bossMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::BossFight);
+        if (m_musicManager.loadFromFile(bossMusic)) {
+            m_musicManager.setVolume(35.0f);
+            m_musicManager.play(true);
+            m_bossMusicActive = true;
+        } else {
+            std::cerr << "GameState: could not load boss music: " << bossMusic << std::endl;
+        }
+    } else if (!bossAlive && m_bossMusicActive) {
+        // Boss died: restore level music
+        loadLevelMusic();
+        m_bossMusicActive = false;
+    }
+}
+
+void GameState::loadLevelMusic() {
+    const std::string levelMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::Level);
+    if (m_musicManager.loadFromFile(levelMusic)) {
+        m_musicManager.setVolume(30.0f);
+        m_musicManager.play(true);
+    } else {
+        std::cerr << "GameState: could not load level music: " << levelMusic << std::endl;
+    }
 }
 
 void GameState::render(sf::RenderWindow& window) {

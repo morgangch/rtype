@@ -7,6 +7,7 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 #include <string>
+
 #include "packethandler.h"
 #include "packetmanager.h"
 

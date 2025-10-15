@@ -18,7 +18,7 @@ target_link_libraries(client PRIVATE ecs common packethandler packetmanager)
 
 target_include_directories(client PRIVATE include)
 
-target_link_libraries(client PRIVATE sfml-graphics sfml-window sfml-system)
+target_link_libraries(client PRIVATE sfml-graphics sfml-window sfml-system sfml-audio)
 
 
 # Set output directory - handle both single and multi-config generators

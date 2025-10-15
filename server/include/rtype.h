@@ -22,8 +22,9 @@ namespace rtype::server {
         int udp_server_fd;
         /**
          * @brief Looping into the network to receive and handle, and send packets.
+         * @param deltaTime Time elapsed since last frame (in seconds)
          */
-        void loop();
+        void loop(float deltaTime);
     };
 };
 

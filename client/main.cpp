@@ -32,7 +32,7 @@
 #include <cstdlib>
 #include <ctime>
 
-#include "include/network/network.h"
+#include "network/network.h"
 
 int main() {
     // Initialize random seed for username generation
@@ -45,6 +45,8 @@ int main() {
 
     // Create state manager
     rtype::client::gui::StateManager stateManager(window);
+    // Expose the StateManager to other subsystems (network controllers)
+    rtype::client::gui::setGlobalStateManager(&stateManager);
 
     // Push initial state (main menu)
     stateManager.pushState(std::make_unique<rtype::client::gui::MainMenuState>(stateManager));
@@ -77,6 +79,8 @@ int main() {
         if (rtype::client::network::udp_fd != -1) {
             rtype::client::network::loop_recv();
             rtype::client::network::loop_send();
+            // Process received packets through the PacketHandler
+            rtype::client::network::ph.processPackets(rtype::client::network::pm.fetchReceivedPackets());
         }
     }
 

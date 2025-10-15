@@ -7,10 +7,20 @@
 
 #include "packetmanager.h"
 #include <cstring>
+#include <string>
 #include <memory>
 #include <stdexcept>
 #include <algorithm>
-#include <netinet/in.h>
+
+// Platform-specific network headers
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #pragma comment(lib, "ws2_32.lib")
+#else
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+#endif
 
 PacketManager::PacketManager() : _send_seqid(0), _recv_seqid(0) {
 }

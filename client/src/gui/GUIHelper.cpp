@@ -13,6 +13,7 @@
 #include "gui/GUIHelper.h"
 #include "gui/FontManager.h"
 #include <cstdlib>
+#include <string>
 
 namespace rtype::client::gui {
     

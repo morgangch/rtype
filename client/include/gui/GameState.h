@@ -28,6 +28,7 @@ namespace rtype::client::gui { Space Invaders game state implementation for R-TY
 #include "StateManager.h"
 #include "ParallaxSystem.h"
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <ECS/ECS.h>
 #include <common/components/Position.h>
 #include <common/components/Velocity.h>
@@ -39,8 +40,11 @@ namespace rtype::client::gui { Space Invaders game state implementation for R-TY
 #include <common/components/EnemyType.h>
 #include <common/systems/ChargedShot.h>
 #include <client/components/Sprite.h>
+#include <client/components/Animation.h>
 #include <vector>
 #include <functional>
+#include "MusicManager.h"
+#include "SoundManager.h"
 
 namespace rtype::client::gui {
     
@@ -133,6 +137,16 @@ namespace rtype::client::gui {
          * @brief Called when exiting this state
          */
         void onExit() override;
+
+        /**
+         * @brief Toggle background music mute state
+         */
+        void setMusicMuted(bool muted);
+
+        /**
+         * @brief Check if music is muted
+         */
+        bool isMusicMuted() const;
         
     private:
         
@@ -223,6 +237,23 @@ namespace rtype::client::gui {
          * @note Wrapper around rtype::client::systems::updateInvulnerabilitySystem()
          */
         void updateInvulnerabilitySystem(float deltaTime);
+        
+        /**
+         * @brief Animation System - Update sprite animations (frame cycling)
+         */
+        void updateAnimationSystem(float deltaTime);
+        
+        /**
+         * @brief Handle player animation based on movement input
+         * @param entity The entity to update animation for
+         * @param animation The animation component
+         * @param sprite The sprite component
+         * @param isMovingUp Whether the UP key is pressed
+         */
+        void updatePlayerAnimation(ECS::EntityID entity, 
+                                   rtype::client::components::Animation* animation,
+                                   rtype::client::components::Sprite* sprite,
+                                   bool isMovingUp);
         
         /**
          * @brief Enemy Spawning System - Spawn enemies periodically
@@ -350,6 +381,14 @@ namespace rtype::client::gui {
          * Called once in the constructor.
          */
         void setupGameOverUI();
+
+        /**
+         * @brief Load HUD textures and related sprites
+         *
+         * Separated from the constructor to avoid performing file I/O during
+         * object construction. Call from `onEnter()` or initialization path.
+         */
+        void loadHUDTextures();
         
         /**
          * @brief Show the in-game menu (pause or game over)
@@ -368,11 +407,47 @@ namespace rtype::client::gui {
          * no keys remain in "pressed" state from the menu.
          */
         void resumeGame();
+
+        /**
+         * @brief Update boss music state based on whether a boss is alive.
+         *
+         * Called frequently (e.g. once per frame) to ensure boss music
+         * starts when a boss exists and stops/restores level music when
+         * the boss is gone.
+         */
+        void updateBossMusicState();
+
+        /**
+         * @brief Load and start the level background music (looping).
+         *
+         * Centralized helper to avoid duplicated load/play code across
+         * GameState methods.
+         */
+        void loadLevelMusic();
         
         /**
          * @brief Reference to the state manager for state transitions
          */
         StateManager& m_stateManager;
+
+        /**
+         * @brief Manager for background music and mute state
+         */
+        MusicManager m_musicManager;
+
+        /**
+         * @brief Whether the boss music is currently active (we loaded/playing bossfight)
+         */
+        bool m_bossMusicActive{false};
+
+        // Sound manager for SFX
+        SoundManager m_soundManager;
+
+        /**
+         * @brief Load sound assets used by the gameplay state. Returns true
+         * if required sounds were loaded successfully.
+         */
+        bool loadGameSounds();
         
         /**
          * @brief Current game status (Playing or InGameMenu)
@@ -403,6 +478,26 @@ namespace rtype::client::gui {
          * @brief Text object for "Return to Menu" button in game over menu
          */
         sf::Text m_menuText;
+        
+        /**
+         * @brief Texture for heart sprites (HUD lives display)
+         */
+        sf::Texture m_heartTexture;
+
+        /**
+         * @brief Whether HUD textures have been loaded already
+         */
+        bool m_texturesLoaded{false};
+        
+        /**
+         * @brief Sprite for full heart (alive)
+         */
+        sf::Sprite m_fullHeartSprite;
+        
+        /**
+         * @brief Sprite for empty heart (lost life)
+         */
+        sf::Sprite m_emptyHeartSprite;
         
         /**
          * @brief Parallax background system for space environment
