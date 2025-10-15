@@ -17,6 +17,7 @@ namespace ECS {
     }
 
     void World::Clear() {
+        m_systemManager.Clear(*this);
         m_componentManager.Clear();
         m_entityManager.Clear();
     }
