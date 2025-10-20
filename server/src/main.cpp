@@ -18,6 +18,7 @@ int main() {
     r.udp_server_fd = rtype::server::network::setupUDPServer(4242);
 
     root.packetHandler.registerCallback(Packets::JOIN_ROOM, rtype::server::controllers::room_controller::handleJoinRoomPacket);
+    root.packetHandler.registerCallback(Packets::GAME_START_REQUEST, rtype::server::controllers::room_controller::handleGameStartRequest);
     root.world.RegisterSystem<PacketHandlingSystem>();
 
     auto lastTime = std::chrono::high_resolution_clock::now();
