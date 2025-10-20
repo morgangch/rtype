@@ -18,6 +18,12 @@ namespace rtype::tools {
     std::string ipToString(uint32_t ip);
     std::string ipToString(uint8_t *ip);
 
+    /**
+     * Get the current timestamp in milliseconds.
+     * @return The current timestamp.
+     */
+    unsigned long getCurrentTimestamp();
+
 }
 
 #endif //TOOLS_H

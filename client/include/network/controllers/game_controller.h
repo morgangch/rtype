@@ -15,6 +15,12 @@ namespace rtype::client::controllers::game_controller {
      */
     void handle_join_room_accepted(const packet_t& packet);
 
+    /**
+     * @brief Handle the PlayerDisconnectPacket received from the server.
+     * @param packet The received packet.
+     */
+    void handle_player_disconnect(const packet_t& packet);
+
 }
 
 

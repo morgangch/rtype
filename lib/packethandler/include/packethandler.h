@@ -84,8 +84,9 @@ public:
      * Each packet is routed to its appropriate callback if one is registered.
      *
      * @param packets Vector of unique_ptr packets to process
+     * @return the number of packets successfully processed
      */
-    void processPackets(const std::vector<std::unique_ptr<packet_t> > &packets);
+    int processPackets(const std::vector<std::unique_ptr<packet_t> > &packets);
 
     /**
      * @brief Clear all registered callbacks
