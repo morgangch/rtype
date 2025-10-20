@@ -37,12 +37,16 @@ void PacketHandler::handlePacket(const packet_t& packet) {
 }
 
 // Process multiple packets at once
-void PacketHandler::processPackets(const std::vector<std::unique_ptr<packet_t>>& packets) {
+int PacketHandler::processPackets(const std::vector<std::unique_ptr<packet_t>>& packets) {
+    int processedCount = 0;
+
     for (const auto& packet : packets) {
         if (packet) {
+            processedCount++;
             handlePacket(*packet);
         }
     }
+    return processedCount;
 }
 
 // Clear all callbacks
