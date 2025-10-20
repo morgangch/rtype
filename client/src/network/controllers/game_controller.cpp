@@ -12,20 +12,26 @@
 #include "gui/GameState.h"
 
 namespace rtype::client::controllers::game_controller {
+    void handle_join_room_accepted(const packet_t &packet) {
+        JoinRoomAcceptedPacket *p = (JoinRoomAcceptedPacket *) packet.data;
 
-void handle_join_room_accepted(const packet_t &packet) {
-    JoinRoomAcceptedPacket *p = (JoinRoomAcceptedPacket *) packet.data;
+        std::cout << "Successfully connected on room " << p->roomCode << " as " << (
+            p->admin ? "admin" : "classic player") << std::endl;
 
-    std::cout << "Successfully connected on room " << p->roomCode << " as " << (p->admin ? "admin" : "classic player") << std::endl;
+        // Launch the game using the global StateManager if available (same logic as in the lobby)
+        using rtype::client::gui::g_stateManager;
 
-    // Launch the game using the global StateManager if available (same logic as in the lobby)
-    using rtype::client::gui::g_stateManager;
-
-    if (g_stateManager) {
-        g_stateManager->changeState(std::make_unique<rtype::client::gui::GameState>(*g_stateManager));
-    } else {
-        std::cerr << "StateManager global not set; cannot start GameState from network controller." << std::endl;
+        if (g_stateManager) {
+            g_stateManager->changeState(std::make_unique<rtype::client::gui::GameState>(*g_stateManager));
+        } else {
+            std::cerr << "StateManager global not set; cannot start GameState from network controller." << std::endl;
+        }
     }
-}
 
+
+    void handle_admin_update(const packet_t &packet) {
+        RoomAdminUpdatePacket *p = (RoomAdminUpdatePacket *) packet.data;
+        ECS::EntityID newAdminId = p->newAdminPlayerId;
+        // TODO: Implement
+    }
 }

@@ -16,7 +16,7 @@ namespace rtype::server::components {
         int joinCode;
         bool isPublic;
         bool isGameStarted = false;
-        int ownerId = 0; // EntityID of the room owner (first player who created the room)
+        ECS::EntityID ownerId = 0; // EntityID of the room owner (first player who created the room)
         RoomProperties(int joinCode = 0, bool isPublic = true, int ownerId = 0)
             : joinCode(joinCode), isPublic(isPublic), ownerId(ownerId) {
         };

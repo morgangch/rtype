@@ -22,6 +22,7 @@ enum Packets {
     JOIN_ROOM = 2,
     JOIN_ROOM_ACCEPTED = 3,
     GAME_START_REQUEST = 4,
+    ROOM_ADMIN_UPDATE = 5,
 };
 
 
@@ -64,7 +65,12 @@ struct PlayerDisconnectPacket {
 };
 
 
-
+/**
+ * To inform clients about room admin changes
+ */
+struct RoomAdminUpdatePacket {
+    uint32_t newAdminPlayerId;
+};
 struct PingPacket {
 };
 

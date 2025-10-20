@@ -4,6 +4,7 @@
 #include "controllers/RoomController.h"
 #include "systems/PacketHandlingSystem.h"
 #include <chrono>
+#include "systems/AdminDetectorSystem.h"
 
 void rtype::server::Rtype::loop(float deltaTime) {
     network::loop_recv(udp_server_fd);
@@ -19,6 +20,7 @@ int main() {
 
     root.packetHandler.registerCallback(Packets::JOIN_ROOM, rtype::server::controllers::room_controller::handleJoinRoomPacket);
     root.world.RegisterSystem<PacketHandlingSystem>();
+    root.world.RegisterSystem<AdminDetectorSystem>();
 
     auto lastTime = std::chrono::high_resolution_clock::now();
 
