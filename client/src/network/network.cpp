@@ -25,6 +25,7 @@
     #include <unistd.h>
 #endif
 
+#include "network/senders.h"
 #include "packets/packets.h"
 #include "utils/bytes_printer.h"
 
@@ -153,16 +154,7 @@ int network::init_udp_socket(const std::string &server_ip, int server_port) {
 
 int network::start_room_connection(const std::string &ip, int port, const std::string &player_name, uint32_t room_code) {
     init_udp_socket(ip, port);
-
-    // Build and send the JoinRoomPacket
-    JoinRoomPacket p{};
-    p.joinCode = room_code;
-
-    // Secure the player name to avoid overflow
-    strncpy(p.name, player_name.c_str(), 31);
-    p.name[31] = '\0';
-
-    pm.sendPacketBytesSafe(&p, sizeof(JoinRoomPacket), JOIN_ROOM, nullptr, true);
+    senders::send_join_room_request(player_name, room_code);
     return 0;
 }
 

@@ -44,7 +44,9 @@ void room_controller::handleGameStartRequest(const packet_t &packet) {
     auto *rp = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
     if (rp->ownerId != player)
         return; // The player is not the room owner (cheater)
-    // TODO: Start the game
+    if (rp->isGameStarted)
+        return; // The game is already started
+    rp->isGameStarted = true;
 }
 
 void room_controller::handleJoinRoomPacket(const packet_t &packet) {

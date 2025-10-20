@@ -37,6 +37,17 @@ namespace rtype::server::components {
          */
         unsigned int room_code;
 
+        /*
+         * @brief Store the last received packet timestamp to handle timeouts.
+         */
+        unsigned long last_packet_timestamp;
+
+        /**
+         * @brief Construct a new Player Conn object
+         * @param address
+         * @param port
+         * @param room_code
+         */
         PlayerConn(std::string address = "", int port = 0, unsigned int room_code = 0)
             : address(address), port(port) , room_code(room_code) {
         };

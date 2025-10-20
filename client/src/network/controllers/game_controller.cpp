@@ -28,6 +28,10 @@ namespace rtype::client::controllers::game_controller {
         }
     }
 
+    void handle_player_disconnect(const packet_t &packet) {
+        PlayerDisconnectPacket *p = (PlayerDisconnectPacket *) packet.data;
+        // TODO: Implement
+    }
 
     void handle_admin_update(const packet_t &packet) {
         RoomAdminUpdatePacket *p = (RoomAdminUpdatePacket *) packet.data;
