@@ -24,7 +24,6 @@ public:
 
     void Update(ECS::World &world, float deltaTime) override {
         for (auto& pair: *world.GetAllComponents<rtype::server::components::RoomProperties>()) {
-            ECS::EntityID roomId = pair.first;
             rtype::server::components::RoomProperties *room = pair.second.get();
             if (!room)
                 continue;
