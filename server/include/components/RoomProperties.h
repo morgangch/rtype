@@ -20,6 +20,18 @@ namespace rtype::server::components {
         RoomProperties(int joinCode = 0, bool isPublic = true, int ownerId = 0)
             : joinCode(joinCode), isPublic(isPublic), ownerId(ownerId) {
         };
+
+        void broadcastPacket(void *data, size_t size, uint8_t packetType, bool important) const {
+            for (auto &pair: *root.world.GetAllComponents<PlayerConn>()) {
+                rtype::server::components::PlayerConn *notifyConn = pair.second.get();
+                if (!notifyConn)
+                    continue;
+                if (notifyConn->room_code == joinCode) {
+                    notifyConn->packet_manager.sendPacketBytesSafe(
+                        &data, sizeof(data), packetType, nullptr, important);
+                }
+            }
+        }
     };
 }
 
