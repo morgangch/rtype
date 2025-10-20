@@ -21,6 +21,13 @@ namespace rtype::server::components {
             : joinCode(joinCode), isPublic(isPublic), ownerId(ownerId) {
         };
 
+        /**
+         * Broadcast a packet to all players in the room
+         * @param data the packet data
+         * @param size the size of the packet
+         * @param packetType the type of the packet
+         * @param important whether the packet is important (reliable)
+         */
         void broadcastPacket(void *data, size_t size, uint8_t packetType, bool important) const {
             for (auto &pair: *root.world.GetAllComponents<PlayerConn>()) {
                 rtype::server::components::PlayerConn *notifyConn = pair.second.get();
