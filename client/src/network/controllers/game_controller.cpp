@@ -33,4 +33,9 @@ namespace rtype::client::controllers::game_controller {
         // TODO: Implement
     }
 
+    void handle_admin_update(const packet_t &packet) {
+        RoomAdminUpdatePacket *p = (RoomAdminUpdatePacket *) packet.data;
+        ECS::EntityID newAdminId = p->newAdminPlayerId;
+        // TODO: Implement
+    }
 }
