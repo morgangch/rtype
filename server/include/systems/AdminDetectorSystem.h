@@ -53,8 +53,16 @@ public:
                 // Assign new admin
                 room->ownerId = conn_pair.first;
                 RoomAdminUpdatePacket p{conn_pair.first};
-                // Notify all players in the room about the new admin
-                room->broadcastPacket(&p, sizeof(p), ROOM_ADMIN_UPDATE, true);
+                
+                // Broadcast to all players in the room about the new admin
+                for (auto &notify_pair: *world.GetAllComponents<rtype::server::components::PlayerConn>()) {
+                    rtype::server::components::PlayerConn *notifyConn = notify_pair.second.get();
+                    if (!notifyConn)
+                        continue;
+                    if (notifyConn->room_code == room->joinCode) {
+                        notifyConn->packet_manager.sendPacketBytesSafe(&p, sizeof(p), ROOM_ADMIN_UPDATE, nullptr, true);
+                    }
+                }
                 break;
             }
         }
