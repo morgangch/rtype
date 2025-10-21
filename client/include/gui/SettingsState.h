@@ -103,6 +103,20 @@ private:
     bool typingBox2;                    ///< Whether port field is active
     float cursorTimer;                  ///< Timer for cursor blinking animation
     bool showCursor;                    ///< Current cursor visibility state
+
+    // Keybinds UI and State
+    enum KeybindAction {
+        Up = 0, Down, Left, Right, Shoot, KeybindCount
+    };
+    sf::Text keybindTitleText;                  ///< "Keybinds" section title
+    sf::Text keybindActionTexts[KeybindCount];  ///< Action labels (Up, Down, ...)
+    sf::Text keybindKeyTexts[KeybindCount];     ///< Current key labels
+    sf::RectangleShape keybindRects[KeybindCount]; ///< Clickable areas for keybinds
+    int editingKeybind;                         ///< Index of keybind being edited (-1 if none)
+    sf::Text keybindHintText;                   ///< Hint text when editing
+    sf::Text resetKeybindsButton;               ///< "Reset to Default" button text
+    sf::RectangleShape resetKeybindsRect;       ///< Clickable area for reset button
+    sf::Keyboard::Key keybinds[KeybindCount];   ///< Current keybinds
 };
 
 } // namespace rtype::client::gui

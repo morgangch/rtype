@@ -169,7 +169,7 @@ void ParallaxSystem::updateStarLayer(ParallaxLayer& layer, float deltaTime) {
 }
 
 void ParallaxSystem::renderStarLayer(sf::RenderWindow& window, const ParallaxLayer& layer) {
-    for (size_t i = 0; i < layer.positions.size(); ++i) {
+    for (size_t i = 0; i < layer.positions.size(); i++) {
         sf::CircleShape star(layer.sizes[i]);
         star.setPosition(layer.positions[i]);
         star.setFillColor(layer.colors[i]);

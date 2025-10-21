@@ -18,6 +18,7 @@
  */
 
 #include "gui/SettingsState.h"
+#include "gui/KeyToString.h"
 #include "gui/MainMenuState.h"
 #include "gui/GUIHelper.h"
 #include <memory>
@@ -33,7 +34,7 @@ namespace rtype::client::gui {
  */
 
 SettingsState::SettingsState(StateManager& stateManager)
-    : stateManager(stateManager), typingBox1(false), typingBox2(false), cursorTimer(0.0f), showCursor(true)
+    : stateManager(stateManager), typingBox1(false), typingBox2(false), cursorTimer(0.0f), showCursor(true), editingKeybind(-1)
 {
     const sf::Font& font = GUIHelper::getFont();
 
@@ -73,29 +74,87 @@ SettingsState::SettingsState(StateManager& stateManager)
 
     // Return button setup
     GUIHelper::setupReturnButton(returnButton, returnButtonRect);
+
+    // Keybinds setup
+    keybindTitleText.setFont(font);
+    keybindTitleText.setString("Keybinds");
+    keybindTitleText.setCharacterSize(32);
+    keybindTitleText.setFillColor(sf::Color::White);
+    const char* actionNames[] = {"Up", "Down", "Left", "Right", "Shoot"};
+    sf::Keyboard::Key defaultKeys[] = {sf::Keyboard::W, sf::Keyboard::S, sf::Keyboard::A, sf::Keyboard::D, sf::Keyboard::Space};
+    for (int i = 0; i < KeybindCount; i++) {
+        keybindActionTexts[i].setFont(font);
+        keybindActionTexts[i].setString(actionNames[i]);
+        keybindActionTexts[i].setCharacterSize(22);
+        keybindActionTexts[i].setFillColor(sf::Color::White);
+        keybindKeyTexts[i].setFont(font);
+        keybindKeyTexts[i].setCharacterSize(22);
+        keybindKeyTexts[i].setFillColor(sf::Color(180,180,180));
+        keybinds[i] = defaultKeys[i];
+        keybindRects[i].setSize(sf::Vector2f(120, 36));
+        keybindRects[i].setFillColor(sf::Color(40, 40, 40));
+        keybindRects[i].setOutlineColor(sf::Color::White);
+        keybindRects[i].setOutlineThickness(1.5f);
+    }
+    keybindHintText.setFont(font);
+    keybindHintText.setCharacterSize(18);
+    keybindHintText.setFillColor(sf::Color(200,200,80));
+    keybindHintText.setString("");
+    resetKeybindsButton.setFont(font);
+    resetKeybindsButton.setString("Reset to Default");
+    resetKeybindsButton.setCharacterSize(18);
+    resetKeybindsButton.setFillColor(sf::Color(180,180,180));
+    resetKeybindsRect.setSize(sf::Vector2f(160, 36));
+    resetKeybindsRect.setFillColor(sf::Color(40, 40, 40));
+    resetKeybindsRect.setOutlineColor(sf::Color::White);
+    resetKeybindsRect.setOutlineThickness(1.5f);
 }
 
 /**
  * @brief Called when entering the settings state. Sets up UI element positions.
  */
 void SettingsState::onEnter() {
-    float centerX = 640.0f, centerY = 360.0f;
-    titleText.setPosition(centerX - titleText.getLocalBounds().width/2, 100.0f);
+    float windowWidth = 1280.0f, windowHeight = 720.0f;
+    float keybindsX = windowWidth / 2.0f - 420.0f;
+    float keybindsY = windowHeight / 2.0f - 170.0f;
+    float ipportX = windowWidth / 2.0f + 60.0f;
+    float ipportY = windowHeight / 2.0f - 120.0f;
 
-    box1Rect.setPosition(centerX - 150, centerY - 40);
-    box2Rect.setPosition(centerX - 150, centerY + 40);
+    // Settings title (top center)
+    titleText.setPosition(windowWidth / 2.0f - titleText.getLocalBounds().width / 2.0f, 40.0f);
 
-    box1Hint.setPosition(box1Rect.getPosition().x + 10, box1Rect.getPosition().y + 15);
-    box2Hint.setPosition(box2Rect.getPosition().x + 10, box2Rect.getPosition().y + 15);
+    // Keybinds section (up and right)
+    keybindTitleText.setString("Keybinds");
+    keybindTitleText.setPosition(keybindsX, keybindsY);
+    for (int i = 0; i < KeybindCount; i++) {
+        keybindActionTexts[i].setPosition(keybindsX, keybindsY + 50.0f + i * 54.0f);
+        keybindRects[i].setPosition(keybindsX + 185.0f, keybindsY + 50.0f + i * 54.0f);
+        keybindKeyTexts[i].setPosition(keybindsX + 195.0f, keybindsY + 55.0f + i * 54.0f);
+    }
+    resetKeybindsRect.setPosition(keybindsX, keybindsY + 50.0f + KeybindCount * 54.0f + 10.0f);
+    resetKeybindsButton.setPosition(resetKeybindsRect.getPosition().x + 10.0f, resetKeybindsRect.getPosition().y + 6.0f);
+    keybindHintText.setPosition(keybindsX, keybindsY + 50.0f + KeybindCount * 54.0f + 60.0f);
 
-    // Return button positioning (top left)
+    // IP/PORT section (up and left)
+    static sf::Text ipPortTitleText;
+    ipPortTitleText.setFont(GUIHelper::getFont());
+    ipPortTitleText.setString("IP / PORT");
+    ipPortTitleText.setCharacterSize(32);
+    ipPortTitleText.setFillColor(sf::Color::White);
+    ipPortTitleText.setPosition(ipportX, ipportY);
+    box1Rect.setPosition(ipportX, ipportY + 60.0f);
+    box2Rect.setPosition(ipportX, ipportY + 140.0f);
+    box1Hint.setPosition(box1Rect.getPosition().x + 10.0f, box1Rect.getPosition().y + 15.0f);
+    box2Hint.setPosition(box2Rect.getPosition().x + 10.0f, box2Rect.getPosition().y + 15.0f);
+
+    // Return button (top left)
     float returnButtonWidth = 150.0f;
     float returnButtonHeight = 50.0f;
     returnButtonRect.setSize(sf::Vector2f(returnButtonWidth, returnButtonHeight));
     returnButtonRect.setPosition(20.0f, 20.0f);
     GUIHelper::centerText(returnButton,
-        returnButtonRect.getPosition().x + returnButtonWidth / 2,
-        returnButtonRect.getPosition().y + returnButtonHeight / 2);
+        returnButtonRect.getPosition().x + returnButtonWidth / 2.0f,
+        returnButtonRect.getPosition().y + returnButtonHeight / 2.0f);
 }
 
 /**
@@ -117,6 +176,21 @@ void SettingsState::handleEvent(const sf::Event& event) {
         }
         typingBox1 = box1Rect.getGlobalBounds().contains(mousePos);
         typingBox2 = box2Rect.getGlobalBounds().contains(mousePos);
+
+        // Keybinds: check if a keybind row is clicked
+        for (int i = 0; i < KeybindCount; i++) {
+            if (keybindRects[i].getGlobalBounds().contains(mousePos)) {
+                editingKeybind = i;
+                keybindHintText.setString("Press a key for " + keybindActionTexts[i].getString());
+            }
+        }
+        // Reset button
+        if (resetKeybindsRect.getGlobalBounds().contains(mousePos)) {
+            sf::Keyboard::Key defaultKeys[] = {sf::Keyboard::W, sf::Keyboard::S, sf::Keyboard::A, sf::Keyboard::D, sf::Keyboard::Space};
+            for (int i = 0; i < KeybindCount; i++) keybinds[i] = defaultKeys[i];
+            editingKeybind = -1;
+            keybindHintText.setString("");
+        }
     }
     if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
         stateManager.changeState(std::make_unique<MainMenuState>(stateManager));
@@ -132,6 +206,19 @@ void SettingsState::handleEvent(const sf::Event& event) {
             else if (event.text.unicode >= 32 && event.text.unicode < 127 && box2Value.size() < 4)
                 box2Value += static_cast<char>(event.text.unicode);
         }
+        // Keybinds: handle key assignment
+        if (editingKeybind != -1 && event.text.unicode < 128) {
+            // Only assign printable keys
+            keybinds[editingKeybind] = static_cast<sf::Keyboard::Key>(event.text.unicode);
+            editingKeybind = -1;
+            keybindHintText.setString("");
+        }
+    }
+    if (event.type == sf::Event::KeyPressed && editingKeybind != -1) {
+        // Assign any key, including non-printable
+        keybinds[editingKeybind] = event.key.code;
+        editingKeybind = -1;
+        keybindHintText.setString("");
     }
 }
 
@@ -155,6 +242,24 @@ void SettingsState::update(float deltaTime) {
     GUIHelper::applyButtonHover(returnButtonRect, returnButton,
         GUIHelper::isPointInRect(sf::Vector2f(mousePos.x, mousePos.y), returnButtonRect),
         GUIHelper::Colors::RETURN_BUTTON, sf::Color(150, 70, 70, 200));
+
+    // Keybinds: update key text labels
+    for (int i = 0; i < KeybindCount; i++) {
+        std::string keyName = rtype::client::gui::keyToString(keybinds[i]);
+        if (keyName.empty()) keyName = "?";
+        keybindKeyTexts[i].setString(keyName);
+        // Hover effect for keybind rows
+        sf::Vector2f mouseF(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y));
+        if (keybindRects[i].getGlobalBounds().contains(mouseF))
+            keybindRects[i].setFillColor(sf::Color(60, 60, 60));
+        else
+            keybindRects[i].setFillColor(sf::Color(40, 40, 40));
+    }
+    // Reset button hover
+    if (resetKeybindsRect.getGlobalBounds().contains(sf::Vector2f(mousePos.x, mousePos.y)))
+        resetKeybindsRect.setFillColor(sf::Color(60, 60, 60));
+    else
+        resetKeybindsRect.setFillColor(sf::Color(40, 40, 40));
 }
 
 /**
@@ -163,6 +268,27 @@ void SettingsState::update(float deltaTime) {
  */
 void SettingsState::render(sf::RenderWindow& window) {
     window.draw(titleText);
+
+    // Draw keybinds section
+    window.draw(keybindTitleText);
+    for (int i = 0; i < KeybindCount; i++) {
+        window.draw(keybindActionTexts[i]);
+        window.draw(keybindRects[i]);
+        window.draw(keybindKeyTexts[i]);
+    }
+    window.draw(resetKeybindsRect);
+    window.draw(resetKeybindsButton);
+    if (editingKeybind != -1)
+        window.draw(keybindHintText);
+
+    // Draw IP/PORT section
+    static sf::Text ipPortTitleText;
+    ipPortTitleText.setFont(GUIHelper::getFont());
+    ipPortTitleText.setString("IP / PORT");
+    ipPortTitleText.setCharacterSize(32);
+    ipPortTitleText.setFillColor(sf::Color::White);
+    ipPortTitleText.setPosition(box1Rect.getPosition().x, box1Rect.getPosition().y - 60.0f);
+    window.draw(ipPortTitleText);
 
     window.draw(box1Rect);
     if (box1Value.empty() && !typingBox1)
