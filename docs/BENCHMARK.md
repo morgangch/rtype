@@ -1,110 +1,110 @@
-# 🧠 Benchmark des Technologies Utilisées
+# 🧠 Technology Benchmark
 
-## 🧩 Langage : **C++17**
+## 🧩 Language: **C++17**
 
-### 🔍 Comparaison
-Le C++ reste un **langage de référence pour le développement de jeux et d’applications performantes**.  
-- **Face à Python** : plus lent et interprété, Python est idéal pour les scripts mais pas pour les jeux temps réel.  
-- **Face à C# (Unity)** : C# simplifie le développement, mais C++ offre un **contrôle total sur la mémoire et la performance**.  
-- **Face à Java** : Java automatise la gestion mémoire mais sacrifie la performance fine.
+### 🔍 Comparison
+C++ remains a **reference language for developing high-performance games and applications**.  
+- **Compared to Python**: slower and interpreted, Python is great for scripting but not for real-time games.  
+- **Compared to C# (Unity)**: C# simplifies development, but C++ offers **full control over memory and performance**.  
+- **Compared to Java**: Java automates memory management but sacrifices fine-grained performance.
 
-### 💪 Forces du C++
-- Compilation native pour des performances maximales  
-- Gestion mémoire explicite, adaptée aux jeux  
-- Portabilité (Windows, Linux, macOS)  
-- Large écosystème de bibliothèques (SFML, SDL, Boost, etc.)  
-- Support de multiples paradigmes (OO, générique, fonctionnel)
-
----
-
-## 🎮 Bibliothèque graphique : **SFML 2.6**
-
-### 🔍 Comparaison
-| Moteur / Librairie | Avantages | Inconvénients |
-|--------------------|------------|----------------|
-| **SFML** | Simple, légère, API claire, réseau intégré | Pas de support 3D |
-| **Raylib** | Moderne et minimaliste | Moins complet côté audio/réseau |
-| **Unity (C#)** | Outils puissants et visuels | Surcouche lourde, dépendances |
-| **Unreal Engine 5 (C++)** | Très puissant, AAA-ready | Trop complexe pour un projet 2D |
-| **Ncurses** | Ultra-léger, console only | Pas de rendu graphique |
-
-### 💪 Pourquoi SFML
-- API claire et orientée objet en C++  
-- Gestion intégrée du **graphisme, son, réseau et input**  
-- **Légère et rapide**, idéale pour un projet pédagogique  
-- Permet de comprendre les **bases d’un moteur de jeu 2D**
+### 💪 Strengths of C++
+- Native compilation for maximum performance  
+- Explicit memory management, ideal for games  
+- Portability (Windows, Linux, macOS)  
+- Large ecosystem of libraries (SFML, SDL, Boost, etc.)  
+- Supports multiple paradigms (OOP, generic, functional)
 
 ---
 
-## 🧪 Tests Unitaires : **Criterion 2.4.1**
+## 🎮 Graphics Library: **SFML 2.6**
 
-### 🔍 Comparaison
-| Outil | Langage | Points forts | Limites |
-|--------|----------|--------------|----------|
-| **Criterion** | C/C++ | Découverte automatique des tests, exécution parallèle | Moins d’écosystème que GoogleTest |
-| **GoogleTest** | C++ | Complet, bien documenté | Syntaxe plus lourde |
-| **Catch2** | C++ | Header-only, simple à intégrer | Moins performant sur gros projets |
-| **Tests fonctionnels / intégration** | N/A | Valident le comportement global | Plus longs, moins précis pour les bugs unitaires |
+### 🔍 Comparison
+| Engine / Library | Advantages | Drawbacks |
+|------------------|-------------|------------|
+| **SFML** | Simple, lightweight, clear API, built-in networking | No 3D support |
+| **Raylib** | Modern and minimalist | Less complete for audio/network |
+| **Unity (C#)** | Powerful visual tools | Heavy framework, dependencies |
+| **Unreal Engine 5 (C++)** | Extremely powerful, AAA-ready | Overkill for a 2D project |
+| **Ncurses** | Ultra-light, console only | No graphical rendering |
 
-### 💪 Pourquoi Criterion
-- Intégration simple avec **CMake**  
-- Résultats de tests lisibles et clairs  
-- Supporte l’exécution **parallèle**  
-- Complété par des tests fonctionnels (UDP) pour le client/serveur
-
----
-
-## ⚙️ Build System : **CMake + Ninja**
-
-### 🔍 Comparaison
-| Outil | Description | Avantages | Inconvénients |
-|--------|-------------|------------|----------------|
-| **CMake + Ninja** | Générateur multiplateforme | Rapide, standard industriel, compatible IDE | Syntaxe parfois complexe |
-| **Make** | Historique | Simple | Lent, pas portable |
-| **Meson + Ninja** | Moderne, syntaxe claire | Rapide | Moins utilisé |
-| **Bazel / Premake** | Automatisation avancée | Multiplateforme | Complexe pour petits projets |
-
-### 💪 Pourquoi CMake + Ninja
-- **CMake** : standard de facto du C++ moderne  
-- **Ninja** : compilations **ultra-rapides** en parallèle  
-- Compatibles avec **GitHub Actions**, **VSCode**, **CLion**  
-- Adaptés à une **architecture modulaire** (client / serveur / moteur)
+### 💪 Why SFML
+- Clear, object-oriented API in C++  
+- Integrated management of **graphics, audio, networking, and input**  
+- **Lightweight and fast**, perfect for an educational project  
+- Helps understand the **foundations of a 2D game engine**
 
 ---
 
-## 🧱 Architecture : **ECS (Entity Component System)**
+## 🧪 Unit Testing: **Criterion 2.4.1**
 
-### 💪 Avantages
-- Architecture **modulaire et extensible**  
-- Séparation claire entre données et logique  
-- Ajout facile de nouveaux comportements sans modifier les entités existantes  
-- Courant dans les moteurs modernes (Unity, Frostbite…)
+### 🔍 Comparison
+| Tool | Language | Strengths | Limitations |
+|------|-----------|------------|--------------|
+| **Criterion** | C/C++ | Auto-discovery of tests, parallel execution | Smaller ecosystem than GoogleTest |
+| **GoogleTest** | C++ | Comprehensive, well-documented | Heavier syntax |
+| **Catch2** | C++ | Header-only, easy integration | Less performant on large projects |
+| **Functional / Integration Tests** | N/A | Validate global behavior | Slower, less precise for unit bugs |
 
----
-
-## 🧠 Patterns de Conception
-- **Factory** → instanciation dynamique des entités  
-- **Singleton** → gestion centralisée (ressources, audio, etc.)  
-- **Observer** → communication événementielle entre objets  
-- **State Machine** → gestion des états du jeu (menu, gameplay, pause…)  
-- **Manager** → orchestration des systèmes (rendu, réseau, entités…)
-
----
-
-## 🧰 Documentation & Outils
-
-| Outil | Rôle | Pourquoi |
-|--------|------|-----------|
-| **Doxygen + doxygen-awesome-css** | Génération automatique de documentation | Moderne, lisible, multiplateforme |
-| **GitHub Actions** | Intégration continue / déploiement | Builds multi-OS automatisés |
-| **cppcheck / clang-tidy** | Analyse statique du code | Détection d’erreurs et optimisation |
-| **PlantUML** | Diagrammes UML | Génération rapide et intégrée à la documentation |
+### 💪 Why Criterion
+- Simple **CMake** integration  
+- Clear and readable test results  
+- Supports **parallel execution**  
+- Complemented by **functional tests (UDP)** for the client/server system
 
 ---
 
-## 🌍 Plateformes Cibles
+## ⚙️ Build System: **CMake + Ninja**
+
+### 🔍 Comparison
+| Tool | Description | Advantages | Drawbacks |
+|------|--------------|-------------|-------------|
+| **CMake + Ninja** | Cross-platform build system | Fast, industry standard, IDE compatible | Syntax can be complex |
+| **Make** | Classic tool | Simple | Slow, not portable |
+| **Meson + Ninja** | Modern with clear syntax | Fast | Less common |
+| **Bazel / Premake** | Advanced automation | Cross-platform | Overkill for small projects |
+
+### 💪 Why CMake + Ninja
+- **CMake**: the de facto standard for modern C++  
+- **Ninja**: **ultra-fast** parallel builds  
+- Compatible with **GitHub Actions**, **VSCode**, **CLion**  
+- Ideal for a **modular architecture** (client / server / engine)
+
+---
+
+## 🧱 Architecture: **ECS (Entity Component System)**
+
+### 💪 Advantages
+- **Modular and extensible** architecture  
+- Clear separation between data and logic  
+- Easy to add new behaviors without modifying existing entities  
+- Common in modern engines (Unity, Frostbite…)
+
+---
+
+## 🧠 Design Patterns
+- **Factory** → dynamic entity instantiation  
+- **Singleton** → centralized management (resources, audio, etc.)  
+- **Observer** → event-based communication between objects  
+- **State Machine** → handles game states (menu, gameplay, pause, etc.)  
+- **Manager** → orchestrates systems (rendering, networking, entities…)
+
+---
+
+## 🧰 Documentation & Tools
+
+| Tool | Role | Why |
+|------|------|------|
+| **Doxygen + doxygen-awesome-css** | Automatic documentation generation | Modern, readable, cross-platform |
+| **GitHub Actions** | Continuous Integration / Deployment | Automated multi-OS builds |
+| **cppcheck / clang-tidy** | Static code analysis | Error detection and optimization |
+| **PlantUML** | UML diagram generation | Quick and easily integrated with docs |
+
+---
+
+## 🌍 Target Platforms
 - **Linux, macOS, Windows**  
-- Compatibilité assurée par **CMake** et **SFML**  
-- Tests automatisés via **GitHub Actions** pour garantir la portabilité
+- Compatibility ensured through **CMake** and **SFML**  
+- Automated testing via **GitHub Actions** to guarantee portability
 
 ---
