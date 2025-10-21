@@ -10,6 +10,7 @@
 #include "tools.h"
 #include "components/PlayerConn.h"
 #include "ECS/System.h"
+#include <iostream>
 
 namespace rtype::server::components {
     class PlayerConn;
@@ -21,15 +22,15 @@ public:
     }
 
     void Update(ECS::World &world, float deltaTime) override {
-        int processedPackets = 0;
-
         for (ECS::EntityID entity: world.GetAllEntities()) {
             auto *player = root.world.GetComponent<rtype::server::components::PlayerConn>(entity);
             if (!player)
-                return;
-            processedPackets = player->packet_handler.processPackets(player->packet_manager.fetchReceivedPackets());
+                continue; // Skip entities that aren't players (e.g., rooms, enemies)
+            
+            int processedPackets = player->packet_handler.processPackets(player->packet_manager.fetchReceivedPackets());
             if (processedPackets > 0) {
                 player->last_packet_timestamp = rtype::tools::getCurrentTimestamp();
+                std::cout << "[PacketHandlingSystem] Processed " << processedPackets << " packet(s) for player " << entity << std::endl;
             }
         }
     }

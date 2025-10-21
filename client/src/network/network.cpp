@@ -37,6 +37,10 @@ namespace rtype::client::network {
     PacketManager pm;
 }
 
+// Global player info (shared with game_controller.cpp and lobby)
+std::string g_username = "Player";
+uint32_t g_playerServerId = 0;
+
 void network::loop_recv() {
     uint8_t buffer[MAX_PACKET_SIZE];
     packet_t packet;
@@ -154,6 +158,11 @@ int network::init_udp_socket(const std::string &server_ip, int server_port) {
 
 int network::start_room_connection(const std::string &ip, int port, const std::string &player_name, uint32_t room_code) {
     init_udp_socket(ip, port);
+    
+    // Store username globally so JOIN_ROOM_ACCEPTED handler can use it
+    g_username = player_name;
+    g_playerServerId = 0; // Reset on new connection
+    
     senders::send_join_room_request(player_name, room_code);
     return 0;
 }

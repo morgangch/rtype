@@ -2,7 +2,7 @@
 ** EPITECH PROJECT, 2025
 ** rtype
 ** File description:
-** TODO: add description
+** Network game controllers header - callback declarations
 */
 #ifndef GAME_CONTROLLER_H
 #define GAME_CONTROLLER_H
@@ -21,7 +21,41 @@ namespace rtype::client::controllers::game_controller {
      */
     void handle_player_disconnect(const packet_t& packet);
 
-}
+    /**
+     * @brief Handle SPAWN_ENEMY packet from server.
+     */
+    void handle_spawn_enemy(const packet_t& packet);
 
+    /**
+     * @brief Handle ENTITY_DESTROY packet from server.
+     */
+    void handle_entity_destroy(const packet_t& packet);
+
+    /**
+     * @brief Handle PLAYER_JOIN packet from server.
+     */
+    void handle_player_join(const packet_t& packet);
+
+    /**
+     * @brief Handle PLAYER_STATE packet from server.
+     */
+    void handle_player_state(const packet_t& packet);
+    
+    /**
+     * @brief Handle LOBBY_STATE packet from server.
+     */
+    void handle_lobby_state(const packet_t& packet);
+    
+    /**
+     * @brief Handle GAME_START packet from server (transition all clients to game).
+     */
+    void handle_game_start(const packet_t& packet);
+    
+    /**
+     * @brief Handle SPAWN_PROJECTILE packet from server.
+     */
+    void handle_spawn_projectile(const packet_t& packet);
+
+}
 
 #endif //GAME_CONTROLLER_H

@@ -182,7 +182,18 @@ namespace rtype::client::gui {
          * Changes button text/color based on player role and ready state
          */
         void updateActionButton();
+        
+    public:
+        /**
+         * @brief Update lobby state from server broadcast
+         * @param totalPlayers Total number of players in the lobby
+         * @param readyPlayers Number of players marked as ready
+         */
+        void updateFromServer(uint32_t totalPlayers, uint32_t readyPlayers);
     };
+    
+    // Global pointer to current lobby state for network callbacks
+    extern PrivateServerLobbyState* g_lobbyState;
 }
 
 #endif // CLIENT_PRIVATE_SERVER_LOBBY_STATE_HPP

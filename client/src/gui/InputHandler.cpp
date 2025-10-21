@@ -15,6 +15,7 @@
 
 #include "gui/GameState.h"
 #include "gui/MainMenuState.h"
+#include "network/senders.h"
 
 namespace rtype::client::gui {
 
@@ -202,15 +203,17 @@ void GameState::handleKeyReleased(sf::Keyboard::Key key) {
                             bool wasFullyCharged = chargedShot->release();
                             
                             if (fireRate->canFire()) {
-                                // Fire appropriate projectile type
+                                // Send shoot request to server (server will spawn projectile for all clients)
+                                rtype::client::network::senders::send_player_shoot();
+                                
+                                // Fire appropriate projectile type locally for immediate feedback
+                                // NOTE: Server will create the authoritative projectile
                                 if (wasFullyCharged) {
-                                    createChargedProjectile(pos->x + 32.0f, pos->y);
                                     // Play charged shoot sound if available
                                     if (m_soundManager.has(AudioFactory::SfxId::ChargedShoot)) {
                                         m_soundManager.play(AudioFactory::SfxId::ChargedShoot);
                                     }
                                 } else {
-                                    createPlayerProjectile(pos->x + 32.0f, pos->y);
                                     // Play regular shoot sound if available
                                     if (m_soundManager.has(AudioFactory::SfxId::Shoot)) {
                                         m_soundManager.play(AudioFactory::SfxId::Shoot);

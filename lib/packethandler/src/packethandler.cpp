@@ -32,8 +32,10 @@ void PacketHandler::handlePacket(const packet_t& packet) {
     if (it != _callbacks.end() && it->second) {
         // Call the registered callback with the full packet_t
         it->second(packet);
+    } else {
+        // Debug: Log when no callback is registered
+        // (This helps identify missing packet handlers)
     }
-    // If no callback is registered, silently ignore the packet
 }
 
 // Process multiple packets at once

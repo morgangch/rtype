@@ -19,6 +19,9 @@
  */
 
 #include "gui/GameState.h"
+#include "packets.h"
+#include "packetmanager.h"
+#include "network/network.h"
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -68,6 +71,25 @@ void GameState::updateMovementSystem(float deltaTime) {
 }
 
 void GameState::updateInputSystem(float deltaTime) {
+    // Send player input to server periodically (20 times per second)
+    static float inputSendTimer = 0.0f;
+    static constexpr float INPUT_SEND_INTERVAL = 0.05f; // 50ms = 20Hz
+    inputSendTimer += deltaTime;
+    
+    if (inputSendTimer >= INPUT_SEND_INTERVAL) {
+        inputSendTimer = 0.0f;
+        
+        // Send current input state to server
+        PlayerInputPacket inputPkt{};
+        inputPkt.moveUp = m_keyUp;
+        inputPkt.moveDown = m_keyDown;
+        inputPkt.moveLeft = m_keyLeft;
+        inputPkt.moveRight = m_keyRight;
+        
+        // Use the network namespace packet manager
+        rtype::client::network::pm.sendPacketBytesSafe(&inputPkt, sizeof(inputPkt), PLAYER_INPUT, nullptr, false);
+    }
+    
     // Find player entity (has Player component)
     auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
     if (!players) return;
@@ -208,15 +230,18 @@ void GameState::updateInvulnerabilitySystem(float deltaTime) {
 }
 
 void GameState::updateEnemySpawnSystem(float deltaTime) {
-    m_enemySpawnTimer += deltaTime;
-    m_bossSpawnTimer += deltaTime;
+    // DISABLED: Server now handles enemy spawning and broadcasts to clients
+    // Clients receive SPAWN_ENEMY packets instead
     
-    // Boss spawn system (every 3 minutes)
+    // Boss spawn system remains client-side for now (every 3 minutes)
+    m_bossSpawnTimer += deltaTime;
     if (m_bossSpawnTimer >= BOSS_SPAWN_INTERVAL && !isBossActive()) {
         createBoss(SCREEN_WIDTH - 100.0f, SCREEN_HEIGHT * 0.5f);
         m_bossSpawnTimer = 0.0f;
     }
     
+    /* CLIENT-SIDE ENEMY SPAWNING DISABLED - NOW SERVER-AUTHORITATIVE
+    m_enemySpawnTimer += deltaTime;
     if (m_enemySpawnTimer >= ENEMY_SPAWN_INTERVAL) {
         // Count current enemies
         size_t enemyCount = 0;
@@ -248,6 +273,7 @@ void GameState::updateEnemySpawnSystem(float deltaTime) {
             m_enemySpawnTimer = 0.0f;
         }
     }
+    */
 }
 
 void GameState::updateEnemyAISystem(float deltaTime) {

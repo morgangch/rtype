@@ -20,16 +20,23 @@
 #include "gui/PrivateServerLobbyState.h"
 #include "gui/GameState.h"
 #include "gui/MainMenuState.h"
+#include "network/senders.h"
 #include <iostream>
 #include <cstdlib>
 #include <string>
 
+// External declaration of global player server ID set by JOIN_ROOM_ACCEPTED handler
+extern uint32_t g_playerServerId;
+
 namespace rtype::client::gui {
+    // Global pointer to current lobby state (for network callbacks)
+    PrivateServerLobbyState* g_lobbyState = nullptr;
     PrivateServerLobbyState::PrivateServerLobbyState(StateManager& stateManager, const std::string& username, 
                                                      const std::string& serverCode, bool isAdmin)
         : stateManager(stateManager), username(username), serverCode(serverCode), isAdmin(isAdmin), 
           isReady(false), playersReady(0) {
         setupUI();
+        g_lobbyState = this; // Register this instance globally for network callbacks
     }
     
     void PrivateServerLobbyState::setupUI() {
@@ -196,15 +203,12 @@ namespace rtype::client::gui {
         if (!isAdmin) { // Only non-admin players can toggle ready
             isReady = !isReady;
             
-            if (isReady) {
-                playersReady++;
-                std::cout << username << " is now ready!" << std::endl;
-            } else {
-                playersReady--;
-                std::cout << username << " is no longer ready!" << std::endl;
-            }
+            std::cout << username << " toggling ready state to: " << (isReady ? "READY" : "NOT READY") << std::endl;
             
-            updatePlayersReadyText();
+            // Send ready state to server
+            rtype::client::network::senders::send_player_ready(isReady);
+            
+            // UI will be updated when server broadcasts LOBBY_STATE back
             updateActionButton();
         }
     }
@@ -212,10 +216,15 @@ namespace rtype::client::gui {
     void PrivateServerLobbyState::startGame() {
         if (isAdmin) {
             std::cout << "Admin " << username << " is starting the game!" << std::endl;
-            std::cout << "Game starting with " << playersReady << " ready players in server " << serverCode << std::endl;
+            std::cout << "Sending GAME_START_REQUEST to server with " << playersReady << " ready players in server " << serverCode << std::endl;
             
-            // Launch the game
-            stateManager.changeState(std::make_unique<GameState>(stateManager));
+            // Send game start request to server
+            // Server will broadcast GAME_START to all clients, including this one
+            // Then handle_game_start() will transition everyone to GameState
+            rtype::client::network::senders::send_game_start_request();
+            
+            // Note: Don't transition to GameState here! Wait for server's GAME_START packet
+            // This ensures all clients transition together
         }
     }
     
@@ -236,5 +245,17 @@ namespace rtype::client::gui {
                 actionButtonRect.setFillColor(sf::Color(70, 70, 70, 200)); // Gray when not ready
             }
         }
+    }
+    
+    void PrivateServerLobbyState::updateFromServer(uint32_t totalPlayers, uint32_t readyPlayers) {
+        // Update our player count from the server's authoritative state
+        this->playersReady = static_cast<int>(readyPlayers);
+        
+        std::cout << "Lobby updated from server: " << totalPlayers << " total players, " 
+                  << readyPlayers << " ready" << std::endl;
+        
+        // Update the display text
+        playersReadyText.setString("Amount of players ready " + std::to_string(readyPlayers) + 
+                                  " / " + std::to_string(totalPlayers));
     }
 }

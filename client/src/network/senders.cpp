@@ -8,9 +8,11 @@
 
 #include "packets.h"
 #include "network/network.h"
+#include <iostream>
 
 namespace rtype::client::network::senders {
     void send_game_start_request() {
+        std::cout << "CLIENT: Sending GAME_START_REQUEST packet" << std::endl;
         GameStartRequestPacket packet;
         rtype::client::network::pm.sendPacketBytesSafe(&packet, sizeof(GameStartRequestPacket), GAME_START_REQUEST,
                                                        nullptr, true);
@@ -23,5 +25,17 @@ namespace rtype::client::network::senders {
         strncpy(p.name, player_name.c_str(), 31);
         p.name[31] = '\0';
         rtype::client::network::pm.sendPacketBytesSafe(&p, sizeof(JoinRoomPacket), JOIN_ROOM, nullptr, true);
+    }
+    
+    void send_player_ready(bool isReady) {
+        std::cout << "CLIENT: Sending PLAYER_READY packet (isReady=" << isReady << ")" << std::endl;
+        PlayerReadyPacket p{};
+        p.isReady = isReady;
+        rtype::client::network::pm.sendPacketBytesSafe(&p, sizeof(PlayerReadyPacket), PLAYER_READY, nullptr, true);
+    }
+    
+    void send_player_shoot() {
+        PlayerShootPacket p{};
+        rtype::client::network::pm.sendPacketBytesSafe(&p, sizeof(PlayerShootPacket), PLAYER_SHOOT, nullptr, false);
     }
 }

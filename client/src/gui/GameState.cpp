@@ -25,15 +25,155 @@
 #include "gui/AudioFactory.h"
 #include "gui/GUIHelper.h"
 #include "gui/AssetPaths.h"
+#include "gui/TextureCache.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
 
 namespace rtype::client::gui {
 
+// Global GameState pointer definition
+GameState* g_gameState = nullptr;
+
+// Helper: create enemy from server info and store mapping
+ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float y, uint16_t hp, uint16_t enemyType) {
+    // If we already have an entity mapped, update it instead
+    auto it = m_serverEntityMap.find(serverId);
+    if (it != m_serverEntityMap.end()) {
+        ECS::EntityID existing = it->second;
+        auto* pos = m_world.GetComponent<rtype::common::components::Position>(existing);
+        if (pos) { pos->x = x; pos->y = y; }
+        auto* health = m_world.GetComponent<rtype::common::components::Health>(existing);
+        if (health) { health->currentHp = hp; }
+        return existing;
+    }
+
+    // Create a new enemy based on enemyType (basic mapping)
+    ECS::EntityID e = createEnemy(x, y);
+    // Set server id on Player component if present (some factories attach Player for players only)
+    auto* playerComp = m_world.GetComponent<rtype::common::components::Player>(e);
+    if (playerComp) playerComp->serverId = serverId;
+
+    // Store mapping
+    m_serverEntityMap[serverId] = e;
+    return e;
+}
+
+ECS::EntityID GameState::createRemotePlayer(const std::string &name, uint32_t serverId) {
+    std::cout << "[GameState] Creating remote player: name=" << name << " serverId=" << serverId << std::endl;
+    
+    // Check if we already have this player (shouldn't happen, but be safe)
+    auto it = m_serverEntityMap.find(serverId);
+    if (it != m_serverEntityMap.end()) {
+        std::cout << "[GameState] WARNING: Remote player with serverId=" << serverId << " already exists (clientId=" << it->second << ")" << std::endl;
+        return it->second;
+    }
+    
+    // Create a player-like entity (non-controllable)
+    ECS::EntityID e = m_world.CreateEntity();
+    m_world.AddComponent<rtype::common::components::Position>(e, 100.0f, 360.0f, 0.0f);
+    m_world.AddComponent<rtype::client::components::Sprite>(e, rtype::client::assets::player::PLAYER_SPRITE, sf::Vector2f(33.0f, 17.0f), true, sf::IntRect(0,0,33,17), 3.0f);
+    m_world.AddComponent<rtype::common::components::Player>(e, name, serverId);
+    m_world.AddComponent<rtype::common::components::Health>(e, 3);
+    m_world.AddComponent<rtype::common::components::Team>(e, rtype::common::components::TeamType::Player);
+
+    m_serverEntityMap[serverId] = e;
+    std::cout << "[GameState] ✓ Created remote player entity: clientId=" << e << " serverId=" << serverId << std::endl;
+    return e;
+}
+
+ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t ownerId, float x, float y, float vx, float vy, uint16_t damage, bool piercing) {
+    std::cout << "[GameState] Creating projectile from server: serverId=" << serverId << " owner=" << ownerId << " pos=(" << x << "," << y << ") vel=(" << vx << "," << vy << ")" << std::endl;
+    
+    // Check if we already have this projectile (shouldn't happen)
+    auto it = m_serverEntityMap.find(serverId);
+    if (it != m_serverEntityMap.end()) {
+        std::cout << "[GameState] WARNING: Projectile with serverId=" << serverId << " already exists" << std::endl;
+        return it->second;
+    }
+    
+    // Create projectile entity
+    auto entity = m_world.CreateEntity();
+    
+    // Position
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    
+    // Velocity
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, vx, vy, std::sqrt(vx*vx + vy*vy));
+    
+    // Sprite - Use default projectile sprite
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_1);
+    m_world.AddComponent<rtype::client::components::Sprite>(
+        entity,
+        rtype::client::assets::projectiles::PROJECTILE_1,
+        sf::Vector2f(81.0f, 17.0f),
+        true,
+        sf::IntRect(185, 0, 81, 17),
+        0.5f);
+    
+    // Team - Player team (projectiles are always player team for now)
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Player);
+    
+    // Projectile data
+    m_world.AddComponent<rtype::common::components::Projectile>(entity, damage, piercing);
+    
+    // Map server ID to local entity
+    m_serverEntityMap[serverId] = entity;
+    
+    std::cout << "[GameState] ✓ Created projectile entity: clientId=" << entity << " serverId=" << serverId << std::endl;
+    return entity;
+}
+
+void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp) {
+    // Skip updates for local player (controlled by client input)
+    if (serverId == m_localPlayerServerId) {
+        // std::cout << "[GameState] Skipping state update for local player (serverId=" << serverId << ")" << std::endl;
+        return;
+    }
+    
+    auto it = m_serverEntityMap.find(serverId);
+    if (it == m_serverEntityMap.end()) {
+        std::cout << "[GameState] Cannot update entity with serverId=" << serverId << " - not found in map" << std::endl;
+        return;
+    }
+    
+    ECS::EntityID e = it->second;
+    auto* pos = m_world.GetComponent<rtype::common::components::Position>(e);
+    if (pos) { pos->x = x; pos->y = y; }
+    auto* health = m_world.GetComponent<rtype::common::components::Health>(e);
+    if (health) { health->currentHp = hp; }
+    
+    // std::cout << "[GameState] Updated entity: clientId=" << e << " serverId=" << serverId << " pos=(" << x << "," << y << ") hp=" << hp << std::endl;
+}
+
+void GameState::setLocalPlayerServerId(uint32_t serverId) {
+    m_localPlayerServerId = serverId;
+    std::cout << "[GameState] Local player server ID set to: " << serverId << std::endl;
+}
+
+void GameState::destroyEntityByServerId(uint32_t serverId) {
+    auto it = m_serverEntityMap.find(serverId);
+    if (it == m_serverEntityMap.end()) {
+        std::cout << "[GameState] Cannot destroy entity with serverId=" << serverId << " - not found in map" << std::endl;
+        return;
+    }
+    ECS::EntityID e = it->second;
+    std::cout << "[GameState] Destroying entity: clientId=" << e << " serverId=" << serverId << std::endl;
+    m_world.DestroyEntity(e);
+    m_serverEntityMap.erase(it);
+}
+
+
 GameState::GameState(StateManager& stateManager)
     : m_stateManager(stateManager), m_parallaxSystem(SCREEN_WIDTH, SCREEN_HEIGHT) {
     setupGameOverUI();
+    // set global pointer so network handlers can access the active GameState
+    g_gameState = this;
+}
+
+GameState::~GameState() {
+    if (g_gameState == this) g_gameState = nullptr;
 }
 
 void GameState::loadHUDTextures() {
