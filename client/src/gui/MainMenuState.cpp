@@ -190,7 +190,7 @@ namespace rtype::client::gui {
             }
         }
     }
-    
+
     void MainMenuState::handleMouseMoveEvent(const sf::Event& event) {
         sf::Vector2f mousePos(event.mouseMove.x, event.mouseMove.y);
         
