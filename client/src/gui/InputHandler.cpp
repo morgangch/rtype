@@ -203,11 +203,10 @@ void GameState::handleKeyReleased(sf::Keyboard::Key key) {
                             bool wasFullyCharged = chargedShot->release();
                             
                             if (fireRate->canFire()) {
-                                // Send shoot request to server (server will spawn projectile for all clients)
-                                rtype::client::network::senders::send_player_shoot();
+                                // Send shoot request to server with charged state and current position
+                                rtype::client::network::senders::send_player_shoot(wasFullyCharged, pos->x, pos->y);
                                 
-                                // Fire appropriate projectile type locally for immediate feedback
-                                // NOTE: Server will create the authoritative projectile
+                                // Play appropriate sound for immediate feedback
                                 if (wasFullyCharged) {
                                     // Play charged shoot sound if available
                                     if (m_soundManager.has(AudioFactory::SfxId::ChargedShoot)) {

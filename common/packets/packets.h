@@ -110,7 +110,9 @@ struct PlayerInputPacket {
 
 // Client → Server: Player shoot
 struct PlayerShootPacket {
-    // Empty - server uses player's current position
+    bool isCharged; // true if it's a charged shot, false for regular
+    float playerX;  // Player's X position at time of shooting
+    float playerY;  // Player's Y position at time of shooting
 };
 
 // Server → All: Spawn a projectile
@@ -121,6 +123,7 @@ struct SpawnProjectilePacket {
     float vx, vy;           // Velocity
     uint16_t damage;
     bool piercing;
+    bool isCharged;         // true if charged shot, false for normal
 };
 
 // Player → Server: Player shoot (OLD - keeping for compatibility)

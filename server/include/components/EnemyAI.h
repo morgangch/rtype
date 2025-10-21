@@ -3,7 +3,7 @@
 
 #include <ECS/ECS.h>
 
-namespace rtype::serveur::components {
+namespace rtype::server::components {
     enum class AIPattern {
         Straight, Sine, Zigzag, Circle, Follow, Random, Stationary
     };

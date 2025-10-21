@@ -10,11 +10,11 @@
 
 #include "ECS/System.h"
 #include "ECS/World.h"
-#include "components/Position.h"
-#include "components/Velocity.h"
-#include "components/Health.h"
-#include "components/Team.h"
-#include "components/Projectile.h"
+#include "common/components/Position.h"
+#include "common/components/Velocity.h"
+#include "common/components/Health.h"
+#include "common/components/Team.h"
+#include "common/components/Projectile.h"
 #include "packets.h"
 #include <vector>
 
@@ -29,9 +29,10 @@ namespace rtype::server::systems {
  * 
  * When collisions are detected, broadcasts ENTITY_DESTROY to all clients in the room.
  */
-class ServerCollisionSystem : public ECS::System<ServerCollisionSystem> {
+class ServerCollisionSystem : public ECS::System {
 public:
-    void Update(ECS::World& world, float deltaTime);
+    ServerCollisionSystem() : ECS::System("ServerCollisionSystem", 5) {}
+    void Update(ECS::World& world, float deltaTime) override;
 
 private:
     /**
@@ -53,12 +54,11 @@ private:
                    float x2, float y2, float w2, float h2);
     
     /**
-     * @brief Broadcast entity destruction to all clients in a room
+     * @brief Broadcast entity destruction to all active game rooms
      * @param world The ECS world
      * @param entityId The entity to destroy
-     * @param roomId The room containing the entity
      */
-    void broadcastEntityDestroy(ECS::World& world, ECS::EntityID entityId, ECS::EntityID roomId);
+    void broadcastEntityDestroyToAllRooms(ECS::World& world, ECS::EntityID entityId);
 };
 
 } // namespace rtype::server::systems

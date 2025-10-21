@@ -30,8 +30,11 @@ namespace rtype::client::network::senders {
     
     /**
      * @brief Send a player shoot request to the server
+     * @param isCharged Whether the shot is a charged shot
+     * @param playerX Player's X position at time of shooting
+     * @param playerY Player's Y position at time of shooting
      */
-    void send_player_shoot();
+    void send_player_shoot(bool isCharged, float playerX, float playerY);
 }
 
 #endif //SENDERS_H

@@ -82,8 +82,8 @@ ECS::EntityID GameState::createRemotePlayer(const std::string &name, uint32_t se
     return e;
 }
 
-ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t ownerId, float x, float y, float vx, float vy, uint16_t damage, bool piercing) {
-    std::cout << "[GameState] Creating projectile from server: serverId=" << serverId << " owner=" << ownerId << " pos=(" << x << "," << y << ") vel=(" << vx << "," << vy << ")" << std::endl;
+ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t ownerId, float x, float y, float vx, float vy, uint16_t damage, bool piercing, bool isCharged) {
+    std::cout << "[GameState] Creating projectile from server: serverId=" << serverId << " owner=" << ownerId << " pos=(" << x << "," << y << ") vel=(" << vx << "," << vy << ") charged=" << isCharged << std::endl;
     
     // Check if we already have this projectile (shouldn't happen)
     auto it = m_serverEntityMap.find(serverId);
@@ -101,27 +101,42 @@ ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t 
     // Velocity
     m_world.AddComponent<rtype::common::components::Velocity>(entity, vx, vy, std::sqrt(vx*vx + vy*vy));
     
-    // Sprite - Use default projectile sprite
-    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_1);
-    m_world.AddComponent<rtype::client::components::Sprite>(
-        entity,
-        rtype::client::assets::projectiles::PROJECTILE_1,
-        sf::Vector2f(81.0f, 17.0f),
-        true,
-        sf::IntRect(185, 0, 81, 17),
-        0.5f);
+    // Sprite - Different sprite for charged vs normal
+    if (isCharged) {
+        // Charged projectile sprite - PROJECTILE_4 (rose/magenta, more dense and imposing)
+        rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_4);
+        m_world.AddComponent<rtype::client::components::Sprite>(
+            entity,
+            rtype::client::assets::projectiles::PROJECTILE_4,
+            sf::Vector2f(81.0f, 17.0f),
+            true,
+            sf::IntRect(185, 17, 81, 17), // Frame 2, line 2: denser visual
+            0.6f); // Scale 0.6x (49px wide, 10px tall) - bigger than normal
+        std::cout << "[GameState]   Using CHARGED sprite (PROJECTILE_4, rect: 185,17,81,17, scale: 0.6)" << std::endl;
+    } else {
+        // Normal projectile sprite - PROJECTILE_1
+        rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_1);
+        m_world.AddComponent<rtype::client::components::Sprite>(
+            entity,
+            rtype::client::assets::projectiles::PROJECTILE_1,
+            sf::Vector2f(81.0f, 17.0f),
+            true,
+            sf::IntRect(185, 0, 81, 17),
+            0.5f);
+        std::cout << "[GameState]   Using NORMAL sprite (PROJECTILE_1, rect: 185,0,81,17, scale: 0.5)" << std::endl;
+    }
     
     // Team - Player team (projectiles are always player team for now)
     m_world.AddComponent<rtype::common::components::Team>(
         entity, rtype::common::components::TeamType::Player);
     
-    // Projectile data
-    m_world.AddComponent<rtype::common::components::Projectile>(entity, damage, piercing);
+    // Projectile data - mark as server-owned for prediction
+    m_world.AddComponent<rtype::common::components::Projectile>(entity, damage, piercing, true /* serverOwned */);
     
     // Map server ID to local entity
     m_serverEntityMap[serverId] = entity;
     
-    std::cout << "[GameState] ✓ Created projectile entity: clientId=" << entity << " serverId=" << serverId << std::endl;
+    std::cout << "[GameState] ✓ Created projectile entity: clientId=" << entity << " serverId=" << serverId << " damage=" << damage << " piercing=" << piercing << " serverOwned=TRUE" << std::endl;
     return entity;
 }
 
@@ -155,11 +170,23 @@ void GameState::setLocalPlayerServerId(uint32_t serverId) {
 void GameState::destroyEntityByServerId(uint32_t serverId) {
     auto it = m_serverEntityMap.find(serverId);
     if (it == m_serverEntityMap.end()) {
-        std::cout << "[GameState] Cannot destroy entity with serverId=" << serverId << " - not found in map" << std::endl;
+        // Entity not found - this is OK if we already destroyed it in client-side prediction
+        std::cout << "[GameState] Entity with serverId=" << serverId << " not found (already destroyed locally?)" << std::endl;
         return;
     }
     ECS::EntityID e = it->second;
-    std::cout << "[GameState] Destroying entity: clientId=" << e << " serverId=" << serverId << std::endl;
+    
+    // Check if entity still exists in world (might have been destroyed by client-side prediction)
+    // We can't directly check, so we'll try to get a component
+    auto* pos = m_world.GetComponent<rtype::common::components::Position>(e);
+    if (!pos) {
+        // Entity doesn't exist anymore - was already destroyed locally
+        std::cout << "[GameState] Entity clientId=" << e << " serverId=" << serverId << " already destroyed locally, cleaning up mapping" << std::endl;
+        m_serverEntityMap.erase(it);
+        return;
+    }
+    
+    std::cout << "[GameState] Destroying entity (server confirmation): clientId=" << e << " serverId=" << serverId << std::endl;
     m_world.DestroyEntity(e);
     m_serverEntityMap.erase(it);
 }

@@ -159,17 +159,18 @@ void room_controller::handlePlayerInput(const packet_t &packet) {
 void room_controller::handlePlayerShoot(const packet_t &packet) {
     std::cout << "=== handlePlayerShoot called ===" << std::endl;
     
+    // Parse packet to get charged shot flag and player position
+    PlayerShootPacket *p = (PlayerShootPacket *) packet.data;
+    bool isCharged = p->isCharged;
+    float playerX = p->playerX;
+    float playerY = p->playerY;
+    
+    std::cout << "  Shot type: " << (isCharged ? "CHARGED" : "NORMAL") << " from position (" << playerX << "," << playerY << ")" << std::endl;
+    
     // Find the player entity by network address
     ECS::EntityID player = player_service::findPlayerByNetwork(packet.header.client_addr, packet.header.client_port);
     if (!player) {
         std::cerr << "ERROR: Player not found for shooting" << std::endl;
-        return;
-    }
-    
-    // Get player's position to spawn projectile at their location
-    auto* pos = root.world.GetComponent<rtype::common::components::Position>(player);
-    if (!pos) {
-        std::cerr << "ERROR: Player " << player << " has no Position component" << std::endl;
         return;
     }
     
@@ -183,26 +184,39 @@ void room_controller::handlePlayerShoot(const packet_t &packet) {
     // Create projectile entity on server
     auto projectile = root.world.CreateEntity();
     
-    // Projectile starts at player's position with offset
-    float projectileX = pos->x + 40.0f; // Offset to spawn in front of player
-    float projectileY = pos->y;
+    // Projectile starts at player's reported position with offset (32px is player width from old code)
+    float projectileX = playerX + 32.0f; // Offset to spawn in front of player
+    float projectileY = playerY;
     
-    // Projectile velocity (moving right)
-    constexpr float PROJECTILE_SPEED = 500.0f;
-    float projectileVx = PROJECTILE_SPEED;
+    // Projectile parameters depend on whether it's charged or not
+    float projectileSpeed;
+    uint16_t damage;
+    bool piercing;
+    
+    if (isCharged) {
+        // Charged shot: faster, more damage, piercing (matches old createChargedProjectile)
+        projectileSpeed = 600.0f;
+        damage = 2;
+        piercing = true;
+        std::cout << "  Creating CHARGED projectile: speed=" << projectileSpeed << ", damage=" << damage << ", piercing=YES" << std::endl;
+    } else {
+        // Normal shot (matches old createPlayerProjectile)
+        projectileSpeed = 500.0f;
+        damage = 1;
+        piercing = false;
+        std::cout << "  Creating NORMAL projectile: speed=" << projectileSpeed << ", damage=" << damage << ", piercing=NO" << std::endl;
+    }
+    
+    float projectileVx = projectileSpeed;
     float projectileVy = 0.0f;
     
     // Add components to server projectile
     root.world.AddComponent<rtype::common::components::Position>(projectile, projectileX, projectileY, 0.0f);
-    root.world.AddComponent<rtype::common::components::Velocity>(projectile, projectileVx, projectileVy, PROJECTILE_SPEED);
+    root.world.AddComponent<rtype::common::components::Velocity>(projectile, projectileVx, projectileVy, projectileSpeed);
     root.world.AddComponent<rtype::common::components::Team>(projectile, rtype::common::components::TeamType::Player);
+    root.world.AddComponent<rtype::common::components::Projectile>(projectile, damage, piercing, true /* serverOwned */, projectileSpeed, rtype::common::components::ProjectileType::Basic);
     
-    // Default projectile: 1 damage, not piercing
-    uint16_t damage = 1;
-    bool piercing = false;
-    root.world.AddComponent<rtype::common::components::Projectile>(projectile, damage, PROJECTILE_SPEED, rtype::common::components::ProjectileType::Basic, piercing);
-    
-    std::cout << "✓ Created server projectile entity " << projectile << " at (" << projectileX << "," << projectileY << ")" << std::endl;
+    std::cout << "✓ Created server projectile entity " << projectile << " at (" << projectileX << "," << projectileY << ") [SERVER-OWNED]" << std::endl;
     
     // Broadcast SPAWN_PROJECTILE to all clients in the room
     SpawnProjectilePacket spawnPkt{};
@@ -214,6 +228,7 @@ void room_controller::handlePlayerShoot(const packet_t &packet) {
     spawnPkt.vy = projectileVy;
     spawnPkt.damage = damage;
     spawnPkt.piercing = piercing;
+    spawnPkt.isCharged = isCharged;
     
     auto players_in_room = player_service::findPlayersByRoomCode(room);
     for (auto pid : players_in_room) {
@@ -316,8 +331,15 @@ void room_controller::handleJoinRoomPacket(const packet_t &packet) {
         otherConn->packet_manager.sendPacketBytesSafe(&joinPkt, sizeof(joinPkt), PLAYER_JOIN, nullptr, true);
     }
     
-    // Add LobbyState component to the new player (defaults to not ready)
-    root.world.AddComponent<rtype::server::components::LobbyState>(player, false, false);
+    // Add LobbyState component to the new player ONLY if they don't already have one
+    // This prevents duplicate JOIN_ROOM packets from resetting a player's ready state
+    auto* existingLobbyState = root.world.GetComponent<rtype::server::components::LobbyState>(player);
+    if (!existingLobbyState) {
+        std::cout << "Adding new LobbyState for player " << player << std::endl;
+        root.world.AddComponent<rtype::server::components::LobbyState>(player, false, false);
+    } else {
+        std::cout << "Player " << player << " already has LobbyState (ready=" << existingLobbyState->isReady << "), not resetting" << std::endl;
+    }
     
     // Broadcast updated lobby state to all players in the room
     broadcastLobbyState(room);

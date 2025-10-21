@@ -37,12 +37,20 @@ namespace rtype::client::controllers::game_controller {
         using rtype::client::gui::g_stateManager;
         using rtype::client::gui::PrivateServerLobbyState;
         using rtype::client::gui::g_gameState;
+        using rtype::client::gui::g_lobbyState;
 
         if (g_stateManager) {
             // IMPORTANT: Only transition to lobby if we're NOT already in a game
             // This prevents stale JOIN_ROOM_ACCEPTED packets from kicking us out of GameState
             if (g_gameState != nullptr) {
                 std::cout << "WARNING: Ignoring JOIN_ROOM_ACCEPTED while in GameState (room " << p->roomCode << ")" << std::endl;
+                return;
+            }
+            
+            // IMPORTANT: Ignore duplicate JOIN_ROOM_ACCEPTED if we're already in the lobby
+            // This prevents PacketManager retransmissions from resetting the lobby state (e.g. isReady flag)
+            if (g_lobbyState != nullptr) {
+                std::cout << "WARNING: Ignoring duplicate JOIN_ROOM_ACCEPTED while already in lobby (room " << p->roomCode << ")" << std::endl;
                 return;
             }
             
@@ -135,8 +143,16 @@ namespace rtype::client::controllers::game_controller {
         
         if (!g_gameState) return;
         
+        std::cout << "[handle_spawn_projectile] Received projectile: id=" << p->projectileId 
+                  << " owner=" << p->ownerId 
+                  << " pos=(" << p->x << "," << p->y << ")"
+                  << " vel=(" << p->vx << "," << p->vy << ")"
+                  << " damage=" << p->damage 
+                  << " piercing=" << p->piercing 
+                  << " charged=" << p->isCharged << std::endl;
+        
         // Create projectile entity from server data
-        g_gameState->createProjectileFromServer(p->projectileId, p->ownerId, p->x, p->y, p->vx, p->vy, p->damage, p->piercing);
+        g_gameState->createProjectileFromServer(p->projectileId, p->ownerId, p->x, p->y, p->vx, p->vy, p->damage, p->piercing, p->isCharged);
     }
 
 }

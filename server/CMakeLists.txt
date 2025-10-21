@@ -5,7 +5,10 @@ file(GLOB_RECURSE SERVER_SOURCES "*.cpp")
 
 add_executable(server ${SERVER_SOURCES})
 # Include directories for server headers
-target_include_directories(server PRIVATE include)
+target_include_directories(server PRIVATE 
+    include
+    ${CMAKE_CURRENT_SOURCE_DIR}/..  # Parent directory to find common/
+)
 
 # Link with ECS library
 target_link_libraries(server PRIVATE ecs packetmanager packethandler)

@@ -9,6 +9,8 @@
 
 #include <string>
 #include "ECS/Component.h"
+#include "packetmanager.h"
+#include "packethandler.h"
 
 namespace rtype::server::components {
     class PlayerConn : public ECS::Component<PlayerConn> {

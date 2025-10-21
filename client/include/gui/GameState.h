@@ -57,7 +57,7 @@ namespace rtype::client::gui {
         // Network helpers used by packet handlers
         ECS::EntityID createEnemyFromServer(uint32_t serverId, float x, float y, uint16_t hp, uint16_t enemyType);
         ECS::EntityID createRemotePlayer(const std::string &name, uint32_t serverId);
-        ECS::EntityID createProjectileFromServer(uint32_t serverId, uint32_t ownerId, float x, float y, float vx, float vy, uint16_t damage, bool piercing);
+        ECS::EntityID createProjectileFromServer(uint32_t serverId, uint32_t ownerId, float x, float y, float vx, float vy, uint16_t damage, bool piercing, bool isCharged);
         void updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp);
         void destroyEntityByServerId(uint32_t serverId);
         void setLocalPlayerServerId(uint32_t serverId); // Set when receiving initial state from server

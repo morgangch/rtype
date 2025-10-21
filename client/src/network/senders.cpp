@@ -34,8 +34,12 @@ namespace rtype::client::network::senders {
         rtype::client::network::pm.sendPacketBytesSafe(&p, sizeof(PlayerReadyPacket), PLAYER_READY, nullptr, true);
     }
     
-    void send_player_shoot() {
+    void send_player_shoot(bool isCharged, float playerX, float playerY) {
         PlayerShootPacket p{};
-        rtype::client::network::pm.sendPacketBytesSafe(&p, sizeof(PlayerShootPacket), PLAYER_SHOOT, nullptr, false);
+        p.isCharged = isCharged;
+        p.playerX = playerX;
+        p.playerY = playerY;
+        rtype::client::network::pm.sendPacketBytesSafe(&p, sizeof(PlayerShootPacket), PLAYER_SHOOT, nullptr, true);
+        std::cout << "CLIENT: Sent PLAYER_SHOOT (charged: " << isCharged << " pos: " << playerX << "," << playerY << ")" << std::endl;
     }
 }

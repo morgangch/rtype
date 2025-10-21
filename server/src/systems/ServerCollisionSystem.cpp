@@ -11,8 +11,10 @@
 #include "components/LobbyState.h"
 #include "services/PlayerService.h"
 #include "rtype.h"
+#include "packetmanager.h"
 #include <iostream>
 #include <cmath>
+#include <algorithm>
 
 namespace rtype::server::systems {
 
@@ -22,10 +24,27 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
     // Check all collision types
     checkProjectileVsEnemyCollisions(world, toDestroy);
     
-    // Destroy all entities marked for destruction
+    // Remove duplicates from toDestroy list
+    std::sort(toDestroy.begin(), toDestroy.end());
+    toDestroy.erase(std::unique(toDestroy.begin(), toDestroy.end()), toDestroy.end());
+    
+    // Broadcast destruction to all clients before destroying locally
+    // We need to find which room these entities belong to
+    // For now, broadcast to ALL active game rooms (simpler approach)
     for (auto entity : toDestroy) {
-        // TODO: Broadcast ENTITY_DESTROY before destroying
-        // For now just destroy locally on server
+        // Determine what type of entity this is for logging
+        auto* projComp = world.GetComponent<rtype::common::components::Projectile>(entity);
+        auto* healthComp = world.GetComponent<rtype::common::components::Health>(entity);
+        
+        if (projComp) {
+            std::cout << "[ServerCollisionSystem] Broadcasting destruction of PROJECTILE entity " << entity << " (piercing=" << projComp->piercing << ")" << std::endl;
+        } else if (healthComp) {
+            std::cout << "[ServerCollisionSystem] Broadcasting destruction of ENEMY entity " << entity << " (hp=" << healthComp->currentHp << ")" << std::endl;
+        } else {
+            std::cout << "[ServerCollisionSystem] Broadcasting destruction of UNKNOWN entity " << entity << std::endl;
+        }
+        
+        broadcastEntityDestroyToAllRooms(world, entity);
         world.DestroyEntity(entity);
     }
 }
@@ -34,7 +53,7 @@ void ServerCollisionSystem::checkProjectileVsEnemyCollisions(
     ECS::World& world, 
     std::vector<ECS::EntityID>& toDestroy) {
     
-    auto* projectilePositions = world.GetComponents<rtype::common::components::Position>();
+    auto* projectilePositions = world.GetAllComponents<rtype::common::components::Position>();
     if (!projectilePositions) return;
     
     // Check each projectile against all enemies
@@ -46,6 +65,13 @@ void ServerCollisionSystem::checkProjectileVsEnemyCollisions(
         if (!projTeam || !projData) continue;
         if (projTeam->team != rtype::common::components::TeamType::Player) continue;
         
+        // CRITICAL FIX: Skip projectiles that just spawned (haven't moved yet)
+        // This prevents immediate collision with enemies that are being destroyed in the same frame
+        if (projData->distanceTraveled < 1.0f) {
+            std::cout << "[ServerCollisionSystem] Skipping collision check for newly spawned projectile " << projEntity << std::endl;
+            continue;
+        }
+        
         // Projectile bounds (simple 10x10 box for now)
         float projX = projPosPtr->x;
         float projY = projPosPtr->y;
@@ -53,7 +79,7 @@ void ServerCollisionSystem::checkProjectileVsEnemyCollisions(
         float projH = 10.0f; // Projectile height
         
         // Check against all enemies
-        auto* enemyPositions = world.GetComponents<rtype::common::components::Position>();
+        auto* enemyPositions = world.GetAllComponents<rtype::common::components::Position>();
         if (!enemyPositions) continue;
         
         for (const auto& [enemyEntity, enemyPosPtr] : *enemyPositions) {
@@ -75,6 +101,8 @@ void ServerCollisionSystem::checkProjectileVsEnemyCollisions(
             // Check AABB collision
             if (checkAABB(projX, projY, projW, projH, enemyX, enemyY, enemyW, enemyH)) {
                 std::cout << "[ServerCollisionSystem] Projectile " << projEntity << " hit enemy " << enemyEntity << std::endl;
+                std::cout << "  Projectile pos: (" << projX << "," << projY << ") piercing: " << (projData->piercing ? "YES" : "NO") << std::endl;
+                std::cout << "  Enemy pos: (" << enemyX << "," << enemyY << ")" << std::endl;
                 
                 // Damage enemy
                 enemyHealth->currentHp -= projData->damage;
@@ -83,19 +111,17 @@ void ServerCollisionSystem::checkProjectileVsEnemyCollisions(
                 if (enemyHealth->currentHp <= 0) {
                     std::cout << "  ✓ Enemy destroyed!" << std::endl;
                     enemyHealth->isAlive = false;
-                    
-                    // Mark enemy for destruction
                     toDestroy.push_back(enemyEntity);
-                    
-                    // TODO: Broadcast ENTITY_DESTROY to all clients
-                    // For now, clients will see enemy disappear when PLAYER_STATE updates
                 }
                 
                 // Destroy projectile if not piercing
                 if (!projData->piercing) {
-                    std::cout << "  Projectile destroyed (non-piercing)" << std::endl;
+                    std::cout << "  → Projectile destroyed (non-piercing)" << std::endl;
                     toDestroy.push_back(projEntity);
                     break; // Projectile destroyed, stop checking
+                } else {
+                    std::cout << "  → Projectile continues (piercing)" << std::endl;
+                    // Piercing projectile continues through enemies
                 }
             }
         }
@@ -121,30 +147,37 @@ bool ServerCollisionSystem::checkAABB(
     return !(right1 < left2 || right2 < left1 || bottom1 < top2 || bottom2 < top1);
 }
 
-void ServerCollisionSystem::broadcastEntityDestroy(
-    ECS::World& world, 
-    ECS::EntityID entityId, 
-    ECS::EntityID roomId) {
+void ServerCollisionSystem::broadcastEntityDestroyToAllRooms(
+    ECS::World& world,
+    ECS::EntityID entityId) {
     
-    // Get all players in the room
-    auto players = rtype::server::services::player_service::findPlayersByRoomCode(roomId);
+    // Get all rooms
+    auto* roomProps = world.GetAllComponents<rtype::server::components::RoomProperties>();
+    if (!roomProps) return;
     
-    // Create ENTITY_DESTROY packet
     EntityDestroyPacket pkt{};
     pkt.entityId = static_cast<uint32_t>(entityId);
     
-    std::cout << "[ServerCollisionSystem] Broadcasting ENTITY_DESTROY for entity " << entityId << " to " << players.size() << " players" << std::endl;
+    std::cout << "[ServerCollisionSystem] Broadcasting ENTITY_DESTROY for entity " << entityId << std::endl;
     
-    // Send to all players in the room
-    for (auto playerId : players) {
-        auto* lobbyState = world.GetComponent<rtype::server::components::LobbyState>(playerId);
-        if (!lobbyState || !lobbyState->isInGame) continue; // Only send to in-game players
+    // For each room, send to all players in game
+    for (const auto& [roomEntity, roomPtr] : *roomProps) {
+        if (!roomPtr->isGameStarted) continue; // Skip rooms not in game
         
-        auto* pconn = world.GetComponent<rtype::server::components::PlayerConn>(playerId);
-        if (!pconn) continue;
+        // Find all players in this room
+        auto players = rtype::server::services::player_service::findPlayersByRoomCode(roomEntity);
         
-        pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), ENTITY_DESTROY, nullptr, false);
-        std::cout << "  ✓ Sent ENTITY_DESTROY to player " << playerId << std::endl;
+        for (auto playerId : players) {
+            auto* lobbyState = world.GetComponent<rtype::server::components::LobbyState>(playerId);
+            if (!lobbyState || !lobbyState->isInGame) continue; // Only send to in-game players
+            
+            auto* pconn = world.GetComponent<rtype::server::components::PlayerConn>(playerId);
+            if (!pconn) continue;
+            
+            pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), ENTITY_DESTROY, nullptr, false);
+        }
+        
+        std::cout << "  ✓ Sent ENTITY_DESTROY to " << players.size() << " players in room " << roomPtr->joinCode << std::endl;
     }
 }
 

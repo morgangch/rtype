@@ -436,6 +436,19 @@ void GameState::checkPlayerProjectilesVsEnemiesCollision(
     const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds,
     std::vector<ECS::EntityID>& toDestroy) {
     
+    // HYBRID CLIENT-SIDE PREDICTION + SERVER AUTHORITY:
+    // - Client detects collisions immediately for low-latency feedback
+    // - Client applies damage and destroys entities locally (optimistic prediction)
+    // - Server also detects collisions and sends ENTITY_DESTROY for confirmation
+    // - Client's destroyEntityByServerId() is idempotent (handles already-destroyed entities)
+    // 
+    // For SERVER-OWNED projectiles:
+    //   - Client predicts collision → destroys enemy locally
+    //   - Client does NOT destroy projectile (server decides when projectile dies)
+    //   - Server confirms → sends ENTITY_DESTROY for both projectile and enemy
+    // 
+    // This gives instant feedback while maintaining server authority
+    
     for (const auto& [projEntity, projPosPtr] : positions) {
         auto* projTeam = m_world.GetComponent<rtype::common::components::Team>(projEntity);
         auto* projData = m_world.GetComponent<rtype::common::components::Projectile>(projEntity);
@@ -457,21 +470,25 @@ void GameState::checkPlayerProjectilesVsEnemiesCollision(
                 sf::FloatRect enemyBounds = getBounds(enemyEntity, *enemyPosPtr);
                 
                 if (projBounds.intersects(enemyBounds)) {
-                    // Damage enemy
+                    // COLLISION DETECTED - apply damage immediately for instant feedback
                     enemyHealth->currentHp -= projData->damage;
                     
                     if (enemyHealth->currentHp <= 0) {
                         enemyHealth->isAlive = false;
-                        toDestroy.push_back(enemyEntity);
+                        toDestroy.push_back(enemyEntity); // Destroy enemy immediately (prediction)
                     }
                     
-                    // Check if projectile is piercing
-                    if (!projData->piercing) {
-                        // Normal projectile - destroy after first hit
+                    // Handle projectile destruction based on piercing
+                    if (projData->piercing) {
+                        // Piercing projectile continues through enemies
+                        std::cout << "[Collision] Piercing projectile " << projEntity << " continues through enemy " << enemyEntity << std::endl;
+                        continue;
+                    } else {
+                        // Non-piercing projectile - ALWAYS destroy locally to prevent piercing through
+                        std::cout << "[Collision] Non-piercing projectile " << projEntity << " destroyed by enemy " << enemyEntity << " (serverOwned=" << projData->serverOwned << ")" << std::endl;
                         toDestroy.push_back(projEntity);
-                        break; // Projectile destroyed, stop checking
+                        break; // Stop checking collisions - projectile is destroyed
                     }
-                    // Piercing projectile continues through enemies
                 }
             }
         }
@@ -560,6 +577,18 @@ void GameState::updateCollisionSystem() {
             } else if (m_soundManager.has(AudioFactory::SfxId::EnemyDeath)) {
                 // Regular enemy death
                 m_soundManager.play(AudioFactory::SfxId::EnemyDeath);
+            }
+        }
+
+        // Clean up server entity mapping if this was a server-owned entity
+        // Find and remove the reverse mapping (serverId → entityId)
+        for (auto it = m_serverEntityMap.begin(); it != m_serverEntityMap.end(); ) {
+            if (it->second == entity) {
+                std::cout << "[GameState] Cleaning up server mapping for locally destroyed entity: clientId=" << entity << " serverId=" << it->first << std::endl;
+                it = m_serverEntityMap.erase(it);
+                break;
+            } else {
+                ++it;
             }
         }
 

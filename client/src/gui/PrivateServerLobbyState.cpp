@@ -165,7 +165,12 @@ namespace rtype::client::gui {
             if (isAdmin) {
                 actionButtonRect.setFillColor(sf::Color(50, 100, 50, 200));
             } else {
-                actionButtonRect.setFillColor(GUIHelper::Colors::BUTTON_NORMAL);
+                // Respect the ready state - don't override the color set by updateActionButton()
+                if (isReady) {
+                    actionButtonRect.setFillColor(sf::Color(50, 150, 50, 200)); // Green when ready
+                } else {
+                    actionButtonRect.setFillColor(sf::Color(70, 70, 70, 200)); // Gray when not ready
+                }
             }
             actionButton.setFillColor(GUIHelper::Colors::TEXT);
         }
@@ -218,13 +223,7 @@ namespace rtype::client::gui {
             std::cout << "Admin " << username << " is starting the game!" << std::endl;
             std::cout << "Sending GAME_START_REQUEST to server with " << playersReady << " ready players in server " << serverCode << std::endl;
             
-            // Send game start request to server
-            // Server will broadcast GAME_START to all clients, including this one
-            // Then handle_game_start() will transition everyone to GameState
             rtype::client::network::senders::send_game_start_request();
-            
-            // Note: Don't transition to GameState here! Wait for server's GAME_START packet
-            // This ensures all clients transition together
         }
     }
     
@@ -248,6 +247,13 @@ namespace rtype::client::gui {
     }
     
     void PrivateServerLobbyState::updateFromServer(uint32_t totalPlayers, uint32_t readyPlayers) {
+        // IMPORTANT: Detect and ignore stale LOBBY_STATE packets
+        // If we're ready locally but server says 0 ready, it's likely an old retransmitted packet
+        if (isReady && !isAdmin && readyPlayers == 0 && this->playersReady > 0) {
+            std::cout << "WARNING: Ignoring stale LOBBY_STATE (we're ready but packet says 0 ready) - likely retransmission" << std::endl;
+            return;
+        }
+        
         // Update our player count from the server's authoritative state
         this->playersReady = static_cast<int>(readyPlayers);
         
