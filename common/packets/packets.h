@@ -22,7 +22,7 @@ enum Packets {
     JOIN_ROOM = 2,
     JOIN_ROOM_ACCEPTED = 3,
     GAME_START_REQUEST = 4,
-    SPAWN_ENEMY = 5,
+    ROOM_ADMIN_UPDATE = 5,
     PLAYER_JOIN = 6,
     PLAYER_STATE = 7,
     ENTITY_DESTROY = 8,
@@ -32,6 +32,7 @@ enum Packets {
     GAME_START = 12,
     PLAYER_SHOOT = 13,
     SPAWN_PROJECTILE = 14,
+    SPAWN_ENEMY = 15,
 };
 
 
@@ -83,7 +84,12 @@ struct PlayerDisconnectPacket {
 };
 
 
-
+/**
+ * To inform clients about room admin changes
+ */
+struct RoomAdminUpdatePacket {
+    uint32_t newAdminPlayerId;
+};
 struct PingPacket {
 };
 

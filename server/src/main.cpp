@@ -11,6 +11,7 @@
 #include "../../common/components/Velocity.h"
 #include <chrono>
 #include <iostream>
+#include "systems/AdminDetectorSystem.h"
 
 void rtype::server::Rtype::loop(float deltaTime) {
     network::loop_recv(udp_server_fd);
@@ -45,6 +46,7 @@ int main() {
     root.world.RegisterSystem<ServerEnemySystem>();
     root.world.RegisterSystem<rtype::server::systems::ServerCollisionSystem>();
     std::cout << "✓ Registered ServerCollisionSystem" << std::endl;
+    root.world.RegisterSystem<AdminDetectorSystem>();
 
     auto lastTime = std::chrono::high_resolution_clock::now();
 

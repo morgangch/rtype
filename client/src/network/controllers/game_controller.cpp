@@ -155,4 +155,9 @@ namespace rtype::client::controllers::game_controller {
         g_gameState->createProjectileFromServer(p->projectileId, p->ownerId, p->x, p->y, p->vx, p->vy, p->damage, p->piercing, p->isCharged);
     }
 
+    void handle_admin_update(const packet_t &packet) {
+        RoomAdminUpdatePacket *p = (RoomAdminUpdatePacket *) packet.data;
+        ECS::EntityID newAdminId = p->newAdminPlayerId;
+        // TODO: Implement
+    }
 }

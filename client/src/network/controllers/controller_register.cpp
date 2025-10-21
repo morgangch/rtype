@@ -22,5 +22,6 @@ namespace rtype::client::network {
         ph.registerCallback(Packets::LOBBY_STATE, handle_lobby_state);
         ph.registerCallback(Packets::GAME_START, handle_game_start);
         ph.registerCallback(Packets::SPAWN_PROJECTILE, handle_spawn_projectile);
+        ph.registerCallback(Packets::ROOM_ADMIN_UPDATE,handle_admin_update);
     }
 }
