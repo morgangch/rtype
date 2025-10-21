@@ -95,17 +95,19 @@ namespace rtype::client::gui {
         StateManager& stateManager;     ///< Reference to state manager for transitions
         MusicManager m_musicManager;    ///< Local music manager for menu music
         
-        // UI Text Elements
-        sf::Text titleText;             ///< "THE TOP R-TYPE" title
-        sf::Text usernameText;          ///< User-entered username display
-        sf::Text usernameHintText;      ///< Placeholder text for username field
-        sf::Text publicServersButton;  ///< "Public servers" button text
-        sf::Text privateServersButton; ///< "Private servers" button text
-        
-        // UI Visual Elements
-        sf::RectangleShape usernameBox;     ///< Input field background
-        sf::RectangleShape publicButtonRect;   ///< Public servers button clickable area
-        sf::RectangleShape privateButtonRect;  ///< Private servers button clickable area
+    // UI Text Elements
+    sf::Text titleText;             ///< "THE TOP R-TYPE" title
+    sf::Text usernameText;          ///< User-entered username display
+    sf::Text usernameHintText;      ///< Placeholder text for username field
+    sf::Text publicServersButton;   ///< "Public servers" button text
+    sf::Text privateServersButton;  ///< "Private servers" button text
+    sf::Text settingsButtonText;    ///< "Settings" button text
+
+    // UI Visual Elements
+    sf::RectangleShape usernameBox;     ///< Input field background
+    sf::RectangleShape publicButtonRect;   ///< Public servers button clickable area
+    sf::RectangleShape privateButtonRect;  ///< Private servers button clickable area
+    sf::RectangleShape settingsButtonRect; ///< Clickable area for settings button
         
         // Input State
         std::string username;           ///< Current username input

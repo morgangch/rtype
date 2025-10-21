@@ -53,6 +53,10 @@ namespace rtype::client::gui {
         // Button setup using GUIHelper
         GUIHelper::setupButton(publicServersButton, publicButtonRect, "Public", GUIHelper::Sizes::BUTTON_FONT_SIZE);
         GUIHelper::setupButton(privateServersButton, privateButtonRect, "Private", GUIHelper::Sizes::BUTTON_FONT_SIZE);
+
+        // Settings button setup
+        GUIHelper::setupButton(settingsButtonText, settingsButtonRect, "Settings", 20.0f);
+        settingsButtonRect.setFillColor(GUIHelper::Colors::BUTTON_NORMAL);
     }
     
     void MainMenuState::onEnter() {
@@ -108,6 +112,17 @@ namespace rtype::client::gui {
         GUIHelper::centerText(privateServersButton,
                   privateButtonRect.getPosition().x + buttonWidth / 2,
                   privateButtonRect.getPosition().y + buttonHeight / 2);
+
+        // Settings button positioning (top, more to the left)
+        float settingsWidth = 170.0f;
+        float settingsHeight = 60.0f;
+        float settingsX = 20.0f;
+        float settingsY = 20.0f;
+        settingsButtonRect.setSize(sf::Vector2f(settingsWidth, settingsHeight));
+        settingsButtonRect.setPosition(settingsX, settingsY);
+        GUIHelper::centerText(settingsButtonText,
+            settingsButtonRect.getPosition().x + settingsWidth / 2,
+            settingsButtonRect.getPosition().y + settingsHeight / 2);
     }
     
     void MainMenuState::handleEvent(const sf::Event& event) {
@@ -188,6 +203,11 @@ namespace rtype::client::gui {
         GUIHelper::applyButtonHover(privateButtonRect, privateServersButton, 
                                   GUIHelper::isPointInRect(mousePos, privateButtonRect),
                                   GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
+
+        // Settings button hover
+        GUIHelper::applyButtonHover(settingsButtonRect, settingsButtonText,
+                                  GUIHelper::isPointInRect(mousePos, settingsButtonRect),
+                                  GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
     }
     
     void MainMenuState::handleKeyPressEvent(const sf::Event& event) {
@@ -240,7 +260,11 @@ namespace rtype::client::gui {
         window.draw(publicServersButton);
         window.draw(privateButtonRect);
         window.draw(privateServersButton);
-        
+
+        // Render settings button
+        window.draw(settingsButtonRect);
+        window.draw(settingsButtonText);
+
         // Debug mode indicator
         sf::Text debugText;
         debugText.setFont(GUIHelper::getFont());
