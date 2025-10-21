@@ -2,7 +2,7 @@
 
 > Documentation complete de l'architecture du projet R-Type avec diagrammes UML mis a jour
 
-**Date**: Octobre 2025  
+**Date**: 21 Octobre 2025  
 **Version**: 2.0 - Architecture Complete
 
 ---
@@ -16,6 +16,10 @@
 5. [Flux de Donnees](#flux-de-donnees)
 6. [Utilisation](#utilisation)
 7. [Regeneration des Diagrammes](#regeneration-des-diagrammes)
+8. [Composants Detailles](#composants-detailles)
+9. [Patterns de Conception](#patterns-de-conception)
+10. [References](#references)
+11. [Changelog](#changelog)
 
 ---
 
@@ -164,6 +168,19 @@ PacketManager → Network → Client → Render
 - SFML Graphics, Audio, Network
 - Network Sockets
 - Operating System
+
+---
+
+### Generation des Diagrammes
+
+Pour regenerer les diagrammes UML apres modification des fichiers `.puml`:
+
+```bash
+# Depuis la racine du projet
+./generate_uml.sh
+```
+
+**Note**: Les diagrammes PNG seront generes dans `archi_mindmap/`. Cette commande est un raccourci pratique. Pour des instructions detaillees sur l'installation de PlantUML et la modification des diagrammes, consultez la section [Regeneration des Diagrammes](#regeneration-des-diagrammes).
 
 ---
 
@@ -621,7 +638,7 @@ brew install plantuml
 
 ---
 
-## Reférences
+## References
 
 ### Documentation Interne
 - [ECS Library README](../lib/ecs/README.md)
@@ -660,5 +677,5 @@ brew install plantuml
 ---
 
 **Auteurs**: R-Type Development Team  
-**Derniere Mise a Jour**: 13 Octobre 2025  
+**Derniere Mise a Jour**: 21 Octobre 2025  
 **License**: Projet Educatif EPITECH
