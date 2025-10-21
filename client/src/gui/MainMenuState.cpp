@@ -16,6 +16,7 @@
 #include "gui/PrivateServerState.h"
 #include "gui/GameState.h"
 #include "gui/AudioFactory.h"
+#include "gui/SettingsState.h"
 #include <iostream>
 #include <cstdlib>
 
@@ -167,6 +168,10 @@ namespace rtype::client::gui {
             // Check private servers button
             else if (GUIHelper::isPointInRect(mousePos, privateButtonRect)) {
                 onPrivateServersClick();
+            }
+            // Check settings button
+            else if (GUIHelper::isPointInRect(mousePos, settingsButtonRect)) {
+                stateManager.changeState(std::make_unique<SettingsState>(stateManager));
             }
             // Click outside - stop typing
             else {
