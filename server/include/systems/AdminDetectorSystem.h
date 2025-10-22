@@ -2,7 +2,7 @@
 ** EPITECH PROJECT, 2025
 ** rtype
 ** File description:
-** TODO: add description
+** AdminDetectorSystem - Monitors room admin status and reassigns when admin disconnects
 */
 #ifndef ADMINDETECTORSYSTEM_H
 #define ADMINDETECTORSYSTEM_H
@@ -17,11 +17,31 @@ namespace rtype::server::components {
     class PlayerConn;
 }
 
+/**
+ * @brief System that detects admin disconnection and promotes new admins
+ * 
+ * Monitors all rooms to ensure they always have an admin. When the current
+ * admin disconnects, automatically promotes the next available player in
+ * the room to admin status and broadcasts the change to all room members.
+ * 
+ * @note Priority: 10 (runs after most other systems)
+ */
 class AdminDetectorSystem : public ECS::System {
 public:
     AdminDetectorSystem() : ECS::System("AdminDetectorSystem", 10) {
     }
 
+    /**
+     * @brief Update cycle - checks for admin disconnection and reassigns if needed
+     * 
+     * For each room:
+     * 1. Checks if the current admin is still connected
+     * 2. If admin disconnected, promotes the first available player
+     * 3. Broadcasts ROOM_ADMIN_UPDATE to all players in the room
+     * 
+     * @param world The ECS world containing all entities
+     * @param deltaTime Time elapsed since last update (unused)
+     */
     void Update(ECS::World &world, float deltaTime) override {
         for (auto &pair: *world.GetAllComponents<rtype::server::components::RoomProperties>()) {
             rtype::server::components::RoomProperties *room = pair.second.get();

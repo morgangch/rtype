@@ -16,6 +16,7 @@ namespace rtype::server::controllers::room_controller {
     void handlePlayerInput(const packet_t& packet);
     void handlePlayerReady(const packet_t& packet);
     void handlePlayerShoot(const packet_t& packet);
+    void handleSpawnBossRequest(const packet_t& packet);
     void broadcastLobbyState(ECS::EntityID room);
     void registerPlayerCallbacks(PacketHandler& handler);
 }
