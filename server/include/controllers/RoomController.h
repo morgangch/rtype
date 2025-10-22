@@ -1,9 +1,18 @@
-/*
-** EPITECH PROJECT, 2025
-** rtype
-** File description:
-** TODO: add description
-*/
+/**
+ * @file RoomController.h
+ * @brief Room-related packet handlers and helper functions for the server
+ *
+ * This header declares the public controller functions used to handle room
+ * management packets (join, ready, start) and player actions related to the
+ * room lifecycle. Implementations live under server/src/controllers.
+ *
+ * The controller functions accept a packet_t reference so they may extract
+ * the player/entity context and payload from the incoming network packet.
+ *
+ * @author R-TYPE Dev Team
+ * @date 2025
+ */
+
 #ifndef ROOMCONTROLLER_H
 #define ROOMCONTROLLER_H
 #include "packet.h"
@@ -11,13 +20,73 @@
 #include "ECS/Types.h"
 
 namespace rtype::server::controllers::room_controller {
+    /**
+     * @brief Handle a client's request to join a room
+     * @param packet Incoming network packet containing join request data
+     *
+     * Expected behavior: validate join code, create player entity if needed,
+     * and send JOIN_ROOM_ACCEPTED or JOIN_ROOM_REJECTED as appropriate.
+     */
     void handleJoinRoomPacket(const packet_t& packet);
+
+    /**
+     * @brief Handle a client's request to start the game in a room
+     * @param packet Incoming network packet containing start request
+     *
+     * Expected behavior: verify requester is room owner/admin and that all
+     * players are ready, then transition the room to game state and notify players.
+     */
     void handleGameStartRequest(const packet_t& packet);
+
+    /**
+     * @brief Handle player input packets forwarded from clients
+     * @param packet Incoming PLAYER_INPUT packet
+     *
+     * Responsibilities: update server-side player position/velocity components
+     * and integrate input into server-side simulation.
+     */
     void handlePlayerInput(const packet_t& packet);
+
+    /**
+     * @brief Handle player ready/unready toggle in the lobby
+     * @param packet Incoming PLAYER_READY packet
+     *
+     * Expected to update the player's LobbyState component and broadcast
+     * the updated lobby state to all players in the room.
+     */
     void handlePlayerReady(const packet_t& packet);
+
+    /**
+     * @brief Handle player shoot requests (local or network-initiated)
+     * @param packet Incoming PLAYER_SHOOT packet
+     *
+     * May spawn a server-owned projectile entity and broadcast it to players.
+     */
     void handlePlayerShoot(const packet_t& packet);
+
+    /**
+     * @brief Handle admin request to spawn a boss in the room
+     * @param packet Incoming SPAWN_BOSS_REQUEST packet
+     *
+     * Validates that the requester is the room admin and that no boss
+     * currently exists in the room before spawning.
+     */
     void handleSpawnBossRequest(const packet_t& packet);
+
+    /**
+     * @brief Broadcast the current lobby state to all players in a room
+     * @param room Room entity ID representing the room
+     *
+     * Used to keep client-side lobby UIs synchronized (player ready flags, etc.).
+     */
     void broadcastLobbyState(ECS::EntityID room);
+
+    /**
+     * @brief Register packet callbacks on a PacketHandler for player-related packets
+     * @param handler PacketHandler to register callbacks on
+     *
+     * This sets up the mapping between incoming packet IDs and controller functions.
+     */
     void registerPlayerCallbacks(PacketHandler& handler);
 }
 

@@ -38,32 +38,168 @@
 
 namespace rtype::client::gui {
 
+    /**
+     * @class GameState
+     * @brief Main gameplay state using ECS for entities and systems
+     *
+     * GameState contains the in-game simulation for the R-TYPE client. It
+     * orchestrates ECS systems (movement, AI, collisions, rendering), manages
+     * creation of entities via factory methods, and exposes a small API used
+     * by network packet handlers to create/update/destroy server-owned entities.
+     *
+     * Responsibilities:
+     * - Host the ECS::World instance used for all game entities
+     * - Provide network-aware factory methods (createEnemyFromServer, createProjectileFromServer)
+     * - Run the per-frame update pipeline in the correct order for deterministic
+     *   and responsive gameplay (input → simulation → collision → render)
+     * - Play music and sound effects and manage HUD/UI for the in-game menu
+     *
+     * Notes on network model:
+     * - The server is authoritative: the client receives spawn/update/destroy packets
+     *   and maps server entity IDs to local ECS entity IDs via m_serverEntityMap.
+     * - The client performs optimistic prediction for low-latency feedback but
+     *   respects server confirmation (ENTITY_DESTROY, authoritative HP, positions).
+     */
     class GameState : public State {
     public:
+        /**
+         * @brief Overall UI/gameplay status for the state
+         */
         enum class GameStatus { Playing, InGameMenu };
 
+        /**
+         * @brief Construct a GameState bound to a StateManager
+         * @param stateManager Reference to the owning StateManager
+         */
         GameState(StateManager& stateManager);
+
+        /**
+         * @brief Destroy the GameState
+         *
+         * Ensures global pointers and resources are cleaned up.
+         */
         ~GameState();
 
+        /**
+         * @brief Handle generic SFML events
+         * @param event The SFML event to handle
+         */
         void handleEvent(const sf::Event& event) override;
+
+        /**
+         * @brief Handle a key pressed event
+         * @param key SFML key code
+         */
         void handleKeyPressed(sf::Keyboard::Key key);
+
+        /**
+         * @brief Handle a key released event
+         * @param key SFML key code
+         */
         void handleKeyReleased(sf::Keyboard::Key key);
+
+        /**
+         * @brief Handle input specific to in-game menus
+         * @param event The SFML event to handle
+         */
         void handleMenuInput(const sf::Event& event);
+
+        /**
+         * @brief Per-frame update called by the StateManager
+         * @param deltaTime Time elapsed since last frame (seconds)
+         */
         void update(float deltaTime) override;
+
+        /**
+         * @brief Render current game state to the provided window
+         * @param window SFML RenderWindow to draw into
+         */
         void render(sf::RenderWindow& window) override;
+
+        /**
+         * @brief Called when this state becomes active
+         */
         void onEnter() override;
+
+        /**
+         * @brief Called when this state is exited
+         */
         void onExit() override;
 
-        // Network helpers used by packet handlers
+        /* === Network-aware helpers (used by packet handlers) === */
+        /**
+         * @brief Create or update an enemy entity based on server spawn packet
+         * @param serverId Server-assigned entity id
+         * @param x X position
+         * @param y Y position
+         * @param hp Health value (server authoritative)
+         * @param enemyType Numeric enemy type (maps to EnemyType enum)
+         * @return Local ECS::EntityID of the created/updated entity
+         *
+         * This function maps a server entity id to a local entity and ensures
+         * the appropriate factory (createBoss/createShooter/createEnemy) is used.
+         */
         ECS::EntityID createEnemyFromServer(uint32_t serverId, float x, float y, uint16_t hp, uint16_t enemyType);
+
+        /**
+         * @brief Create a remote player representation for another client
+         * @param name Player display name
+         * @param serverId Server entity id
+         * @return Local ECS::EntityID for the remote player entity
+         */
         ECS::EntityID createRemotePlayer(const std::string &name, uint32_t serverId);
+
+        /**
+         * @brief Create a projectile spawned by the server
+         * @param serverId Server-assigned projectile id
+         * @param ownerId Server id of projectile owner
+         * @param x X position
+         * @param y Y position
+         * @param vx Velocity X
+         * @param vy Velocity Y
+         * @param damage Damage value
+         * @param piercing Whether projectile pierces
+         * @param isCharged Whether projectile is charged (visual/style)
+         * @return Local ECS::EntityID of the projectile
+         */
         ECS::EntityID createProjectileFromServer(uint32_t serverId, uint32_t ownerId, float x, float y, float vx, float vy, uint16_t damage, bool piercing, bool isCharged);
+
+        /**
+         * @brief Update an entity position and HP based on authoritative server snapshot
+         * @param serverId Server entity id
+         * @param x X position
+         * @param y Y position
+         * @param hp Health value
+         */
         void updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp);
+
+        /**
+         * @brief Destroy a local entity corresponding to a server entity id
+         * @param serverId Server entity id to destroy
+         */
         void destroyEntityByServerId(uint32_t serverId);
+
+        /**
+         * @brief Set the server ID of the local player
+         * @param serverId Local player's server id (used to ignore server echoes)
+         */
         void setLocalPlayerServerId(uint32_t serverId); // Set when receiving initial state from server
+
+        /**
+         * @brief Mark the local player as room admin (enables admin-only input such as boss spawn)
+         * @param isAdmin True to mark as admin
+         */
         void setIsAdmin(bool isAdmin); // Set whether the local player is room admin
 
+        /**
+         * @brief Mute/unmute music
+         */
         void setMusicMuted(bool muted);
+
+        /**
+         * @brief Query whether music is muted
+         * @return true if muted
+         */
         bool isMusicMuted() const;
 
     private:
