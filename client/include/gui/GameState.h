@@ -61,6 +61,7 @@ namespace rtype::client::gui {
         void updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp);
         void destroyEntityByServerId(uint32_t serverId);
         void setLocalPlayerServerId(uint32_t serverId); // Set when receiving initial state from server
+        void setIsAdmin(bool isAdmin); // Set whether the local player is room admin
 
         void setMusicMuted(bool muted);
         bool isMusicMuted() const;
@@ -72,6 +73,8 @@ namespace rtype::client::gui {
         std::unordered_map<uint32_t, ECS::EntityID> m_serverEntityMap;
         // Track local player's server ID to filter out own state updates
         uint32_t m_localPlayerServerId{0};
+        // Track if local player is room admin (for boss spawning)
+        bool m_isAdmin{false};
 
         ECS::EntityID createPlayer();
         ECS::EntityID createEnemy(float x, float y);
@@ -88,7 +91,6 @@ namespace rtype::client::gui {
         void updateInvulnerabilitySystem(float deltaTime);
         void updateAnimationSystem(float deltaTime);
         void updatePlayerAnimation(ECS::EntityID entity, rtype::client::components::Animation* animation, rtype::client::components::Sprite* sprite, bool isMovingUp);
-        void updateEnemySpawnSystem(float deltaTime);
         void updateEnemyAISystem(float deltaTime);
         void updateCleanupSystem(float deltaTime);
         void updateCollisionSystem();
@@ -126,10 +128,6 @@ namespace rtype::client::gui {
         sf::Sprite m_fullHeartSprite;
         sf::Sprite m_emptyHeartSprite;
         ParallaxSystem m_parallaxSystem;
-        float m_enemySpawnTimer{0.0f};
-        float m_bossSpawnTimer{0.0f};
-        static constexpr float ENEMY_SPAWN_INTERVAL{2.0f};
-        static constexpr float BOSS_SPAWN_INTERVAL{180.0f};
         static constexpr float ENEMY_FIRE_INTERVAL{2.5f};
         static constexpr float INVULNERABILITY_DURATION{2.0f};
         static constexpr float FIRE_COOLDOWN{0.2f};

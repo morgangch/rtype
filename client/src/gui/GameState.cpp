@@ -48,11 +48,52 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
         return existing;
     }
 
-    // Create a new enemy based on enemyType (basic mapping)
-    ECS::EntityID e = createEnemy(x, y);
-    // Set server id on Player component if present (some factories attach Player for players only)
-    auto* playerComp = m_world.GetComponent<rtype::common::components::Player>(e);
-    if (playerComp) playerComp->serverId = serverId;
+    // Create a new enemy based on enemyType
+    ECS::EntityID e;
+    auto type = static_cast<rtype::common::components::EnemyType>(enemyType);
+    
+    switch (type) {
+        case rtype::common::components::EnemyType::Boss: {
+            std::cout << "[GameState] Creating BOSS from server: serverId=" << serverId << " pos=(" << x << "," << y << ") hp=" << hp << std::endl;
+            e = createBoss(x, y);
+            
+            // Debug: Verify boss components
+            auto* bossSprite = m_world.GetComponent<rtype::client::components::Sprite>(e);
+            auto* bossTeam = m_world.GetComponent<rtype::common::components::Team>(e);
+            auto* bossType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(e);
+            std::cout << "[GameState] Boss " << e << " components: sprite=" << (bossSprite ? "YES" : "NO")
+                      << " team=" << (bossTeam ? std::to_string(static_cast<int>(bossTeam->team)) : "NO")
+                      << " type=" << (bossType ? std::to_string(static_cast<int>(bossType->type)) : "NO") << std::endl;
+            if (bossSprite) {
+                std::cout << "[GameState] Boss sprite: scale=" << bossSprite->scale 
+                          << " rect=(" << bossSprite->textureRect.width << "x" << bossSprite->textureRect.height << ")" << std::endl;
+            }
+            break;
+        }
+        case rtype::common::components::EnemyType::Shooter:
+            std::cout << "[GameState] Creating SHOOTER enemy from server: serverId=" << serverId << " pos=(" << x << "," << y << ") hp=" << hp << std::endl;
+            e = createShooterEnemy(x, y);
+            break;
+        case rtype::common::components::EnemyType::Basic:
+        default:
+            std::cout << "[GameState] Creating BASIC enemy from server: serverId=" << serverId << " pos=(" << x << "," << y << ") hp=" << hp << std::endl;
+            e = createEnemy(x, y);
+            break;
+    }
+    
+    // Override HP with server value (server is authoritative)
+    auto* health = m_world.GetComponent<rtype::common::components::Health>(e);
+    if (health) {
+        health->currentHp = hp;
+        health->maxHp = hp;
+    }
+    
+    // Override position with server value
+    auto* pos = m_world.GetComponent<rtype::common::components::Position>(e);
+    if (pos) {
+        pos->x = x;
+        pos->y = y;
+    }
 
     // Store mapping
     m_serverEntityMap[serverId] = e;
@@ -165,6 +206,11 @@ void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y,
 void GameState::setLocalPlayerServerId(uint32_t serverId) {
     m_localPlayerServerId = serverId;
     std::cout << "[GameState] Local player server ID set to: " << serverId << std::endl;
+}
+
+void GameState::setIsAdmin(bool isAdmin) {
+    m_isAdmin = isAdmin;
+    std::cout << "[GameState] Player admin status set to: " << (isAdmin ? "ADMIN" : "PLAYER") << std::endl;
 }
 
 void GameState::destroyEntityByServerId(uint32_t serverId) {
@@ -351,10 +397,6 @@ void GameState::resetGame() {
     // Create player entity
     m_playerEntity = createPlayer();
     
-    // Reset timers
-    m_enemySpawnTimer = 0.0f;
-    m_bossSpawnTimer = 0.0f;
-    
     // Reset flags
     m_isGameOver = false;
     m_gameStatus = GameStatus::Playing;
@@ -452,7 +494,6 @@ void GameState::update(float deltaTime) {
     updateInvulnerabilitySystem(deltaTime);
     updateAnimationSystem(deltaTime);
     updateMovementSystem(deltaTime);
-    updateEnemySpawnSystem(deltaTime);
     updateEnemyAISystem(deltaTime);
     updateCleanupSystem(deltaTime);
     updateCollisionSystem();

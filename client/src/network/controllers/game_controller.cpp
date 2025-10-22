@@ -17,6 +17,9 @@
 extern std::string g_username;
 extern uint32_t g_playerServerId;
 
+// Track if player is admin in current room
+static bool g_isPlayerAdmin = false;
+
 // Forward declaration for lobby state access
 namespace rtype::client::gui {
     class PrivateServerLobbyState;
@@ -30,8 +33,9 @@ namespace rtype::client::controllers::game_controller {
         std::cout << "Successfully connected on room " << p->roomCode << " as " << (
             p->admin ? "admin" : "classic player") << " with server player ID: " << p->playerServerId << std::endl;
 
-        // Store player server ID for use when GameState is created
+        // Store player server ID and admin status for use when GameState is created
         g_playerServerId = p->playerServerId;
+        g_isPlayerAdmin = p->admin;
 
         // Transition to PrivateServerLobbyState (the lobby where admin can click "Start Game")
         using rtype::client::gui::g_stateManager;
@@ -129,12 +133,13 @@ namespace rtype::client::controllers::game_controller {
         // Clear lobby state pointer
         g_lobbyState = nullptr;
         
-        // Create and transition to GameState with the local player server ID
+        // Create and transition to GameState with the local player server ID and admin status
         auto gameState = std::make_unique<GameState>(*g_stateManager);
         gameState->setLocalPlayerServerId(g_playerServerId);
+        gameState->setIsAdmin(g_isPlayerAdmin);
         g_stateManager->changeState(std::move(gameState));
         
-        std::cout << "✓ CLIENT: Successfully transitioned to GameState" << std::endl;
+        std::cout << "✓ CLIENT: Successfully transitioned to GameState (admin=" << (g_isPlayerAdmin ? "YES" : "NO") << ")" << std::endl;
     }
     
     void handle_spawn_projectile(const packet_t &packet) {

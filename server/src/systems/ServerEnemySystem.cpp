@@ -6,6 +6,7 @@
 #include "packets.h"
 #include "services/RoomService.h"
 #include "services/PlayerService.h"
+#include <iostream>
 // Use project-relative includes like other server files
 #include "../../../common/components/Position.h"
 #include "../../../common/components/Velocity.h"
@@ -19,6 +20,46 @@
 #include "../../../common/components/Player.h"
 
 void ServerEnemySystem::Update(ECS::World &world, float deltaTime) {
+    // --- Boss spawn logic (every 3 minutes for active games) ---
+    _bossSpawnTimer += deltaTime;
+    if (_bossSpawnTimer >= BOSS_SPAWN_INTERVAL) {
+        _bossSpawnTimer = 0.0f;
+        
+        // For each active game room, check if boss exists, if not spawn one
+        auto *rooms = root.world.GetAllComponents<rtype::server::components::RoomProperties>();
+        if (rooms) {
+            for (auto &pair : *rooms) {
+                ECS::EntityID room = pair.first;
+                if (!pair.second) continue;
+                auto *rp = pair.second.get();
+                if (!rp || !rp->isGameStarted) continue;
+                
+                // Check if a boss already exists in this room
+                bool bossExists = false;
+                auto* enemyTypes = root.world.GetAllComponents<rtype::common::components::EnemyTypeComponent>();
+                if (enemyTypes) {
+                    for (auto& etPair : *enemyTypes) {
+                        auto* et = etPair.second.get();
+                        if (et && et->type == rtype::common::components::EnemyType::Boss) {
+                            // Boss exists, check if it's alive
+                            auto* health = root.world.GetComponent<rtype::common::components::Health>(etPair.first);
+                            if (health && health->isAlive && health->currentHp > 0) {
+                                bossExists = true;
+                                std::cout << "SERVER: Boss already exists (id=" << etPair.first << "), skipping spawn for room " << room << std::endl;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // Only spawn boss if none exists
+                if (!bossExists) {
+                    spawnBoss(world, room);
+                }
+            }
+        }
+    }
+    
     // --- spawn logic ---
     _spawnTimer += deltaTime;
     if (_spawnTimer >= SPAWN_INTERVAL) {
@@ -146,5 +187,41 @@ void ServerEnemySystem::Update(ECS::World &world, float deltaTime) {
         for (auto e : toDestroy) {
             root.world.DestroyEntity(e);
         }
+    }
+}
+
+void ServerEnemySystem::spawnBoss(ECS::World& world, ECS::EntityID room) {
+    // Boss spawn position (center-right of screen)
+    float spawnX = 1280.0f - 100.0f;
+    float spawnY = 360.0f; // Center Y of 720p screen
+    
+    // Create boss entity on server world
+    auto boss = root.world.CreateEntity();
+    root.world.AddComponent<rtype::common::components::Position>(boss, spawnX, spawnY, 0.0f);
+    root.world.AddComponent<rtype::common::components::Velocity>(boss, -50.0f, 0.0f, 50.0f);
+    root.world.AddComponent<rtype::common::components::Health>(boss, 50); // Boss has 50 HP
+    root.world.AddComponent<rtype::common::components::Team>(boss, rtype::common::components::TeamType::Enemy);
+    root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, rtype::common::components::EnemyType::Boss);
+    
+    std::cout << "SERVER: Spawning boss (id=" << boss << ") in room " << room << std::endl;
+    
+    // Build SpawnEnemyPacket for boss
+    SpawnEnemyPacket pkt{};
+    pkt.enemyId = static_cast<uint32_t>(boss);
+    pkt.enemyType = static_cast<uint16_t>(rtype::common::components::EnemyType::Boss);
+    pkt.x = spawnX;
+    pkt.y = spawnY;
+    pkt.hp = 50;
+    
+    // Send to all players in the room
+    auto players = root.world.GetAllComponents<rtype::common::components::Player>();
+    if (!players) return;
+    for (auto &pp : *players) {
+        ECS::EntityID pid = pp.first;
+        auto *pconn = root.world.GetComponent<rtype::server::components::PlayerConn>(pid);
+        if (!pconn) continue;
+        if (pconn->room_code != room) continue;
+        pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), SPAWN_ENEMY, nullptr, true);
+        std::cout << "SERVER: Sent boss spawn packet to player " << pid << std::endl;
     }
 }

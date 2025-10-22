@@ -35,6 +35,12 @@ namespace rtype::client::network::senders {
      * @param playerY Player's Y position at time of shooting
      */
     void send_player_shoot(bool isCharged, float playerX, float playerY);
+    
+    /**
+     * @brief Send a boss spawn request to the server (admin only)
+     * Server will verify if the sender is an admin before spawning
+     */
+    void send_spawn_boss_request();
 }
 
 #endif //SENDERS_H

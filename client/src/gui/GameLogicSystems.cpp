@@ -131,9 +131,6 @@ void GameState::updateInputSystem(float deltaTime) {
         if (pos->x > SCREEN_WIDTH - halfSize) pos->x = SCREEN_WIDTH - halfSize;
         if (pos->y < halfSize) pos->y = halfSize;
         if (pos->y > SCREEN_HEIGHT - halfSize) pos->y = SCREEN_HEIGHT - halfSize;
-        
-        // NOTE: Firing is now handled in handleKeyReleased() for charged shot mechanic
-        // The old automatic firing system is disabled to allow charge accumulation
     }
 }
 
@@ -227,53 +224,6 @@ void GameState::updateInvulnerabilitySystem(float deltaTime) {
             }
         }
     }
-}
-
-void GameState::updateEnemySpawnSystem(float deltaTime) {
-    // DISABLED: Server now handles enemy spawning and broadcasts to clients
-    // Clients receive SPAWN_ENEMY packets instead
-    
-    // Boss spawn system remains client-side for now (every 3 minutes)
-    m_bossSpawnTimer += deltaTime;
-    if (m_bossSpawnTimer >= BOSS_SPAWN_INTERVAL && !isBossActive()) {
-        createBoss(SCREEN_WIDTH - 100.0f, SCREEN_HEIGHT * 0.5f);
-        m_bossSpawnTimer = 0.0f;
-    }
-    
-    /* CLIENT-SIDE ENEMY SPAWNING DISABLED - NOW SERVER-AUTHORITATIVE
-    m_enemySpawnTimer += deltaTime;
-    if (m_enemySpawnTimer >= ENEMY_SPAWN_INTERVAL) {
-        // Count current enemies
-        size_t enemyCount = 0;
-        auto* teams = m_world.GetAllComponents<rtype::common::components::Team>();
-        if (teams) {
-            for (auto& [entity, teamPtr] : *teams) {
-                if (teamPtr->team == rtype::common::components::TeamType::Enemy) {
-                    // Check if it's actually an enemy (has Health, not a projectile)
-                    if (m_world.GetComponent<rtype::common::components::Health>(entity)) {
-                        enemyCount++;
-                    }
-                }
-            }
-        }
-        
-        // Spawn if under limit
-        if (enemyCount < MAX_ENEMIES) {
-            float randomY = 50.0f + static_cast<float>(rand() % static_cast<int>(SCREEN_HEIGHT - 100.0f));
-            
-            // Alternate between basic enemies and shooter enemies
-            // 40% chance for shooter enemy, 60% for basic enemy
-            int randomType = rand() % 100;
-            if (randomType < 40) {
-                createShooterEnemy(SCREEN_WIDTH + 28.0f, randomY);
-            } else {
-                createEnemy(SCREEN_WIDTH + 24.0f, randomY);
-            }
-            
-            m_enemySpawnTimer = 0.0f;
-        }
-    }
-    */
 }
 
 void GameState::updateEnemyAISystem(float deltaTime) {
@@ -431,23 +381,24 @@ void GameState::checkPlayerVsEnemiesCollision(
     }
 }
 
+// HYBRID CLIENT-SIDE PREDICTION + SERVER AUTHORITY:
+// - Client detects collisions immediately for low-latency feedback
+// - Client applies damage and destroys entities locally (optimistic prediction)
+// - Server also detects collisions and sends ENTITY_DESTROY for confirmation
+// - Client's destroyEntityByServerId() is idempotent (handles already-destroyed entities)
+// 
+// For SERVER-OWNED projectiles:
+//   - Client predicts collision → destroys enemy locally
+//   - Client does NOT destroy projectile (server decides when projectile dies)
+//   - Server confirms → sends ENTITY_DESTROY for both projectile and enemy
+// 
+// This gives instant feedback while maintaining server authority
+
 void GameState::checkPlayerProjectilesVsEnemiesCollision(
     ECS::ComponentArray<rtype::common::components::Position>& positions,
     const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds,
     std::vector<ECS::EntityID>& toDestroy) {
     
-    // HYBRID CLIENT-SIDE PREDICTION + SERVER AUTHORITY:
-    // - Client detects collisions immediately for low-latency feedback
-    // - Client applies damage and destroys entities locally (optimistic prediction)
-    // - Server also detects collisions and sends ENTITY_DESTROY for confirmation
-    // - Client's destroyEntityByServerId() is idempotent (handles already-destroyed entities)
-    // 
-    // For SERVER-OWNED projectiles:
-    //   - Client predicts collision → destroys enemy locally
-    //   - Client does NOT destroy projectile (server decides when projectile dies)
-    //   - Server confirms → sends ENTITY_DESTROY for both projectile and enemy
-    // 
-    // This gives instant feedback while maintaining server authority
     
     for (const auto& [projEntity, projPosPtr] : positions) {
         auto* projTeam = m_world.GetComponent<rtype::common::components::Team>(projEntity);
@@ -481,11 +432,9 @@ void GameState::checkPlayerProjectilesVsEnemiesCollision(
                     // Handle projectile destruction based on piercing
                     if (projData->piercing) {
                         // Piercing projectile continues through enemies
-                        std::cout << "[Collision] Piercing projectile " << projEntity << " continues through enemy " << enemyEntity << std::endl;
                         continue;
                     } else {
                         // Non-piercing projectile - ALWAYS destroy locally to prevent piercing through
-                        std::cout << "[Collision] Non-piercing projectile " << projEntity << " destroyed by enemy " << enemyEntity << " (serverOwned=" << projData->serverOwned << ")" << std::endl;
                         toDestroy.push_back(projEntity);
                         break; // Stop checking collisions - projectile is destroyed
                     }

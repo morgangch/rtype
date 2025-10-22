@@ -42,4 +42,10 @@ namespace rtype::client::network::senders {
         rtype::client::network::pm.sendPacketBytesSafe(&p, sizeof(PlayerShootPacket), PLAYER_SHOOT, nullptr, true);
         std::cout << "CLIENT: Sent PLAYER_SHOOT (charged: " << isCharged << " pos: " << playerX << "," << playerY << ")" << std::endl;
     }
+    
+    void send_spawn_boss_request() {
+        std::cout << "CLIENT: Sending SPAWN_BOSS_REQUEST packet (admin only)" << std::endl;
+        SpawnBossRequestPacket p{};
+        rtype::client::network::pm.sendPacketBytesSafe(&p, sizeof(SpawnBossRequestPacket), SPAWN_BOSS_REQUEST, nullptr, true);
+    }
 }

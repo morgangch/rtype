@@ -9,8 +9,10 @@
 #include "systems/ServerCollisionSystem.h"
 #include "../../common/components/Position.h"
 #include "../../common/components/Velocity.h"
+#include "../../common/components/Projectile.h"
 #include <chrono>
 #include <iostream>
+#include <cmath>
 #include "systems/AdminDetectorSystem.h"
 
 void rtype::server::Rtype::loop(float deltaTime) {
@@ -24,8 +26,21 @@ void rtype::server::Rtype::loop(float deltaTime) {
         for (auto& [entity, posPtr] : *positions) {
             auto* vel = world.GetComponent<rtype::common::components::Velocity>(entity);
             if (!vel) continue;
-            posPtr->x += vel->vx * deltaTime;
-            posPtr->y += vel->vy * deltaTime;
+            
+            // Calculate distance moved this frame
+            float dx = vel->vx * deltaTime;
+            float dy = vel->vy * deltaTime;
+            float distance = std::sqrt(dx * dx + dy * dy);
+            
+            // Update position
+            posPtr->x += dx;
+            posPtr->y += dy;
+            
+            // Update projectile distance traveled (for collision skip logic)
+            auto* proj = world.GetComponent<rtype::common::components::Projectile>(entity);
+            if (proj) {
+                proj->distanceTraveled += distance;
+            }
         }
     }
     

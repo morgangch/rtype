@@ -20,6 +20,8 @@
 #include "../../../common/components/Position.h"
 #include "../../../common/components/Team.h"
 #include "../../../common/components/Projectile.h"
+#include "../../../common/components/Health.h"
+#include "../../../common/components/EnemyType.h"
 #include <iostream>
 #include <cstring>
 #include <cmath>
@@ -427,6 +429,105 @@ void room_controller::broadcastLobbyState(ECS::EntityID room) {
     }
 }
 
+void room_controller::handleSpawnBossRequest(const packet_t& packet) {
+    std::cout << "=== handleSpawnBossRequest called ===" << std::endl;
+    
+    // Find the requesting player entity by network address
+    ECS::EntityID player = player_service::findPlayerByNetwork(packet.header.client_addr, packet.header.client_port);
+    if (!player) {
+        std::cerr << "ERROR: Player not found by network address" << std::endl;
+        return;
+    }
+    
+    std::cout << "Player " << player << " requesting boss spawn" << std::endl;
+    
+    // Get player's room
+    auto* playerConn = root.world.GetComponent<rtype::server::components::PlayerConn>(player);
+    if (!playerConn) {
+        std::cerr << "ERROR: Player has no connection component" << std::endl;
+        return;
+    }
+    
+    ECS::EntityID room = playerConn->room_code;
+    if (!room) {
+        std::cerr << "ERROR: Player not in a room" << std::endl;
+        return;
+    }
+    
+    // Verify that the player is the admin of the room
+    auto* roomProps = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
+    if (!roomProps) {
+        std::cerr << "ERROR: Room properties not found" << std::endl;
+        return;
+    }
+    
+    if (roomProps->ownerId != player) {
+        std::cout << "WARNING: Player " << player << " is not admin of room " << room << ", boss spawn request denied" << std::endl;
+        return;
+    }
+    
+    // Verify the game has started
+    if (!roomProps->isGameStarted) {
+        std::cout << "WARNING: Game not started in room " << room << ", boss spawn request denied" << std::endl;
+        return;
+    }
+    
+    std::cout << "✓ Admin " << player << " authorized to spawn boss in room " << room << std::endl;
+    
+    // Check if a boss already exists
+    bool bossExists = false;
+    auto* enemyTypes = root.world.GetAllComponents<rtype::common::components::EnemyTypeComponent>();
+    if (enemyTypes) {
+        for (auto& etPair : *enemyTypes) {
+            auto* et = etPair.second.get();
+            if (et && et->type == rtype::common::components::EnemyType::Boss) {
+                auto* health = root.world.GetComponent<rtype::common::components::Health>(etPair.first);
+                if (health && health->isAlive && health->currentHp > 0) {
+                    bossExists = true;
+                    std::cout << "SERVER: Boss already exists (id=" << etPair.first << "), skipping spawn" << std::endl;
+                    break;
+                }
+            }
+        }
+    }
+    
+    if (bossExists) {
+        std::cout << "WARNING: Boss already exists in room " << room << ", spawn request denied" << std::endl;
+        return;
+    }
+    
+    // Spawn the boss
+    float spawnX = 1280.0f - 100.0f;
+    float spawnY = 360.0f;
+    
+    auto boss = root.world.CreateEntity();
+    root.world.AddComponent<rtype::common::components::Position>(boss, spawnX, spawnY, 0.0f);
+    root.world.AddComponent<rtype::common::components::Velocity>(boss, -50.0f, 0.0f, 50.0f);
+    root.world.AddComponent<rtype::common::components::Health>(boss, 50);
+    root.world.AddComponent<rtype::common::components::Team>(boss, rtype::common::components::TeamType::Enemy);
+    root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, rtype::common::components::EnemyType::Boss);
+    
+    std::cout << "SERVER: Admin spawned boss (id=" << boss << ") in room " << room << std::endl;
+    
+    // Broadcast boss spawn to all players in the room
+    SpawnEnemyPacket pkt{};
+    pkt.enemyId = static_cast<uint32_t>(boss);
+    pkt.enemyType = static_cast<uint16_t>(rtype::common::components::EnemyType::Boss);
+    pkt.x = spawnX;
+    pkt.y = spawnY;
+    pkt.hp = 50;
+    
+    auto players = root.world.GetAllComponents<rtype::common::components::Player>();
+    if (!players) return;
+    for (auto &pp : *players) {
+        ECS::EntityID pid = pp.first;
+        auto *pconn = root.world.GetComponent<rtype::server::components::PlayerConn>(pid);
+        if (!pconn || pconn->room_code != room) continue;
+        pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), SPAWN_ENEMY, nullptr, true);
+        std::cout << "SERVER: Sent boss spawn packet to player " << pid << std::endl;
+    }
+}
+
 // Register all packet callbacks on a player's packet handler
 void room_controller::registerPlayerCallbacks(PacketHandler& handler) {
     handler.registerCallback(Packets::JOIN_ROOM, handleJoinRoomPacket);
@@ -434,7 +535,8 @@ void room_controller::registerPlayerCallbacks(PacketHandler& handler) {
     handler.registerCallback(Packets::PLAYER_INPUT, handlePlayerInput);
     handler.registerCallback(Packets::PLAYER_READY, handlePlayerReady);
     handler.registerCallback(Packets::PLAYER_SHOOT, handlePlayerShoot);
-    std::cout << "✓ Registered player callbacks: JOIN_ROOM, GAME_START_REQUEST, PLAYER_INPUT, PLAYER_READY, PLAYER_SHOOT" << std::endl;
+    handler.registerCallback(Packets::SPAWN_BOSS_REQUEST, handleSpawnBossRequest);
+    std::cout << "✓ Registered player callbacks: JOIN_ROOM, GAME_START_REQUEST, PLAYER_INPUT, PLAYER_READY, PLAYER_SHOOT, SPAWN_BOSS_REQUEST" << std::endl;
 }
 
 

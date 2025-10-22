@@ -33,6 +33,7 @@ enum Packets {
     PLAYER_SHOOT = 13,
     SPAWN_PROJECTILE = 14,
     SPAWN_ENEMY = 15,
+    SPAWN_BOSS_REQUEST = 16,
 };
 
 
@@ -135,7 +136,7 @@ struct SpawnProjectilePacket {
 // Player → Server: Player shoot (OLD - keeping for compatibility)
 struct OldPlayerShootPacket {
     uint32_t playerId;
-    uint16_t weaponType; // type d'arme (1 = tir simple, 2 = tir chargé)
+    uint16_t weaponType; // weapon type (1 = simple shot, 2 = charged shot)
 };
 
 // Server → All: Update player state
@@ -150,7 +151,7 @@ struct PlayerStatePacket {
 // Server → All: Spawn a new enemy
 struct SpawnEnemyPacket {
     uint32_t enemyId;
-    uint16_t enemyType; // type de monstre
+    uint16_t enemyType; // enemy type
     float x, y;
     uint16_t hp;
 };
@@ -194,6 +195,11 @@ struct PlayerReadyPacket {
 struct LobbyStatePacket {
     uint32_t totalPlayers;
     uint32_t readyPlayers;
+};
+
+// Client → Server: Admin requests boss spawn (B key pressed)
+struct SpawnBossRequestPacket {
+    // Empty packet - admin identity verified by server through connection
 };
 
 #endif //PACKETS_H

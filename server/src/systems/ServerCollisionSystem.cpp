@@ -12,6 +12,7 @@
 #include "services/PlayerService.h"
 #include "rtype.h"
 #include "packetmanager.h"
+#include "../../../common/components/EnemyType.h"
 #include <iostream>
 #include <cmath>
 #include <algorithm>
@@ -68,7 +69,7 @@ void ServerCollisionSystem::checkProjectileVsEnemyCollisions(
         // CRITICAL FIX: Skip projectiles that just spawned (haven't moved yet)
         // This prevents immediate collision with enemies that are being destroyed in the same frame
         if (projData->distanceTraveled < 1.0f) {
-            std::cout << "[ServerCollisionSystem] Skipping collision check for newly spawned projectile " << projEntity << std::endl;
+            // Skip silently (no log spam)
             continue;
         }
         
@@ -92,11 +93,18 @@ void ServerCollisionSystem::checkProjectileVsEnemyCollisions(
             if (!enemyTeam || !enemyHealth) continue;
             if (enemyTeam->team != rtype::common::components::TeamType::Enemy) continue;
             
-            // Enemy bounds (assume 33x33 based on typical sprite size)
+            // Enemy bounds - adjust based on enemy type
             float enemyX = enemyPosPtr->x;
             float enemyY = enemyPosPtr->y;
             float enemyW = 33.0f;
-            float enemyH = 33.0f;
+            float enemyH = 36.0f;
+            
+            // Boss has much larger hitbox (5x scale)
+            auto* enemyType = world.GetComponent<rtype::common::components::EnemyTypeComponent>(enemyEntity);
+            if (enemyType && enemyType->type == rtype::common::components::EnemyType::Boss) {
+                enemyW = 33.0f * 5.0f; // 165 pixels
+                enemyH = 36.0f * 5.0f; // 180 pixels
+            }
             
             // Check AABB collision
             if (checkAABB(projX, projY, projW, projH, enemyX, enemyY, enemyW, enemyH)) {
