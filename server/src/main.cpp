@@ -4,7 +4,6 @@
 #include "controllers/RoomController.h"
 #include "systems/PacketHandlingSystem.h"
 #include "systems/ServerEnemySystem.h"
-#include "systems/ServerPlayerStateSystem.h"
 #include "systems/ServerEntityCleanupSystem.h"
 #include "systems/ServerCollisionSystem.h"
 #include "../../common/components/Position.h"
