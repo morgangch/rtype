@@ -1,52 +1,179 @@
 @startuml
-title R-Type - Component Architecture
+title R-Type - Complete Component Architecture
+
+skinparam componentStyle rectangle
 
 package "Client Application" {
-    [Client Main]
-    [Input Handler]
-    [Renderer]
+    component [Client Main] as CM
+    component [StateManager] as SM
+    component [GameState] as GameS
+    component [MainMenuState] as MenuS
+    component [InputHandler] as IH
+    component [RenderSystem] as RS
+    component [TextureCache] as TC
+    component [MusicManager] as MM
+    component [SoundManager] as SndM
+    component [FontManager] as FM
+    component [ParallaxSystem] as PS
+    
+    CM --> SM
+    SM --> GameS
+    SM --> MenuS
+    GameS --> IH
+    GameS --> RS
+    GameS --> TC
+    GameS --> MM
+    GameS --> PS
+    GameS --> SndM
+    MenuS --> FM
 }
 
 package "Server Application" {
-    [Server Main]
-    [Game Logic]
-    [AI System]
+    component [Server Main] as ServerM
+    component [RoomService] as RoomS
+    component [PlayerService] as PlayerS
+    component [GameRules] as GR
+    component [EnemySpawner] as ES
+    component [CollisionSystem] as CS
+    component [PhysicsSystem] as PhyS
+    
+    ServerM --> RoomS
+    ServerM --> PlayerS
+    RoomS --> GR
+    GR --> ES
+    GR --> CS
+    GR --> PhyS
 }
 
-package "Shared Libraries" {
+package "Common Components" <<Rectangle>> {
+    component [Position] as Pos
+    component [Velocity] as Vel
+    component [Health] as HP
+    component [Player] as Ply
+    component [Projectile] as Proj
+    component [FireRate] as FR
+    component [Collision] as Col
+    component [Team] as Tm
+    component [Score] as Sc
+    component [EnemyType] as ET
+    
+    note right of Pos : Shared game components\nused by both client\nand server
+}
+
+package "Shared Libraries" <<Database>> {
     package "ECS Library" {
-        [World Manager]
-        [Entity Manager]
-        [Component Manager]
+        component [World] as W
+        component [EntityManager] as EM
+        component [ComponentManager] as CompM
+        component [Component<T>] as CompT
+        
+        W --> EM : manages
+        W --> CompM : manages
+        CompM --> CompT : stores
     }
     
     package "Network Library" {
-        [Packet Manager]
-        [Reliability Layer]
+        component [PacketManager] as PM
+        component [PacketHandler] as PH
+        component [Reliability Layer] as RL
+        
+        PM --> RL : uses
+        PH --> PM : processes
     }
     
-    [Game Packets]
+    package "Utilities" {
+        component [MapParser] as MP
+        component [EntityFactory] as EF
+        component [Logger] as Log
+        component [Config] as Cfg
+    }
+    
+    component [Packets Definition] as PD
 }
 
-package "External" {
-    [Network Socket]
-    [Graphics]
+package "Assets" <<Folder>> {
+    component [Sprites] as Spr
+    component [Fonts] as Fnt
+    component [Music] as Mus
+    component [Sounds] as Snd
+    component [Maps] as Maps
 }
 
-[Client Main] --> [World Manager]
-[Client Main] --> [Packet Manager]
-[Server Main] --> [World Manager]
-[Server Main] --> [Packet Manager]
+package "External Dependencies" <<Cloud>> {
+    component [SFML Graphics] as SFMLG
+    component [SFML Audio] as SFMLA
+    component [SFML Network] as SFMLN
+    component [Network Socket] as NS
+    component [Operating System] as OS
+}
 
-[World Manager] --> [Entity Manager]
-[World Manager] --> [Component Manager]
+' Client connections
+CM --> W : uses
+CM --> PM : uses
+CM --> PH : uses
+GameS --> EF : creates entities
+GameS --> MP : loads maps
+TC --> Spr : loads
+MM --> Mus : plays
+SndM --> Snd : plays
+FM --> Fnt : loads
 
-[Packet Manager] --> [Reliability Layer]
-[Packet Manager] --> [Game Packets]
+' Server connections
+ServerM --> W : uses
+ServerM --> PM : uses
+ServerM --> PH : uses
+RoomS --> W : manages worlds
+PlayerS --> W : tracks players
+GR --> W : operates on
+ES --> EF : spawns entities
+MP --> Maps : parses
 
-[Packet Manager] --> [Network Socket]
-[Renderer] --> [Graphics]
+' Components connections
+W --> Pos : manages
+W --> Vel : manages
+W --> HP : manages
+W --> Ply : manages
+W --> Proj : manages
+W --> FR : manages
+W --> Col : manages
+W --> Tm : manages
+W --> Sc : manages
+W --> ET : manages
 
-[Client Main] ..> [Server Main] : network
+' Network connections
+PM --> PD : serializes
+PH --> PD : deserializes
+PM --> NS : sends/receives
+NS --> OS : system calls
+
+' Graphics connections
+RS --> SFMLG : renders with
+TC --> SFMLG : uses
+MM --> SFMLA : uses
+SndM --> SFMLA : uses
+PS --> SFMLG : renders with
+
+' Network flow
+CM ..> ServerM : UDP\nPackets
+PM ..> PM : Reliable\nUDP
+
+' Legend
+legend right
+    |= Component Type |= Description |
+    | Application | Main executables |
+    | Library | Shared code modules |
+    | Assets | Game resources |
+    | External | Third-party dependencies |
+endlegend
+
+note as N1
+    <b>Architecture Highlights:</b>
+    • ECS for flexible game logic
+    • Shared components between client/server
+    • Reliable UDP with PacketManager
+    • State machine for client UI
+    • Service-oriented server design
+    • Asset management with caching
+end note
 
 @enduml

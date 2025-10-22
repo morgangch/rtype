@@ -1,45 +1,125 @@
 @startuml
-title R-Type - Client-Server Communication Sequence
+title R-Type - Complete Client-Server Communication Flow
 
-participant Client
+actor Player
+participant "StateManager" as SM
+participant "GameState" as GS
 participant "PacketManager\n(Client)" as PMC
+participant "PacketHandler\n(Client)" as PHC
 participant Network
+participant "PacketHandler\n(Server)" as PHS
 participant "PacketManager\n(Server)" as PMS
-participant Server
-participant "ECS World" as ECS
+participant "RoomService" as RS
+participant "ECS World\n(Server)" as ECS
+participant "GameRules" as GR
 
-== Game Initialization ==
+== Menu Navigation ==
 
-Client -> PMC : Initialize
-Client -> ECS : Create Local World
-PMC -> Network : Send Connection Request
+Player -> SM : Launch Game
+SM -> SM : Push MainMenuState
+Player -> SM : Click "Join Game"
+SM -> SM : Pop MainMenuState
+SM -> GS : Push GameState
+GS -> PMC : Initialize Network
+
+== Connection & Room Join ==
+
+GS -> PMC : Send CONNECTION_REQUEST
+PMC -> Network : Packet(type: CONNECTION, seqid: 1)
 Network -> PMS : Receive Packet
-PMS -> Server : Handle Connection
-Server -> ECS : Create Player Entity
-Server -> PMS : Send Player Join Packet
-PMS -> Network : Send Response
+PMS -> PHS : Process Packet
+PHS -> RS : Create/Join Room
+RS -> ECS : Create Player Entity
+ECS -> ECS : AddComponent<Player>
+ECS -> ECS : AddComponent<Position>
+ECS -> ECS : AddComponent<Health>
+RS -> PHS : Room Joined (roomId, playerId)
+PHS -> PMS : Send PLAYER_JOINED
+PMS -> Network : Packet(type: JOINED, seqid: 1, ack: 1)
 Network -> PMC : Receive Response
-PMC -> Client : Player Joined
+PMC -> PHC : Process Packet
+PHC -> GS : Player Joined (playerId, initial position)
+GS -> GS : Create Local Player Entity
 
-== Player Input Processing ==
+== Game Loop - Input & Movement ==
 
-Client -> PMC : Create PlayerInputPacket
-PMC -> Network : Send Input
+Player -> GS : Press Arrow Key
+GS -> GS : Handle Input
+GS -> PMC : Send PLAYER_INPUT
+PMC -> Network : Packet(type: INPUT, data: {keys, timestamp})
 Network -> PMS : Receive Input
-PMS -> Server : Process Input
-Server -> ECS : Update Player Position
-Server -> PMS : Create PlayerStatePacket
-PMS -> Network : Broadcast State
+PMS -> PHS : Process Input
+PHS -> ECS : GetComponent<Player>
+PHS -> ECS : GetComponent<Position>
+ECS -> ECS : Update Position
+PHS -> PMS : Send STATE_UPDATE
+PMS -> Network : Broadcast to All Clients
 Network -> PMC : Receive State
-PMC -> Client : Update Local State
+PMC -> PHC : Process State
+PHC -> GS : Update Game State
+GS -> GS : Interpolate Entity Positions
+GS -> Player : Render Updated Frame
 
-== Packet Loss Handling ==
+== Combat - Shooting ==
 
-Network -> Network : Packet Lost
-PMS -> PMS : Detect Missing Packet
-PMS -> PMC : Send ACK Request
-PMC -> Network : Retransmit Packet
+Player -> GS : Press Spacebar
+GS -> GS : Check FireRate Component
+GS -> PMC : Send SHOOT_REQUEST
+PMC -> Network : Packet(type: SHOOT)
+Network -> PMS : Receive Shoot
+PMS -> PHS : Process Shoot
+PHS -> ECS : CreateEntity (Projectile)
+ECS -> ECS : AddComponent<Projectile>
+ECS -> ECS : AddComponent<Velocity>
+ECS -> ECS : AddComponent<Collision>
+PHS -> GR : CheckCollisions()
+alt Projectile Hits Enemy
+    GR -> ECS : GetComponent<Health>(enemy)
+    ECS -> ECS : health.takeDamage()
+    GR -> PHS : Enemy Destroyed
+    PHS -> PMS : Broadcast ENTITY_DESTROYED
+    PMS -> Network : Send to All Clients
+end
+
+== Enemy Spawning ==
+
+loop Every 5 seconds
+    GR -> ECS : SpawnEnemy()
+    ECS -> ECS : CreateEntity (Enemy)
+    ECS -> ECS : AddComponent<EnemyAI>
+    ECS -> ECS : AddComponent<Position>
+    ECS -> ECS : AddComponent<Health>
+    GR -> PMS : Broadcast ENTITY_SPAWNED
+    PMS -> Network : Send to All Clients
+    Network -> PMC : Receive Spawn
+    PMC -> PHC : Process Spawn
+    PHC -> GS : Create Local Enemy Entity
+end
+
+== Packet Loss & Retransmission ==
+
+PMC -> Network : Packet(seqid: 42)
+Network -> Network : **Packet Lost**
+PMS -> PMS : Timeout on seqid: 42
+PMS -> PMC : Send ACK_REQUEST(seqid: 42)
+PMC -> PMC : Check Sent Buffer
+PMC -> Network : Retransmit Packet(seqid: 42)
 Network -> PMS : Receive Retransmission
-PMS -> Server : Process Packet
+PMS -> PHS : Process Packet
+note right: Reliable UDP ensures\nno data loss
+
+== Game Over ==
+
+GR -> ECS : Check Player Health
+alt Player Health is 0
+    GR -> PHS : Game Over
+    PHS -> PMS : Send GAME_OVER
+    PMS -> Network : Broadcast
+    Network -> PMC : Receive Game Over
+    PMC -> PHC : Process
+    PHC -> GS : Game Over Event
+    GS -> SM : Pop GameState
+    SM -> SM : Push GameOverState
+end
 
 @enduml
