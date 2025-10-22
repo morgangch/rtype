@@ -81,35 +81,30 @@ namespace rtype::client::controllers::game_controller {
 
         // Create or update enemy entity on the client
         g_gameState->createEnemyFromServer(p->enemyId, p->x, p->y, p->hp, p->enemyType);
-        std::cout << "SPAWN_ENEMY received: id=" << p->enemyId << " x=" << p->x << " y=" << p->y << std::endl;
     }
 
     void handle_entity_destroy(const packet_t &packet) {
         EntityDestroyPacket *p = (EntityDestroyPacket *) packet.data;
         using rtype::client::gui::g_gameState;
         if (g_gameState) g_gameState->destroyEntityByServerId(p->entityId);
-        std::cout << "ENTITY_DESTROY received: id=" << p->entityId << " reason=" << p->reason << std::endl;
     }
 
     void handle_player_join(const packet_t &packet) {
         PlayerJoinPacket *p = (PlayerJoinPacket *) packet.data;
         using rtype::client::gui::g_gameState;
         if (g_gameState) g_gameState->createRemotePlayer(std::string(p->name), p->newPlayerId);
-        std::cout << "PLAYER_JOIN received: newId=" << p->newPlayerId << " name=" << p->name << std::endl;
     }
 
     void handle_player_state(const packet_t &packet) {
         PlayerStatePacket *p = (PlayerStatePacket *) packet.data;
         using rtype::client::gui::g_gameState;
         if (g_gameState) g_gameState->updateEntityStateFromServer(p->playerId, p->x, p->y, p->hp);
-        std::cout << "PLAYER_STATE received: id=" << p->playerId << " x=" << p->x << " y=" << p->y << " hp=" << p->hp << std::endl;
     }
     
     void handle_lobby_state(const packet_t &packet) {
         LobbyStatePacket *p = (LobbyStatePacket *) packet.data;
         using rtype::client::gui::g_lobbyState;
         
-        std::cout << "LOBBY_STATE received: " << p->totalPlayers << " total players" << std::endl;
         
         // Update the lobby state display if we're in the lobby
         if (g_lobbyState) {
@@ -147,14 +142,6 @@ namespace rtype::client::controllers::game_controller {
         using rtype::client::gui::g_gameState;
         
         if (!g_gameState) return;
-        
-        std::cout << "[handle_spawn_projectile] Received projectile: id=" << p->projectileId 
-                  << " owner=" << p->ownerId 
-                  << " pos=(" << p->x << "," << p->y << ")"
-                  << " vel=(" << p->vx << "," << p->vy << ")"
-                  << " damage=" << p->damage 
-                  << " piercing=" << p->piercing 
-                  << " charged=" << p->isCharged << std::endl;
         
         // Create projectile entity from server data
         g_gameState->createProjectileFromServer(p->projectileId, p->ownerId, p->x, p->y, p->vx, p->vy, p->damage, p->piercing, p->isCharged);
