@@ -109,11 +109,11 @@ namespace rtype::client::controllers::game_controller {
         LobbyStatePacket *p = (LobbyStatePacket *) packet.data;
         using rtype::client::gui::g_lobbyState;
         
-        std::cout << "LOBBY_STATE received: " << p->totalPlayers << " total, " << p->readyPlayers << " ready" << std::endl;
+        std::cout << "LOBBY_STATE received: " << p->totalPlayers << " total players" << std::endl;
         
         // Update the lobby state display if we're in the lobby
         if (g_lobbyState) {
-            g_lobbyState->updateFromServer(p->totalPlayers, p->readyPlayers);
+            g_lobbyState->updateFromServer(p->totalPlayers);
         }
     }
     

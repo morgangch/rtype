@@ -37,6 +37,15 @@ namespace rtype::client::network::senders {
     void send_player_shoot(bool isCharged, float playerX, float playerY);
     
     /**
+     * @brief Send player input state to the server
+     * @param moveUp Whether the up key is pressed
+     * @param moveDown Whether the down key is pressed
+     * @param moveLeft Whether the left key is pressed
+     * @param moveRight Whether the right key is pressed
+     */
+    void send_player_input(bool moveUp, bool moveDown, bool moveLeft, bool moveRight);
+    
+    /**
      * @brief Send a boss spawn request to the server (admin only)
      * Server will verify if the sender is an admin before spawning
      */

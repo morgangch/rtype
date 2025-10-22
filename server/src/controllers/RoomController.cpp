@@ -348,7 +348,7 @@ void room_controller::handleJoinRoomPacket(const packet_t &packet) {
 }
 
 void room_controller::handlePlayerReady(const packet_t &packet) {
-    std::cout << "=== handlePlayerReady called ===" << std::endl;
+    std::cout << "=== handlePlayerReady called (PUBLIC ROOMS ONLY) ===" << std::endl;
     
     PlayerReadyPacket *p = (PlayerReadyPacket *) packet.data;
     
@@ -359,7 +359,27 @@ void room_controller::handlePlayerReady(const packet_t &packet) {
         return;
     }
     
-    std::cout << "Player " << player << " toggling ready to: " << (p->isReady ? "READY" : "NOT READY") << std::endl;
+    // Get player's room to check if it's public
+    ECS::EntityID room = room_service::getRoomByPlayer(player);
+    if (!room) {
+        std::cerr << "ERROR: Room not found for player " << player << std::endl;
+        return;
+    }
+    
+    auto* roomProps = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
+    if (!roomProps) {
+        std::cerr << "ERROR: Room properties not found" << std::endl;
+        return;
+    }
+    
+    // Only process ready states for PUBLIC rooms
+    // Private rooms don't use ready system - admin just starts when ready
+    if (!roomProps->isPublic) {
+        std::cout << "INFO: Ignoring PLAYER_READY for private room " << roomProps->joinCode << " (admin-controlled)" << std::endl;
+        return;
+    }
+    
+    std::cout << "Player " << player << " toggling ready to: " << (p->isReady ? "READY" : "NOT READY") << " in public room" << std::endl;
     
     // Get player's lobby state component
     auto* lobbyState = root.world.GetComponent<rtype::server::components::LobbyState>(player);
@@ -373,20 +393,20 @@ void room_controller::handlePlayerReady(const packet_t &packet) {
         lobbyState->isReady = p->isReady;
     }
     
-    // Get player's room
-    ECS::EntityID room = room_service::getRoomByPlayer(player);
-    if (!room) {
-        std::cerr << "ERROR: Room not found for player " << player << std::endl;
-        return;
-    }
-    
-    std::cout << "Player " << player << " is in room " << room << ", broadcasting lobby state" << std::endl;
+    std::cout << "Player " << player << " is in public room " << room << ", broadcasting lobby state" << std::endl;
     
     // Broadcast updated lobby state to all players in the room
     broadcastLobbyState(room);
 }
 
 void room_controller::broadcastLobbyState(ECS::EntityID room) {
+    // Get room properties to check if public/private
+    auto* roomProps = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
+    if (!roomProps) {
+        std::cerr << "ERROR: Room properties not found for broadcastLobbyState" << std::endl;
+        return;
+    }
+    
     // Get all players in this room
     auto players_in_room = player_service::findPlayersByRoomCode(room);
     
@@ -407,15 +427,23 @@ void room_controller::broadcastLobbyState(ECS::EntityID room) {
         if (lobbyState->isInGame) continue;
         
         totalPlayers++;
-        if (lobbyState->isReady) readyPlayers++;
+        
+        // Only count ready players for PUBLIC rooms
+        if (roomProps->isPublic && lobbyState->isReady) {
+            readyPlayers++;
+        }
     }
     
     // Build lobby state packet
     LobbyStatePacket pkt{};
     pkt.totalPlayers = totalPlayers;
-    pkt.readyPlayers = readyPlayers;
+    pkt.readyPlayers = readyPlayers; // Will be 0 for private rooms
     
-    std::cout << "Broadcasting lobby state: " << totalPlayers << " players, " << readyPlayers << " ready" << std::endl;
+    if (roomProps->isPublic) {
+        std::cout << "Broadcasting PUBLIC lobby state: " << totalPlayers << " players, " << readyPlayers << " ready" << std::endl;
+    } else {
+        std::cout << "Broadcasting PRIVATE lobby state: " << totalPlayers << " players (no ready count for private)" << std::endl;
+    }
     
     // Send to all players in the room (including those in lobby)
     for (auto pid : players_in_room) {

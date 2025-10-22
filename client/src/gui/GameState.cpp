@@ -61,22 +61,13 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
             auto* bossSprite = m_world.GetComponent<rtype::client::components::Sprite>(e);
             auto* bossTeam = m_world.GetComponent<rtype::common::components::Team>(e);
             auto* bossType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(e);
-            std::cout << "[GameState] Boss " << e << " components: sprite=" << (bossSprite ? "YES" : "NO")
-                      << " team=" << (bossTeam ? std::to_string(static_cast<int>(bossTeam->team)) : "NO")
-                      << " type=" << (bossType ? std::to_string(static_cast<int>(bossType->type)) : "NO") << std::endl;
-            if (bossSprite) {
-                std::cout << "[GameState] Boss sprite: scale=" << bossSprite->scale 
-                          << " rect=(" << bossSprite->textureRect.width << "x" << bossSprite->textureRect.height << ")" << std::endl;
-            }
             break;
         }
         case rtype::common::components::EnemyType::Shooter:
-            std::cout << "[GameState] Creating SHOOTER enemy from server: serverId=" << serverId << " pos=(" << x << "," << y << ") hp=" << hp << std::endl;
             e = createShooterEnemy(x, y);
             break;
         case rtype::common::components::EnemyType::Basic:
         default:
-            std::cout << "[GameState] Creating BASIC enemy from server: serverId=" << serverId << " pos=(" << x << "," << y << ") hp=" << hp << std::endl;
             e = createEnemy(x, y);
             break;
     }
@@ -142,10 +133,9 @@ ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t 
     // Velocity
     m_world.AddComponent<rtype::common::components::Velocity>(entity, vx, vy, std::sqrt(vx*vx + vy*vy));
     
-    // Sprite - Different sprite for charged vs normal
+    // Sprite - Different sprite for charged vs normal (textures pre-loaded in loadHUDTextures)
     if (isCharged) {
         // Charged projectile sprite - PROJECTILE_4 (rose/magenta, more dense and imposing)
-        rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_4);
         m_world.AddComponent<rtype::client::components::Sprite>(
             entity,
             rtype::client::assets::projectiles::PROJECTILE_4,
@@ -156,7 +146,6 @@ ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t 
         std::cout << "[GameState]   Using CHARGED sprite (PROJECTILE_4, rect: 185,17,81,17, scale: 0.6)" << std::endl;
     } else {
         // Normal projectile sprite - PROJECTILE_1
-        rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_1);
         m_world.AddComponent<rtype::client::components::Sprite>(
             entity,
             rtype::client::assets::projectiles::PROJECTILE_1,
@@ -275,6 +264,10 @@ void GameState::loadHUDTextures() {
     m_emptyHeartSprite.setTexture(m_heartTexture);
     m_emptyHeartSprite.setTextureRect(sf::IntRect(startX + frameWidth * 8, startY, frameWidth * 4, frameHeight * 2));
     m_emptyHeartSprite.setScale(0.08f, 0.08f);  // Scale down (992*0.08 = 79px, 432*0.08 = 35px)
+
+    // Pre-load projectile textures to avoid loading in hot path (entity creation)
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_1);
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_4);
 
     m_texturesLoaded = true;
 }

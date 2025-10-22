@@ -43,6 +43,15 @@ namespace rtype::client::network::senders {
         std::cout << "CLIENT: Sent PLAYER_SHOOT (charged: " << isCharged << " pos: " << playerX << "," << playerY << ")" << std::endl;
     }
     
+    void send_player_input(bool moveUp, bool moveDown, bool moveLeft, bool moveRight) {
+        PlayerInputPacket p{};
+        p.moveUp = moveUp;
+        p.moveDown = moveDown;
+        p.moveLeft = moveLeft;
+        p.moveRight = moveRight;
+        rtype::client::network::pm.sendPacketBytesSafe(&p, sizeof(PlayerInputPacket), PLAYER_INPUT, nullptr, false);
+    }
+    
     void send_spawn_boss_request() {
         std::cout << "CLIENT: Sending SPAWN_BOSS_REQUEST packet (admin only)" << std::endl;
         SpawnBossRequestPacket p{};

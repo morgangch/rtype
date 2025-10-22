@@ -22,6 +22,7 @@
 #include "packets.h"
 #include "packetmanager.h"
 #include "network/network.h"
+#include "network/senders.h"
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -79,15 +80,8 @@ void GameState::updateInputSystem(float deltaTime) {
     if (inputSendTimer >= INPUT_SEND_INTERVAL) {
         inputSendTimer = 0.0f;
         
-        // Send current input state to server
-        PlayerInputPacket inputPkt{};
-        inputPkt.moveUp = m_keyUp;
-        inputPkt.moveDown = m_keyDown;
-        inputPkt.moveLeft = m_keyLeft;
-        inputPkt.moveRight = m_keyRight;
-        
-        // Use the network namespace packet manager
-        rtype::client::network::pm.sendPacketBytesSafe(&inputPkt, sizeof(inputPkt), PLAYER_INPUT, nullptr, false);
+        // Send current input state to server using sender function
+        rtype::client::network::senders::send_player_input(m_keyUp, m_keyDown, m_keyLeft, m_keyRight);
     }
     
     // Find player entity (has Player component)
