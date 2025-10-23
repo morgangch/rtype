@@ -66,7 +66,8 @@ void rtype::server::Rtype::loop(float deltaTime) {
             // Clamp player positions to game bounds (server-authoritative)
             auto* player = world.GetComponent<rtype::common::components::Player>(entity);
             if (player) {
-                clampPlayerPosition(posPtr.get());
+                if (posPtr)
+                    clampPlayerPosition(posPtr.get());
             }
             
             // Update projectile distance traveled (for collision skip logic)
