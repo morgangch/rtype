@@ -228,7 +228,7 @@ namespace rtype::client::gui {
         
         // Update the display text
         if (isAdmin) {
-            playersWaitingText.setString("Waiting for players... (" + std::to_string(totalPlayers) + " in lobby)");
+            playersWaitingText.setString("Waiting for players... " + std::to_string(totalPlayers) + " in lobby");
         }
         // Non-admin players keep the static "Waiting for room host" text
     }

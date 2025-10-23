@@ -53,10 +53,7 @@ void network::loop_recv() {
 #endif
 
     if (n > 0) {
-        std::cout << "[INFO] Received UDP packet of size " << n << std::endl;
         PacketManager::deserializePacket(buffer, n, packet);
-        std::cout << "[INFO] Packet seqid: " << packet.header.seqid << ", type: " << static_cast<int>(packet.header.type) <<
-                std::endl;
 
         // For connected UDP socket, we need to create a dummy sockaddr_in for the packet manager
         struct sockaddr_in servaddr{};
@@ -93,9 +90,6 @@ void network::loop_send() {
             std::cerr << "[ERROR] Failed to send UDP packet to server: " << strerror(errno) << std::endl;
             std::cerr << "[DEBUG] bytes_sent: " << bytes_sent << ", errno: " << errno << std::endl;
 #endif
-        } else {
-            std::cout << "[INFO] Sent UDP packet of size " << serialized.size()
-                      << " bytes to server (packet type: " << static_cast<int>(packet->header.type) << ")" << std::endl;
         }
     }
 }
