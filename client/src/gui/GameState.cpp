@@ -173,7 +173,6 @@ ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t 
 void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp) {
     // Skip updates for local player (controlled by client input)
     if (serverId == m_localPlayerServerId) {
-        // std::cout << "[GameState] Skipping state update for local player (serverId=" << serverId << ")" << std::endl;
         return;
     }
     
@@ -188,8 +187,6 @@ void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y,
     if (pos) { pos->x = x; pos->y = y; }
     auto* health = m_world.GetComponent<rtype::common::components::Health>(e);
     if (health) { health->currentHp = hp; }
-    
-    // std::cout << "[GameState] Updated entity: clientId=" << e << " serverId=" << serverId << " pos=(" << x << "," << y << ") hp=" << hp << std::endl;
 }
 
 void GameState::setLocalPlayerServerId(uint32_t serverId) {
