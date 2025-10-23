@@ -1,9 +1,15 @@
-/*
-** EPITECH PROJECT, 2025
-** rtype
-** File description:
-** TODO: add description
-*/
+/**
+ * @file RoomService.h
+ * @brief Service layer for room entity management
+ *
+ * Provides utility functions for creating, finding, and managing room entities
+ * on the server. Handles room creation with unique join codes, public/private
+ * room discovery, and player-room association queries.
+ *
+ * @author R-TYPE Dev Team
+ * @date 2025
+ */
+
 #ifndef ROOMSERVICE_H
 #define ROOMSERVICE_H
 #include "ECS/Types.h"
