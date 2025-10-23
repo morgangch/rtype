@@ -404,10 +404,34 @@ void room_controller::handleJoinRoomPacket(const packet_t &packet) {
     ECS::EntityID player = findOrCreatePlayer(packet, std::string(p->name), p->joinCode, ip_str, packet.header.client_port);
     if (!player) return; // Player in active game or creation failed
     
-    // Find or create room based on join code
-    ECS::EntityID room = findOrCreateRoom(p->joinCode, player);
-    if (!room) {
-        std::cerr << "ERROR: Room not found for join code " << p->joinCode << std::endl;
+    if (!player) {
+        player_service::createNewPlayer(std::string(p->name), p->joinCode, ip_str,
+                                        packet.header.client_port);
+        // Re-check for player entity after creation to avoid duplicates
+        player = player_service::findPlayerByNetwork(packet.header.client_addr, packet.header.client_port);
+        if (!player) {
+            std::cerr << "ERROR: Failed to create or find player entity for network address " << ip_str << ":" << packet.header.client_port << std::endl;
+            return;
+        }
+    }
+
+    if (p->joinCode == 0) {
+        // Create a new private room
+        room = room_service::openNewRoom(false, player);
+    } else if (p->joinCode == 1) {
+        // Join a random public room
+        room = room_service::findAvailablePublicRoom();
+        if (room == 0) {
+            // No available public room, create a new one
+            room = room_service::openNewRoom(true, player);
+        }
+    } else {
+        // Join a private room with the given join code
+        room = room_service::getRoomByJoinCode(static_cast<int>(p->joinCode));
+    }
+
+    if (room == 0) {
+        // Room not found.
         return;
     }
     
