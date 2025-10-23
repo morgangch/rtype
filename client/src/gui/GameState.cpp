@@ -54,13 +54,7 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
     
     switch (type) {
         case rtype::common::components::EnemyType::Boss: {
-            std::cout << "[GameState] Creating BOSS from server: serverId=" << serverId << " pos=(" << x << "," << y << ") hp=" << hp << std::endl;
-            e = createBoss(x, y);
-            
-            // Debug: Verify boss components
-            auto* bossSprite = m_world.GetComponent<rtype::client::components::Sprite>(e);
-            auto* bossTeam = m_world.GetComponent<rtype::common::components::Team>(e);
-            auto* bossType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(e);
+            e = createBoss(x, y);            
             break;
         }
         case rtype::common::components::EnemyType::Shooter:
