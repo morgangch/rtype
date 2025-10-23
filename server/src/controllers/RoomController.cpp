@@ -263,9 +263,16 @@ void room_controller::handleJoinRoomPacket(const packet_t &packet) {
         }
     }
     
-    if (!player)
-        player = player_service::createNewPlayer(std::string(p->name), p->joinCode, ip_str,
-                                                           packet.header.client_port);
+    if (!player) {
+        player_service::createNewPlayer(std::string(p->name), p->joinCode, ip_str,
+                                        packet.header.client_port);
+        // Re-check for player entity after creation to avoid duplicates
+        player = player_service::findPlayerByNetwork(packet.header.client_addr, packet.header.client_port);
+        if (!player) {
+            std::cerr << "ERROR: Failed to create or find player entity for network address " << ip_str << ":" << packet.header.client_port << std::endl;
+            return;
+        }
+    }
 
     if (p->joinCode == 0) {
         // Create a new private room
