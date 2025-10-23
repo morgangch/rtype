@@ -317,9 +317,11 @@ void room_controller::handleGameStartRequest(const packet_t &packet) {
     auto *rp = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
     if (rp->ownerId != player) {
         std::cerr << "ERROR: Player " << player << " is not room owner (owner is " << rp->ownerId << ")" << std::endl;
+        std::cerr << "SECURITY AUDIT: Unauthorized GAME_START_REQUEST attempt by player " << player
+                  << " (IP: " << packet.header.client_addr << ", port: " << packet.header.client_port << ")"
+                  << " for room " << rp->joinCode << " (owner is " << rp->ownerId << ")" << std::endl;
         return;
     }
-    
     if (rp->isGameStarted) {
         std::cout << "WARNING: Game already started for room " << rp->joinCode << std::endl;
         return;
