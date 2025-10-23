@@ -55,7 +55,7 @@ namespace rtype::server::components {
                 rtype::server::components::PlayerConn *notifyConn = pair.second.get();
                 if (!notifyConn)
                     continue;
-                if (notifyConn->room_code == joinCode) {
+                if (notifyConn->room_code == pair.first) {
                     notifyConn->packet_manager.sendPacketBytesSafe(
                         &data, sizeof(data), packetType, nullptr, important);
                 }
