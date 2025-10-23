@@ -31,7 +31,7 @@ void ServerEntityCleanupSystem::Update(ECS::World &world, float deltaTime) {
                     ECS::EntityID pid = pp.first;
                     auto* pconn = root.world.GetComponent<rtype::server::components::PlayerConn>(pid);
                     if (!pconn) continue;
-                    pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), /*type*/ 0 /* EntityDestroyPacket handler on clients */, nullptr, true);
+                    pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), ENTITY_DESTROY, nullptr, true);
                 }
             }
 

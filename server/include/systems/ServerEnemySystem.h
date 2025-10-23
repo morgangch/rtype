@@ -66,6 +66,29 @@ private:
      * @param room The room entity ID to spawn the boss for
      */
     void spawnBoss(ECS::World& world, ECS::EntityID room);
+    
+    /**
+     * @brief Check and spawn bosses for all active game rooms
+     * @param deltaTime Time elapsed since last update
+     */
+    void updateBossSpawning(float deltaTime);
+    
+    /**
+     * @brief Spawn regular enemies for all active game rooms
+     * @param deltaTime Time elapsed since last update
+     */
+    void updateEnemySpawning(float deltaTime);
+    
+    /**
+     * @brief Broadcast player states to clients in active games
+     * @param deltaTime Time elapsed since last update
+     */
+    void updatePlayerStateBroadcast(float deltaTime);
+    
+    /**
+     * @brief Clean up dead entities and notify clients
+     */
+    void cleanupDeadEntities();
 };
 
 #endif // SERVER_ENEMY_SYSTEM_H

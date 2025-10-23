@@ -18,6 +18,8 @@
 #define ROOMPROPERTIESCOMPONENT_H
 
 #include "ECS/Component.h"
+#include "rtype.h"
+#include "components/PlayerConn.h"
 
 namespace rtype::server::components {
     /**
@@ -31,6 +33,34 @@ namespace rtype::server::components {
      */
     class RoomProperties : public ECS::Component<RoomProperties> {
     public:
+        /**
+         * @brief Construct a new RoomProperties component
+         * @param joinCode Numeric join code (default: 0)
+         * @param isPublic Whether the room is publicly listed (default: true)
+         * @param ownerId Owner entity ID (default: 0)
+         */
+        RoomProperties(int joinCode = 0, bool isPublic = true, int ownerId = 0)
+            : joinCode(joinCode), isPublic(isPublic), ownerId(ownerId) {
+        };
+
+        /**
+         * Broadcast a packet to all players in the room
+         * @param data the packet data
+         * @param size the size of the packet
+         * @param packetType the type of the packet
+         * @param important whether the packet is important (reliable)
+         */
+        void broadcastPacket(void *data, size_t size, uint8_t packetType, bool important) const {
+            for (auto &pair: *root.world.GetAllComponents<PlayerConn>()) {
+                rtype::server::components::PlayerConn *notifyConn = pair.second.get();
+                if (!notifyConn)
+                    continue;
+                if (notifyConn->room_code == joinCode) {
+                    notifyConn->packet_manager.sendPacketBytesSafe(
+                        &data, sizeof(data), packetType, nullptr, important);
+                }
+            }
+        }
         /**
          * @brief Numeric room code used for joining private rooms
          */
@@ -50,16 +80,6 @@ namespace rtype::server::components {
          * @brief Entity ID of the room owner (first player to create it)
          */
         ECS::EntityID ownerId = 0; // EntityID of the room owner (first player who created the room)
-
-        /**
-         * @brief Construct a new RoomProperties component
-         * @param joinCode Numeric join code (default: 0)
-         * @param isPublic Whether the room is publicly listed (default: true)
-         * @param ownerId Owner entity ID (default: 0)
-         */
-        RoomProperties(int joinCode = 0, bool isPublic = true, int ownerId = 0)
-            : joinCode(joinCode), isPublic(isPublic), ownerId(ownerId) {
-        };
     };
 }
 

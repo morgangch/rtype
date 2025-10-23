@@ -151,13 +151,6 @@ void rtype::server::network::loop_send(int udp_server_fd) {
 #else
             perror("sendto");
 #endif
-        } else {
-            std::cout << "[INFO] Sent UDP packet of size " << serialized.size()
-                    << " to " << (int) packet->header.client_addr[0] << "."
-                    << (int) packet->header.client_addr[1] << "."
-                    << (int) packet->header.client_addr[2] << "."
-                    << (int) packet->header.client_addr[3] << ":"
-                    << packet->header.client_port << std::endl;
         }
     }
 }
@@ -174,12 +167,9 @@ void rtype::server::network::loop_recv(int udp_server_fd) {
 #endif
 
     if (n > 0) {
-        std::cout << "[INFO] Received UDP packet of size " << n << std::endl;
-
         // Redirect to the appropriate player or to the global packet manager
         auto pid = rtype::server::services::player_service::findPlayerByNetwork(cliaddr);
         if (pid) {
-            std::cout << "[INFO] Packet associated with player ID " << pid << std::endl;
             auto p = root.world.GetComponent<components::PlayerConn>(pid);
             p->packet_manager.handlePacketBytes(buffer, n, cliaddr);
         } else {
