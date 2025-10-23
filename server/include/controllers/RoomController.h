@@ -88,6 +88,93 @@ namespace rtype::server::controllers::room_controller {
      * This sets up the mapping between incoming packet IDs and controller functions.
      */
     void registerPlayerCallbacks(PacketHandler& handler);
+    
+    // === Helper Functions ===
+    
+    /**
+     * @brief Mark all players in a room as in-game
+     * @param room The room entity ID
+     */
+    void markPlayersAsInGame(ECS::EntityID room);
+    
+    /**
+     * @brief Send GAME_START packets to all players in a room
+     * @param room The room entity ID
+     */
+    void broadcastGameStart(ECS::EntityID room);
+    
+    /**
+     * @brief Send PLAYER_JOIN packets for all players to each other
+     * @param room The room entity ID
+     */
+    void broadcastPlayerRoster(ECS::EntityID room);
+    
+    /**
+     * @brief Create a projectile entity on the server
+     * @param x Starting X position
+     * @param y Starting Y position
+     * @param isCharged Whether this is a charged shot
+     * @return The created projectile entity ID
+     */
+    ECS::EntityID createServerProjectile(float x, float y, bool isCharged);
+    
+    /**
+     * @brief Broadcast projectile spawn to all players in a room
+     * @param projectile The projectile entity ID
+     * @param owner The owner player entity ID
+     * @param room The room entity ID
+     * @param isCharged Whether this is a charged shot
+     */
+    void broadcastProjectileSpawn(ECS::EntityID projectile, ECS::EntityID owner, ECS::EntityID room, bool isCharged);
+    
+    // === Join Room Helper Functions ===
+    
+    /**
+     * @brief Find or create a player entity for a join request
+     * @param packet The join room packet
+     * @param playerName The player's name
+     * @param joinCode The join code from the packet
+     * @param ipStr The player's IP address as string
+     * @param port The player's port
+     * @return The player entity ID, or 0 if creation failed
+     */
+    ECS::EntityID findOrCreatePlayer(const packet_t& packet, const std::string& playerName, uint32_t joinCode, const std::string& ipStr, int port);
+    
+    /**
+     * @brief Find or create a room based on join code
+     * @param joinCode The join code (0 = new private, 1 = public matchmaking, other = specific room)
+     * @param player The player entity ID requesting to join
+     * @return The room entity ID, or 0 if not found/created
+     */
+    ECS::EntityID findOrCreateRoom(uint32_t joinCode, ECS::EntityID player);
+    
+    /**
+     * @brief Send join acceptance packet to player
+     * @param player The player entity ID
+     * @param room The room entity ID
+     */
+    void sendJoinAccepted(ECS::EntityID player, ECS::EntityID room);
+    
+    /**
+     * @brief Notify joining player about existing players in room
+     * @param player The joining player entity ID
+     * @param room The room entity ID
+     */
+    void notifyJoiningPlayerOfExisting(ECS::EntityID player, ECS::EntityID room);
+    
+    /**
+     * @brief Notify existing players about the new player joining
+     * @param player The new player entity ID
+     * @param playerName The new player's name
+     * @param room The room entity ID
+     */
+    void notifyExistingPlayersOfNewJoin(ECS::EntityID player, const std::string& playerName, ECS::EntityID room);
+    
+    /**
+     * @brief Initialize lobby state for a player if they don't have one
+     * @param player The player entity ID
+     */
+    void initializeLobbyState(ECS::EntityID player);
 }
 
 #endif //ROOMCONTROLLER_H

@@ -40,41 +40,11 @@
 using namespace rtype::server::controllers;
 using namespace rtype::server::services;
 
+// ============================================================================
+// HELPER FUNCTIONS - Game Start Flow
+// ============================================================================
 
-void room_controller::handleGameStartRequest(const packet_t &packet) {
-    std::cout << "=== handleGameStartRequest called ===" << std::endl;
-    
-    ECS::EntityID player = player_service::findPlayerByNetwork(packet.header.client_addr, packet.header.client_port);
-    ECS::EntityID room;
-
-    if (!player) {
-        std::cerr << "ERROR: Player not found" << std::endl;
-        return;
-    }
-    
-    room = room_service::getRoomByPlayer(player);
-    if (!room) {
-        std::cerr << "ERROR: Player " << player << " not in a room" << std::endl;
-        return;
-    }
-    
-    // Check if the player is the room owner
-    auto *rp = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
-    if (rp->ownerId != player) {
-        std::cerr << "ERROR: Player " << player << " is not room owner (owner is " << rp->ownerId << ")" << std::endl;
-        return;
-    }
-    
-    if (rp->isGameStarted) {
-        std::cout << "WARNING: Game already started for room " << rp->joinCode << std::endl;
-        return;
-    }
-    
-    rp->isGameStarted = true;
-    
-    std::cout << "✓ Game started for room " << rp->joinCode << " by admin player " << player << std::endl;
-    
-    // Mark all players in the room as now in-game (no longer in lobby)
+void room_controller::markPlayersAsInGame(ECS::EntityID room) {
     auto players_in_room = player_service::findPlayersByRoomCode(room);
     std::cout << "Found " << players_in_room.size() << " players in room" << std::endl;
     
@@ -85,9 +55,12 @@ void room_controller::handleGameStartRequest(const packet_t &packet) {
             std::cout << "  - Marked player " << pid << " as in-game" << std::endl;
         }
     }
-    
-    // Broadcast GAME_START to all clients in the room so they all transition to GameState
+}
+
+void room_controller::broadcastGameStart(ECS::EntityID room) {
+    auto players_in_room = player_service::findPlayersByRoomCode(room);
     GameStartPacket startPkt{};
+    
     for (auto pid : players_in_room) {
         auto *pconn = root.world.GetComponent<rtype::server::components::PlayerConn>(pid);
         if (!pconn) {
@@ -97,9 +70,12 @@ void room_controller::handleGameStartRequest(const packet_t &packet) {
         pconn->packet_manager.sendPacketBytesSafe(&startPkt, sizeof(startPkt), GAME_START, nullptr, true);
         std::cout << "  ✓ Sent GAME_START to player " << pid << std::endl;
     }
+}
+
+void room_controller::broadcastPlayerRoster(ECS::EntityID room) {
+    auto players_in_room = player_service::findPlayersByRoomCode(room);
     
-    // CRITICAL: After sending GAME_START, send all PLAYER_JOIN packets to each client
-    // so they can create remote player entities when entering GameState
+    // Send all PLAYER_JOIN packets to each client so they can create remote player entities
     for (auto recipientPid : players_in_room) {
         auto *recipientConn = root.world.GetComponent<rtype::server::components::PlayerConn>(recipientPid);
         if (!recipientConn) continue;
@@ -120,6 +96,242 @@ void room_controller::handleGameStartRequest(const packet_t &packet) {
             std::cout << "  ✓ Sent PLAYER_JOIN (id=" << otherPid << ") to player " << recipientPid << std::endl;
         }
     }
+}
+
+// ============================================================================
+// HELPER FUNCTIONS - Join Room Flow
+// ============================================================================
+
+ECS::EntityID room_controller::findOrCreatePlayer(const packet_t& packet, const std::string& playerName, uint32_t joinCode, const std::string& ipStr, int port) {
+    // Look up player by network address
+    ECS::EntityID player = player_service::findPlayerByNetwork(packet.header.client_addr, packet.header.client_port);
+    
+    // Check if player already exists and is in an active game
+    if (player) {
+        auto* lobbyState = root.world.GetComponent<rtype::server::components::LobbyState>(player);
+        if (lobbyState && lobbyState->isInGame) {
+            std::cout << "WARNING: Ignoring JOIN_ROOM from player " << player << " who is already in a game" << std::endl;
+            return 0; // Signal to abort join request
+        }
+        return player; // Existing player, not in game - allow rejoin
+    }
+    
+    // Player doesn't exist, create new one
+    player = player_service::createNewPlayer(playerName, joinCode, ipStr, port);
+    
+    // Re-check to ensure player was created successfully
+    player = player_service::findPlayerByNetwork(packet.header.client_addr, packet.header.client_port);
+    if (!player) {
+        std::cerr << "ERROR: Failed to create or find player entity for network address " << ipStr << ":" << port << std::endl;
+    }
+    
+    return player;
+}
+
+ECS::EntityID room_controller::findOrCreateRoom(uint32_t joinCode, ECS::EntityID player) {
+    if (joinCode == 0) {
+        // Create a new private room
+        return room_service::openNewRoom(false, player);
+    } else if (joinCode == 1) {
+        // Join a random public room (matchmaking)
+        ECS::EntityID room = room_service::findAvailablePublicRoom();
+        if (room == 0) {
+            // No available public room, create a new one
+            room = room_service::openNewRoom(true, player);
+        }
+        return room;
+    } else {
+        // Join a specific private room with the given join code
+        return room_service::getRoomByJoinCode(static_cast<int>(joinCode));
+    }
+}
+
+void room_controller::sendJoinAccepted(ECS::EntityID player, ECS::EntityID room) {
+    auto* playernet = root.world.GetComponent<components::PlayerConn>(player);
+    if (!playernet) {
+        std::cerr << "ERROR: Player " << player << " has no PlayerConn component" << std::endl;
+        return;
+    }
+    
+    auto* rp = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
+    if (!rp) {
+        std::cerr << "ERROR: Room " << room << " has no RoomProperties component" << std::endl;
+        return;
+    }
+    
+    // Store room entity ID in player's connection (note: field name 'room_code' is misleading, it stores entity ID)
+    playernet->room_code = room;
+    
+    // Build and send JOIN_ROOM_ACCEPTED packet
+    JoinRoomAcceptedPacket a{};
+    a.admin = (rp->ownerId == player);
+    a.roomCode = rp->joinCode;
+    a.playerServerId = static_cast<uint32_t>(player);
+    
+    std::cout << "Player " << player << " joined room " << rp->joinCode << " (admin: " << (a.admin ? "yes" : "no") << ")" << std::endl;
+    
+    playernet->packet_manager.sendPacketBytesSafe(&a, sizeof(a), JOIN_ROOM_ACCEPTED, nullptr, true);
+}
+
+void room_controller::notifyJoiningPlayerOfExisting(ECS::EntityID player, ECS::EntityID room) {
+    auto* playernet = root.world.GetComponent<components::PlayerConn>(player);
+    if (!playernet) return;
+    
+    auto players_in_room = player_service::findPlayersByRoomCode(room);
+    
+    // Send existing players to the newly joined player
+    for (auto existing : players_in_room) {
+        if (existing == player) continue; // Don't send self
+        
+        auto* existingPlayer = root.world.GetComponent<rtype::common::components::Player>(existing);
+        if (!existingPlayer) continue;
+        
+        PlayerJoinPacket existingPkt{};
+        existingPkt.newPlayerId = static_cast<uint32_t>(existing);
+        strncpy(existingPkt.name, existingPlayer->name.c_str(), sizeof(existingPkt.name) - 1);
+        existingPkt.name[sizeof(existingPkt.name) - 1] = '\0';
+        
+        playernet->packet_manager.sendPacketBytesSafe(&existingPkt, sizeof(existingPkt), PLAYER_JOIN, nullptr, true);
+    }
+}
+
+void room_controller::notifyExistingPlayersOfNewJoin(ECS::EntityID player, const std::string& playerName, ECS::EntityID room) {
+    auto players_in_room = player_service::findPlayersByRoomCode(room);
+    
+    PlayerJoinPacket joinPkt{};
+    joinPkt.newPlayerId = static_cast<uint32_t>(player);
+    strncpy(joinPkt.name, playerName.c_str(), sizeof(joinPkt.name) - 1);
+    joinPkt.name[sizeof(joinPkt.name) - 1] = '\0';
+    
+    for (auto other : players_in_room) {
+        if (other == player) continue; // Don't send to self
+        
+        auto* otherConn = root.world.GetComponent<rtype::server::components::PlayerConn>(other);
+        if (!otherConn) continue;
+        
+        otherConn->packet_manager.sendPacketBytesSafe(&joinPkt, sizeof(joinPkt), PLAYER_JOIN, nullptr, true);
+    }
+}
+
+void room_controller::initializeLobbyState(ECS::EntityID player) {
+    // Only add LobbyState if player doesn't already have one
+    // This prevents duplicate JOIN_ROOM packets from resetting a player's ready state
+    auto* existingLobbyState = root.world.GetComponent<rtype::server::components::LobbyState>(player);
+    
+    if (!existingLobbyState) {
+        std::cout << "Adding new LobbyState for player " << player << std::endl;
+        root.world.AddComponent<rtype::server::components::LobbyState>(player, false, false);
+    } else {
+        std::cout << "Player " << player << " already has LobbyState (ready=" << existingLobbyState->isReady << "), not resetting" << std::endl;
+    }
+}
+
+// ============================================================================
+// HELPER FUNCTIONS - Projectile Handling
+// ============================================================================
+
+ECS::EntityID room_controller::createServerProjectile(float x, float y, bool isCharged) {
+    auto projectile = root.world.CreateEntity();
+    
+    // Projectile starts at given position with offset
+    float projectileX = x + 32.0f; // Offset to spawn in front of player
+    float projectileY = y;
+    
+    // Projectile parameters depend on whether it's charged or not
+    float projectileSpeed;
+    uint16_t damage;
+    bool piercing;
+    
+    if (isCharged) {
+        projectileSpeed = 600.0f;
+        damage = 2;
+        piercing = true;
+    } else {
+        projectileSpeed = 500.0f;
+        damage = 1;
+        piercing = false;
+    }
+    
+    float projectileVx = projectileSpeed;
+    float projectileVy = 0.0f;
+    
+    // Add components to server projectile
+    root.world.AddComponent<rtype::common::components::Position>(projectile, projectileX, projectileY, 0.0f);
+    root.world.AddComponent<rtype::common::components::Velocity>(projectile, projectileVx, projectileVy, projectileSpeed);
+    root.world.AddComponent<rtype::common::components::Team>(projectile, rtype::common::components::TeamType::Player);
+    root.world.AddComponent<rtype::common::components::Projectile>(projectile, damage, piercing, true /* serverOwned */, projectileSpeed, rtype::common::components::ProjectileType::Basic);
+    
+    return projectile;
+}
+
+void room_controller::broadcastProjectileSpawn(ECS::EntityID projectile, ECS::EntityID owner, ECS::EntityID room, bool isCharged) {
+    auto* pos = root.world.GetComponent<rtype::common::components::Position>(projectile);
+    auto* vel = root.world.GetComponent<rtype::common::components::Velocity>(projectile);
+    auto* proj = root.world.GetComponent<rtype::common::components::Projectile>(projectile);
+    
+    if (!pos || !vel || !proj) return;
+    
+    SpawnProjectilePacket spawnPkt{};
+    spawnPkt.projectileId = static_cast<uint32_t>(projectile);
+    spawnPkt.ownerId = static_cast<uint32_t>(owner);
+    spawnPkt.x = pos->x;
+    spawnPkt.y = pos->y;
+    spawnPkt.vx = vel->vx;
+    spawnPkt.vy = vel->vy;
+    spawnPkt.damage = proj->damage;
+    spawnPkt.piercing = proj->piercing;
+    spawnPkt.isCharged = isCharged;
+    
+    auto players_in_room = player_service::findPlayersByRoomCode(room);
+    for (auto pid : players_in_room) {
+        auto* lobbyState = root.world.GetComponent<rtype::server::components::LobbyState>(pid);
+        if (!lobbyState || !lobbyState->isInGame) continue; // Only send to players in-game
+        
+        auto *pconn = root.world.GetComponent<rtype::server::components::PlayerConn>(pid);
+        if (!pconn) continue;
+        
+        pconn->packet_manager.sendPacketBytesSafe(&spawnPkt, sizeof(spawnPkt), SPAWN_PROJECTILE, nullptr, false);
+    }
+}
+
+// ============================================================================
+// PACKET HANDLERS
+// ============================================================================
+
+void room_controller::handleGameStartRequest(const packet_t &packet) {
+    std::cout << "=== handleGameStartRequest called ===" << std::endl;
+    
+    ECS::EntityID player = player_service::findPlayerByNetwork(packet.header.client_addr, packet.header.client_port);
+    if (!player) {
+        std::cerr << "ERROR: Player not found" << std::endl;
+        return;
+    }
+    
+    ECS::EntityID room = room_service::getRoomByPlayer(player);
+    if (!room) {
+        std::cerr << "ERROR: Player " << player << " not in a room" << std::endl;
+        return;
+    }
+    
+    // Check if the player is the room owner
+    auto *rp = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
+    if (rp->ownerId != player) {
+        std::cerr << "ERROR: Player " << player << " is not room owner (owner is " << rp->ownerId << ")" << std::endl;
+        return;
+    }
+    
+    if (rp->isGameStarted) {
+        std::cout << "WARNING: Game already started for room " << rp->joinCode << std::endl;
+        return;
+    }
+    
+    rp->isGameStarted = true;
+    std::cout << "✓ Game started for room " << rp->joinCode << " by admin player " << player << std::endl;
+    
+    // Use extracted helper functions
+    markPlayersAsInGame(room);
+    broadcastGameStart(room);
+    broadcastPlayerRoster(room);
 }
 
 void room_controller::handlePlayerInput(const packet_t &packet) {
@@ -159,16 +371,12 @@ void room_controller::handlePlayerInput(const packet_t &packet) {
 }
 
 void room_controller::handlePlayerShoot(const packet_t &packet) {
-    std::cout << "=== handlePlayerShoot called ===" << std::endl;
-    
     // Parse packet to get charged shot flag and player position
     PlayerShootPacket *p = (PlayerShootPacket *) packet.data;
     bool isCharged = p->isCharged;
     float playerX = p->playerX;
     float playerY = p->playerY;
-    
-    std::cout << "  Shot type: " << (isCharged ? "CHARGED" : "NORMAL") << " from position (" << playerX << "," << playerY << ")" << std::endl;
-    
+        
     // Find the player entity by network address
     ECS::EntityID player = player_service::findPlayerByNetwork(packet.header.client_addr, packet.header.client_port);
     if (!player) {
@@ -183,165 +391,37 @@ void room_controller::handlePlayerShoot(const packet_t &packet) {
         return;
     }
     
-    // Create projectile entity on server
-    auto projectile = root.world.CreateEntity();
-    
-    // Projectile starts at player's reported position with offset (32px is player width from old code)
-    float projectileX = playerX + 32.0f; // Offset to spawn in front of player
-    float projectileY = playerY;
-    
-    // Projectile parameters depend on whether it's charged or not
-    float projectileSpeed;
-    uint16_t damage;
-    bool piercing;
-    
-    if (isCharged) {
-        // Charged shot: faster, more damage, piercing (matches old createChargedProjectile)
-        projectileSpeed = 600.0f;
-        damage = 2;
-        piercing = true;
-        std::cout << "  Creating CHARGED projectile: speed=" << projectileSpeed << ", damage=" << damage << ", piercing=YES" << std::endl;
-    } else {
-        // Normal shot (matches old createPlayerProjectile)
-        projectileSpeed = 500.0f;
-        damage = 1;
-        piercing = false;
-        std::cout << "  Creating NORMAL projectile: speed=" << projectileSpeed << ", damage=" << damage << ", piercing=NO" << std::endl;
-    }
-    
-    float projectileVx = projectileSpeed;
-    float projectileVy = 0.0f;
-    
-    // Add components to server projectile
-    root.world.AddComponent<rtype::common::components::Position>(projectile, projectileX, projectileY, 0.0f);
-    root.world.AddComponent<rtype::common::components::Velocity>(projectile, projectileVx, projectileVy, projectileSpeed);
-    root.world.AddComponent<rtype::common::components::Team>(projectile, rtype::common::components::TeamType::Player);
-    root.world.AddComponent<rtype::common::components::Projectile>(projectile, damage, piercing, true /* serverOwned */, projectileSpeed, rtype::common::components::ProjectileType::Basic);
-    
-    std::cout << "✓ Created server projectile entity " << projectile << " at (" << projectileX << "," << projectileY << ") [SERVER-OWNED]" << std::endl;
-    
-    // Broadcast SPAWN_PROJECTILE to all clients in the room
-    SpawnProjectilePacket spawnPkt{};
-    spawnPkt.projectileId = static_cast<uint32_t>(projectile);
-    spawnPkt.ownerId = static_cast<uint32_t>(player);
-    spawnPkt.x = projectileX;
-    spawnPkt.y = projectileY;
-    spawnPkt.vx = projectileVx;
-    spawnPkt.vy = projectileVy;
-    spawnPkt.damage = damage;
-    spawnPkt.piercing = piercing;
-    spawnPkt.isCharged = isCharged;
-    
-    auto players_in_room = player_service::findPlayersByRoomCode(room);
-    for (auto pid : players_in_room) {
-        auto* lobbyState = root.world.GetComponent<rtype::server::components::LobbyState>(pid);
-        if (!lobbyState || !lobbyState->isInGame) continue; // Only send to players in-game
-        
-        auto *pconn = root.world.GetComponent<rtype::server::components::PlayerConn>(pid);
-        if (!pconn) continue;
-        
-        pconn->packet_manager.sendPacketBytesSafe(&spawnPkt, sizeof(spawnPkt), SPAWN_PROJECTILE, nullptr, false);
-        std::cout << "  ✓ Sent SPAWN_PROJECTILE to player " << pid << std::endl;
-    }
+    // Use extracted helper functions
+    ECS::EntityID projectile = createServerProjectile(playerX, playerY, isCharged);
+    broadcastProjectileSpawn(projectile, player, room, isCharged);
 }
 
 void room_controller::handleJoinRoomPacket(const packet_t &packet) {
     JoinRoomPacket *p = (JoinRoomPacket *) packet.data;
-
-    ECS::EntityID room = 0;
-    // convert ip to string
     std::string ip_str = rtype::tools::ipToString(const_cast<uint8_t*>(packet.header.client_addr));
-
-    ECS::EntityID player = player_service::findPlayerByNetwork(packet.header.client_addr, packet.header.client_port);
     
-    // Check if player already exists and is in a game
-    if (player) {
-        auto* lobbyState = root.world.GetComponent<rtype::server::components::LobbyState>(player);
-        if (lobbyState && lobbyState->isInGame) {
-            std::cout << "WARNING: Ignoring JOIN_ROOM from player " << player << " who is already in a game" << std::endl;
-            return; // Ignore duplicate JOIN_ROOM packets during active games
-        }
-    }
+    // Find or create player entity, checking for active game conflict
+    ECS::EntityID player = findOrCreatePlayer(packet, std::string(p->name), p->joinCode, ip_str, packet.header.client_port);
+    if (!player) return; // Player in active game or creation failed
     
-    if (!player)
-        player = player_service::createNewPlayer(std::string(p->name), p->joinCode, ip_str,
-                                                           packet.header.client_port);
-
-    if (p->joinCode == 0) {
-        // Create a new private room
-        room = room_service::openNewRoom(false, player);
-    } else if (p->joinCode == 1) {
-        // Join a random public room
-        room = room_service::findAvailablePublicRoom();
-        if (room == 0) {
-            // No available public room, create a new one
-            room = room_service::openNewRoom(true, player);
-        }
-    } else {
-        // Join a private room with the given join code
-        room = room_service::getRoomByJoinCode(static_cast<int>(p->joinCode));
-    }
-
-    if (room == 0) {
-        // Room not found.
+    // Find or create room based on join code
+    ECS::EntityID room = findOrCreateRoom(p->joinCode, player);
+    if (!room) {
+        std::cerr << "ERROR: Room not found for join code " << p->joinCode << std::endl;
         return;
     }
-
-    // Allow the client to join the room
-    JoinRoomAcceptedPacket a{};
-    auto *rp = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
-    a.admin = (rp->ownerId == player);
-    a.roomCode = rp->joinCode;
-    a.playerServerId = static_cast<uint32_t>(player); // Send the player's server entity ID
-    std::cout << "Player " << player << " joined room " << rp->joinCode << " (admin: " << (a.admin ? "yes" : "no") << ")" << std::endl;
-    auto playernet = root.world.GetComponent<components::PlayerConn>(player);
-    if (!playernet)
-        return;
-
-    // Ensure the player's connection stores the actual room entity id (not the numeric join code)
-    playernet->room_code = room;
-
-    // Send JoinRoomAccepted to the player
-    playernet->packet_manager.sendPacketBytesSafe(&a, sizeof(a), JOIN_ROOM_ACCEPTED, nullptr, true);
-
-    // Get all players already in the room
-    auto players_in_room = rtype::server::services::player_service::findPlayersByRoomCode(room);
-
-    // Send existing players to the newly joined player
-    for (auto existing : players_in_room) {
-        if (existing == player) continue; // don't send self
-        auto *existingPlayer = root.world.GetComponent<rtype::common::components::Player>(existing);
-        if (!existingPlayer) continue;
-
-        PlayerJoinPacket existingPkt{};
-        existingPkt.newPlayerId = static_cast<uint32_t>(existing);
-        strncpy(existingPkt.name, existingPlayer->name.c_str(), sizeof(existingPkt.name) - 1);
-        existingPkt.name[sizeof(existingPkt.name) - 1] = '\0';
-        playernet->packet_manager.sendPacketBytesSafe(&existingPkt, sizeof(existingPkt), PLAYER_JOIN, nullptr, true);
-    }
-
-    // Notify other players in the room that a new player joined
-    PlayerJoinPacket joinPkt{};
-    joinPkt.newPlayerId = static_cast<uint32_t>(player);
-    strncpy(joinPkt.name, p->name, sizeof(joinPkt.name) - 1);
-    joinPkt.name[sizeof(joinPkt.name) - 1] = '\0';
-
-    for (auto other : players_in_room) {
-        if (other == player) continue;
-        auto *otherConn = root.world.GetComponent<rtype::server::components::PlayerConn>(other);
-        if (!otherConn) continue;
-        otherConn->packet_manager.sendPacketBytesSafe(&joinPkt, sizeof(joinPkt), PLAYER_JOIN, nullptr, true);
-    }
     
-    // Add LobbyState component to the new player ONLY if they don't already have one
-    // This prevents duplicate JOIN_ROOM packets from resetting a player's ready state
-    auto* existingLobbyState = root.world.GetComponent<rtype::server::components::LobbyState>(player);
-    if (!existingLobbyState) {
-        std::cout << "Adding new LobbyState for player " << player << std::endl;
-        root.world.AddComponent<rtype::server::components::LobbyState>(player, false, false);
-    } else {
-        std::cout << "Player " << player << " already has LobbyState (ready=" << existingLobbyState->isReady << "), not resetting" << std::endl;
-    }
+    // Send join acceptance to the player
+    sendJoinAccepted(player, room);
+    
+    // Notify joining player of existing players in room
+    notifyJoiningPlayerOfExisting(player, room);
+    
+    // Notify existing players of the new player joining
+    notifyExistingPlayersOfNewJoin(player, std::string(p->name), room);
+    
+    // Initialize lobby state if not already present
+    initializeLobbyState(player);
     
     // Broadcast updated lobby state to all players in the room
     broadcastLobbyState(room);
