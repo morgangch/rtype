@@ -226,8 +226,8 @@ ECS::EntityID GameState::createPlayerProjectile(float x, float y) {
     m_world.AddComponent<rtype::common::components::Team>(
         entity, rtype::common::components::TeamType::Player);
     
-    // Projectile - 1 damage
-    m_world.AddComponent<rtype::common::components::Projectile>(entity, 1);
+    // Projectile - 1 damage, non-piercing, client-owned
+    m_world.AddComponent<rtype::common::components::Projectile>(entity, 1, false /* piercing */, false /* serverOwned */);
     
     return entity;
 }
@@ -258,9 +258,8 @@ ECS::EntityID GameState::createEnemyProjectile(float x, float y, float vx, float
     m_world.AddComponent<rtype::common::components::Team>(
         entity, rtype::common::components::TeamType::Enemy);
     
-    // Projectile - 1 damage
-    m_world.AddComponent<rtype::common::components::Projectile>(entity, 1, 300.0f, 
-        rtype::common::components::ProjectileType::Basic, false);
+    // Projectile - 1 damage, non-piercing
+    m_world.AddComponent<rtype::common::components::Projectile>(entity, 1, false /* piercing */, false /* serverOwned */, 300.0f, rtype::common::components::ProjectileType::Basic);
     
     return entity;
 }
@@ -290,9 +289,8 @@ ECS::EntityID GameState::createChargedProjectile(float x, float y) {
     m_world.AddComponent<rtype::common::components::Team>(
         entity, rtype::common::components::TeamType::Player);
     
-    // Projectile - 2 damage, PIERCING
-    m_world.AddComponent<rtype::common::components::Projectile>(entity, 2, 600.0f, 
-        rtype::common::components::ProjectileType::Piercing, true);
+    // Projectile - 2 damage, PIERCING, client-owned
+    m_world.AddComponent<rtype::common::components::Projectile>(entity, 2, true /* piercing */, false /* serverOwned */, 600.0f, rtype::common::components::ProjectileType::Piercing);
     
     return entity;
 }

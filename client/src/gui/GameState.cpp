@@ -25,15 +25,208 @@
 #include "gui/AudioFactory.h"
 #include "gui/GUIHelper.h"
 #include "gui/AssetPaths.h"
+#include "gui/TextureCache.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
 
 namespace rtype::client::gui {
 
+// Global GameState pointer definition
+GameState* g_gameState = nullptr;
+
+// Helper: create enemy from server info and store mapping
+ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float y, uint16_t hp, uint16_t enemyType) {
+    // If we already have an entity mapped, update it instead
+    auto it = m_serverEntityMap.find(serverId);
+    if (it != m_serverEntityMap.end()) {
+        ECS::EntityID existing = it->second;
+        auto* pos = m_world.GetComponent<rtype::common::components::Position>(existing);
+        if (pos) { pos->x = x; pos->y = y; }
+        auto* health = m_world.GetComponent<rtype::common::components::Health>(existing);
+        if (health) { health->currentHp = hp; }
+        return existing;
+    }
+
+    // Create a new enemy based on enemyType
+    ECS::EntityID e;
+    auto type = static_cast<rtype::common::components::EnemyType>(enemyType);
+    
+    switch (type) {
+        case rtype::common::components::EnemyType::Boss: {
+            e = createBoss(x, y);            
+            break;
+        }
+        case rtype::common::components::EnemyType::Shooter:
+            e = createShooterEnemy(x, y);
+            break;
+        case rtype::common::components::EnemyType::Basic:
+        default:
+            e = createEnemy(x, y);
+            break;
+    }
+    
+    // Override HP with server value (server is authoritative)
+    auto* health = m_world.GetComponent<rtype::common::components::Health>(e);
+    if (health) {
+        health->currentHp = hp;
+        health->maxHp = hp;
+    }
+    
+    // Override position with server value
+    auto* pos = m_world.GetComponent<rtype::common::components::Position>(e);
+    if (pos) {
+        pos->x = x;
+        pos->y = y;
+    }
+
+    // Store mapping
+    m_serverEntityMap[serverId] = e;
+    return e;
+}
+
+ECS::EntityID GameState::createRemotePlayer(const std::string &name, uint32_t serverId) {
+    std::cout << "[GameState] Creating remote player: name=" << name << " serverId=" << serverId << std::endl;
+    
+    // Check if we already have this player (shouldn't happen, but be safe)
+    auto it = m_serverEntityMap.find(serverId);
+    if (it != m_serverEntityMap.end()) {
+        std::cout << "[GameState] WARNING: Remote player with serverId=" << serverId << " already exists (clientId=" << it->second << ")" << std::endl;
+        return it->second;
+    }
+    
+    // Create a player-like entity (non-controllable)
+    ECS::EntityID e = m_world.CreateEntity();
+    m_world.AddComponent<rtype::common::components::Position>(e, 100.0f, 360.0f, 0.0f);
+    m_world.AddComponent<rtype::client::components::Sprite>(e, rtype::client::assets::player::PLAYER_SPRITE, sf::Vector2f(33.0f, 17.0f), true, sf::IntRect(0,0,33,17), 3.0f);
+    m_world.AddComponent<rtype::common::components::Player>(e, name, serverId);
+    m_world.AddComponent<rtype::common::components::Health>(e, 3);
+    m_world.AddComponent<rtype::common::components::Team>(e, rtype::common::components::TeamType::Player);
+
+    m_serverEntityMap[serverId] = e;
+    std::cout << "[GameState] ✓ Created remote player entity: clientId=" << e << " serverId=" << serverId << std::endl;
+    return e;
+}
+
+ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t ownerId, float x, float y, float vx, float vy, uint16_t damage, bool piercing, bool isCharged) {
+    std::cout << "[GameState] Creating projectile from server: serverId=" << serverId << " owner=" << ownerId << " pos=(" << x << "," << y << ") vel=(" << vx << "," << vy << ") charged=" << isCharged << std::endl;
+    
+    // Check if we already have this projectile (shouldn't happen)
+    auto it = m_serverEntityMap.find(serverId);
+    if (it != m_serverEntityMap.end()) {
+        std::cout << "[GameState] WARNING: Projectile with serverId=" << serverId << " already exists" << std::endl;
+        return it->second;
+    }
+    
+    // Create projectile entity
+    auto entity = m_world.CreateEntity();
+    
+    // Position
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    
+    // Velocity
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, vx, vy, std::sqrt(vx*vx + vy*vy));
+    
+    // Sprite - Different sprite for charged vs normal (textures pre-loaded in loadHUDTextures)
+    if (isCharged) {
+        // Charged projectile sprite - PROJECTILE_4 (rose/magenta, more dense and imposing)
+        m_world.AddComponent<rtype::client::components::Sprite>(
+            entity,
+            rtype::client::assets::projectiles::PROJECTILE_4,
+            sf::Vector2f(81.0f, 17.0f),
+            true,
+            sf::IntRect(185, 17, 81, 17), // Frame 2, line 2: denser visual
+            0.6f); // Scale 0.6x (49px wide, 10px tall) - bigger than normal
+        std::cout << "[GameState]   Using CHARGED sprite (PROJECTILE_4, rect: 185,17,81,17, scale: 0.6)" << std::endl;
+    } else {
+        // Normal projectile sprite - PROJECTILE_1
+        m_world.AddComponent<rtype::client::components::Sprite>(
+            entity,
+            rtype::client::assets::projectiles::PROJECTILE_1,
+            sf::Vector2f(81.0f, 17.0f),
+            true,
+            sf::IntRect(185, 0, 81, 17),
+            0.5f);
+        std::cout << "[GameState]   Using NORMAL sprite (PROJECTILE_1, rect: 185,0,81,17, scale: 0.5)" << std::endl;
+    }
+    
+    // Team - Player team (projectiles are always player team for now)
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Player);
+    
+    // Projectile data - mark as server-owned for prediction
+    m_world.AddComponent<rtype::common::components::Projectile>(entity, damage, piercing, true /* serverOwned */);
+    
+    // Map server ID to local entity
+    m_serverEntityMap[serverId] = entity;
+    
+    std::cout << "[GameState] ✓ Created projectile entity: clientId=" << entity << " serverId=" << serverId << " damage=" << damage << " piercing=" << piercing << " serverOwned=TRUE" << std::endl;
+    return entity;
+}
+
+void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp) {
+    // Skip updates for local player (controlled by client input)
+    if (serverId == m_localPlayerServerId) {
+        return;
+    }
+    
+    auto it = m_serverEntityMap.find(serverId);
+    if (it == m_serverEntityMap.end()) {
+        std::cout << "[GameState] Cannot update entity with serverId=" << serverId << " - not found in map" << std::endl;
+        return;
+    }
+    
+    ECS::EntityID e = it->second;
+    auto* pos = m_world.GetComponent<rtype::common::components::Position>(e);
+    if (pos) { pos->x = x; pos->y = y; }
+    auto* health = m_world.GetComponent<rtype::common::components::Health>(e);
+    if (health) { health->currentHp = hp; }
+}
+
+void GameState::setLocalPlayerServerId(uint32_t serverId) {
+    m_localPlayerServerId = serverId;
+    std::cout << "[GameState] Local player server ID set to: " << serverId << std::endl;
+}
+
+void GameState::setIsAdmin(bool isAdmin) {
+    m_isAdmin = isAdmin;
+    std::cout << "[GameState] Player admin status set to: " << (isAdmin ? "ADMIN" : "PLAYER") << std::endl;
+}
+
+void GameState::destroyEntityByServerId(uint32_t serverId) {
+    auto it = m_serverEntityMap.find(serverId);
+    if (it == m_serverEntityMap.end()) {
+        // Entity not found - this is OK if we already destroyed it in client-side prediction
+        std::cout << "[GameState] Entity with serverId=" << serverId << " not found (already destroyed locally?)" << std::endl;
+        return;
+    }
+    ECS::EntityID e = it->second;
+    
+    // Check if entity still exists in world (might have been destroyed by client-side prediction)
+    // We can't directly check, so we'll try to get a component
+    auto* pos = m_world.GetComponent<rtype::common::components::Position>(e);
+    if (!pos) {
+        // Entity doesn't exist anymore - was already destroyed locally
+        std::cout << "[GameState] Entity clientId=" << e << " serverId=" << serverId << " already destroyed locally, cleaning up mapping" << std::endl;
+        m_serverEntityMap.erase(it);
+        return;
+    }
+    
+    std::cout << "[GameState] Destroying entity (server confirmation): clientId=" << e << " serverId=" << serverId << std::endl;
+    m_world.DestroyEntity(e);
+    m_serverEntityMap.erase(it);
+}
+
+
 GameState::GameState(StateManager& stateManager)
     : m_stateManager(stateManager), m_parallaxSystem(SCREEN_WIDTH, SCREEN_HEIGHT) {
     setupGameOverUI();
+    // set global pointer so network handlers can access the active GameState
+    g_gameState = this;
+}
+
+GameState::~GameState() {
+    if (g_gameState == this) g_gameState = nullptr;
 }
 
 void GameState::loadHUDTextures() {
@@ -62,6 +255,10 @@ void GameState::loadHUDTextures() {
     m_emptyHeartSprite.setTexture(m_heartTexture);
     m_emptyHeartSprite.setTextureRect(sf::IntRect(startX + frameWidth * 8, startY, frameWidth * 4, frameHeight * 2));
     m_emptyHeartSprite.setScale(0.08f, 0.08f);  // Scale down (992*0.08 = 79px, 432*0.08 = 35px)
+
+    // Pre-load projectile textures to avoid loading in hot path (entity creation)
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_1);
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_4);
 
     m_texturesLoaded = true;
 }
@@ -184,10 +381,6 @@ void GameState::resetGame() {
     // Create player entity
     m_playerEntity = createPlayer();
     
-    // Reset timers
-    m_enemySpawnTimer = 0.0f;
-    m_bossSpawnTimer = 0.0f;
-    
     // Reset flags
     m_isGameOver = false;
     m_gameStatus = GameStatus::Playing;
@@ -285,7 +478,6 @@ void GameState::update(float deltaTime) {
     updateInvulnerabilitySystem(deltaTime);
     updateAnimationSystem(deltaTime);
     updateMovementSystem(deltaTime);
-    updateEnemySpawnSystem(deltaTime);
     updateEnemyAISystem(deltaTime);
     updateCleanupSystem(deltaTime);
     updateCollisionSystem();

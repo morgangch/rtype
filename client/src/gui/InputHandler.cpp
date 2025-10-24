@@ -15,6 +15,8 @@
 
 #include "gui/GameState.h"
 #include "gui/MainMenuState.h"
+#include "network/senders.h"
+#include <iostream>
 
 namespace rtype::client::gui {
 
@@ -145,10 +147,13 @@ void GameState::handleKeyPressed(sf::Keyboard::Key key) {
             }
             break;
         
-        // DEBUG: Spawn boss with B key
+        // Admin-only: Spawn boss with B key
         case sf::Keyboard::B:
-            if (!isBossActive()) {
-                createBoss(SCREEN_WIDTH - 100.0f, SCREEN_HEIGHT * 0.5f);
+            if (m_isAdmin) {
+                std::cout << "CLIENT: Admin requesting boss spawn (B key pressed)" << std::endl;
+                rtype::client::network::senders::send_spawn_boss_request();
+            } else {
+                std::cout << "CLIENT: Non-admin player cannot spawn boss (B key ignored)" << std::endl;
             }
             break;
         
@@ -202,15 +207,16 @@ void GameState::handleKeyReleased(sf::Keyboard::Key key) {
                             bool wasFullyCharged = chargedShot->release();
                             
                             if (fireRate->canFire()) {
-                                // Fire appropriate projectile type
+                                // Send shoot request to server with charged state and current position
+                                rtype::client::network::senders::send_player_shoot(wasFullyCharged, pos->x, pos->y);
+                                
+                                // Play appropriate sound for immediate feedback
                                 if (wasFullyCharged) {
-                                    createChargedProjectile(pos->x + 32.0f, pos->y);
                                     // Play charged shoot sound if available
                                     if (m_soundManager.has(AudioFactory::SfxId::ChargedShoot)) {
                                         m_soundManager.play(AudioFactory::SfxId::ChargedShoot);
                                     }
                                 } else {
-                                    createPlayerProjectile(pos->x + 32.0f, pos->y);
                                     // Play regular shoot sound if available
                                     if (m_soundManager.has(AudioFactory::SfxId::Shoot)) {
                                         m_soundManager.play(AudioFactory::SfxId::Shoot);

@@ -1,9 +1,16 @@
-/*
-** EPITECH PROJECT, 2025
-** rtype
-** File description:
-** TODO: add description
-*/
+/**
+ * @file PlayerService.h
+ * @brief Service layer for player entity management
+ *
+ * Provides utility functions to create, find, and query player entities
+ * on the server. This service abstracts common operations like locating
+ * players by network address or room code, reducing code duplication across
+ * controllers and systems.
+ *
+ * @author R-TYPE Dev Team
+ * @date 2025
+ */
+
 #ifndef PLAYERSERVICE_H
 #define PLAYERSERVICE_H
 #include <string>
