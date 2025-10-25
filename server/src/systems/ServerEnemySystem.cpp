@@ -32,6 +32,9 @@ ServerEnemySystem::ServerEnemySystem()
 {
     // Example: configure spawn intervals for each type
     _enemyConfigs[rtype::common::components::EnemyType::Basic] = {rtype::common::components::EnemyType::Basic, 2.0f, 0.0f};
+    _enemyConfigs[rtype::common::components::EnemyType::Snake] = {rtype::common::components::EnemyType::Snake, 2.0f, 0.0f};
+    _enemyConfigs[rtype::common::components::EnemyType::Suicide] = {rtype::common::components::EnemyType::Suicide, 3.0f, 0.0f};
+    _enemyConfigs[rtype::common::components::EnemyType::Turret] = {rtype::common::components::EnemyType::Turret, 4.0f, 0.0f};
     _enemyConfigs[rtype::common::components::EnemyType::Shooter] = {rtype::common::components::EnemyType::Shooter, 4.0f, 0.0f};
     // Add more types as needed
 }
@@ -141,6 +144,9 @@ void ServerEnemySystem::updateEnemySpawning(ECS::World& world, float deltaTime) 
             case EnemySpawnPhase::OnlyBasic:
                 // TO DO: change basic enemy type
                 spawnAllowed = (type == rtype::common::components::EnemyType::Basic);
+                //spawnAllowed = (type == rtype::common::components::EnemyType::Snake);
+                //spawnAllowed = (type == rtype::common::components::EnemyType::Suicide);
+                //spawnAllowed = (type == rtype::common::components::EnemyType::Turret);
                 break;
             case EnemySpawnPhase::BasicAndAdvanced:
                 // TO DO: change advanced enemy type
@@ -265,11 +271,38 @@ void ServerEnemySystem::spawnEnemy(ECS::World& world, ECS::EntityID room, rtype:
     // Spawn position logic (can be customized per type)
     float spawnX = 1280.0f + 24.0f;
     float spawnY = 100.0f + (rand() % 520);
-    // TO DO: here you can adjust stats (hp, speed, etc.) based on enemy type or level
-    int hp = (type == rtype::common::components::EnemyType::Shooter) ? 3 : 1;
-    if (type == rtype::common::components::EnemyType::Boss) hp = 50;
-    float vx = (type == rtype::common::components::EnemyType::Shooter) ? -120.0f : -100.0f;
-    if (type == rtype::common::components::EnemyType::Boss) vx = -50.0f;
+
+    // Customize stats for each mob type
+    int hp = 1;
+    float vx = -100.0f;
+    switch (type) {
+        case rtype::common::components::EnemyType::Basic:
+            // TO DO: set stats for Basic
+            hp = 1; vx = -100.0f;
+            break;
+        case rtype::common::components::EnemyType::Snake:
+            // TO DO: set stats for Snake
+            hp = 2; vx = -110.0f;
+            break;
+        case rtype::common::components::EnemyType::Suicide:
+            // TO DO: set stats for Suicide
+            hp = 1; vx = -130.0f;
+            break;
+        case rtype::common::components::EnemyType::Turret:
+            // TO DO: set stats for Turret
+            hp = 3; vx = -80.0f;
+            break;
+        case rtype::common::components::EnemyType::Shooter:
+            // TO DO: set stats for Shooter
+            hp = 3; vx = -120.0f;
+            break;
+        case rtype::common::components::EnemyType::Boss:
+            hp = 50; vx = -50.0f;
+            break;
+        default:
+            // TO DO: add new types here
+            break;
+    }
 
     auto enemy = root.world.CreateEntity();
     root.world.AddComponent<rtype::common::components::Position>(enemy, spawnX, spawnY, 0.0f);

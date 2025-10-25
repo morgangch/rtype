@@ -28,7 +28,7 @@
 #include <common/components/Player.h>
 #include <common/components/FireRate.h>
 #include <common/components/EnemyType.h>
-#include <common/systems/ChargedShot.h>
+#include <common/systems/ChargedShotSystem.h>
 #include <client/components/Components.h>
 #include <vector>
 #include <functional>
