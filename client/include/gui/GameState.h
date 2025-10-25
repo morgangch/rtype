@@ -29,8 +29,7 @@
 #include <common/components/FireRate.h>
 #include <common/components/EnemyType.h>
 #include <common/systems/ChargedShot.h>
-#include <client/components/Sprite.h>
-#include <client/components/Animation.h>
+#include <client/components/Components.h>
 #include <vector>
 #include <functional>
 #include "MusicManager.h"
