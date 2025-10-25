@@ -8,16 +8,16 @@
 #include "services/PlayerService.h"
 #include <iostream>
 // Use project-relative includes like other server files
-#include "../../../common/components/Position.h"
-#include "../../../common/components/Velocity.h"
-#include "../../../common/components/Health.h"
-#include "../../../common/components/Team.h"
-#include "../../../common/components/EnemyType.h"
+#include <common/components/Position.h>
+#include <common/components/Velocity.h>
+#include <common/components/Health.h>
+#include <common/components/Team.h>
+#include <common/components/EnemyType.h>
 // Server components
 #include "components/RoomProperties.h"
 #include "components/PlayerConn.h"
 // Common player component
-#include "../../../common/components/Player.h"
+#include <common/components/Player.h>
 
 void ServerEnemySystem::Update(ECS::World &world, float deltaTime) {
     updateBossSpawning(deltaTime);

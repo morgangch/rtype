@@ -4,8 +4,8 @@
 #include "systems/ServerEntityCleanupSystem.h"
 #include "rtype.h"
 #include "packets.h"
-#include "../../../common/components/Health.h"
-#include "../../../common/components/Player.h"
+#include <common/components/Health.h>
+#include <common/components/Player.h>
 #include "components/PlayerConn.h"
 
 void ServerEntityCleanupSystem::Update(ECS::World &world, float deltaTime) {
