@@ -18,6 +18,7 @@
  */
 
 #include "gui/SettingsState.h"
+#include "gui/SettingsConfig.h"
 #include "gui/KeyToString.h"
 #include "gui/MainMenuState.h"
 #include "gui/GUIHelper.h"
@@ -37,6 +38,13 @@ SettingsState::SettingsState(StateManager& stateManager)
     : stateManager(stateManager), typingBox1(false), typingBox2(false), cursorTimer(0.0f), showCursor(true), editingKeybind(-1)
 {
     const sf::Font& font = GUIHelper::getFont();
+
+    // Load settings from config file
+    config.load();
+
+    // Load IP and Port from config
+    box1Value = config.getIP();
+    box2Value = config.getPort();
 
     titleText.setFont(font);
     titleText.setString("Settings");
@@ -81,7 +89,9 @@ SettingsState::SettingsState(StateManager& stateManager)
     keybindTitleText.setCharacterSize(32);
     keybindTitleText.setFillColor(sf::Color::White);
     const char* actionNames[] = {"Up", "Down", "Left", "Right", "Shoot"};
-    sf::Keyboard::Key defaultKeys[] = {sf::Keyboard::W, sf::Keyboard::S, sf::Keyboard::A, sf::Keyboard::D, sf::Keyboard::Space};
+    const char* actionKeys[] = {"up", "down", "left", "right", "shoot"};
+    
+    // Load keybinds from config
     for (int i = 0; i < KeybindCount; i++) {
         keybindActionTexts[i].setFont(font);
         keybindActionTexts[i].setString(actionNames[i]);
@@ -90,7 +100,10 @@ SettingsState::SettingsState(StateManager& stateManager)
         keybindKeyTexts[i].setFont(font);
         keybindKeyTexts[i].setCharacterSize(22);
         keybindKeyTexts[i].setFillColor(sf::Color(180,180,180));
-        keybinds[i] = defaultKeys[i];
+        
+        // Load from config
+        keybinds[i] = config.getKeybind(actionKeys[i]);
+        
         keybindRects[i].setSize(sf::Vector2f(120, 36));
         keybindRects[i].setFillColor(sf::Color(40, 40, 40));
         keybindRects[i].setOutlineColor(sf::Color::White);
@@ -160,7 +173,16 @@ void SettingsState::onEnter() {
 /**
  * @brief Called when exiting the settings state.
  */
-void SettingsState::onExit() {}
+void SettingsState::onExit() {
+    // Save all settings to config file
+    const char* actionKeys[] = {"up", "down", "left", "right", "shoot"};
+    for (int i = 0; i < KeybindCount; i++) {
+        config.setKeybind(actionKeys[i], keybinds[i]);
+    }
+    config.setIP(box1Value);
+    config.setPort(box2Value);
+    config.save();
+}
 
 /**
  * @brief Handles SFML events for input and navigation in the settings menu.
@@ -186,8 +208,13 @@ void SettingsState::handleEvent(const sf::Event& event) {
         }
         // Reset button
         if (resetKeybindsRect.getGlobalBounds().contains(mousePos)) {
-            sf::Keyboard::Key defaultKeys[] = {sf::Keyboard::W, sf::Keyboard::S, sf::Keyboard::A, sf::Keyboard::D, sf::Keyboard::Space};
-            for (int i = 0; i < KeybindCount; i++) keybinds[i] = defaultKeys[i];
+            config.resetToDefaults();
+            const char* actionKeys[] = {"up", "down", "left", "right", "shoot"};
+            for (int i = 0; i < KeybindCount; i++) {
+                keybinds[i] = config.getKeybind(actionKeys[i]);
+            }
+            box1Value = config.getIP();
+            box2Value = config.getPort();
             editingKeybind = -1;
             keybindHintText.setString("");
         }

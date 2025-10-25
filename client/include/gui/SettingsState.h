@@ -16,6 +16,7 @@
 
 #include "State.h"
 #include "StateManager.h"
+#include "SettingsConfig.h"
 #include <SFML/Graphics.hpp>
 #include <string>
 
@@ -82,6 +83,7 @@ public:
 private:
     // State management
     StateManager& stateManager;         ///< Reference to state manager for transitions
+    SettingsConfig config;              ///< Configuration manager for loading/saving settings
 
     // UI Text Elements
     sf::Text titleText;                 ///< "SETTINGS" title
