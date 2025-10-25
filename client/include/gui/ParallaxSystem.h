@@ -74,6 +74,31 @@ namespace rtype::client::gui {
          * Useful when starting a new game or level.
          */
         void reset();
+
+        /**
+         * @brief Parallax visual theme selection
+         *
+         * Allows switching between predefined visual themes (space, hallway, etc.)
+         * and supports smooth transitions which can be used for level changes.
+         */
+        enum class Theme {
+            SpaceDefault,
+            HallwayLevel2
+        };
+
+        /**
+         * @brief Immediately set the current theme or schedule a transition
+         * @param theme Target theme
+         * @param immediate If true apply immediately, otherwise start a transition
+         */
+        void setTheme(Theme theme, bool immediate = true);
+
+        /**
+         * @brief Start a timed transition to the specified theme
+         * @param theme Target theme
+         * @param duration Transition duration in seconds
+         */
+        void transitionToTheme(Theme theme, float duration);
         
     private:
         /**
@@ -220,7 +245,51 @@ namespace rtype::client::gui {
          * to create varied and dynamic space environment effects.
          */
         std::vector<SpaceDebris> m_debris;
+
+        /**
+         * @brief Theme / transition state
+         */
+        Theme m_currentTheme{Theme::SpaceDefault};
+        Theme m_targetTheme{Theme::SpaceDefault};
+        float m_themeTransitionTimer{0.0f};
+        float m_themeTransitionDuration{0.0f};
+        float m_themeElapsed{0.0f}; // used for animated lights
+        float m_themeBlend{0.0f}; // interpolation [0..1] between current and target theme
+
+        // Hallway-specific helpers
+        std::vector<sf::Vector2f> m_fixedRedLights; //!< fixed row of red flashing lights
+        float m_hallwayStripeHeight{48.0f};         //!< height of the dark stripes on the hallway walls
+        float m_hallwayDebrisScale{1.8f};           //!< scale factor for hallway debris
+        int m_lightCount{8};                        //!< number of fixed red lights (lower = more separation)
+
+        // Theme helpers
+        void initializeHallwayTheme();
+        void blendThemes(float t);
+
+        // Corridor scrolling state (used to animate the panel grid and lights)
+        float m_corridorScrollSpeed{140.0f}; // pixels per second (tunable)
+        float m_panelOffsetX{0.0f};          // current horizontal offset for panel grid
+        float m_lightOffsetX{0.0f};          // current horizontal offset for fixed lights
+
+        // Corridor/panel layer used to make the hallway look like R-Type interior
+        std::vector<sf::Vector2f> m_panelPositions; //!< top-left for each panel tile
+        sf::Vector2f m_panelSize{160.0f, 120.0f};    //!< default panel tile size
+        std::vector<int> m_panelDamaged;             //!< indices of panels that have damage marks
+        std::vector<sf::Vector2f> m_pipePositions;   //!< positions of thin pipes running across the corridor
+
+        void initializeHallwayPanels();
+        void renderPanelLayer(sf::RenderWindow& window, float blend);
         
+        /**
+         * @brief Precomputed damage marks for panels to avoid per-frame randomness
+         */
+        struct PanelDamageMark {
+            float x;    // local x within panel
+            float y;    // local y within panel
+            float len;  // length of the scratch
+            float angle; // rotation degrees
+        };
+        std::vector<std::vector<PanelDamageMark>> m_panelDamageMarks; //!< per-panel damage marks
         /** @} */
     };
     

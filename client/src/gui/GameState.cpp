@@ -385,12 +385,6 @@ void GameState::resetGame() {
     m_isGameOver = false;
     m_gameStatus = GameStatus::Playing;
 
-    // Reset levels
-    m_levelIndex = 0;
-
-    // TEMP background
-    m_forceWhiteBackground = false;
-
     // Ensure level background music is playing after a reset
     loadLevelMusic();
 }
@@ -529,12 +523,17 @@ void GameState::advanceLevel() {
         std::cerr << "GameState: could not load level 2 music: " << level2Music << std::endl;
     }
 
-    // Replace parallax with white background for testing
-    m_forceWhiteBackground = true;
+    // Transition parallax to hallway theme for level 2
+    m_parallaxSystem.transitionToTheme(ParallaxSystem::Theme::HallwayLevel2, 1.0f);
 }
 
 void GameState::loadLevelMusic() {
-    const std::string levelMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::Level1);
+    // Choose music based on current level index so resets keep the correct track
+    AudioFactory::MusicId id = AudioFactory::MusicId::Level1;
+    if (m_levelIndex == 1) id = AudioFactory::MusicId::Level2;
+    else if (m_levelIndex == 2) id = AudioFactory::MusicId::Level3;
+
+    const std::string levelMusic = AudioFactory::getMusicPath(id);
     if (m_musicManager.loadFromFile(levelMusic)) {
         m_musicManager.setVolume(30.0f);
         m_musicManager.play(true);
