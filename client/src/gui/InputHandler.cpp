@@ -15,6 +15,7 @@
 
 #include "gui/GameState.h"
 #include "gui/MainMenuState.h"
+#include "gui/AudioFactory.h"
 
 namespace rtype::client::gui {
 
@@ -106,126 +107,107 @@ void GameState::handleMenuInput(const sf::Event& event) {
 }
 
 void GameState::handleKeyPressed(sf::Keyboard::Key key) {
-    switch (key) {
-        // Movement keys
-        case sf::Keyboard::Z:
-        case sf::Keyboard::Up:
-            m_keyUp = true;
-            break;
-        
-        case sf::Keyboard::S:
-        case sf::Keyboard::Down:
-            m_keyDown = true;
-            break;
-        
-        case sf::Keyboard::Q:
-        case sf::Keyboard::Left:
-            m_keyLeft = true;
-            break;
-        
-        case sf::Keyboard::D:
-        case sf::Keyboard::Right:
-            m_keyRight = true;
-            break;
-        
+    // Get keybinds from config
+    sf::Keyboard::Key upKey = m_config.getKeybind("up");
+    sf::Keyboard::Key downKey = m_config.getKeybind("down");
+    sf::Keyboard::Key leftKey = m_config.getKeybind("left");
+    sf::Keyboard::Key rightKey = m_config.getKeybind("right");
+    sf::Keyboard::Key shootKey = m_config.getKeybind("shoot");
+    
+    // Check if key matches configured keybinds
+    if (key == upKey) {
+        m_keyUp = true;
+    } else if (key == downKey) {
+        m_keyDown = true;
+    } else if (key == leftKey) {
+        m_keyLeft = true;
+    } else if (key == rightKey) {
+        m_keyRight = true;
+    } else if (key == shootKey) {
         // Fire key - Start charging
-        case sf::Keyboard::Space:
-            m_keyFire = true;
-            // Start charging for player
-            {
-                auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
-                if (players) {
-                    for (auto& [entity, playerPtr] : *players) {
-                        auto* chargedShot = m_world.GetComponent<rtype::common::components::ChargedShot>(entity);
-                        if (chargedShot) {
-                            chargedShot->startCharge();
-                        }
-                    }
+        m_keyFire = true;
+        auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
+        if (players) {
+            for (auto& [entity, playerPtr] : *players) {
+                auto* chargedShot = m_world.GetComponent<rtype::common::components::ChargedShot>(entity);
+                if (chargedShot) {
+                    chargedShot->startCharge();
                 }
             }
-            break;
-        
-        // DEBUG: Spawn boss with B key
-        case sf::Keyboard::B:
-            if (!isBossActive()) {
-                createBoss(SCREEN_WIDTH - 100.0f, SCREEN_HEIGHT * 0.5f);
-            }
-            break;
-        
-        // Pause/Menu key
-        case sf::Keyboard::Escape:
-            showInGameMenu(false); // Pause game
-            break;
-        
-        default:
-            break;
+        }
+    } else {
+        // Handle non-configurable keys
+        switch (key) {
+            // DEBUG: Spawn boss with B key
+            case sf::Keyboard::B:
+                if (!isBossActive()) {
+                    createBoss(SCREEN_WIDTH - 100.0f, SCREEN_HEIGHT * 0.5f);
+                }
+                break;
+            
+            // Pause/Menu key
+            case sf::Keyboard::Escape:
+                showInGameMenu(false); // Pause game
+                break;
+            
+            default:
+                break;
+        }
     }
 }
 
 void GameState::handleKeyReleased(sf::Keyboard::Key key) {
-    switch (key) {
-        // Movement keys
-        case sf::Keyboard::Z:
-        case sf::Keyboard::Up:
-            m_keyUp = false;
-            break;
-        
-        case sf::Keyboard::S:
-        case sf::Keyboard::Down:
-            m_keyDown = false;
-            break;
-        
-        case sf::Keyboard::Q:
-        case sf::Keyboard::Left:
-            m_keyLeft = false;
-            break;
-        
-        case sf::Keyboard::D:
-        case sf::Keyboard::Right:
-            m_keyRight = false;
-            break;
-        
+    // Get keybinds from config
+    sf::Keyboard::Key upKey = m_config.getKeybind("up");
+    sf::Keyboard::Key downKey = m_config.getKeybind("down");
+    sf::Keyboard::Key leftKey = m_config.getKeybind("left");
+    sf::Keyboard::Key rightKey = m_config.getKeybind("right");
+    sf::Keyboard::Key shootKey = m_config.getKeybind("shoot");
+    
+    // Check if key matches configured keybinds
+    if (key == upKey) {
+        m_keyUp = false;
+    } else if (key == downKey) {
+        m_keyDown = false;
+    } else if (key == leftKey) {
+        m_keyLeft = false;
+    } else if (key == rightKey) {
+        m_keyRight = false;
+    } else if (key == shootKey) {
         // Fire key - Release charged shot
-        case sf::Keyboard::Space:
-            m_keyFire = false;
-            // Fire charged shot if applicable
-            {
-                auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
-                if (players) {
-                    for (auto& [entity, playerPtr] : *players) {
-                        auto* chargedShot = m_world.GetComponent<rtype::common::components::ChargedShot>(entity);
-                        auto* pos = m_world.GetComponent<rtype::common::components::Position>(entity);
-                        auto* fireRate = m_world.GetComponent<rtype::common::components::FireRate>(entity);
-                        
-                        if (chargedShot && pos && fireRate && chargedShot->isCharging) {
-                            // Release charge and get if it was fully charged
-                            bool wasFullyCharged = chargedShot->release();
-                            
-                            if (fireRate->canFire()) {
-                                // Fire appropriate projectile type
-                                if (wasFullyCharged) {
-                                    createChargedProjectile(pos->x + 32.0f, pos->y);
-                                    // Play charged shoot sound if available
-                                    if (m_soundManager.has(AudioFactory::SfxId::ChargedShoot)) {
-                                        m_soundManager.play(AudioFactory::SfxId::ChargedShoot);
-                                    }
-                                } else {
-                                    createPlayerProjectile(pos->x + 32.0f, pos->y);
-                                    // Play regular shoot sound if available
-                                    if (m_soundManager.has(AudioFactory::SfxId::Shoot)) {
-                                        m_soundManager.play(AudioFactory::SfxId::Shoot);
-                                    }
-                                }
-                                fireRate->shoot();
+        m_keyFire = false;
+        // Fire charged shot if applicable
+        auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
+        if (players) {
+            for (auto& [entity, playerPtr] : *players) {
+                auto* chargedShot = m_world.GetComponent<rtype::common::components::ChargedShot>(entity);
+                auto* pos = m_world.GetComponent<rtype::common::components::Position>(entity);
+                auto* fireRate = m_world.GetComponent<rtype::common::components::FireRate>(entity);
+                
+                if (chargedShot && pos && fireRate && chargedShot->isCharging) {
+                    // Release charge and get if it was fully charged
+                    bool wasFullyCharged = chargedShot->release();
+                    
+                    if (fireRate->canFire()) {
+                        // Fire appropriate projectile type
+                        if (wasFullyCharged) {
+                            createChargedProjectile(pos->x + 32.0f, pos->y);
+                            // Play charged shoot sound if available
+                            if (m_soundManager.has(AudioFactory::SfxId::ChargedShoot)) {
+                                m_soundManager.play(AudioFactory::SfxId::ChargedShoot);
+                            }
+                        } else {
+                            createPlayerProjectile(pos->x + 32.0f, pos->y);
+                            // Play regular shoot sound if available
+                            if (m_soundManager.has(AudioFactory::SfxId::Shoot)) {
+                                m_soundManager.play(AudioFactory::SfxId::Shoot);
                             }
                         }
+                        fireRate->shoot();
                     }
                 }
             }
-            break;
-        
-        default:
-            break;
+        }
     }
 }
 

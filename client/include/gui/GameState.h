@@ -16,6 +16,7 @@
 #include "State.h"
 #include "StateManager.h"
 #include "ParallaxSystem.h"
+#include "SettingsConfig.h"
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 #include <ECS/ECS.h>
@@ -567,6 +568,13 @@ namespace rtype::client::gui {
          * Used to trigger projectile firing with rate limiting via FIRE_COOLDOWN.
          */
         bool m_keyFire{false};
+        
+        /**
+         * @brief Settings configuration (keybinds, network)
+         * 
+         * Loaded from config.json to customize player controls.
+         */
+        SettingsConfig m_config;
         
         /**
          * @brief Screen width in pixels
