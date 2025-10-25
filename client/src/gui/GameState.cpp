@@ -385,6 +385,12 @@ void GameState::resetGame() {
     m_isGameOver = false;
     m_gameStatus = GameStatus::Playing;
 
+    // Reset levels
+    m_levelIndex = 0;
+
+    // TEMP background
+    m_forceWhiteBackground = false;
+
     // Ensure level background music is playing after a reset
     loadLevelMusic();
 }
@@ -487,7 +493,7 @@ void GameState::updateBossMusicState() {
     bool bossAlive = isBossActive();
     if (bossAlive && !m_bossMusicActive) {
         // Start boss music
-        const std::string bossMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::BossFight);
+        const std::string bossMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::BossFight1);
         if (m_musicManager.loadFromFile(bossMusic)) {
             m_musicManager.setVolume(35.0f);
             m_musicManager.play(true);
@@ -496,14 +502,39 @@ void GameState::updateBossMusicState() {
             std::cerr << "GameState: could not load boss music: " << bossMusic << std::endl;
         }
     } else if (!bossAlive && m_bossMusicActive) {
-        // Boss died: restore level music
-        loadLevelMusic();
+        // Boss died: advance level (plays test music and swaps background)
+        advanceLevel();
         m_bossMusicActive = false;
     }
 }
 
+void GameState::advanceLevel() {
+    m_levelIndex += 1;
+    std::cout << "[GameState] Advancing to level index: " << m_levelIndex << std::endl;
+
+    // If we've exceeded the final level (3), return to main menu
+    if (m_levelIndex >= 3) {
+        std::cout << "[GameState] Final level cleared. Returning to main menu." << std::endl;
+        m_musicManager.stop();
+        m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
+        return;
+    }
+
+    // Use music from level 2 after defeating the boss of the level 1
+    const std::string level2Music = "assets/audio/music/level2.mp3";
+    if (m_musicManager.loadFromFile(level2Music)) {
+        m_musicManager.setVolume(40.0f);
+        m_musicManager.play(true);
+    } else {
+        std::cerr << "GameState: could not load level 2 music: " << level2Music << std::endl;
+    }
+
+    // Replace parallax with white background for testing
+    m_forceWhiteBackground = true;
+}
+
 void GameState::loadLevelMusic() {
-    const std::string levelMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::Level);
+    const std::string levelMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::Level1);
     if (m_musicManager.loadFromFile(levelMusic)) {
         m_musicManager.setVolume(30.0f);
         m_musicManager.play(true);
@@ -513,8 +544,14 @@ void GameState::loadLevelMusic() {
 }
 
 void GameState::render(sf::RenderWindow& window) {
-    // Render parallax background
-    m_parallaxSystem.render(window);
+    // Render parallax background or a temporary white background when forced
+    if (m_forceWhiteBackground) {
+        sf::RectangleShape bg(sf::Vector2f(SCREEN_WIDTH, SCREEN_HEIGHT));
+        bg.setFillColor(sf::Color::White);
+        window.draw(bg);
+    } else {
+        m_parallaxSystem.render(window);
+    }
     
     // Render all entities
     renderEntities(window);
