@@ -40,30 +40,53 @@ struct EnemySpawnConfig {
     float timer;    // current timer for this type
 };
 
+
+/**
+ * @class ServerEnemySystem
+ * @brief System responsible for enemy spawning and player state broadcasting
+ *
+ * Handles enemy and boss spawning, player state broadcasting, and entity cleanup.
+ */
 class ServerEnemySystem : public ECS::System {
 public:
+    /**
+     * @brief Constructor for ServerEnemySystem
+     * Initializes timers and spawn phase.
+     */
     ServerEnemySystem();
 
+    /**
+     * @brief Main update loop for the system
+     * @param world Reference to the ECS world
+     * @param deltaTime Time elapsed since last update
+     * Spawns enemies/bosses, broadcasts player states, and cleans up entities.
+     */
     void Update(ECS::World &world, float deltaTime) override;
 
-    // Spawn helpers for each enemy type
+    /**
+     * @brief Spawns a regular enemy in the given room
+     * @param world Reference to the ECS world
+     * @param room Room entity ID
+     * @param type Enemy type to spawn
+     */
     void spawnEnemy(ECS::World& world, ECS::EntityID room, rtype::common::components::EnemyType type);
+
+    /**
+     * @brief Spawns a boss enemy in the given room
+     * @param world Reference to the ECS world
+     * @param room Room entity ID
+     * @param bossType Boss type to spawn
+     */
     void spawnBoss(ECS::World& world, ECS::EntityID room, rtype::common::components::EnemyType bossType);
 
-    // Configure spawn intervals per type
-    void setSpawnInterval(rtype::common::components::EnemyType type, float interval);
-
-    // Set phase (0-1min, 1-3min, >3min)
-    void setSpawnPhase(EnemySpawnPhase phase);
-
 private:
-    float _levelTimer; // total time since game start
-    EnemySpawnPhase _phase;
-    bool _bossSpawned;
+    float _levelTimer; ///< Total time since game start
+    EnemySpawnPhase _phase; ///< Current enemy spawn phase
+    bool _bossSpawned; ///< Whether a boss is currently spawned
 
-    std::map<rtype::common::components::EnemyType, EnemySpawnConfig> _enemyConfigs;
+    std::map<rtype::common::components::EnemyType, EnemySpawnConfig> _enemyConfigs; ///< Enemy spawn configs
 
-    float _stateTick;
+    float _stateTick; ///< Timer for player state broadcast
     static constexpr float STATE_TICK_INTERVAL = 0.05f;
 
     // Update helpers
