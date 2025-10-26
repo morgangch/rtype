@@ -515,7 +515,7 @@ void GameState::advanceLevel() {
     }
 
     // Use music from level 2 after defeating the boss of the level 1
-    const std::string level2Music = "assets/audio/music/level2.mp3";
+    const std::string level2Music = AudioFactory::getMusicPath(AudioFactory::MusicId::Level2);
     if (m_musicManager.loadFromFile(level2Music)) {
         m_musicManager.setVolume(40.0f);
         m_musicManager.play(true);
