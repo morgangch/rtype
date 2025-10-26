@@ -8,7 +8,7 @@
 #include "network/controllers/game_controller.h"
 #include <iostream>
 #include "packet.h"
-#include "../../common/packets/packets.h"
+#include <common/packets/packets.h>
 #include "gui/GameState.h"
 #include "gui/PrivateServerLobbyState.h"
 #include <cstring>

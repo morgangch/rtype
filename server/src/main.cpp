@@ -6,10 +6,10 @@
 #include "systems/ServerEnemySystem.h"
 #include "systems/ServerEntityCleanupSystem.h"
 #include "systems/ServerCollisionSystem.h"
-#include "../../common/components/Position.h"
-#include "../../common/components/Velocity.h"
-#include "../../common/components/Projectile.h"
-#include "../../common/components/Player.h"
+#include <common/components/Position.h>
+#include <common/components/Velocity.h>
+#include <common/components/Projectile.h>
+#include <common/components/Player.h>
 #include <chrono>
 #include <iostream>
 #include <cmath>

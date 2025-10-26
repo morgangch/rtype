@@ -9,12 +9,12 @@
 #ifndef CLIENT_SYSTEMS_H
 #define CLIENT_SYSTEMS_H
 
-#include "systems/MovementSystem.h"
 #include "systems/InputSystem.h"
+#include "systems/MovementSystem.h"
 #include "systems/RenderSystem.h"
-#include "systems/CollisionSystem.h"
-#include "systems/ProjectileSystem.h"
-#include "systems/EnemySystem.h"
 #include "systems/TimerSystem.h"
+#include <common/systems/CollisionSystem.h>
+#include <common/systems/ProjectileSystem.h>
+#include <common/systems/EnemySystem.h>
 
 #endif // CLIENT_SYSTEMS_H
