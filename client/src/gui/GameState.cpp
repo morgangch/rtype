@@ -232,6 +232,10 @@ GameState::~GameState() {
     if (g_gameState == this) g_gameState = nullptr;
 }
 
+int GameState::getLevelIndex() const {
+    return m_levelIndex;
+}
+
 void GameState::loadHUDTextures() {
     if (m_texturesLoaded) return;
 

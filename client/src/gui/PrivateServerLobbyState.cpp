@@ -20,6 +20,7 @@
 #include "gui/PrivateServerLobbyState.h"
 #include "gui/GameState.h"
 #include "gui/MainMenuState.h"
+#include "gui/ParallaxSystem.h"
 #include "network/senders.h"
 #include <iostream>
 #include <cstdlib>
@@ -31,10 +32,13 @@ extern uint32_t g_playerServerId;
 namespace rtype::client::gui {
     // Global pointer to current lobby state (for network callbacks)
     PrivateServerLobbyState* g_lobbyState = nullptr;
+    PrivateServerLobbyState::~PrivateServerLobbyState() = default;
+
     PrivateServerLobbyState::PrivateServerLobbyState(StateManager& stateManager, const std::string& username, 
                                                      const std::string& serverCode, bool isAdmin)
         : stateManager(stateManager), username(username), serverCode(serverCode), isAdmin(isAdmin) {
         setupUI();
+        m_overlay.setFillColor(sf::Color(0,0,0,150));
         g_lobbyState = this; // Register this instance globally for network callbacks
     }
     
@@ -174,13 +178,21 @@ namespace rtype::client::gui {
     }
     
     void PrivateServerLobbyState::update(float deltaTime) {
-        // Update logic here if needed
-        // For example, network updates to get real player count
+        // Update parallax if present
+        if (m_parallaxSystem) {
+            m_parallaxSystem->update(deltaTime);
+        }
     }
     
     void PrivateServerLobbyState::render(sf::RenderWindow& window) {
         // Update layout if needed
         updateLayout(window.getSize());
+        // Ensure and render parallax behind UI
+        ensureParallaxInitialized(window);
+        if (m_parallaxSystem) {
+            m_parallaxSystem->render(window);
+        }
+        window.draw(m_overlay);
         
         // Render waiting text
         window.draw(playersWaitingText);
@@ -221,6 +233,24 @@ namespace rtype::client::gui {
             actionButton.setString("Start Game");
             actionButtonRect.setFillColor(sf::Color(50, 100, 50, 200)); // Green for start
         }
+    }
+
+    void PrivateServerLobbyState::ensureParallaxInitialized(const sf::RenderWindow& window) {
+        if (m_parallaxInitialized) return;
+        m_parallaxSystem = std::make_unique<ParallaxSystem>(
+            static_cast<float>(window.getSize().x),
+            static_cast<float>(window.getSize().y)
+        );
+        if (g_gameState) {
+            int lvl = g_gameState->getLevelIndex();
+            if (lvl <= 0) m_parallaxSystem->setTheme(ParallaxSystem::Theme::SpaceDefault, true);
+            else if (lvl == 1) m_parallaxSystem->setTheme(ParallaxSystem::Theme::HallwayLevel2, true);
+            else m_parallaxSystem->setTheme(ParallaxSystem::Theme::SpaceDefault, true);
+        } else {
+            m_parallaxSystem->setTheme(ParallaxSystem::Theme::SpaceDefault, true);
+        }
+        m_overlay.setSize(sf::Vector2f(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y)));
+        m_parallaxInitialized = true;
     }
     
     void PrivateServerLobbyState::updateFromServer(uint32_t totalPlayers) {
