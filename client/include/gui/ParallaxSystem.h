@@ -247,47 +247,125 @@ namespace rtype::client::gui {
         std::vector<SpaceDebris> m_debris;
 
         /**
-         * @brief Theme / transition state
+         * @name Theme and hallway visual state
+         *
+         * These members control the visual theme selection and timed
+         * transitions between themes. The system supports an immediate
+         * theme change via setTheme(...) or a smooth timed transition
+         * via transitionToTheme(...).
+         *
+         * Key fields:
+         * - m_currentTheme: the theme currently considered "active".
+         * - m_targetTheme: the theme we're transitioning to (may equal current).
+         * - m_themeTransitionTimer / m_themeTransitionDuration: progress timer for transitions.
+         * - m_themeBlend: normalized interpolation [0..1] used by renderers to blend visuals.
          */
-        Theme m_currentTheme{Theme::SpaceDefault};
-        Theme m_targetTheme{Theme::SpaceDefault};
-        float m_themeTransitionTimer{0.0f};
+        Theme m_currentTheme{Theme::SpaceDefault}; // active theme
+        Theme m_targetTheme{Theme::SpaceDefault}; // target theme for transitions
+        float m_themeTransitionTimer{0.0f}; // elapsed time in current transition
         float m_themeTransitionDuration{0.0f};
         float m_themeElapsed{0.0f}; // used for animated lights
         float m_themeBlend{0.0f}; // interpolation [0..1] between current and target theme
 
-        // Hallway-specific helpers
+        /**
+         * @name Hallway theme helpers
+         *
+         * Data and helpers used by the `HallwayLevel2` theme. The hallway
+         * presents a tiled corridor with a central dark stripe, larger debris
+         * and a fixed row of red flashing lights. The fields below control
+         * layout and appearance; helper methods prepare and blend the
+         * hallway parameters.
+         *
+         * Members:
+         * - m_fixedRedLights: world-space positions for the evenly spaced red lights.
+         * - m_hallwayStripeHeight: pixel height of the dark center stripe.
+         * - m_hallwayDebrisScale: multiplier applied to debris sizes for the hallway.
+         * - m_lightCount: number of fixed lights to lay out across the screen.
+         */
         std::vector<sf::Vector2f> m_fixedRedLights; //!< fixed row of red flashing lights
         float m_hallwayStripeHeight{48.0f};         //!< height of the dark stripes on the hallway walls
         float m_hallwayDebrisScale{1.8f};           //!< scale factor for hallway debris
         int m_lightCount{8};                        //!< number of fixed red lights (lower = more separation)
 
-        // Theme helpers
+        /**
+         * @brief Prepare hallway-specific parameters (panels, stars, debris scale)
+         *
+         * Called when transitioning to or immediately setting the HallwayLevel2
+         * theme. This function reinitializes star layers and debris sizes to
+         * match the hallway aesthetic.
+         */
         void initializeHallwayTheme();
+
+        /**
+         * @brief Optional per-parameter blend hook
+         * @param t Normalized transition progress in [0,1]
+         *
+         * Called during a timed transition to allow smooth interpolation of
+         * visual parameters (colors, alpha, sizes). The current implementation
+         * prepares the target state immediately and uses m_themeBlend in
+         * rendering, but this hook can be extended to lerp individual values.
+         */
         void blendThemes(float t);
 
-        // Corridor scrolling state (used to animate the panel grid and lights)
+        /**
+         * @name Corridor scrolling and panel layer
+         *
+         * These members power the tiled corridor visuals that sit on the
+         * background layer. A small horizontal offset is advanced every
+         * frame to give the sensation of forward motion: both the panel
+         * tiles and the fixed red lights are shifted left over time and
+         * wrapped to maintain a continuous effect.
+         */
         float m_corridorScrollSpeed{140.0f}; // pixels per second (tunable)
         float m_panelOffsetX{0.0f};          // current horizontal offset for panel grid
         float m_lightOffsetX{0.0f};          // current horizontal offset for fixed lights
 
-        // Corridor/panel layer used to make the hallway look like R-Type interior
+        /**
+         * @brief Panel tile layout used to draw corridor walls
+         *
+         * - m_panelPositions: top-left positions for each tile (precomputed grid)
+         * - m_panelSize: size of a single panel tile in pixels
+         * - m_panelDamaged: indices of panels that show damage marks
+         * - m_pipePositions: positions of long pipes drawn on the corridor
+         */
         std::vector<sf::Vector2f> m_panelPositions; //!< top-left for each panel tile
         sf::Vector2f m_panelSize{160.0f, 120.0f};    //!< default panel tile size
         std::vector<int> m_panelDamaged;             //!< indices of panels that have damage marks
         std::vector<sf::Vector2f> m_pipePositions;   //!< positions of thin pipes running across the corridor
 
+        /**
+         * @brief Build the tiled panel grid and precompute damage marks
+         *
+         * Populates m_panelPositions, m_panelDamageMarks and m_pipePositions.
+         * Called during initialization of the hallway theme so rendering
+         * can be deterministic and free of per-frame randomness.
+         */
         void initializeHallwayPanels();
+
+        /**
+         * @brief Render the tiled panel layer
+         * @param window Render target
+         * @param blend Theme blend factor in [0..1]
+         *
+         * Draws the corridor tile grid, panel borders, damage marks and pipes.
+         * The supplied blend parameter is used to modulate colors and alpha
+         * during transitions between themes.
+         */
         void renderPanelLayer(sf::RenderWindow& window, float blend);
         
         /**
-         * @brief Precomputed damage marks for panels to avoid per-frame randomness
+         * @brief Stable per-panel damage marks
+         *
+         * Each panel may contain a small list of precomputed scratches/dents
+         * that are drawn deterministically each frame. Storing these marks
+         * prevents flicker and visual jitter caused by generating random
+         * marks every frame.
          */
         struct PanelDamageMark {
-            float x;    // local x within panel
-            float y;    // local y within panel
-            float len;  // length of the scratch
-            float angle; // rotation degrees
+            float x;     ///< local x coordinate (pixels) within the panel
+            float y;     ///< local y coordinate (pixels) within the panel
+            float len;   ///< length of the scratch in pixels
+            float angle; ///< rotation in degrees
         };
         std::vector<std::vector<PanelDamageMark>> m_panelDamageMarks; //!< per-panel damage marks
         /** @} */
