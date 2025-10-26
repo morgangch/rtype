@@ -392,6 +392,9 @@ void GameState::resetGame() {
     m_isGameOver = false;
     m_gameStatus = GameStatus::Playing;
 
+    // Clear boss music/flag so a prior boss state doesn't trigger level advance
+    m_bossMusicActive = false;
+
     // Ensure level background music is playing after a reset
     loadLevelMusic();
 }
