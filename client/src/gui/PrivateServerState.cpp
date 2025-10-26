@@ -282,9 +282,10 @@ namespace rtype::client::gui {
     int PrivateServerState::getValidatedPort() {
         try {
             int port = std::stoi(config.getPort());
+            // Validate port range (1-65535). Port 0 is reserved and invalid for TCP/UDP.
             if (port < 1 || port > 65535) {
                 std::cerr << "[PrivateServerState] Invalid port number in config (" << port 
-                          << "). Using default port 4242." << std::endl;
+                          << "). Valid range is 1-65535. Using default port 4242." << std::endl;
                 return 4242;
             }
             return port;

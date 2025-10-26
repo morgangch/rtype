@@ -137,9 +137,13 @@ void GameState::handleKeyPressed(sf::Keyboard::Key key) {
             }
         }
     } else {
-        // Handle non-configurable keys
+        // Handle non-configurable/reserved keys
+        // WARNING: These keys are RESERVED and cannot be assigned to game actions in settings:
+        // - Escape: Menu navigation and pause
+        // - B: Admin command (boss spawn)
+        // If adding new reserved keys, update SettingsState.cpp keybind validation
         switch (key) {
-            // Admin-only: Spawn boss with B key
+            // Admin-only: Spawn boss with B key (RESERVED)
             case sf::Keyboard::B:
                 if (m_isAdmin) {
                     std::cout << "CLIENT: Admin requesting boss spawn (B key pressed)" << std::endl;
@@ -149,7 +153,7 @@ void GameState::handleKeyPressed(sf::Keyboard::Key key) {
                 }
                 break;
             
-            // Pause/Menu key
+            // Pause/Menu key (RESERVED)
             case sf::Keyboard::Escape:
                 showInGameMenu(false); // Pause game
                 break;

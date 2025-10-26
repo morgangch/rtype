@@ -228,8 +228,8 @@ std::string SettingsConfig::extractValue(const std::string& line) const {
     std::string value = line.substr(start, end - start);
     value = trim(value);
 
-    // Remove quotes if present (check length >= 2 to avoid undefined behavior)
-    if (value.length() >= 2 && value.front() == '"' && value.back() == '"') {
+    // Remove quotes if present (only if value has content inside quotes)
+    if (value.length() > 2 && value.front() == '"' && value.back() == '"') {
         value = value.substr(1, value.length() - 2);
     }
 

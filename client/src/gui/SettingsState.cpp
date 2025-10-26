@@ -245,9 +245,20 @@ void SettingsState::handleEvent(const sf::Event& event) {
     }
     // Keybind assignment: use KeyPressed event to correctly capture sf::Keyboard::Key values
     if (event.type == sf::Event::KeyPressed && editingKeybind != -1) {
-        keybinds[editingKeybind] = event.key.code;
-        editingKeybind = -1;
-        keybindHintText.setString("");
+        // Validate against reserved keys
+        if (event.key.code == sf::Keyboard::Escape) {
+            keybindHintText.setString("Escape is reserved for menu navigation.");
+            keybindHintText.setFillColor(sf::Color::Red);
+            // Do not close the keybind editor; let user pick another key
+        } else if (event.key.code == sf::Keyboard::B) {
+            keybindHintText.setString("B is reserved for admin commands.");
+            keybindHintText.setFillColor(sf::Color::Red);
+        } else {
+            // Valid key - assign it
+            keybinds[editingKeybind] = event.key.code;
+            editingKeybind = -1;
+            keybindHintText.setString("");
+        }
     }
 }
 
