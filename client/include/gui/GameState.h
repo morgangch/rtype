@@ -16,6 +16,7 @@
 #include "State.h"
 #include "StateManager.h"
 #include "ParallaxSystem.h"
+#include "SettingsConfig.h"
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 #include <ECS/ECS.h>
@@ -517,6 +518,10 @@ namespace rtype::client::gui {
         /* === Rendering === */
         /// Parallax background system for scrolling layers
         ParallaxSystem m_parallaxSystem;
+
+        /* === Settings Configuration === */
+        /// Settings configuration manager for keybinds and network settings
+        SettingsConfig m_config;
 
         /// Current level index (0 = level1, 1 = level2, 2 = level3, 3 = main menu/finished game)
         int m_levelIndex{0};

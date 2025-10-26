@@ -23,6 +23,7 @@
 #include "State.h"
 #include "StateManager.h"
 #include "GUIHelper.h"
+#include "SettingsConfig.h"
 #include <SFML/Graphics.hpp>
 #include <string>
 
@@ -100,6 +101,7 @@ namespace rtype::client::gui {
         // Core references and configuration
         StateManager& stateManager;     ///< Reference to state manager for navigation
         std::string username;           ///< Player's username for server connection
+        SettingsConfig config;          ///< Settings configuration for network parameters
         
         // UI Text Elements
         sf::Text titleText;             ///< "Private Servers" title display
@@ -176,6 +178,15 @@ namespace rtype::client::gui {
          * Generates random server code and creates new private lobby as admin
          */
         void createServer();
+        
+        /**
+         * @brief Get validated port number from config with fallback
+         * @return Valid port number (1-65535), or default 4242 if invalid
+         * 
+         * Parses port from config and validates range. Returns default port
+         * if parsing fails or value is out of valid range.
+         */
+        int getValidatedPort();
     };
 }
 

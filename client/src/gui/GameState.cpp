@@ -249,6 +249,9 @@ void GameState::destroyEntityByServerId(uint32_t serverId) {
 
 GameState::GameState(StateManager& stateManager)
     : m_stateManager(stateManager), m_parallaxSystem(SCREEN_WIDTH, SCREEN_HEIGHT) {
+    // Load keybinds and settings from config file
+    m_config.load();
+    
     setupGameOverUI();
     // set global pointer so network handlers can access the active GameState
     g_gameState = this;
