@@ -259,19 +259,9 @@ namespace rtype::client::gui {
             // Convert server code to room ID (assuming server code maps to room ID)
             uint32_t roomId = static_cast<uint32_t>(std::stoi(serverCode));
 
-            // Use network settings from config with error handling
+            // Use network settings from config
             std::string serverIp = config.getIP();
-            int serverPort;
-            try {
-                serverPort = std::stoi(config.getPort());
-                if (serverPort < 1 || serverPort > 65535) {
-                    std::cerr << "Invalid port number in config. Using default port 4242." << std::endl;
-                    serverPort = 4242;
-                }
-            } catch (const std::exception& e) {
-                std::cerr << "Failed to parse port from config: " << e.what() << ". Using default port 4242." << std::endl;
-                serverPort = 4242;
-            }
+            int serverPort = getValidatedPort();
             
             std::cout << "Connecting to " << serverIp << ":" << serverPort << std::endl;
             rtype::client::network::start_room_connection(serverIp, serverPort, username, roomId);
@@ -282,22 +272,27 @@ namespace rtype::client::gui {
     }
     
     void PrivateServerState::createServer() {
-        // Use network settings from config with error handling
         std::string serverIp = config.getIP();
-        int serverPort;
-        try {
-            serverPort = std::stoi(config.getPort());
-            if (serverPort < 1 || serverPort > 65535) {
-                std::cerr << "Invalid port number in config. Using default port 4242." << std::endl;
-                serverPort = 4242;
-            }
-        } catch (const std::exception& e) {
-            std::cerr << "Failed to parse port from config: " << e.what() << ". Using default port 4242." << std::endl;
-            serverPort = 4242;
-        }
+        int serverPort = getValidatedPort();
         
         std::cout << "Creating server, connecting to " << serverIp << ":" << serverPort << std::endl;
         rtype::client::network::start_room_connection(serverIp, serverPort, username, 0);
+    }
+    
+    int PrivateServerState::getValidatedPort() {
+        try {
+            int port = std::stoi(config.getPort());
+            if (port < 1 || port > 65535) {
+                std::cerr << "[PrivateServerState] Invalid port number in config (" << port 
+                          << "). Using default port 4242." << std::endl;
+                return 4242;
+            }
+            return port;
+        } catch (const std::exception& e) {
+            std::cerr << "[PrivateServerState] Failed to parse port from config: " << e.what() 
+                      << ". Using default port 4242." << std::endl;
+            return 4242;
+        }
     }
     
     void PrivateServerState::onExit() {
