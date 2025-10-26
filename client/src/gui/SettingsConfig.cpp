@@ -168,7 +168,7 @@ std::string SettingsConfig::extractValue(const std::string& line) const {
     value = trim(value);
 
     // Remove quotes if present
-    if (value.front() == '"' && value.back() == '"') {
+    if (!value.empty() && value.front() == '"' && value.back() == '"') {
         value = value.substr(1, value.length() - 2);
     }
 

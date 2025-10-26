@@ -225,24 +225,17 @@ void SettingsState::handleEvent(const sf::Event& event) {
     if (event.type == sf::Event::TextEntered) {
         if (typingBox1) {
             if (event.text.unicode == 8 && !box1Value.empty()) box1Value.pop_back();
-            else if (event.text.unicode >= 32 && event.text.unicode < 127 && box1Value.size() < 9)
+            else if (event.text.unicode >= 32 && event.text.unicode < 127 && box1Value.size() < 15)
                 box1Value += static_cast<char>(event.text.unicode);
         }
         if (typingBox2) {
             if (event.text.unicode == 8 && !box2Value.empty()) box2Value.pop_back();
-            else if (event.text.unicode >= 32 && event.text.unicode < 127 && box2Value.size() < 4)
+            else if (event.text.unicode >= 32 && event.text.unicode < 127 && box2Value.size() < 5)
                 box2Value += static_cast<char>(event.text.unicode);
         }
-        // Keybinds: handle key assignment
-        if (editingKeybind != -1 && event.text.unicode < 128) {
-            // Only assign printable keys
-            keybinds[editingKeybind] = static_cast<sf::Keyboard::Key>(event.text.unicode);
-            editingKeybind = -1;
-            keybindHintText.setString("");
-        }
     }
+    // Keybind assignment: use KeyPressed event to correctly capture sf::Keyboard::Key values
     if (event.type == sf::Event::KeyPressed && editingKeybind != -1) {
-        // Assign any key, including non-printable
         keybinds[editingKeybind] = event.key.code;
         editingKeybind = -1;
         keybindHintText.setString("");
