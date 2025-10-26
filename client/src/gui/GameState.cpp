@@ -576,6 +576,8 @@ void GameState::advanceLevel() {
     if (m_levelIndex >= 3) {
         std::cout << "[GameState] Final level cleared. Returning to main menu." << std::endl;
         m_musicManager.stop();
+        // Persist last level index for menu parallax
+        m_stateManager.setLastLevelIndex(m_levelIndex);
         m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
         return;
     }
