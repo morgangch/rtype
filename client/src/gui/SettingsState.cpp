@@ -34,6 +34,16 @@ namespace rtype::client::gui {
  * and processes navigation back to the main menu.
  */
 
+/**
+ * @brief Construct a new SettingsState object
+ * @param stateManager Reference to the state manager for handling state transitions
+ * 
+ * Initializes all UI elements including:
+ * - Settings title and input fields for IP/Port
+ * - Keybinds section with editable key assignments
+ * - Return button for navigation
+ * - Loads existing settings from config.json if available
+ */
 SettingsState::SettingsState(StateManager& stateManager)
     : stateManager(stateManager), typingBox1(false), typingBox2(false), cursorTimer(0.0f), showCursor(true), editingKeybind(-1)
 {

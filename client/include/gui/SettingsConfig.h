@@ -66,15 +66,42 @@ public:
      */
     bool save();
 
-    // Keybinds getters/setters
+    /**
+     * @brief Get the keybind for a specific action
+     * @param action The action name (e.g., "up", "down", "left", "right", "shoot")
+     * @return The keyboard key assigned to this action, or sf::Keyboard::Unknown if not found
+     */
     sf::Keyboard::Key getKeybind(const std::string& action) const;
+    
+    /**
+     * @brief Set the keybind for a specific action
+     * @param action The action name (e.g., "up", "down", "left", "right", "shoot")
+     * @param key The keyboard key to assign to this action
+     */
     void setKeybind(const std::string& action, sf::Keyboard::Key key);
 
-    // Network getters/setters
+    /**
+     * @brief Get the server IP address
+     * @return The configured server IP address as a string
+     */
     std::string getIP() const { return ip; }
+    
+    /**
+     * @brief Set the server IP address
+     * @param newIp The new IP address to set
+     */
     void setIP(const std::string& newIp) { ip = newIp; }
 
+    /**
+     * @brief Get the server port
+     * @return The configured server port as a string
+     */
     std::string getPort() const { return port; }
+    
+    /**
+     * @brief Set the server port
+     * @param newPort The new port number to set (as string)
+     */
     void setPort(const std::string& newPort) { port = newPort; }
 
     /**
@@ -83,10 +110,10 @@ public:
     void resetToDefaults();
 
 private:
-    std::string configPath;  ///< Path to the config file
-    std::map<std::string, sf::Keyboard::Key> keybinds;  ///< Keybind mappings
-    std::string ip;   ///< Server IP address
-    std::string port; ///< Server port
+    std::string configPath;  ///< Path to the configuration file
+    std::map<std::string, sf::Keyboard::Key> keybinds;  ///< Map of action names to keyboard keys
+    std::string ip;   ///< Server IP address for network connection
+    std::string port; ///< Server port number for network connection
 
     /**
      * @brief Initialize default settings

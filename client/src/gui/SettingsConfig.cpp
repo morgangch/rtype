@@ -12,12 +12,21 @@
 
 namespace rtype::client::gui {
 
+/**
+ * @brief Construct a new SettingsConfig object
+ * @param configPath Path to the configuration file (defaults to "config.json")
+ */
 SettingsConfig::SettingsConfig(const std::string& configPath)
     : configPath(configPath)
 {
     initDefaults();
 }
 
+/**
+ * @brief Initialize default settings values
+ * 
+ * Sets up default keybinds (WASD + Space) and network settings (127.0.0.1:4242)
+ */
 void SettingsConfig::initDefaults() {
     // Default keybinds
     keybinds["up"] = sf::Keyboard::W;
@@ -31,6 +40,10 @@ void SettingsConfig::initDefaults() {
     port = "4242";
 }
 
+/**
+ * @brief Load settings from the configuration file
+ * @return true if loaded successfully, false if file not found (defaults will be used)
+ */
 bool SettingsConfig::load() {
     std::ifstream file(configPath);
     if (!file.is_open()) {
@@ -48,6 +61,10 @@ bool SettingsConfig::load() {
     return true;
 }
 
+/**
+ * @brief Save current settings to the configuration file
+ * @return true if saved successfully, false if file could not be opened
+ */
 bool SettingsConfig::save() {
     std::ofstream file(configPath);
     if (!file.is_open()) {
@@ -63,6 +80,11 @@ bool SettingsConfig::save() {
     return true;
 }
 
+/**
+ * @brief Get the keybind for a specific action
+ * @param action The action name to look up
+ * @return The keyboard key assigned, or sf::Keyboard::Unknown if not found
+ */
 sf::Keyboard::Key SettingsConfig::getKeybind(const std::string& action) const {
     auto it = keybinds.find(action);
     if (it != keybinds.end()) {
@@ -71,14 +93,29 @@ sf::Keyboard::Key SettingsConfig::getKeybind(const std::string& action) const {
     return sf::Keyboard::Unknown;
 }
 
+/**
+ * @brief Set the keybind for a specific action
+ * @param action The action name to set
+ * @param key The keyboard key to assign
+ */
 void SettingsConfig::setKeybind(const std::string& action, sf::Keyboard::Key key) {
     keybinds[action] = key;
 }
 
+/**
+ * @brief Reset all settings to their default values
+ */
 void SettingsConfig::resetToDefaults() {
     initDefaults();
 }
 
+/**
+ * @brief Parse JSON content and populate settings
+ * @param content The JSON content as a string
+ * 
+ * Simple parser designed for the specific structure of our config file.
+ * Extracts keybinds and network settings from JSON format.
+ */
 void SettingsConfig::parseJSON(const std::string& content) {
     // Simple JSON parser for our specific structure
     // This is a basic implementation that works for our format
@@ -130,6 +167,13 @@ void SettingsConfig::parseJSON(const std::string& content) {
     }
 }
 
+/**
+ * @brief Generate JSON string from current settings
+ * @return JSON-formatted string representation of all settings
+ * 
+ * Uses safe access methods to prevent exceptions from missing keys.
+ * Falls back to sf::Keyboard::Unknown for missing keybinds.
+ */
 std::string SettingsConfig::generateJSON() const {
     std::ostringstream json;
     json << "{\n";
@@ -155,6 +199,11 @@ std::string SettingsConfig::generateJSON() const {
     return json.str();
 }
 
+/**
+ * @brief Trim whitespace from both ends of a string
+ * @param str The string to trim
+ * @return Trimmed string without leading/trailing whitespace
+ */
 std::string SettingsConfig::trim(const std::string& str) const {
     size_t first = str.find_first_not_of(" \t\n\r");
     if (first == std::string::npos) return "";
@@ -162,6 +211,11 @@ std::string SettingsConfig::trim(const std::string& str) const {
     return str.substr(first, (last - first + 1));
 }
 
+/**
+ * @brief Extract a value from a JSON line
+ * @param line A single line from JSON file (e.g., "key": "value",)
+ * @return The extracted value as a string, with quotes removed
+ */
 std::string SettingsConfig::extractValue(const std::string& line) const {
     // Extract value after ':' and before ','
     size_t colonPos = line.find(':');
