@@ -555,6 +555,10 @@ namespace rtype::client::gui {
         /// Parallax background system for scrolling layers
         ParallaxSystem m_parallaxSystem;
 
+        /* === Settings Configuration === */
+        /// Settings configuration manager for keybinds and network settings
+        SettingsConfig m_config;
+
         /// Current level index (0 = level1, 1 = level2, 2 = level3, 3 = main menu/finished game)
         int m_levelIndex{0};
         /// If true, render a plain white background instead of parallax (TEMP testing)
