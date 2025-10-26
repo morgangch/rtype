@@ -459,6 +459,13 @@ namespace rtype::client::gui {
         void updateBossMusicState();
 
         /**
+         * @brief Advance to the next level after boss death
+         *
+         * Switches between all music, paralax and assets depending on the level.
+         */
+        void advanceLevel();
+
+        /**
          * @brief Load level background music
          *
          * Initializes and starts playing the level music track.
@@ -510,6 +517,11 @@ namespace rtype::client::gui {
         /* === Rendering === */
         /// Parallax background system for scrolling layers
         ParallaxSystem m_parallaxSystem;
+
+        /// Current level index (0 = level1, 1 = level2, 2 = level3, 3 = main menu/finished game)
+        int m_levelIndex{0};
+        /// If true, render a plain white background instead of parallax (TEMP testing)
+        bool m_forceWhiteBackground{false};
 
         /* === Game Constants === */
         /// Interval in seconds between enemy projectile shots
