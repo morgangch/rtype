@@ -119,6 +119,11 @@ private:
     sf::Text resetKeybindsButton;               ///< "Reset to Default" button text
     sf::RectangleShape resetKeybindsRect;       ///< Clickable area for reset button
     sf::Keyboard::Key keybinds[KeybindCount];   ///< Current keybinds
+
+    // IP/PORT UI Elements
+    sf::Text ipPortTitleText;                   ///< "Network Settings" section title
+    sf::Text ipLabelText;                       ///< "IP Address:" label
+    sf::Text portLabelText;                     ///< "Port:" label
 };
 
 } // namespace rtype::client::gui

@@ -149,7 +149,6 @@ void SettingsState::onEnter() {
     keybindHintText.setPosition(keybindsX, keybindsY + 50.0f + KeybindCount * 54.0f + 60.0f);
 
     // IP/PORT section (up and left)
-    static sf::Text ipPortTitleText;
     ipPortTitleText.setFont(GUIHelper::getFont());
     ipPortTitleText.setString("IP / PORT");
     ipPortTitleText.setCharacterSize(32);
@@ -302,12 +301,6 @@ void SettingsState::render(sf::RenderWindow& window) {
         window.draw(keybindHintText);
 
     // Draw IP/PORT section
-    static sf::Text ipPortTitleText;
-    ipPortTitleText.setFont(GUIHelper::getFont());
-    ipPortTitleText.setString("IP / PORT");
-    ipPortTitleText.setCharacterSize(32);
-    ipPortTitleText.setFillColor(sf::Color::White);
-    ipPortTitleText.setPosition(box1Rect.getPosition().x, box1Rect.getPosition().y - 60.0f);
     window.draw(ipPortTitleText);
 
     window.draw(box1Rect);

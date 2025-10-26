@@ -259,9 +259,19 @@ namespace rtype::client::gui {
             // Convert server code to room ID (assuming server code maps to room ID)
             uint32_t roomId = static_cast<uint32_t>(std::stoi(serverCode));
 
-            // Use network settings from config
+            // Use network settings from config with error handling
             std::string serverIp = config.getIP();
-            int serverPort = std::stoi(config.getPort());
+            int serverPort;
+            try {
+                serverPort = std::stoi(config.getPort());
+                if (serverPort < 1 || serverPort > 65535) {
+                    std::cerr << "Invalid port number in config. Using default port 4242." << std::endl;
+                    serverPort = 4242;
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "Failed to parse port from config: " << e.what() << ". Using default port 4242." << std::endl;
+                serverPort = 4242;
+            }
             
             std::cout << "Connecting to " << serverIp << ":" << serverPort << std::endl;
             rtype::client::network::start_room_connection(serverIp, serverPort, username, roomId);
@@ -272,9 +282,19 @@ namespace rtype::client::gui {
     }
     
     void PrivateServerState::createServer() {
-        // Use network settings from config
+        // Use network settings from config with error handling
         std::string serverIp = config.getIP();
-        int serverPort = std::stoi(config.getPort());
+        int serverPort;
+        try {
+            serverPort = std::stoi(config.getPort());
+            if (serverPort < 1 || serverPort > 65535) {
+                std::cerr << "Invalid port number in config. Using default port 4242." << std::endl;
+                serverPort = 4242;
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Failed to parse port from config: " << e.what() << ". Using default port 4242." << std::endl;
+            serverPort = 4242;
+        }
         
         std::cout << "Creating server, connecting to " << serverIp << ":" << serverPort << std::endl;
         rtype::client::network::start_room_connection(serverIp, serverPort, username, 0);

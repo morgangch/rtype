@@ -134,11 +134,18 @@ std::string SettingsConfig::generateJSON() const {
     std::ostringstream json;
     json << "{\n";
     json << "  \"keybinds\": {\n";
-    json << "    \"up\": " << static_cast<int>(keybinds.at("up")) << ",\n";
-    json << "    \"down\": " << static_cast<int>(keybinds.at("down")) << ",\n";
-    json << "    \"left\": " << static_cast<int>(keybinds.at("left")) << ",\n";
-    json << "    \"right\": " << static_cast<int>(keybinds.at("right")) << ",\n";
-    json << "    \"shoot\": " << static_cast<int>(keybinds.at("shoot")) << "\n";
+    
+    // Use safe access with fallback to Unknown key
+    auto getKeybindValue = [this](const std::string& key) -> int {
+        auto it = keybinds.find(key);
+        return static_cast<int>(it != keybinds.end() ? it->second : sf::Keyboard::Unknown);
+    };
+    
+    json << "    \"up\": " << getKeybindValue("up") << ",\n";
+    json << "    \"down\": " << getKeybindValue("down") << ",\n";
+    json << "    \"left\": " << getKeybindValue("left") << ",\n";
+    json << "    \"right\": " << getKeybindValue("right") << ",\n";
+    json << "    \"shoot\": " << getKeybindValue("shoot") << "\n";
     json << "  },\n";
     json << "  \"network\": {\n";
     json << "    \"ip\": \"" << ip << "\",\n";
