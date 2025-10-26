@@ -75,13 +75,13 @@ public:
     void Cleanup(ECS::World& world) override;
 private:
     /**
-     * @brief Handles boss shooting pattern (spread)
+     * @brief Handles tank destroyer (boss) shooting pattern (spread)
      * Shoots three projectiles: center, upper, lower.
      */
-    void handleBossShooting(float x, float y, float targetX, float targetY, bool hasTarget, ECS::World& world);
+    void handleTankDestroyerShooting(float x, float y, float targetX, float targetY, bool hasTarget, ECS::World& world);
 
     /**
-     * @brief Handles shooter enemy aiming
+     * @brief Handles shooter (advanced enemy) enemy aiming
      * Shoots a projectile aimed at the player.
      */
     void handleShooterShooting(float x, float y, float targetX, float targetY, bool hasTarget, ECS::World& world);

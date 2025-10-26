@@ -101,7 +101,7 @@ void ServerCollisionSystem::checkProjectileVsEnemyCollisions(
             
             // Boss has much larger hitbox (5x scale)
             auto* enemyType = world.GetComponent<rtype::common::components::EnemyTypeComponent>(enemyEntity);
-            if (enemyType && enemyType->type == rtype::common::components::EnemyType::Boss) {
+            if (enemyType && enemyType->type == rtype::common::components::EnemyType::TankDestroyer) {
                 enemyW = 33.0f * 5.0f; // 165 pixels
                 enemyH = 36.0f * 5.0f; // 180 pixels
             }

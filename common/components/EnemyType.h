@@ -32,7 +32,7 @@ namespace rtype::common::components {
 
         // Boss enemies
         // to do add 3 boss enemies
-        Boss        /// TO DO change name
+        TankDestroyer,        ///< Tank destroyer boss - heavily armored, fires spread projectiles
     };
     
     /**

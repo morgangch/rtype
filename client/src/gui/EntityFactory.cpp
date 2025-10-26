@@ -187,9 +187,9 @@ ECS::EntityID GameState::createBoss(float x, float y) {
     m_world.AddComponent<rtype::common::components::Team>(
         entity, rtype::common::components::TeamType::Enemy);
     
-    // EnemyType - Boss (shoots in spread pattern)
+    // EnemyType - TankDestroyer boss
     m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
-        entity, rtype::common::components::EnemyType::Boss);
+        entity, rtype::common::components::EnemyType::TankDestroyer);
     
     // FireRate - Boss shoots every 0.8 seconds (rapid fire!)
     const float BOSS_FIRE_INTERVAL = 0.8f;

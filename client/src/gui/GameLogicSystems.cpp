@@ -46,7 +46,7 @@ void GameState::updateMovementSystem(float deltaTime) {
         
         // Boss bounce logic (vertical oscillation)
         auto* enemyType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(entity);
-        if (enemyType && enemyType->type == rtype::common::components::EnemyType::Boss) {
+        if (enemyType && enemyType->type == rtype::common::components::EnemyType::TankDestroyer) {
             auto* sprite = m_world.GetComponent<rtype::client::components::Sprite>(entity);
             if (sprite) {
                 float halfHeight = sprite->size.y / 2.0f;
@@ -249,9 +249,9 @@ void GameState::updateEnemyAISystem(float deltaTime) {
         auto* pos = m_world.GetComponent<rtype::common::components::Position>(entity);
         
         if (!fireRate || !pos || !fireRate->canFire()) continue;
-        
-        if (enemyType && enemyType->type == rtype::common::components::EnemyType::Boss) {
-            // BOSS: Shoot in spread pattern (3 projectiles)
+
+        if (enemyType && enemyType->type == rtype::common::components::EnemyType::TankDestroyer) {
+            // EnemyType (TANK DESTROYER BOSS): Shoot in spread pattern (3 projectiles)
             if (playerFound) {
                 // Calculate direction to player
                 float dx = playerPos.x - pos->x;
@@ -510,7 +510,7 @@ void GameState::updateCollisionSystem() {
         // Determine if this was a boss or regular enemy
         auto* enemyType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(entity);
         if (enemyType) {
-            if (enemyType->type == rtype::common::components::EnemyType::Boss) {
+            if (enemyType->type == rtype::common::components::EnemyType::TankDestroyer) { // to do add other boss types
                 // Play boss death sound
                 if (m_soundManager.has(AudioFactory::SfxId::BossDeath)) {
                     m_soundManager.play(AudioFactory::SfxId::BossDeath);

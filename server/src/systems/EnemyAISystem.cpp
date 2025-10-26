@@ -33,8 +33,8 @@ void EnemyAISystem::Update(ECS::World& world, float deltaTime) {
     auto* fireRate = world.GetComponent<rtype::common::components::FireRate>(entity);
     auto* pos = world.GetComponent<rtype::common::components::Position>(entity);
         if (!fireRate || !pos || !fireRate->canFire()) continue;
-    if (enemyType && enemyType->type == rtype::common::components::EnemyType::Boss) {
-            handleBossShooting(pos->x, pos->y, playerX, playerY, playerFound, world);
+    if (enemyType && enemyType->type == rtype::common::components::EnemyType::TankDestroyer) {
+            handleTankDestroyerShooting(pos->x, pos->y, playerX, playerY, playerFound, world);
             fireRate->shoot();
     } else if (enemyType && enemyType->type == rtype::common::components::EnemyType::Shooter) {
             handleShooterShooting(pos->x, pos->y, playerX, playerY, playerFound, world);
@@ -46,7 +46,7 @@ void EnemyAISystem::Update(ECS::World& world, float deltaTime) {
     }
 }
 
-void EnemyAISystem::handleBossShooting(float x, float y, float targetX, float targetY, bool hasTarget, ECS::World& world) {
+void EnemyAISystem::handleTankDestroyerShooting(float x, float y, float targetX, float targetY, bool hasTarget, ECS::World& world) {
     if (!hasTarget) return;
     const float PROJECTILE_SPEED = 350.0f;
     float dx = targetX - x;

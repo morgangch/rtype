@@ -53,10 +53,9 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
     auto type = static_cast<rtype::common::components::EnemyType>(enemyType);
     
     switch (type) {
-        case rtype::common::components::EnemyType::Boss: {
+        case rtype::common::components::EnemyType::TankDestroyer:  // Boss enemy
             e = createBoss(x, y);            
             break;
-        }
         case rtype::common::components::EnemyType::Shooter:
             e = createShooterEnemy(x, y);
             break;
@@ -448,7 +447,7 @@ bool GameState::isBossActive() {
     if (!enemyTypes) return false;
     
     for (auto& [entity, enemyTypePtr] : *enemyTypes) {
-        if (enemyTypePtr->type == rtype::common::components::EnemyType::Boss) {
+        if (enemyTypePtr->type == rtype::common::components::EnemyType::TankDestroyer) { // to do add other boss types
             // Check if the boss is still alive (has Health component with HP > 0)
             auto* health = m_world.GetComponent<rtype::common::components::Health>(entity);
             if (health && health->currentHp > 0) {

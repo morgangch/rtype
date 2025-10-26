@@ -591,7 +591,7 @@ void room_controller::handleSpawnBossRequest(const packet_t& packet) {
     if (enemyTypes) {
         for (auto& etPair : *enemyTypes) {
             auto* et = etPair.second.get();
-            if (et && et->type == rtype::common::components::EnemyType::Boss) {
+            if (et && et->type == rtype::common::components::EnemyType::TankDestroyer) {
                 auto* health = root.world.GetComponent<rtype::common::components::Health>(etPair.first);
                 if (health && health->isAlive && health->currentHp > 0) {
                     bossExists = true;
@@ -616,14 +616,14 @@ void room_controller::handleSpawnBossRequest(const packet_t& packet) {
     root.world.AddComponent<rtype::common::components::Velocity>(boss, -50.0f, 0.0f, 50.0f);
     root.world.AddComponent<rtype::common::components::Health>(boss, 50);
     root.world.AddComponent<rtype::common::components::Team>(boss, rtype::common::components::TeamType::Enemy);
-    root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, rtype::common::components::EnemyType::Boss);
+    root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, rtype::common::components::EnemyType::TankDestroyer);
     
     std::cout << "SERVER: Admin spawned boss (id=" << boss << ") in room " << room << std::endl;
     
     // Broadcast boss spawn to all players in the room
     SpawnEnemyPacket pkt{};
     pkt.enemyId = static_cast<uint32_t>(boss);
-    pkt.enemyType = static_cast<uint16_t>(rtype::common::components::EnemyType::Boss);
+    pkt.enemyType = static_cast<uint16_t>(rtype::common::components::EnemyType::TankDestroyer);
     pkt.x = spawnX;
     pkt.y = spawnY;
     pkt.hp = 50;
