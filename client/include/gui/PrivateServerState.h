@@ -23,6 +23,7 @@
 #include "State.h"
 #include "StateManager.h"
 #include "GUIHelper.h"
+#include "SettingsConfig.h"
 #include <SFML/Graphics.hpp>
 #include <string>
 
@@ -100,6 +101,7 @@ namespace rtype::client::gui {
         // Core references and configuration
         StateManager& stateManager;     ///< Reference to state manager for navigation
         std::string username;           ///< Player's username for server connection
+        SettingsConfig config;          ///< Settings configuration for network parameters
         
         // UI Text Elements
         sf::Text titleText;             ///< "Private Servers" title display

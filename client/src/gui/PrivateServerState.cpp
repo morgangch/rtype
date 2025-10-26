@@ -29,6 +29,7 @@
 namespace rtype::client::gui {
     PrivateServerState::PrivateServerState(StateManager& stateManager, const std::string& username)
         : stateManager(stateManager), username(username), isTyping(false), cursorTimer(0.0f), showCursor(true) {
+        config.load(); // Load settings for network configuration
         setupUI();
     }
     
@@ -258,7 +259,12 @@ namespace rtype::client::gui {
             // Convert server code to room ID (assuming server code maps to room ID)
             uint32_t roomId = static_cast<uint32_t>(std::stoi(serverCode));
 
-            rtype::client::network::start_room_connection(DEV_SERVER_IP, DEV_SERVER_PORT, username, roomId);
+            // Use network settings from config
+            std::string serverIp = config.getIP();
+            int serverPort = std::stoi(config.getPort());
+            
+            std::cout << "Connecting to " << serverIp << ":" << serverPort << std::endl;
+            rtype::client::network::start_room_connection(serverIp, serverPort, username, roomId);
 
         } else {
             std::cout << "Invalid server code. Please enter a 4-digit number between 1000-9999." << std::endl;
@@ -266,7 +272,12 @@ namespace rtype::client::gui {
     }
     
     void PrivateServerState::createServer() {
-        rtype::client::network::start_room_connection(DEV_SERVER_IP, DEV_SERVER_PORT, username, 0);
+        // Use network settings from config
+        std::string serverIp = config.getIP();
+        int serverPort = std::stoi(config.getPort());
+        
+        std::cout << "Creating server, connecting to " << serverIp << ":" << serverPort << std::endl;
+        rtype::client::network::start_room_connection(serverIp, serverPort, username, 0);
     }
     
     void PrivateServerState::onExit() {
