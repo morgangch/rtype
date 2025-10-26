@@ -43,9 +43,14 @@ public:
      */
     enum class MusicId {
         Menu,      ///< Main menu background music
-        Level,     ///< Standard level background music (looping)
+        Level1,     ///< Standard level background music (looping)
+        Level2,     ///< Standard level background music (looping)
+        Level3,     ///< Standard level background music (looping)
         GameOver,  ///< Non-looping game over music
-        BossFight  ///< Boss encounter music
+        BossFight1,  ///< Boss encounter music
+        BossFight2,  ///< Boss encounter music
+        BossFight3,  ///< Boss encounter music
+        BossFight4   ///< Boss encounter music
     };
 
     /**

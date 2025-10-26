@@ -3,13 +3,81 @@
 #include "rtype.h"
 #include "controllers/RoomController.h"
 #include "systems/PacketHandlingSystem.h"
+#include "systems/ServerEnemySystem.h"
+#include "systems/ServerEntityCleanupSystem.h"
+#include "systems/ServerCollisionSystem.h"
+#include <common/components/Position.h>
+#include <common/components/Velocity.h>
+#include <common/components/Projectile.h>
+#include <common/components/Player.h>
 #include <chrono>
+#include <iostream>
+#include <cmath>
 #include "systems/AdminDetectorSystem.h"
+
+// Game bounds - must match client SCREEN_WIDTH and SCREEN_HEIGHT
+constexpr float GAME_WIDTH = 1280.0f;
+constexpr float GAME_HEIGHT = 720.0f;
+constexpr float PLAYER_HALF_SIZE = 16.0f; // Half of player sprite size (32x32 / 2)
+
+/**
+ * @brief Clamp player position to game bounds
+ * Ensures all players stay within the visible game area for consistent multiplayer state
+ */
+void clampPlayerPosition(rtype::common::components::Position* pos) {
+    if (!pos) return;
+    
+    // Clamp X position (left-right bounds)
+    if (pos->x < PLAYER_HALF_SIZE) {
+        pos->x = PLAYER_HALF_SIZE;
+    } else if (pos->x > GAME_WIDTH - PLAYER_HALF_SIZE) {
+        pos->x = GAME_WIDTH - PLAYER_HALF_SIZE;
+    }
+    
+    // Clamp Y position (top-bottom bounds)
+    if (pos->y < PLAYER_HALF_SIZE) {
+        pos->y = PLAYER_HALF_SIZE;
+    } else if (pos->y > GAME_HEIGHT - PLAYER_HALF_SIZE) {
+        pos->y = GAME_HEIGHT - PLAYER_HALF_SIZE;
+    }
+}
 
 void rtype::server::Rtype::loop(float deltaTime) {
     network::loop_recv(udp_server_fd);
     network::loop_send(udp_server_fd);
     packetHandler.processPackets(packetManager.fetchReceivedPackets());
+    
+    // Simple server-side movement system (update positions based on velocity)
+    auto* positions = world.GetAllComponents<rtype::common::components::Position>();
+    if (positions) {
+        for (auto& [entity, posPtr] : *positions) {
+            auto* vel = world.GetComponent<rtype::common::components::Velocity>(entity);
+            if (!vel) continue;
+            
+            // Calculate distance moved this frame
+            float dx = vel->vx * deltaTime;
+            float dy = vel->vy * deltaTime;
+            float distance = std::sqrt(dx * dx + dy * dy);
+            
+            // Update position
+            posPtr->x += dx;
+            posPtr->y += dy;
+            
+            // Clamp player positions to game bounds (server-authoritative)
+            auto* player = world.GetComponent<rtype::common::components::Player>(entity);
+            if (player) {
+                if (posPtr)
+                    clampPlayerPosition(posPtr.get());
+            }
+            
+            // Update projectile distance traveled (for collision skip logic)
+            auto* proj = world.GetComponent<rtype::common::components::Projectile>(entity);
+            if (proj) {
+                proj->distanceTraveled += distance;
+            }
+        }
+    }
+    
     world.UpdateSystems(deltaTime);
 }
 
@@ -20,7 +88,13 @@ int main() {
 
     root.packetHandler.registerCallback(Packets::JOIN_ROOM, rtype::server::controllers::room_controller::handleJoinRoomPacket);
     root.packetHandler.registerCallback(Packets::GAME_START_REQUEST, rtype::server::controllers::room_controller::handleGameStartRequest);
+    root.packetHandler.registerCallback(Packets::PLAYER_INPUT, rtype::server::controllers::room_controller::handlePlayerInput);
+    root.packetHandler.registerCallback(Packets::PLAYER_READY, rtype::server::controllers::room_controller::handlePlayerReady);
+    std::cout << "✓ Registered PLAYER_READY callback (type " << static_cast<int>(Packets::PLAYER_READY) << ")" << std::endl;
     root.world.RegisterSystem<PacketHandlingSystem>();
+    root.world.RegisterSystem<ServerEnemySystem>();
+    root.world.RegisterSystem<rtype::server::systems::ServerCollisionSystem>();
+    std::cout << "✓ Registered ServerCollisionSystem" << std::endl;
     root.world.RegisterSystem<AdminDetectorSystem>();
 
     auto lastTime = std::chrono::high_resolution_clock::now();

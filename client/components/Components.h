@@ -10,8 +10,6 @@
 #define CLIENT_COMPONENTS_H
 
 #include "Sprite.h"
-#include "Controllable.h"
-#include "FireRate.h"
-#include "Invulnerability.h"
+#include "Animation.h"
 
 #endif // CLIENT_COMPONENTS_H

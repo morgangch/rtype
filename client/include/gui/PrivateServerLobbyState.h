@@ -41,9 +41,7 @@ namespace rtype::client::gui {
      * - Controls game initiation for all players
      * 
      * **Player Role:**
-     * - Can toggle ready/not ready status
      * - Waits for admin to start the game
-     * - Sees current ready player count
      * 
      * Key features:
      * - Server code display for easy sharing
@@ -107,19 +105,15 @@ namespace rtype::client::gui {
         bool isAdmin;                   ///< Whether this player is the server administrator
         
         // UI Text Elements
-        sf::Text playersReadyText;      ///< Displays current ready player count
-        sf::Text actionButton;          ///< "Ready" for players, "Start Game" for admin
+        sf::Text playersWaitingText;    ///< "Waiting for room host" for non-admin players
+        sf::Text actionButton;          ///< "Start Game" button (admin only)
         sf::Text returnButton;          ///< "Return" button text for navigation back
         sf::Text serverCodeDisplay;     ///< Shows server code for sharing with others
         
         // UI Visual Elements
-        sf::RectangleShape actionButtonRect;  ///< Clickable area for main action button
+        sf::RectangleShape actionButtonRect;  ///< Clickable area for start game button (admin only)
         sf::RectangleShape returnButtonRect;  ///< Clickable area for return button
-        
-        // Lobby State Management
-        bool isReady;                   ///< Current ready state of this player
-        int playersReady;               ///< Total number of players marked as ready
-        
+                
         // UI Management Methods
         /**
          * @brief Initialize all UI elements with fonts, colors, and positioning
@@ -159,12 +153,6 @@ namespace rtype::client::gui {
         
         // Player Action Methods
         /**
-         * @brief Toggle the ready state for regular players
-         * Updates player count and button appearance
-         */
-        void toggleReady();
-        
-        /**
          * @brief Start the game (admin only)
          * Initiates game start sequence for all players in lobby
          */
@@ -172,17 +160,27 @@ namespace rtype::client::gui {
         
         // UI Update Methods
         /**
-         * @brief Update the ready player count display text
-         * Refreshes the "Amount of players ready: X" text
+         * @brief Update the waiting text display
+         * Shows "Waiting for room host" for non-admin players
          */
-        void updatePlayersReadyText();
+        void updateWaitingText();
         
         /**
-         * @brief Update the action button text and appearance
-         * Changes button text/color based on player role and ready state
+         * @brief Update the action button text and appearance (admin only)
+         * Changes button to "Start Game" for admin players
          */
         void updateActionButton();
+        
+    public:
+        /**
+         * @brief Update lobby state from server broadcast
+         * @param totalPlayers Total number of players in the lobby
+         */
+        void updateFromServer(uint32_t totalPlayers);
     };
+    
+    // Global pointer to current lobby state for network callbacks
+    extern PrivateServerLobbyState* g_lobbyState;
 }
 
 #endif // CLIENT_PRIVATE_SERVER_LOBBY_STATE_HPP

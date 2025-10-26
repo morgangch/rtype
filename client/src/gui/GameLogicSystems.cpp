@@ -19,6 +19,10 @@
  */
 
 #include "gui/GameState.h"
+#include "packets.h"
+#include "packetmanager.h"
+#include "network/network.h"
+#include "network/senders.h"
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -68,6 +72,18 @@ void GameState::updateMovementSystem(float deltaTime) {
 }
 
 void GameState::updateInputSystem(float deltaTime) {
+    // Send player input to server periodically (20 times per second)
+    static float inputSendTimer = 0.0f;
+    static constexpr float INPUT_SEND_INTERVAL = 0.05f; // 50ms = 20Hz
+    inputSendTimer += deltaTime;
+    
+    if (inputSendTimer >= INPUT_SEND_INTERVAL) {
+        inputSendTimer = 0.0f;
+        
+        // Send current input state to server using sender function
+        rtype::client::network::senders::send_player_input(m_keyUp, m_keyDown, m_keyLeft, m_keyRight);
+    }
+    
     // Find player entity (has Player component)
     auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
     if (!players) return;
@@ -109,9 +125,6 @@ void GameState::updateInputSystem(float deltaTime) {
         if (pos->x > SCREEN_WIDTH - halfSize) pos->x = SCREEN_WIDTH - halfSize;
         if (pos->y < halfSize) pos->y = halfSize;
         if (pos->y > SCREEN_HEIGHT - halfSize) pos->y = SCREEN_HEIGHT - halfSize;
-        
-        // NOTE: Firing is now handled in handleKeyReleased() for charged shot mechanic
-        // The old automatic firing system is disabled to allow charge accumulation
     }
 }
 
@@ -203,49 +216,6 @@ void GameState::updateInvulnerabilitySystem(float deltaTime) {
                 healthPtr->invulnerable = false;
                 healthPtr->invulnerabilityTimer = 0.0f;
             }
-        }
-    }
-}
-
-void GameState::updateEnemySpawnSystem(float deltaTime) {
-    m_enemySpawnTimer += deltaTime;
-    m_bossSpawnTimer += deltaTime;
-    
-    // Boss spawn system (every 3 minutes)
-    if (m_bossSpawnTimer >= BOSS_SPAWN_INTERVAL && !isBossActive()) {
-        createBoss(SCREEN_WIDTH - 100.0f, SCREEN_HEIGHT * 0.5f);
-        m_bossSpawnTimer = 0.0f;
-    }
-    
-    if (m_enemySpawnTimer >= ENEMY_SPAWN_INTERVAL) {
-        // Count current enemies
-        size_t enemyCount = 0;
-        auto* teams = m_world.GetAllComponents<rtype::common::components::Team>();
-        if (teams) {
-            for (auto& [entity, teamPtr] : *teams) {
-                if (teamPtr->team == rtype::common::components::TeamType::Enemy) {
-                    // Check if it's actually an enemy (has Health, not a projectile)
-                    if (m_world.GetComponent<rtype::common::components::Health>(entity)) {
-                        enemyCount++;
-                    }
-                }
-            }
-        }
-        
-        // Spawn if under limit
-        if (enemyCount < MAX_ENEMIES) {
-            float randomY = 50.0f + static_cast<float>(rand() % static_cast<int>(SCREEN_HEIGHT - 100.0f));
-            
-            // Alternate between basic enemies and shooter enemies
-            // 40% chance for shooter enemy, 60% for basic enemy
-            int randomType = rand() % 100;
-            if (randomType < 40) {
-                createShooterEnemy(SCREEN_WIDTH + 28.0f, randomY);
-            } else {
-                createEnemy(SCREEN_WIDTH + 24.0f, randomY);
-            }
-            
-            m_enemySpawnTimer = 0.0f;
         }
     }
 }
@@ -405,10 +375,24 @@ void GameState::checkPlayerVsEnemiesCollision(
     }
 }
 
+// HYBRID CLIENT-SIDE PREDICTION + SERVER AUTHORITY:
+// - Client detects collisions immediately for low-latency feedback
+// - Client applies damage and destroys entities locally (optimistic prediction)
+// - Server also detects collisions and sends ENTITY_DESTROY for confirmation
+// - Client's destroyEntityByServerId() is idempotent (handles already-destroyed entities)
+// 
+// For SERVER-OWNED projectiles:
+//   - Client predicts collision → destroys enemy locally
+//   - Client does NOT destroy projectile (server decides when projectile dies)
+//   - Server confirms → sends ENTITY_DESTROY for both projectile and enemy
+// 
+// This gives instant feedback while maintaining server authority
+
 void GameState::checkPlayerProjectilesVsEnemiesCollision(
     ECS::ComponentArray<rtype::common::components::Position>& positions,
     const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds,
     std::vector<ECS::EntityID>& toDestroy) {
+    
     
     for (const auto& [projEntity, projPosPtr] : positions) {
         auto* projTeam = m_world.GetComponent<rtype::common::components::Team>(projEntity);
@@ -431,21 +415,23 @@ void GameState::checkPlayerProjectilesVsEnemiesCollision(
                 sf::FloatRect enemyBounds = getBounds(enemyEntity, *enemyPosPtr);
                 
                 if (projBounds.intersects(enemyBounds)) {
-                    // Damage enemy
+                    // COLLISION DETECTED - apply damage immediately for instant feedback
                     enemyHealth->currentHp -= projData->damage;
                     
                     if (enemyHealth->currentHp <= 0) {
                         enemyHealth->isAlive = false;
-                        toDestroy.push_back(enemyEntity);
+                        toDestroy.push_back(enemyEntity); // Destroy enemy immediately (prediction)
                     }
                     
-                    // Check if projectile is piercing
-                    if (!projData->piercing) {
-                        // Normal projectile - destroy after first hit
+                    // Handle projectile destruction based on piercing
+                    if (projData->piercing) {
+                        // Piercing projectile continues through enemies
+                        continue;
+                    } else {
+                        // Non-piercing projectile - ALWAYS destroy locally to prevent piercing through
                         toDestroy.push_back(projEntity);
-                        break; // Projectile destroyed, stop checking
+                        break; // Stop checking collisions - projectile is destroyed
                     }
-                    // Piercing projectile continues through enemies
                 }
             }
         }
@@ -534,6 +520,18 @@ void GameState::updateCollisionSystem() {
             } else if (m_soundManager.has(AudioFactory::SfxId::EnemyDeath)) {
                 // Regular enemy death
                 m_soundManager.play(AudioFactory::SfxId::EnemyDeath);
+            }
+        }
+
+        // Clean up server entity mapping if this was a server-owned entity
+        // Find and remove the reverse mapping (serverId → entityId)
+        for (auto it = m_serverEntityMap.begin(); it != m_serverEntityMap.end(); ) {
+            if (it->second == entity) {
+                std::cout << "[GameState] Cleaning up server mapping for locally destroyed entity: clientId=" << entity << " serverId=" << it->first << std::endl;
+                it = m_serverEntityMap.erase(it);
+                break;
+            } else {
+                ++it;
             }
         }
 

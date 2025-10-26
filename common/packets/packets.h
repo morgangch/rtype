@@ -23,6 +23,17 @@ enum Packets {
     JOIN_ROOM_ACCEPTED = 3,
     GAME_START_REQUEST = 4,
     ROOM_ADMIN_UPDATE = 5,
+    PLAYER_JOIN = 6,
+    PLAYER_STATE = 7,
+    ENTITY_DESTROY = 8,
+    PLAYER_INPUT = 9,
+    PLAYER_READY = 10,
+    LOBBY_STATE = 11,
+    GAME_START = 12,
+    PLAYER_SHOOT = 13,
+    SPAWN_PROJECTILE = 14,
+    SPAWN_ENEMY = 15,
+    SPAWN_BOSS_REQUEST = 16,
 };
 
 
@@ -42,10 +53,12 @@ struct JoinRoomPacket {
  * Server → Client
  * @param roomCode The ID of the room the player joined
  * @param admin If the user is an admin, the value is true.
+ * @param playerServerId The server-side entity ID for this player
  */
 struct JoinRoomAcceptedPacket {
     uint32_t roomCode;
     bool admin;
+    uint32_t playerServerId; // NEW: server entity ID for this player
 };
 
 /**
@@ -53,6 +66,13 @@ struct JoinRoomAcceptedPacket {
  * Client → Server
  */
 struct GameStartRequestPacket {
+};
+
+/**
+ * When the game is starting for all players in a room
+ * Server → All clients in room
+ */
+struct GameStartPacket {
 };
 
 /**
@@ -95,10 +115,28 @@ struct PlayerInputPacket {
     bool moveRight;
 };
 
-// Player → Server: Player shoot
+// Client → Server: Player shoot
 struct PlayerShootPacket {
+    bool isCharged; // true if it's a charged shot, false for regular
+    float playerX;  // Player's X position at time of shooting
+    float playerY;  // Player's Y position at time of shooting
+};
+
+// Server → All: Spawn a projectile
+struct SpawnProjectilePacket {
+    uint32_t projectileId;  // Server entity ID
+    uint32_t ownerId;       // Player who shot it
+    float x, y;             // Spawn position
+    float vx, vy;           // Velocity
+    uint16_t damage;
+    bool piercing;
+    bool isCharged;         // true if charged shot, false for normal
+};
+
+// Player → Server: Player shoot (OLD - keeping for compatibility)
+struct OldPlayerShootPacket {
     uint32_t playerId;
-    uint16_t weaponType; // type d'arme (1 = tir simple, 2 = tir chargé)
+    uint16_t weaponType; // weapon type (1 = simple shot, 2 = charged shot)
 };
 
 // Server → All: Update player state
@@ -113,7 +151,7 @@ struct PlayerStatePacket {
 // Server → All: Spawn a new enemy
 struct SpawnEnemyPacket {
     uint32_t enemyId;
-    uint16_t enemyType; // type de monstre
+    uint16_t enemyType; // enemy type
     float x, y;
     uint16_t hp;
 };
@@ -146,6 +184,22 @@ struct MissileStatePacket {
 struct EntityDestroyPacket {
     uint32_t entityId;
     uint16_t reason; // 0 = out of bounds, 1 = killed, 2 = disconnected
+};
+
+// Client → Server: Player toggles ready state in lobby
+struct PlayerReadyPacket {
+    bool isReady;
+};
+
+// Server → All: Update lobby state (player count, ready count)
+struct LobbyStatePacket {
+    uint32_t totalPlayers;
+    uint32_t readyPlayers;
+};
+
+// Client → Server: Admin requests boss spawn (B key pressed)
+struct SpawnBossRequestPacket {
+    // Empty packet - admin identity verified by server through connection
 };
 
 #endif //PACKETS_H

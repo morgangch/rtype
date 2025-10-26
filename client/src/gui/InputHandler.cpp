@@ -15,7 +15,8 @@
 
 #include "gui/GameState.h"
 #include "gui/MainMenuState.h"
-#include "gui/AudioFactory.h"
+#include "network/senders.h"
+#include <iostream>
 
 namespace rtype::client::gui {
 
@@ -134,25 +135,25 @@ void GameState::handleKeyPressed(sf::Keyboard::Key key) {
                     chargedShot->startCharge();
                 }
             }
-        }
-    } else {
-        // Handle non-configurable keys
-        switch (key) {
-            // DEBUG: Spawn boss with B key
-            case sf::Keyboard::B:
-                if (!isBossActive()) {
-                    createBoss(SCREEN_WIDTH - 100.0f, SCREEN_HEIGHT * 0.5f);
-                }
-                break;
-            
-            // Pause/Menu key
-            case sf::Keyboard::Escape:
-                showInGameMenu(false); // Pause game
-                break;
-            
-            default:
-                break;
-        }
+            break;
+        
+        // Admin-only: Spawn boss with B key
+        case sf::Keyboard::B:
+            if (m_isAdmin) {
+                std::cout << "CLIENT: Admin requesting boss spawn (B key pressed)" << std::endl;
+                rtype::client::network::senders::send_spawn_boss_request();
+            } else {
+                std::cout << "CLIENT: Non-admin player cannot spawn boss (B key ignored)" << std::endl;
+            }
+            break;
+        
+        // Pause/Menu key
+        case sf::Keyboard::Escape:
+            showInGameMenu(false); // Pause game
+            break;
+        
+        default:
+            break;
     }
 }
 
@@ -175,32 +176,38 @@ void GameState::handleKeyReleased(sf::Keyboard::Key key) {
         m_keyRight = false;
     } else if (key == shootKey) {
         // Fire key - Release charged shot
-        m_keyFire = false;
-        // Fire charged shot if applicable
-        auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
-        if (players) {
-            for (auto& [entity, playerPtr] : *players) {
-                auto* chargedShot = m_world.GetComponent<rtype::common::components::ChargedShot>(entity);
-                auto* pos = m_world.GetComponent<rtype::common::components::Position>(entity);
-                auto* fireRate = m_world.GetComponent<rtype::common::components::FireRate>(entity);
-                
-                if (chargedShot && pos && fireRate && chargedShot->isCharging) {
-                    // Release charge and get if it was fully charged
-                    bool wasFullyCharged = chargedShot->release();
-                    
-                    if (fireRate->canFire()) {
-                        // Fire appropriate projectile type
-                        if (wasFullyCharged) {
-                            createChargedProjectile(pos->x + 32.0f, pos->y);
-                            // Play charged shoot sound if available
-                            if (m_soundManager.has(AudioFactory::SfxId::ChargedShoot)) {
-                                m_soundManager.play(AudioFactory::SfxId::ChargedShoot);
-                            }
-                        } else {
-                            createPlayerProjectile(pos->x + 32.0f, pos->y);
-                            // Play regular shoot sound if available
-                            if (m_soundManager.has(AudioFactory::SfxId::Shoot)) {
-                                m_soundManager.play(AudioFactory::SfxId::Shoot);
+        case sf::Keyboard::Space:
+            m_keyFire = false;
+            // Fire charged shot if applicable
+            {
+                auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
+                if (players) {
+                    for (auto& [entity, playerPtr] : *players) {
+                        auto* chargedShot = m_world.GetComponent<rtype::common::components::ChargedShot>(entity);
+                        auto* pos = m_world.GetComponent<rtype::common::components::Position>(entity);
+                        auto* fireRate = m_world.GetComponent<rtype::common::components::FireRate>(entity);
+                        
+                        if (chargedShot && pos && fireRate && chargedShot->isCharging) {
+                            // Release charge and get if it was fully charged
+                            bool wasFullyCharged = chargedShot->release();
+                            
+                            if (fireRate->canFire()) {
+                                // Send shoot request to server with charged state and current position
+                                rtype::client::network::senders::send_player_shoot(wasFullyCharged, pos->x, pos->y);
+                                
+                                // Play appropriate sound for immediate feedback
+                                if (wasFullyCharged) {
+                                    // Play charged shoot sound if available
+                                    if (m_soundManager.has(AudioFactory::SfxId::ChargedShoot)) {
+                                        m_soundManager.play(AudioFactory::SfxId::ChargedShoot);
+                                    }
+                                } else {
+                                    // Play regular shoot sound if available
+                                    if (m_soundManager.has(AudioFactory::SfxId::Shoot)) {
+                                        m_soundManager.play(AudioFactory::SfxId::Shoot);
+                                    }
+                                }
+                                fireRate->shoot();
                             }
                         }
                         fireRate->shoot();
