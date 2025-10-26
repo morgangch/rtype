@@ -327,14 +327,7 @@ namespace rtype::client::gui {
 
     void MainMenuState::setParallaxThemeFromLevel(int levelIndex) {
         if (!m_parallaxSystem) return;
-
-        if (levelIndex <= 0) {
-            m_parallaxSystem->setTheme(ParallaxSystem::Theme::SpaceDefault, true);
-        } else if (levelIndex == 1) {
-            m_parallaxSystem->setTheme(ParallaxSystem::Theme::HallwayLevel2, true);
-        } else {
-            m_parallaxSystem->setTheme(ParallaxSystem::Theme::SpaceDefault, true);
-        }
+        m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(levelIndex), true);
     }
     
     void MainMenuState::onPublicServersClick() {

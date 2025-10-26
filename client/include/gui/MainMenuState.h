@@ -101,7 +101,7 @@ namespace rtype::client::gui {
          * @return Const reference to the username string
          */
         const std::string& getUsername() const { return username; }
-        
+
         /**
          * @brief Set the parallax theme according to a level index
          * @param levelIndex 0 = level1 (space default), 1 = level2 (hallway), ...
@@ -148,7 +148,7 @@ namespace rtype::client::gui {
          * Parallax background system shown behind the menu
          * Lazily created so we can size it to the actual window.
          */
-        std::unique_ptr<class ParallaxSystem> m_parallaxSystem;
+        std::unique_ptr<ParallaxSystem> m_parallaxSystem;
         bool m_parallaxInitialized{false};
 
         /**

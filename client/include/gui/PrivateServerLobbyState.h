@@ -181,7 +181,7 @@ namespace rtype::client::gui {
          */
         void updateActionButton();
 
-    public:
+    private:
         /**
          * @name Parallax background (lazy-initialized)
          *

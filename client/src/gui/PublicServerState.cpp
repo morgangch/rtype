@@ -195,12 +195,9 @@ namespace rtype::client::gui {
         );
         // Select theme from current GameState if available
         if (g_gameState) {
-            auto lvl = g_gameState->getLevelIndex();
-            if (lvl <= 0) m_parallaxSystem->setTheme(ParallaxSystem::Theme::SpaceDefault, true);
-            else if (lvl == 1) m_parallaxSystem->setTheme(ParallaxSystem::Theme::HallwayLevel2, true);
-            else m_parallaxSystem->setTheme(ParallaxSystem::Theme::SpaceDefault, true);
+            m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(g_gameState->getLevelIndex()), true);
         } else {
-            m_parallaxSystem->setTheme(ParallaxSystem::Theme::SpaceDefault, true);
+            m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(0), true);
         }
         m_overlay.setSize(sf::Vector2f(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y)));
         m_parallaxInitialized = true;
