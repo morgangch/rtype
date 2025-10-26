@@ -12,7 +12,7 @@
 #include "services/PlayerService.h"
 #include "rtype.h"
 #include "packetmanager.h"
-#include "../../../common/components/EnemyType.h"
+#include <common/components/EnemyType.h>
 #include <iostream>
 #include <cmath>
 #include <algorithm>

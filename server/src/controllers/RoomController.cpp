@@ -15,13 +15,13 @@
 #include "ECS/Types.h"
 #include "services/PlayerService.h"
 #include "services/RoomService.h"
-#include "../../../common/components/Player.h"
-#include "../../../common/components/Velocity.h"
-#include "../../../common/components/Position.h"
-#include "../../../common/components/Team.h"
-#include "../../../common/components/Projectile.h"
-#include "../../../common/components/Health.h"
-#include "../../../common/components/EnemyType.h"
+#include <common/components/Player.h>
+#include <common/components/Velocity.h>
+#include <common/components/Position.h>
+#include <common/components/Team.h>
+#include <common/components/Projectile.h>
+#include <common/components/Health.h>
+#include <common/components/EnemyType.h>
 #include <iostream>
 #include <cstring>
 #include <cmath>
@@ -35,7 +35,7 @@
     #include <arpa/inet.h>
 #endif
 
-#include "../../common/utils/bytes_printer.h"
+#include <common/utils/bytes_printer.h>
 
 using namespace rtype::server::controllers;
 using namespace rtype::server::services;
