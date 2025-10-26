@@ -14,6 +14,8 @@
 #include <ctime>
 #include <cmath>
 #include <algorithm>
+#include <cmath>
+#include <algorithm>
 
 namespace rtype::client::gui {
 
@@ -74,9 +76,45 @@ void ParallaxSystem::transitionToTheme(Theme theme, float duration) {
     m_themeTransitionTimer = 0.0f;
     // If target is hallway, prepare its final parameters
     if (theme == Theme::HallwayLevel2) initializeHallwayTheme();
+
+    // Prepare a fixed row of red lights used by the hallway theme (evenly spaced)
+    m_fixedRedLights.clear();
+    float spacing = m_screenWidth / static_cast<float>(m_lightCount);
+    // place the flashing red lights slightly higher above the center stripe
+    float y = m_screenHeight * 0.38f;
+    for (int i = 0; i < m_lightCount; i++) {
+        m_fixedRedLights.emplace_back(spacing * (i + 0.5f), y);
+    }
+    m_themeBlend = 0.0f;
+
+    // Initialize small corridor panels used in hallway theme
+    initializeHallwayPanels();
+}
+
+void ParallaxSystem::setTheme(Theme theme, bool immediate) {
+    if (immediate) {
+        m_currentTheme = theme;
+        m_targetTheme = theme;
+        m_themeTransitionTimer = 0.0f;
+        m_themeTransitionDuration = 0.0f;
+        m_themeBlend = (theme == Theme::HallwayLevel2) ? 1.0f : 0.0f;
+        if (theme == Theme::HallwayLevel2) initializeHallwayTheme();
+        else reset();
+    } else {
+        transitionToTheme(theme, 1.0f);
+    }
+}
+
+void ParallaxSystem::transitionToTheme(Theme theme, float duration) {
+    m_targetTheme = theme;
+    m_themeTransitionDuration = std::max(0.0001f, duration);
+    m_themeTransitionTimer = 0.0f;
+    // If target is hallway, prepare its final parameters
+    if (theme == Theme::HallwayLevel2) initializeHallwayTheme();
 }
 
 void ParallaxSystem::update(float deltaTime) {
+    m_themeElapsed += deltaTime;
     m_themeElapsed += deltaTime;
     updateStarLayer(m_farStars, deltaTime);
     updateStarLayer(m_mediumStars, deltaTime);
@@ -120,12 +158,6 @@ void ParallaxSystem::update(float deltaTime) {
             m_themeTransitionDuration = 0.0f;
         }
     }
-}
-
-ParallaxSystem::Theme ParallaxSystem::themeFromLevel(int levelIndex) {
-    if (levelIndex <= 0) return Theme::SpaceDefault;
-    if (levelIndex == 1) return Theme::HallwayLevel2;
-    return Theme::SpaceDefault;
 }
 
 void ParallaxSystem::initializeHallwayPanels() {
@@ -249,12 +281,100 @@ void ParallaxSystem::render(sf::RenderWindow& window) {
     if (m_themeBlend > 0.01f) {
         renderPanelLayer(window, m_themeBlend);
     }
+    // Corridor panels sit at the same visual level as the background
+    if (m_themeBlend > 0.01f) {
+        renderPanelLayer(window, m_themeBlend);
+    }
     
     // 2. Render star layers (back to front)
     renderStarLayer(window, m_farStars);
     renderStarLayer(window, m_mediumStars);
     renderStarLayer(window, m_nearStars);
     
+    // If hallway is active (blend > 0) draw center stripe and fixed red lights
+    if (m_themeBlend > 0.001f) {
+        // stripe with opacity based on blend
+        sf::RectangleShape stripe(sf::Vector2f(m_screenWidth, m_hallwayStripeHeight));
+        stripe.setPosition(0.0f, (m_screenHeight - m_hallwayStripeHeight) * 0.5f);
+        stripe.setFillColor(sf::Color(10, 10, 10, static_cast<sf::Uint8>(200.0f * m_themeBlend)));
+        window.draw(stripe);
+
+        // fixed red lights: size and alpha modulated by blend and a sin to flash
+        for (size_t i = 0; i < m_fixedRedLights.size(); i++) {
+        // Apply horizontal offset to lights so they move left; wrap across screen
+        auto base = m_fixedRedLights[i];
+        float lx = base.x + m_lightOffsetX;
+        if (lx < 0.0f) lx += m_screenWidth;
+        if (lx >= m_screenWidth) lx -= m_screenWidth;
+        auto p = sf::Vector2f(lx, base.y);
+            float baseRadius = 10.0f; // larger red light base radius
+            float phase = static_cast<float>(i) / static_cast<float>(m_fixedRedLights.size());
+            float alpha = 140.0f + 80.0f * std::sin(m_themeElapsed * 6.0f + phase * 6.28318f);
+            alpha = std::clamp(alpha, 0.0f, 255.0f);
+            sf::CircleShape light(baseRadius);
+            light.setOrigin(baseRadius, baseRadius);
+            light.setPosition(p);
+            light.setFillColor(sf::Color(220, 30, 30, static_cast<sf::Uint8>(alpha * m_themeBlend)));
+                // Draw soft glow behind the light to increase perceived size
+                sf::CircleShape glow(baseRadius * 2.2f);
+                glow.setOrigin(glow.getRadius(), glow.getRadius());
+                glow.setPosition(p);
+                // glow alpha depends on theme blend and base alpha
+                float glowAlpha = std::clamp(alpha * 0.5f * m_themeBlend, 0.0f, 255.0f);
+                glow.setFillColor(sf::Color(220, 40, 40, static_cast<sf::Uint8>(glowAlpha)));
+                window.draw(glow);
+                window.draw(light);
+        }
+    }
+
+    // 3. Render space debris (apply scale based on theme blend)
+    if (m_themeBlend > 0.001f) {
+        // when hallway active, debris are larger — interpolate size
+        float scale = 1.0f + (m_hallwayDebrisScale - 1.0f) * m_themeBlend;
+        for (const auto& debris : m_debris) {
+            sf::Vector2f size = debris.size * scale;
+            sf::RectangleShape debrisShape(size);
+            debrisShape.setOrigin(size.x * 0.5f, size.y * 0.5f);
+            debrisShape.setPosition(debris.position);
+            debrisShape.setRotation(debris.rotation);
+            debrisShape.setFillColor(debris.color);
+            // glow
+            sf::RectangleShape glow(sf::Vector2f(size.x + 4.0f, size.y + 4.0f));
+            glow.setOrigin((size.x + 4.0f) * 0.5f, (size.y + 4.0f) * 0.5f);
+            glow.setPosition(debris.position);
+            glow.setRotation(debris.rotation);
+            glow.setFillColor(sf::Color(debris.color.r, debris.color.g, debris.color.b, static_cast<sf::Uint8>(30.0f * m_themeBlend)));
+            window.draw(glow);
+            window.draw(debrisShape);
+        }
+    } else {
+        renderDebris(window);
+    }
+
+    
+}
+
+void ParallaxSystem::initializeHallwayTheme() {
+    // Darker, greyer background for hallway
+    m_backgroundGradient[0].color = sf::Color(40, 40, 40);
+    m_backgroundGradient[1].color = sf::Color(40, 40, 40);
+    m_backgroundGradient[2].color = sf::Color(12, 12, 12);
+    m_backgroundGradient[3].color = sf::Color(12, 12, 12);
+
+    // Narrow/fewer stars (dimmer)
+    initializeStarLayer(m_farStars, 30, 10.0f, 0.3f, 1.0f, sf::Color(100, 100, 100, 80));
+    initializeStarLayer(m_mediumStars, 20, 20.0f, 0.6f, 1.5f, sf::Color(120, 120, 120, 120));
+    initializeStarLayer(m_nearStars, 8, 40.0f, 1.0f, 2.0f, sf::Color(160, 160, 160, 160));
+
+    // Enlarge debris base size to create larger foreground pieces
+    for (auto& debris : m_debris) {
+        debris.size.x *= m_hallwayDebrisScale;
+        debris.size.y *= m_hallwayDebrisScale;
+    }
+}
+
+void ParallaxSystem::blendThemes(float t) {
+    (void)t;
     // If hallway is active (blend > 0) draw center stripe and fixed red lights
     if (m_themeBlend > 0.001f) {
         // stripe with opacity based on blend
@@ -365,6 +485,16 @@ void ParallaxSystem::reset() {
     // Reset corridor scroll offsets
     m_panelOffsetX = 0.0f;
     m_lightOffsetX = 0.0f;
+
+    // Reset theme to default space look
+    m_currentTheme = Theme::SpaceDefault;
+    m_targetTheme = Theme::SpaceDefault;
+    m_themeBlend = 0.0f;
+    m_themeTransitionDuration = 0.0f;
+    m_themeTransitionTimer = 0.0f;
+    // Reset corridor scroll offsets
+    m_panelOffsetX = 0.0f;
+    m_lightOffsetX = 0.0f;
 }
 
 void ParallaxSystem::initializeGradientBackground() {
@@ -450,6 +580,12 @@ void ParallaxSystem::updateStarLayer(ParallaxLayer& layer, float deltaTime) {
 }
 
 void ParallaxSystem::renderStarLayer(sf::RenderWindow& window, const ParallaxLayer& layer) {
+    for (size_t i = 0; i < layer.positions.size(); i++) {
+        float radius = std::max(1.0f, layer.sizes[i]);
+        sf::CircleShape star(radius);
+        // Use integer positions to reduce sub-pixel jitter
+        sf::Vector2f pos(std::floor(layer.positions[i].x + 0.5f), std::floor(layer.positions[i].y + 0.5f));
+        star.setPosition(pos);
     for (size_t i = 0; i < layer.positions.size(); i++) {
         float radius = std::max(1.0f, layer.sizes[i]);
         sf::CircleShape star(radius);

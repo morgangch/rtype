@@ -551,6 +551,7 @@ void GameState::updateBossMusicState() {
     if (bossAlive && !m_bossMusicActive) {
         // Start boss music
         const std::string bossMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::BossFight1);
+        const std::string bossMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::BossFight1);
         if (m_musicManager.loadFromFile(bossMusic)) {
             m_musicManager.setVolume(35.0f);
             m_musicManager.play(true);
@@ -559,6 +560,8 @@ void GameState::updateBossMusicState() {
             std::cerr << "GameState: could not load boss music: " << bossMusic << std::endl;
         }
     } else if (!bossAlive && m_bossMusicActive) {
+        // Boss died: advance level (plays test music and swaps background)
+        advanceLevel();
         // Boss died: advance level (plays test music and swaps background)
         advanceLevel();
         m_bossMusicActive = false;
@@ -573,8 +576,6 @@ void GameState::advanceLevel() {
     if (m_levelIndex >= 3) {
         std::cout << "[GameState] Final level cleared. Returning to main menu." << std::endl;
         m_musicManager.stop();
-        // Persist last level index for menu parallax
-        m_stateManager.setLastLevelIndex(m_levelIndex);
         m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
         return;
     }
