@@ -84,6 +84,8 @@ void PacketManager::handlePacketBytes(const uint8_t *data, size_t size, sockaddr
 // Add safer version of sendPacketBytes that returns smart pointer
 std::unique_ptr<uint8_t[]> PacketManager::sendPacketBytesSafe(const void *data, size_t data_size, uint8_t packet_type,
                                                               size_t *output_size, bool important) {
+    std::lock_guard<std::mutex> lock(_send_mutex);
+
     packet_header_t header;
     std::unique_ptr<packet_t> packet = std::make_unique<packet_t>();
 
@@ -146,6 +148,9 @@ std::unique_ptr<packet_t> PacketManager::deserializePacketSafe(const uint8_t *da
 }
 
 void PacketManager::clean() {
+    std::lock_guard<std::mutex> send_lock(_send_mutex);
+    std::lock_guard<std::mutex> recv_lock(_recv_mutex);
+
     // Clean up history data before clearing
     for (auto &packet: _history_sent) {
         if (packet.data) {
@@ -179,6 +184,11 @@ void PacketManager::clean() {
 }
 
 void PacketManager::ackMissing() {
+    std::lock_guard<std::mutex> send_lock(_send_mutex);
+    std::lock_guard<std::mutex> recv_lock(_recv_mutex);
+    std::lock_guard<std::mutex> missing_lock(_missed_mutex );
+
+
     packet_header_t header;
     packet_t packet;
     header.seqid = 0;
@@ -198,6 +208,9 @@ void PacketManager::ackMissing() {
 
 
 bool PacketManager::_resendPacket(uint32_t seqid) {
+    std::lock_guard<std::mutex> history_lock(_history_mutex);
+    std::lock_guard<std::mutex> missing_lock(_missed_mutex );
+    std::lock_guard<std::mutex> send_lock(_send_mutex);
     for (const packet_t &packet: _history_sent) {
         if (packet.header.seqid == seqid) {
             // Create a proper deep copy of the packet for retransmission
@@ -221,6 +234,9 @@ bool PacketManager::_resendPacket(uint32_t seqid) {
 
 
 void PacketManager::_handlePacket(std::unique_ptr<packet_t> packet) {
+    std::lock_guard<std::mutex> recv_lock(_recv_mutex);
+    std::lock_guard<std::mutex> missing_lock(_missed_mutex );
+
     // Check if this is an ACK packet, handle it separately
     if (packet->header.ack != 0) {
         _resendPacket(packet->header.ack);
@@ -254,12 +270,17 @@ void PacketManager::_handlePacket(std::unique_ptr<packet_t> packet) {
 }
 
 std::vector<std::unique_ptr<packet_t> > PacketManager::fetchReceivedPackets() {
+    std::lock_guard<std::mutex> recv_lock(_recv_mutex);
+
     std::vector<std::unique_ptr<packet_t> > tmp = std::move(_buffer_received);
     _buffer_received.clear();
     return tmp;
 }
 
 std::vector<std::unique_ptr<packet_t> > PacketManager::fetchPacketsToSend() {
+    std::lock_guard<std::mutex> send_lock(_send_mutex);
+    std::lock_guard<std::mutex> history_lock(_history_mutex);
+
     std::vector<std::unique_ptr<packet_t> > tmp = std::move(_buffer_send);
     _buffer_send.clear();
 
