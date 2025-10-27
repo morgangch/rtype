@@ -23,6 +23,8 @@
 
 #include "gui/PublicServerState.h"
 #include "gui/MainMenuState.h"
+#include "gui/ParallaxSystem.h"
+#include "gui/GameState.h"
 #include <iostream>
 #include <cstdlib>
 #include <string>
@@ -30,9 +32,12 @@
 #include "network/network.h"
 
 namespace rtype::client::gui {
+    PublicServerState::~PublicServerState() = default;
+
     PublicServerState::PublicServerState(StateManager& stateManager, const std::string& username)
         : stateManager(stateManager), username(username), isReady(false), playersReady(0) {
         setupUI();
+        m_overlay.setFillColor(sf::Color(0,0,0,150));
     }
     
     void PublicServerState::setupUI() {
@@ -151,13 +156,24 @@ namespace rtype::client::gui {
     }
     
     void PublicServerState::update(float deltaTime) {
-        // Update logic here if needed
-        // For example, network updates to get real player count
+        // Update parallax if present
+        if (m_parallaxSystem) {
+            m_parallaxSystem->update(deltaTime);
+        }
     }
     
     void PublicServerState::render(sf::RenderWindow& window) {
         // Update layout if needed
         updateLayout(window.getSize());
+        // Ensure parallax exists and is sized to window
+        ensureParallaxInitialized(window);
+
+        if (m_parallaxSystem) {
+            m_parallaxSystem->render(window);
+        }
+
+        // Draw overlay
+        window.draw(m_overlay);
         
         // Render players ready text
         window.draw(playersReadyText);
@@ -169,6 +185,22 @@ namespace rtype::client::gui {
         // Render return button
         window.draw(returnButtonRect);
         window.draw(returnButton);
+    }
+
+    void PublicServerState::ensureParallaxInitialized(const sf::RenderWindow& window) {
+        if (m_parallaxInitialized) return;
+        m_parallaxSystem = std::make_unique<ParallaxSystem>(
+            static_cast<float>(window.getSize().x),
+            static_cast<float>(window.getSize().y)
+        );
+        // Select theme from current GameState if available
+        if (g_gameState) {
+            m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(g_gameState->getLevelIndex()), true);
+        } else {
+            m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(0), true);
+        }
+        m_overlay.setSize(sf::Vector2f(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y)));
+        m_parallaxInitialized = true;
     }
     
     void PublicServerState::toggleReady() {

@@ -126,6 +126,11 @@ namespace rtype::client::gui {
          */
         void onExit() override;
 
+    /**
+     * @brief Get current level index (0 = level1, 1 = level2, ...)
+     */
+    int getLevelIndex() const;
+
         /* === Network-aware helpers (used by packet handlers) === */
         /**
          * @brief Create or update an enemy entity based on server spawn packet

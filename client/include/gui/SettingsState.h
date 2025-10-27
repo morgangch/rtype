@@ -18,6 +18,8 @@
 #include "StateManager.h"
 #include "SettingsConfig.h"
 #include <SFML/Graphics.hpp>
+#include "ParallaxSystem.h"
+#include <memory>
 #include <string>
 
 namespace rtype::client::gui {
@@ -80,6 +82,13 @@ public:
      */
     void onExit() override;
 
+    /**
+     * @brief Destroy the SettingsState
+     *
+     * Defined in the .cpp to avoid unique_ptr instantiation issues.
+     */
+    ~SettingsState();
+
 private:
     // State management
     StateManager& stateManager;         ///< Reference to state manager for transitions
@@ -124,6 +133,29 @@ private:
     sf::Text ipPortTitleText;                   ///< "Network Settings" section title
     sf::Text ipLabelText;                       ///< "IP Address:" label
     sf::Text portLabelText;                     ///< "Port:" label
+    /**
+     * @name Parallax background (lazy-initialized)
+     *
+     * The settings screen displays the same multi-layer parallax background
+     * used throughout the UI so visual context is consistent. The parallax
+     * system is allocated on-demand so it can be sized to the active render
+     * window. A semi-transparent black overlay (`m_overlay`) is drawn over
+     * the parallax to improve contrast for text and controls.
+     *
+     * The destructor for this class is defined in the .cpp to ensure the
+     * `std::unique_ptr<ParallaxSystem>` is destroyed where `ParallaxSystem`
+     * is a complete type.
+     * @{ */
+    std::unique_ptr<ParallaxSystem> m_parallaxSystem; ///< Owned parallax system (created lazily)
+    bool m_parallaxInitialized{false};                 ///< True after creation and sizing
+    sf::RectangleShape m_overlay;                      ///< Semi-transparent overlay drawn above parallax
+
+    /**
+     * @brief Ensure the parallax system exists and is sized to the provided window.
+     * @param window Render window used to size/create the parallax system
+     */
+    void ensureParallaxInitialized(const sf::RenderWindow& window);
+    /** @} */
 };
 
 } // namespace rtype::client::gui
