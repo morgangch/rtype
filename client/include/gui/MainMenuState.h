@@ -125,6 +125,12 @@ namespace rtype::client::gui {
     sf::RectangleShape publicButtonRect;   ///< Public servers button clickable area
     sf::RectangleShape privateButtonRect;  ///< Private servers button clickable area
     sf::RectangleShape settingsButtonRect; ///< Clickable area for settings button
+    // Settings gear sprite resources
+    sf::Texture settingsTexture;       ///< Texture for settings gear
+    sf::Sprite settingsSprite;         ///< Sprite for settings gear
+    bool settingsSpriteLoaded{false};  ///< True if gear texture loaded
+    float settingsRotation{0.0f};      ///< Current rotation angle for gear
+    bool settingsHovered{false};       ///< Hover state for gear
         
         // Input State
         std::string username;           ///< Current username input

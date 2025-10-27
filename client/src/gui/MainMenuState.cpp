@@ -18,6 +18,7 @@
 #include "gui/ParallaxSystem.h"
 #include "gui/AudioFactory.h"
 #include "gui/SettingsState.h"
+#include "gui/AssetPaths.h"
 #include <iostream>
 #include <cstdlib>
 
@@ -60,9 +61,22 @@ namespace rtype::client::gui {
         GUIHelper::setupButton(publicServersButton, publicButtonRect, "Public", GUIHelper::Sizes::BUTTON_FONT_SIZE);
         GUIHelper::setupButton(privateServersButton, privateButtonRect, "Private", GUIHelper::Sizes::BUTTON_FONT_SIZE);
 
-        // Settings button setup
-        GUIHelper::setupButton(settingsButtonText, settingsButtonRect, "Settings", 20.0f);
-        settingsButtonRect.setFillColor(GUIHelper::Colors::BUTTON_NORMAL);
+        // Settings button replaced by sprite; keep rect for positioning/click zone
+        // Load settings gear sprite
+        settingsSpriteLoaded = settingsTexture.loadFromFile(rtype::client::assets::ui::SETTINGS_GEAR);
+        if (settingsSpriteLoaded) {
+            settingsTexture.setSmooth(true);
+            settingsSprite.setTexture(settingsTexture);
+            // Center origin for clean rotation
+            sf::Vector2u sz = settingsTexture.getSize();
+            settingsSprite.setOrigin(static_cast<float>(sz.x) * 0.5f, static_cast<float>(sz.y) * 0.5f);
+            settingsRotation = 0.0f;
+            settingsHovered = false;
+        } else {
+            // Fallback: show legacy text button if texture missing
+            GUIHelper::setupButton(settingsButtonText, settingsButtonRect, "Settings", 20.0f);
+            settingsButtonRect.setFillColor(GUIHelper::Colors::BUTTON_NORMAL);
+        }
     }
     
     void MainMenuState::onEnter() {
@@ -128,16 +142,29 @@ namespace rtype::client::gui {
                   privateButtonRect.getPosition().x + buttonWidth / 2,
                   privateButtonRect.getPosition().y + buttonHeight / 2);
 
-        // Settings button positioning (top, more to the left)
-        float settingsWidth = 170.0f;
-        float settingsHeight = 60.0f;
-        float settingsX = 20.0f;
-        float settingsY = 20.0f;
+    // Settings button positioning (top-left).
+    float settingsWidth = 140.0f;
+    float settingsHeight = 90.0f;
+    float settingsX = 2.0f;
+    float settingsY = 12.0f;
         settingsButtonRect.setSize(sf::Vector2f(settingsWidth, settingsHeight));
         settingsButtonRect.setPosition(settingsX, settingsY);
-        GUIHelper::centerText(settingsButtonText,
-            settingsButtonRect.getPosition().x + settingsWidth / 2,
-            settingsButtonRect.getPosition().y + settingsHeight / 2);
+        if (settingsSpriteLoaded) {
+            // Scale sprite to fit height of the button rect
+            sf::Vector2u texSize = settingsTexture.getSize();
+            if (texSize.y != 0) {
+                float scale = settingsHeight * 1.2f / static_cast<float>(texSize.y);
+                settingsSprite.setScale(scale, scale);
+            }
+            // Center in the rect
+            sf::Vector2f center(settingsButtonRect.getPosition().x + settingsWidth * 0.5f,
+                                settingsButtonRect.getPosition().y + settingsHeight * 0.5f);
+            settingsSprite.setPosition(center);
+        } else {
+            GUIHelper::centerText(settingsButtonText,
+                settingsButtonRect.getPosition().x + settingsWidth / 2,
+                settingsButtonRect.getPosition().y + settingsHeight / 2);
+        }
 
     // Update overlay size to current window
     m_overlay.setSize(sf::Vector2f(static_cast<float>(windowSize.x), static_cast<float>(windowSize.y)));
@@ -226,10 +253,15 @@ namespace rtype::client::gui {
                                   GUIHelper::isPointInRect(mousePos, privateButtonRect),
                                   GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
 
-        // Settings button hover
-        GUIHelper::applyButtonHover(settingsButtonRect, settingsButtonText,
-                                  GUIHelper::isPointInRect(mousePos, settingsButtonRect),
-                                  GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
+        // Settings hover: detect over rect; spin handled in update()
+        if (settingsSpriteLoaded) {
+            settingsHovered = GUIHelper::isPointInRect(mousePos, settingsButtonRect);
+        } else {
+            // Fallback hover effect for text button
+            GUIHelper::applyButtonHover(settingsButtonRect, settingsButtonText,
+                                      GUIHelper::isPointInRect(mousePos, settingsButtonRect),
+                                      GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
+        }
     }
     
     void MainMenuState::handleKeyPressEvent(const sf::Event& event) {
@@ -260,6 +292,15 @@ namespace rtype::client::gui {
         // Ensure text stays positioned correctly
         sf::FloatRect boxBounds = usernameBox.getGlobalBounds();
         usernameText.setPosition(boxBounds.left + 10, boxBounds.top + 15);
+
+        // Spin gear on hover
+        if (settingsSpriteLoaded && settingsHovered) {
+            settingsRotation += 360.0f * deltaTime;
+            if (settingsRotation >= 360.0f) settingsRotation -= 360.0f;
+            settingsSprite.setRotation(settingsRotation);
+        } else if (settingsSpriteLoaded && !settingsHovered && settingsRotation != 0.0f) {
+            // Optional: gently ease back to 0 if needed; for now, keep last angle
+        }
 
         // Update parallax system if created
         if (m_parallaxSystem) {
@@ -299,9 +340,13 @@ namespace rtype::client::gui {
         window.draw(privateButtonRect);
         window.draw(privateServersButton);
 
-        // Render settings button
-        window.draw(settingsButtonRect);
-        window.draw(settingsButtonText);
+        // Render settings as sprite (fallback to text if needed)
+        if (settingsSpriteLoaded) {
+            window.draw(settingsSprite);
+        } else {
+            window.draw(settingsButtonRect);
+            window.draw(settingsButtonText);
+        }
 
         // Debug mode indicator
         sf::Text debugText;

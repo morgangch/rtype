@@ -73,6 +73,13 @@ namespace rtype::client::assets {
         constexpr const char* DEFAULT_MAP = "assets/maps/default.def";
     }
 
+    /**
+     * @brief UI icon paths
+     */
+    namespace ui {
+        constexpr const char* SETTINGS_GEAR = "assets/sprites/Settings/MetalGear.png";
+    }
+
 } // namespace rtype::client::assets
 
 #endif // CLIENT_ASSET_PATHS_H
