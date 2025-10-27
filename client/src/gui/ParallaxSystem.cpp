@@ -160,6 +160,12 @@ void ParallaxSystem::update(float deltaTime) {
     }
 }
 
+ParallaxSystem::Theme ParallaxSystem::themeFromLevel(int levelIndex) {
+    if (levelIndex <= 0) return Theme::SpaceDefault;
+    if (levelIndex == 1) return Theme::HallwayLevel2;
+    return Theme::SpaceDefault;
+}
+
 void ParallaxSystem::initializeHallwayPanels() {
     m_panelPositions.clear();
     m_panelDamaged.clear();
