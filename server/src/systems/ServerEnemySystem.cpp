@@ -143,8 +143,8 @@ void ServerEnemySystem::updateEnemySpawning(ECS::World& world, float deltaTime) 
         switch (_phase) {
             case EnemySpawnPhase::OnlyBasic:
                 // TO DO: change basic enemy type
-                spawnAllowed = (type == rtype::common::components::EnemyType::Basic);
-                //spawnAllowed = (type == rtype::common::components::EnemyType::Snake);
+                //spawnAllowed = (type == rtype::common::components::EnemyType::Basic);
+                spawnAllowed = (type == rtype::common::components::EnemyType::Snake);
                 //spawnAllowed = (type == rtype::common::components::EnemyType::Suicide);
                 //spawnAllowed = (type == rtype::common::components::EnemyType::Turret);
                 break;
@@ -282,7 +282,7 @@ void ServerEnemySystem::spawnEnemy(ECS::World& world, ECS::EntityID room, rtype:
             break;
         case rtype::common::components::EnemyType::Snake:
             // TO DO: set stats for Snake
-            hp = 2; vx = -110.0f;
+            hp = 1; vx = -110.0f;
             break;
         case rtype::common::components::EnemyType::Suicide:
             // TO DO: set stats for Suicide

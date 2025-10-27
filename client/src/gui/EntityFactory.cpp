@@ -113,6 +113,41 @@ ECS::EntityID GameState::createEnemy(float x, float y) {
     return entity;
 }
 
+ECS::EntityID GameState::createSnakeEnemy(float x, float y) {
+    auto entity = m_world.CreateEntity();
+    
+    // Position
+    m_world.AddComponent<rtype::common::components::Position>(
+        entity, x, y, 0.0f);
+    
+    // Velocity - Moves left at 120 px/s, vertical oscillation
+    m_world.AddComponent<rtype::common::components::Velocity>(
+        entity, -120.0f, 0.0f, 120.0f);
+    
+    // Health - 1 HP (dies in one hit)
+    m_world.AddComponent<rtype::common::components::Health>(entity, 1);
+    
+    // TODO: Replace with a unique snake enemy sprite and animation
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BASIC_ENEMY_2);
+    m_world.AddComponent<rtype::client::components::Sprite>(
+        entity,
+        rtype::client::assets::enemies::BASIC_ENEMY_2,
+        sf::Vector2f(33.0f, 36.0f),
+        true,
+        sf::IntRect(0, 0, 33, 36),  // First frame
+        2.5f);  // Scale 2.5x
+    
+    // Team - Enemy team
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Enemy);
+    
+    // EnemyType - Snake enemy (moves in sine wave)
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
+        entity, rtype::common::components::EnemyType::Snake);
+    
+    return entity;
+}
+
 ECS::EntityID GameState::createShooterEnemy(float x, float y) {
     auto entity = m_world.CreateEntity();
     
@@ -127,12 +162,12 @@ ECS::EntityID GameState::createShooterEnemy(float x, float y) {
     // Health - 2 HP (more resistant)
     m_world.AddComponent<rtype::common::components::Health>(entity, 2);
     
-    // Sprite - Shooter enemy with texture (first frame from BASICENEMY_2)
+    // Sprite - Shooter enemy with texture (first frame from ADVANCED_ENEMY_1)
     // Preload shooter enemy sprite
-    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BASIC_ENEMY_2);
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::ADVANCED_ENEMY_1);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        rtype::client::assets::enemies::BASIC_ENEMY_2,
+        rtype::client::assets::enemies::ADVANCED_ENEMY_1,
         sf::Vector2f(33.0f, 36.0f),
         true,
         sf::IntRect(0, 0, 33, 36),  // First frame
@@ -157,7 +192,7 @@ ECS::EntityID GameState::createShooterEnemy(float x, float y) {
     return entity;
 }
 
-ECS::EntityID GameState::createBoss(float x, float y) {
+ECS::EntityID GameState::createTankDestroyer(float x, float y) {
     auto entity = m_world.CreateEntity();
     
     // Position
@@ -172,12 +207,12 @@ ECS::EntityID GameState::createBoss(float x, float y) {
     // Health - 20 HP (BOSS - very tough!)
     m_world.AddComponent<rtype::common::components::Health>(entity, 20);
     
-    // Sprite - Boss enemy with texture (first frame from BASICENEMY_4)
+    // Sprite - Boss enemy with texture (first frame from BOSS_ENEMY_1)
     // Preload boss sprite
-    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BASIC_ENEMY_4);
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BOSS_ENEMY_1);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        rtype::client::assets::enemies::BASIC_ENEMY_4,
+        rtype::client::assets::enemies::BOSS_ENEMY_1,
         sf::Vector2f(33.0f, 36.0f),
         true,
         sf::IntRect(0, 0, 33, 36),  // First frame

@@ -39,6 +39,13 @@ void EnemyAISystem::Update(ECS::World& world, float deltaTime) {
     } else if (enemyType && enemyType->type == rtype::common::components::EnemyType::Shooter) {
             handleShooterShooting(pos->x, pos->y, playerX, playerY, playerFound, world);
             fireRate->shoot();
+    } else if (enemyType && enemyType->type == rtype::common::components::EnemyType::Snake) {
+            handleSnakeShooting(pos->x, pos->y, playerX, playerY, playerFound, world);
+            fireRate->shoot();
+    } else if (enemyType && enemyType->type == rtype::common::components::EnemyType::Suicide) {
+            // to do
+            //handleSuicideShooting(pos->x, pos->y, playerX, playerY, playerFound, world);
+            //fireRate->shoot();
         } else {
             m_createProjectile(pos->x, pos->y, -300.0f, 0.0f, world);
             fireRate->shoot();
@@ -75,6 +82,12 @@ void EnemyAISystem::handleShooterShooting(float x, float y, float targetX, float
     float vx = (dx / distance) * PROJECTILE_SPEED;
     float vy = (dy / distance) * PROJECTILE_SPEED;
     m_createProjectile(x, y, vx, vy, world);
+}
+
+void EnemyAISystem::handleSnakeShooting(float x, float y, float targetX, float targetY, bool hasTarget, ECS::World& world) {
+    // Snake enemy shoots straight left
+    const float PROJECTILE_SPEED = 250.0f;
+    m_createProjectile(x, y, -PROJECTILE_SPEED, 0.0f, world);
 }
 
 void EnemyAISystem::Initialize(ECS::World& world) {}

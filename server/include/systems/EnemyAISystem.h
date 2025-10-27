@@ -81,10 +81,22 @@ private:
     void handleTankDestroyerShooting(float x, float y, float targetX, float targetY, bool hasTarget, ECS::World& world);
 
     /**
-     * @brief Handles shooter (advanced enemy) enemy aiming
+     * @brief Handles shooter (advanced) enemy aiming
      * Shoots a projectile aimed at the player.
      */
     void handleShooterShooting(float x, float y, float targetX, float targetY, bool hasTarget, ECS::World& world);
+
+    /**
+     * @brief Handles snake (basic) enemy shooting pattern (if applicable)
+     * Shoots a projectile in a zigzag pattern.
+     */
+    void handleSnakeShooting(float x, float y, float targetX, float targetY, bool hasTarget, ECS::World& world);
+
+    /**
+     * @brief Handles suicide (basic) enemy behavior.
+     * Follow the player and explode on contact.
+     */
+    void handleSuicideShooting(float x, float y, float targetX, float targetY, bool hasTarget, ECS::World& world);
 };
 }
 

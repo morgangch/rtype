@@ -54,10 +54,13 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
     
     switch (type) {
         case rtype::common::components::EnemyType::TankDestroyer:  // Boss enemy
-            e = createBoss(x, y);            
+            e = createTankDestroyer(x, y);          
             break;
         case rtype::common::components::EnemyType::Shooter:
             e = createShooterEnemy(x, y);
+            break;
+        case rtype::common::components::EnemyType::Snake:
+            e = createSnakeEnemy(x, y);
             break;
         case rtype::common::components::EnemyType::Basic:
         default:

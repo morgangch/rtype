@@ -36,10 +36,10 @@ namespace rtype::client::assets {
      * @brief Enemy sprite paths
      */
     namespace enemies {
-        constexpr const char* BASIC_ENEMY_1 = "assets/sprites/BasicEnemy/BASICENEMY_1.gif";
-        constexpr const char* BASIC_ENEMY_2 = "assets/sprites/BasicEnemy/BASICENEMY_2.gif";
-        constexpr const char* BASIC_ENEMY_3 = "assets/sprites/BasicEnemy/BASICENEMY_3.gif";
-        constexpr const char* BASIC_ENEMY_4 = "assets/sprites/BasicEnemy/BASICENEMY_4.gif";
+        constexpr const char* BASIC_ENEMY_1 = "assets/sprites/BasicEnemy/BASIC_ENEMY_1.gif";
+        constexpr const char* BASIC_ENEMY_2 = "assets/sprites/BasicEnemy/BASIC_ENEMY_2.gif";
+        constexpr const char* ADVANCED_ENEMY_1 = "assets/sprites/BasicEnemy/ADVANCED_ENEMY_1.gif";
+        constexpr const char* BOSS_ENEMY_1 = "assets/sprites/BasicEnemy/BOSS_ENEMY_1.gif";
     }
 
     /**
