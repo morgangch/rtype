@@ -23,13 +23,19 @@
 #include "gui/PrivateServerState.h"
 #include "gui/PrivateServerLobbyState.h"
 #include "gui/MainMenuState.h"
+#include "gui/ParallaxSystem.h"
+#include "gui/GameState.h"
 #include <iostream>
 #include "network/network.h"
 
 namespace rtype::client::gui {
+    PrivateServerState::~PrivateServerState() = default;
+
     PrivateServerState::PrivateServerState(StateManager& stateManager, const std::string& username)
         : stateManager(stateManager), username(username), isTyping(false), cursorTimer(0.0f), showCursor(true) {
+        config.load(); // Load settings for network configuration
         setupUI();
+        m_overlay.setFillColor(sf::Color(0,0,0,150));
     }
     
     void PrivateServerState::setupUI() {
@@ -225,11 +231,18 @@ namespace rtype::client::gui {
         // Ensure text stays positioned correctly
         sf::FloatRect boxBounds = serverCodeBox.getGlobalBounds();
         serverCodeText.setPosition(boxBounds.left + 10, boxBounds.top + 15);
+        // Update parallax
+        if (m_parallaxSystem) {
+            m_parallaxSystem->update(deltaTime);
+        }
     }
     
     void PrivateServerState::render(sf::RenderWindow& window) {
         // Update layout if needed
         updateLayout(window.getSize());
+        ensureParallaxInitialized(window);
+        if (m_parallaxSystem) m_parallaxSystem->render(window);
+        window.draw(m_overlay);
         
         // Render title
         window.draw(titleText);
@@ -258,7 +271,12 @@ namespace rtype::client::gui {
             // Convert server code to room ID (assuming server code maps to room ID)
             uint32_t roomId = static_cast<uint32_t>(std::stoi(serverCode));
 
-            rtype::client::network::start_room_connection(DEV_SERVER_IP, DEV_SERVER_PORT, username, roomId);
+            // Use network settings from config
+            std::string serverIp = config.getIP();
+            int serverPort = getValidatedPort();
+            
+            std::cout << "Connecting to " << serverIp << ":" << serverPort << std::endl;
+            rtype::client::network::start_room_connection(serverIp, serverPort, username, roomId);
 
         } else {
             std::cout << "Invalid server code. Please enter a 4-digit number between 1000-9999." << std::endl;
@@ -266,13 +284,49 @@ namespace rtype::client::gui {
     }
     
     void PrivateServerState::createServer() {
-        rtype::client::network::start_room_connection(DEV_SERVER_IP, DEV_SERVER_PORT, username, 0);
+        std::string serverIp = config.getIP();
+        int serverPort = getValidatedPort();
+        
+        std::cout << "Creating server, connecting to " << serverIp << ":" << serverPort << std::endl;
+        rtype::client::network::start_room_connection(serverIp, serverPort, username, 0);
+    }
+    
+    int PrivateServerState::getValidatedPort() {
+        try {
+            int port = std::stoi(config.getPort());
+            // Validate port range (1-65535). Port 0 is reserved and invalid for TCP/UDP.
+            if (port < 1 || port > 65535) {
+                std::cerr << "[PrivateServerState] Invalid port number in config (" << port 
+                          << "). Valid range is 1-65535. Using default port 4242." << std::endl;
+                return 4242;
+            }
+            return port;
+        } catch (const std::exception& e) {
+            std::cerr << "[PrivateServerState] Failed to parse port from config: " << e.what() 
+                      << ". Using default port 4242." << std::endl;
+            return 4242;
+        }
     }
     
     void PrivateServerState::onExit() {
         std::cout << "Exiting Private Server state" << std::endl;
         // Note: We don't disconnect here because we might be transitioning to the lobby
         // The lobby will manage the connection
+    }
+
+    void PrivateServerState::ensureParallaxInitialized(const sf::RenderWindow& window) {
+        if (m_parallaxInitialized) return;
+        m_parallaxSystem = std::make_unique<ParallaxSystem>(
+            static_cast<float>(window.getSize().x),
+            static_cast<float>(window.getSize().y)
+        );
+        if (g_gameState) {
+            m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(g_gameState->getLevelIndex()), true);
+        } else {
+            m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(0), true);
+        }
+        m_overlay.setSize(sf::Vector2f(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y)));
+        m_parallaxInitialized = true;
     }
     
 }

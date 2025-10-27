@@ -10,11 +10,11 @@
 #include <string>
 #include <cstring>
 //TODO: optimize the following import.
-#include "../../../common/components/Player.h"
-#include "../../../common/components/Position.h"
-#include "../../../common/components/Velocity.h"
-#include "../../../common/components/Health.h"
-#include "../../../common/components/Team.h"
+#include <common/components/Player.h>
+#include <common/components/Position.h>
+#include <common/components/Velocity.h>
+#include <common/components/Health.h>
+#include <common/components/Team.h>
 #include "components/PlayerConn.h"
 #include "controllers/RoomController.h"
 #include "packets.h"

@@ -15,15 +15,21 @@
 #include "gui/PublicServerState.h"
 #include "gui/PrivateServerState.h"
 #include "gui/GameState.h"
+#include "gui/ParallaxSystem.h"
 #include "gui/AudioFactory.h"
+#include "gui/SettingsState.h"
 #include <iostream>
 #include <cstdlib>
 
 namespace rtype::client::gui {
     
+    MainMenuState::~MainMenuState() = default;
+
     MainMenuState::MainMenuState(StateManager& stateManager)
         : stateManager(stateManager), isTyping(false), cursorTimer(0.0f), showCursor(true) {
         setupUI();
+        // Prepare overlay default color; size will be set in updateLayout/ensureParallaxInitialized
+        m_overlay.setFillColor(sf::Color(0, 0, 0, 150));
     }
     
     void MainMenuState::setupUI() {
@@ -53,6 +59,10 @@ namespace rtype::client::gui {
         // Button setup using GUIHelper
         GUIHelper::setupButton(publicServersButton, publicButtonRect, "Public", GUIHelper::Sizes::BUTTON_FONT_SIZE);
         GUIHelper::setupButton(privateServersButton, privateButtonRect, "Private", GUIHelper::Sizes::BUTTON_FONT_SIZE);
+
+        // Settings button setup
+        GUIHelper::setupButton(settingsButtonText, settingsButtonRect, "Settings", 20.0f);
+        settingsButtonRect.setFillColor(GUIHelper::Colors::BUTTON_NORMAL);
     }
     
     void MainMenuState::onEnter() {
@@ -108,6 +118,20 @@ namespace rtype::client::gui {
         GUIHelper::centerText(privateServersButton,
                   privateButtonRect.getPosition().x + buttonWidth / 2,
                   privateButtonRect.getPosition().y + buttonHeight / 2);
+
+        // Settings button positioning (top, more to the left)
+        float settingsWidth = 170.0f;
+        float settingsHeight = 60.0f;
+        float settingsX = 20.0f;
+        float settingsY = 20.0f;
+        settingsButtonRect.setSize(sf::Vector2f(settingsWidth, settingsHeight));
+        settingsButtonRect.setPosition(settingsX, settingsY);
+        GUIHelper::centerText(settingsButtonText,
+            settingsButtonRect.getPosition().x + settingsWidth / 2,
+            settingsButtonRect.getPosition().y + settingsHeight / 2);
+
+    // Update overlay size to current window
+    m_overlay.setSize(sf::Vector2f(static_cast<float>(windowSize.x), static_cast<float>(windowSize.y)));
     }
     
     void MainMenuState::handleEvent(const sf::Event& event) {
@@ -153,6 +177,10 @@ namespace rtype::client::gui {
             else if (GUIHelper::isPointInRect(mousePos, privateButtonRect)) {
                 onPrivateServersClick();
             }
+            // Check settings button
+            else if (GUIHelper::isPointInRect(mousePos, settingsButtonRect)) {
+                stateManager.changeState(std::make_unique<SettingsState>(stateManager));
+            }
             // Click outside - stop typing
             else {
                 isTyping = false;
@@ -175,7 +203,7 @@ namespace rtype::client::gui {
             }
         }
     }
-    
+
     void MainMenuState::handleMouseMoveEvent(const sf::Event& event) {
         sf::Vector2f mousePos(event.mouseMove.x, event.mouseMove.y);
         
@@ -187,6 +215,11 @@ namespace rtype::client::gui {
         // Private button hover
         GUIHelper::applyButtonHover(privateButtonRect, privateServersButton, 
                                   GUIHelper::isPointInRect(mousePos, privateButtonRect),
+                                  GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
+
+        // Settings button hover
+        GUIHelper::applyButtonHover(settingsButtonRect, settingsButtonText,
+                                  GUIHelper::isPointInRect(mousePos, settingsButtonRect),
                                   GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
     }
     
@@ -218,12 +251,28 @@ namespace rtype::client::gui {
         // Ensure text stays positioned correctly
         sf::FloatRect boxBounds = usernameBox.getGlobalBounds();
         usernameText.setPosition(boxBounds.left + 10, boxBounds.top + 15);
+
+        // Update parallax system if created
+        if (m_parallaxSystem) {
+            m_parallaxSystem->update(deltaTime);
+        }
     }
     
     void MainMenuState::render(sf::RenderWindow& window) {
         // Update layout if needed
         updateLayout(window.getSize());
-        
+
+        // Ensure parallax exists and sized to window
+        ensureParallaxInitialized(window);
+
+        // Render parallax background behind UI
+        if (m_parallaxSystem) {
+            m_parallaxSystem->render(window);
+        }
+
+        // Draw a semi-transparent overlay to keep UI readable
+        window.draw(m_overlay);
+
         // Render title
         window.draw(titleText);
         
@@ -240,7 +289,11 @@ namespace rtype::client::gui {
         window.draw(publicServersButton);
         window.draw(privateButtonRect);
         window.draw(privateServersButton);
-        
+
+        // Render settings button
+        window.draw(settingsButtonRect);
+        window.draw(settingsButtonText);
+
         // Debug mode indicator
         sf::Text debugText;
         debugText.setFont(GUIHelper::getFont());
@@ -249,6 +302,32 @@ namespace rtype::client::gui {
         debugText.setFillColor(sf::Color(100, 100, 100, 200));
         debugText.setPosition(10.0f, window.getSize().y - 30.0f);
         window.draw(debugText);
+    }
+
+    void MainMenuState::ensureParallaxInitialized(const sf::RenderWindow& window) {
+        if (m_parallaxInitialized) return;
+
+        m_parallaxSystem = std::make_unique<ParallaxSystem>(
+            static_cast<float>(window.getSize().x),
+            static_cast<float>(window.getSize().y)
+        );
+
+        // If a GameState exists, pick a theme consistent with the current level
+        if (g_gameState) {
+            setParallaxThemeFromLevel(g_gameState->getLevelIndex());
+        } else {
+            m_parallaxSystem->setTheme(ParallaxSystem::Theme::SpaceDefault, true);
+        }
+
+        // Ensure overlay sized to window as well
+        m_overlay.setSize(sf::Vector2f(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y)));
+
+        m_parallaxInitialized = true;
+    }
+
+    void MainMenuState::setParallaxThemeFromLevel(int levelIndex) {
+        if (!m_parallaxSystem) return;
+        m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(levelIndex), true);
     }
     
     void MainMenuState::onPublicServersClick() {

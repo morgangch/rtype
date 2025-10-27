@@ -16,6 +16,7 @@
 #include "State.h"
 #include "StateManager.h"
 #include "ParallaxSystem.h"
+#include "SettingsConfig.h"
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 #include <ECS/ECS.h>
@@ -28,9 +29,8 @@
 #include <common/components/Player.h>
 #include <common/components/FireRate.h>
 #include <common/components/EnemyType.h>
-#include <common/systems/ChargedShot.h>
-#include <client/components/Sprite.h>
-#include <client/components/Animation.h>
+#include <common/systems/ChargedShotSystem.h>
+#include <client/components/Components.h>
 #include <vector>
 #include <functional>
 #include "MusicManager.h"
@@ -125,6 +125,11 @@ namespace rtype::client::gui {
          * @brief Called when this state is exited
          */
         void onExit() override;
+
+    /**
+     * @brief Get current level index (0 = level1, 1 = level2, ...)
+     */
+    int getLevelIndex() const;
 
         /* === Network-aware helpers (used by packet handlers) === */
         /**
@@ -496,6 +501,13 @@ namespace rtype::client::gui {
         void updateBossMusicState();
 
         /**
+         * @brief Advance to the next level after boss death
+         *
+         * Switches between all music, paralax and assets depending on the level.
+         */
+        void advanceLevel();
+
+        /**
          * @brief Load level background music
          *
          * Initializes and starts playing the level music track.
@@ -547,6 +559,15 @@ namespace rtype::client::gui {
         /* === Rendering === */
         /// Parallax background system for scrolling layers
         ParallaxSystem m_parallaxSystem;
+
+        /* === Settings Configuration === */
+        /// Settings configuration manager for keybinds and network settings
+        SettingsConfig m_config;
+
+        /// Current level index (0 = level1, 1 = level2, 2 = level3, 3 = main menu/finished game)
+        int m_levelIndex{0};
+        /// If true, render a plain white background instead of parallax (TEMP testing)
+        bool m_forceWhiteBackground{false};
 
         /* === Game Constants === */
         /// Interval in seconds between enemy projectile shots

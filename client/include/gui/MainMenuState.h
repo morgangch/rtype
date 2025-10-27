@@ -16,10 +16,12 @@
 #include "State.h"
 #include "StateManager.h"
 #include "GUIHelper.h"
+#include "ParallaxSystem.h"
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <functional>
 #include "MusicManager.h"
+#include <memory>
 
 namespace rtype::client::gui {
     
@@ -56,6 +58,15 @@ namespace rtype::client::gui {
          * @param stateManager Reference to the state manager for transitions
          */
         MainMenuState(StateManager& stateManager);
+
+        /**
+         * @brief Destroy the MainMenuState
+         *
+         * Defined out-of-line in the .cpp to avoid requiring the full
+         * definition of ParallaxSystem in translation units that only
+         * forward-declare MainMenuState (fixes unique_ptr destructor error).
+         */
+        ~MainMenuState();
         
         /**
          * @brief Handle input events (mouse clicks, text input, window resize)
@@ -90,22 +101,30 @@ namespace rtype::client::gui {
          * @return Const reference to the username string
          */
         const std::string& getUsername() const { return username; }
+
+        /**
+         * @brief Set the parallax theme according to a level index
+         * @param levelIndex 0 = level1 (space default), 1 = level2 (hallway), ...
+         */
+        void setParallaxThemeFromLevel(int levelIndex);
         
     private:
         StateManager& stateManager;     ///< Reference to state manager for transitions
         MusicManager m_musicManager;    ///< Local music manager for menu music
         
-        // UI Text Elements
-        sf::Text titleText;             ///< "THE TOP R-TYPE" title
-        sf::Text usernameText;          ///< User-entered username display
-        sf::Text usernameHintText;      ///< Placeholder text for username field
-        sf::Text publicServersButton;  ///< "Public servers" button text
-        sf::Text privateServersButton; ///< "Private servers" button text
-        
-        // UI Visual Elements
-        sf::RectangleShape usernameBox;     ///< Input field background
-        sf::RectangleShape publicButtonRect;   ///< Public servers button clickable area
-        sf::RectangleShape privateButtonRect;  ///< Private servers button clickable area
+    // UI Text Elements
+    sf::Text titleText;             ///< "THE TOP R-TYPE" title
+    sf::Text usernameText;          ///< User-entered username display
+    sf::Text usernameHintText;      ///< Placeholder text for username field
+    sf::Text publicServersButton;   ///< "Public servers" button text
+    sf::Text privateServersButton;  ///< "Private servers" button text
+    sf::Text settingsButtonText;    ///< "Settings" button text
+
+    // UI Visual Elements
+    sf::RectangleShape usernameBox;     ///< Input field background
+    sf::RectangleShape publicButtonRect;   ///< Public servers button clickable area
+    sf::RectangleShape privateButtonRect;  ///< Private servers button clickable area
+    sf::RectangleShape settingsButtonRect; ///< Clickable area for settings button
         
         // Input State
         std::string username;           ///< Current username input
@@ -124,6 +143,24 @@ namespace rtype::client::gui {
          * @param windowSize Current window dimensions
          */
         void updateLayout(const sf::Vector2u& windowSize);
+
+        /**
+         * Parallax background system shown behind the menu
+         * Lazily created so we can size it to the actual window.
+         */
+        std::unique_ptr<ParallaxSystem> m_parallaxSystem;
+        bool m_parallaxInitialized{false};
+
+        /**
+         * Semi-transparent overlay drawn on top of the parallax to
+         * keep menu UI readable.
+         */
+        sf::RectangleShape m_overlay;
+
+        /**
+         * Ensure the parallax system exists and is sized to the provided window.
+         */
+        void ensureParallaxInitialized(const sf::RenderWindow& window);
         
         // Event handling methods
         /**
