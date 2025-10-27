@@ -87,6 +87,15 @@ namespace rtype::client::gui {
         };
 
         /**
+         * @brief Map a game level index to a Parallax theme.
+         *
+         * Centralizes the mapping logic so callers don't duplicate it.
+         * @param levelIndex 0 = level1 (SpaceDefault), 1 = level2 (HallwayLevel2), ...
+         * @return Theme mapped theme for the given level index
+         */
+        static Theme themeFromLevel(int levelIndex);
+
+        /**
          * @brief Immediately set the current theme or schedule a transition
          * @param theme Target theme
          * @param immediate If true apply immediately, otherwise start a transition

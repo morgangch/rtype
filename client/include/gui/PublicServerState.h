@@ -24,6 +24,8 @@
 #include "State.h"
 #include "StateManager.h"
 #include "GUIHelper.h"
+#include "ParallaxSystem.h"
+#include <memory>
 #include <SFML/Graphics.hpp>
 #include <string>
 
@@ -93,6 +95,15 @@ namespace rtype::client::gui {
          * Disconnects from the public server
          */
         void onExit() override;
+
+        /**
+         * @brief Destroy the PublicServerState
+         *
+         * Destructor defined in the .cpp to avoid instantiating unique_ptr
+         * destructor in translation units where ParallaxSystem may be
+         * incomplete.
+         */
+        ~PublicServerState();
         
     private:
         // Core references and configuration
@@ -111,6 +122,29 @@ namespace rtype::client::gui {
         // Matchmaking State Management
         bool isReady;                   ///< Current ready state of this player
         int playersReady;               ///< Total number of players marked as ready
+
+        /**
+         * @name Parallax background (lazy-initialized)
+         *
+         * The public server lobby shows a parallax background matching the
+         * current game level. The parallax system is created on-demand so it can
+         * be sized to the active render window. A semi-transparent black overlay
+         * (`m_overlay`) is drawn on top of the parallax to keep the UI readable.
+         *
+         * The destructor for this class is defined in the .cpp so the
+         * `std::unique_ptr<ParallaxSystem>` is destroyed in a translation unit
+         * where `ParallaxSystem` is a complete type.
+         * @{ */
+        std::unique_ptr<ParallaxSystem> m_parallaxSystem; ///< Owned parallax system (lazy)
+        bool m_parallaxInitialized{false};                 ///< True after creation & sizing
+        sf::RectangleShape m_overlay;                      ///< Semi-transparent overlay for readability
+
+        /**
+         * @brief Ensure the parallax system exists and is sized to the provided window.
+         * @param window Render window used to size/create the parallax
+         */
+        void ensureParallaxInitialized(const sf::RenderWindow& window);
+        /** @} */
         
         // UI Management Methods
         /**

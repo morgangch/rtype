@@ -24,6 +24,8 @@
 #include "State.h"
 #include "StateManager.h"
 #include "GUIHelper.h"
+#include "ParallaxSystem.h"
+#include <memory>
 #include <SFML/Graphics.hpp>
 #include <string>
 
@@ -96,6 +98,14 @@ namespace rtype::client::gui {
          * Logs lobby entry and player information
          */
         void onEnter() override;
+
+        /**
+         * @brief Destroy the PrivateServerLobbyState
+         *
+         * Destructor defined in the .cpp so unique_ptr<ParallaxSystem>
+         * is destroyed where ParallaxSystem is a complete type.
+         */
+        ~PrivateServerLobbyState();
         
     private:
         // Core references and configuration
@@ -170,6 +180,30 @@ namespace rtype::client::gui {
          * Changes button to "Start Game" for admin players
          */
         void updateActionButton();
+
+    private:
+        /**
+         * @name Parallax background (lazy-initialized)
+         *
+         * Multi-theme parallax background shown behind the lobby UI. The
+         * system is created lazily so it can be sized to the active render
+         * window. A semi-transparent black overlay (m_overlay) is drawn on
+         * top of the parallax to keep text and buttons readable.
+         *
+         * Note: the class destructor is defined out-of-line in the .cpp so
+         * the std::unique_ptr<ParallaxSystem> destructor is instantiated in a
+         * translation unit where ParallaxSystem is a complete type.
+         * @{ */
+        std::unique_ptr<ParallaxSystem> m_parallaxSystem; ///< Owned parallax system (created on demand)
+        bool m_parallaxInitialized{false};                 ///< True after creation & sizing
+        sf::RectangleShape m_overlay;                      ///< Semi-transparent overlay to improve contrast
+
+        /**
+         * @brief Ensure the parallax system exists and is sized to the provided window.
+         * @param window Render window used to size/create the parallax
+         */
+        void ensureParallaxInitialized(const sf::RenderWindow& window);
+        /** @} */
         
     public:
         /**

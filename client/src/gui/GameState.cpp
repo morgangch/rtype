@@ -232,6 +232,10 @@ GameState::~GameState() {
     if (g_gameState == this) g_gameState = nullptr;
 }
 
+int GameState::getLevelIndex() const {
+    return m_levelIndex;
+}
+
 void GameState::loadHUDTextures() {
     if (m_texturesLoaded) return;
 
@@ -387,6 +391,9 @@ void GameState::resetGame() {
     // Reset flags
     m_isGameOver = false;
     m_gameStatus = GameStatus::Playing;
+
+    // Clear boss music/flag so a prior boss state doesn't trigger level advance
+    m_bossMusicActive = false;
 
     // Ensure level background music is playing after a reset
     loadLevelMusic();

@@ -24,6 +24,8 @@
 #include "StateManager.h"
 #include "GUIHelper.h"
 #include "SettingsConfig.h"
+#include "ParallaxSystem.h"
+#include <memory>
 #include <SFML/Graphics.hpp>
 #include <string>
 
@@ -96,6 +98,14 @@ namespace rtype::client::gui {
          * Performs cleanup (note: doesn't disconnect as we might be transitioning to lobby)
          */
         void onExit() override;
+
+        /**
+         * @brief Destroy the PrivateServerState
+         *
+         * Destructor defined in the .cpp so unique_ptr destructor is instantiated
+         * where ParallaxSystem is complete.
+         */
+        ~PrivateServerState();
         
     private:
         // Core references and configuration
@@ -187,6 +197,30 @@ namespace rtype::client::gui {
          * if parsing fails or value is out of valid range.
          */
         int getValidatedPort();
+
+        /**
+         * @name Parallax background (lazy-initialized)
+         *
+         * The menu displays a multi-layer parallax background matching the
+         * current game level. The parallax system is created on-demand so it
+         * can be sized to the active render window. A semi-transparent black
+         * overlay (`m_overlay`) is drawn on top of the parallax to keep the
+         * input fields and buttons readable.
+         *
+         * The destructor for this class is defined in the .cpp so that the
+         * `std::unique_ptr<ParallaxSystem>` is destroyed in a translation
+         * unit where `ParallaxSystem` is a complete type.
+         * @{ */
+        std::unique_ptr<ParallaxSystem> m_parallaxSystem; ///< Owned parallax system (created lazily)
+        bool m_parallaxInitialized{false};                 ///< True after creation and sizing
+        sf::RectangleShape m_overlay;                      ///< Semi-transparent dark overlay for readability
+
+        /**
+         * @brief Ensure the parallax system exists and is sized to the provided window.
+         * @param window Render window used to size/create the parallax system
+         */
+        void ensureParallaxInitialized(const sf::RenderWindow& window);
+        /** @} */
     };
 }
 

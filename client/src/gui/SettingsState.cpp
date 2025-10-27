@@ -22,6 +22,8 @@
 #include "gui/KeyToString.h"
 #include "gui/MainMenuState.h"
 #include "gui/GUIHelper.h"
+#include "gui/ParallaxSystem.h"
+#include "gui/GameState.h"
 #include <memory>
 
 namespace rtype::client::gui {
@@ -177,6 +179,9 @@ void SettingsState::onEnter() {
     GUIHelper::centerText(returnButton,
         returnButtonRect.getPosition().x + returnButtonWidth / 2.0f,
         returnButtonRect.getPosition().y + returnButtonHeight / 2.0f);
+
+    // Overlay default
+    m_overlay.setFillColor(sf::Color(0,0,0,150));
 }
 
 /**
@@ -191,6 +196,23 @@ void SettingsState::onExit() {
     config.setIP(box1Value);
     config.setPort(box2Value);
     config.save();
+}
+
+SettingsState::~SettingsState() = default;
+
+void SettingsState::ensureParallaxInitialized(const sf::RenderWindow& window) {
+    if (m_parallaxInitialized) return;
+    m_parallaxSystem = std::make_unique<ParallaxSystem>(
+        static_cast<float>(window.getSize().x),
+        static_cast<float>(window.getSize().y)
+    );
+    if (g_gameState) {
+        m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(g_gameState->getLevelIndex()), true);
+    } else {
+        m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(0), true);
+    }
+    m_overlay.setSize(sf::Vector2f(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y)));
+    m_parallaxInitialized = true;
 }
 
 /**
@@ -300,6 +322,11 @@ void SettingsState::update(float deltaTime) {
         resetKeybindsRect.setFillColor(sf::Color(60, 60, 60));
     else
         resetKeybindsRect.setFillColor(sf::Color(40, 40, 40));
+
+    // Update parallax
+    if (m_parallaxSystem) {
+        m_parallaxSystem->update(deltaTime);
+    }
 }
 
 /**
@@ -307,6 +334,11 @@ void SettingsState::update(float deltaTime) {
  * @param window The render window to draw to
  */
 void SettingsState::render(sf::RenderWindow& window) {
+    // Ensure parallax and overlay
+    ensureParallaxInitialized(window);
+    if (m_parallaxSystem) m_parallaxSystem->render(window);
+    window.draw(m_overlay);
+
     window.draw(titleText);
 
     // Draw keybinds section
