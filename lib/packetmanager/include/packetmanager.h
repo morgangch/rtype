@@ -14,7 +14,6 @@
 
 #include <vector>
 #include <memory>
-#include <mutex>
 #include "packet.h"
 
 /**
@@ -260,34 +259,6 @@ private:
      * @brief Buffer for packets queued for transmission
      */
     std::vector<std::unique_ptr<packet_t> > _buffer_send;
-
-    /**
-     * @brief Mutex for protecting send-related operations and data
-     *
-     * Protects: _send_seqid, _buffer_send, _history_sent
-     */
-    mutable std::mutex _send_mutex;
-
-    /**
-     * @brief Mutex for protecting receive-related operations and data
-     *
-     * Protects: _recv_seqid, _buffer_received, _missed_packets
-     */
-    mutable std::mutex _recv_mutex;
-
-    /**
-     * @brief Mutex for protecting missed packets list
-     *
-     * Protects: _missed_packets
-     */
-    mutable std::mutex _missed_mutex;
-
-    /**
-     * @brief Mutex for protecting history of sent packets
-     *
-     * Protects: _history_sent
-     */
-    mutable std::mutex _history_mutex;
 
     /**
      * @brief Resends a packet with the specified sequence ID
