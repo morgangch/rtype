@@ -209,7 +209,8 @@ void SettingsState::ensureParallaxInitialized(const sf::RenderWindow& window) {
     if (g_gameState) {
         m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(g_gameState->getLevelIndex()), true);
     } else {
-        m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(0), true);
+        // Fallback to last known level index persisted in StateManager
+        m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(stateManager.getLastLevelIndex()), true);
     }
     m_overlay.setSize(sf::Vector2f(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y)));
     m_parallaxInitialized = true;

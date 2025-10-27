@@ -74,6 +74,15 @@ namespace rtype::client::gui {
         } else {
             std::cerr << "MainMenuState: could not load menu music: " << menuMusic << std::endl;
         }
+
+        // Keep parallax theme in sync when coming back to the menu
+        if (m_parallaxSystem) {
+            if (g_gameState) {
+                setParallaxThemeFromLevel(g_gameState->getLevelIndex());
+            } else {
+                setParallaxThemeFromLevel(stateManager.getLastLevelIndex());
+            }
+        }
     }
 
     void MainMenuState::onExit() {
@@ -316,7 +325,8 @@ namespace rtype::client::gui {
         if (g_gameState) {
             setParallaxThemeFromLevel(g_gameState->getLevelIndex());
         } else {
-            m_parallaxSystem->setTheme(ParallaxSystem::Theme::SpaceDefault, true);
+            // Otherwise use the last persisted level index from the state manager
+            setParallaxThemeFromLevel(stateManager.getLastLevelIndex());
         }
 
         // Ensure overlay sized to window as well

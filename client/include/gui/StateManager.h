@@ -116,9 +116,25 @@ namespace rtype::client::gui {
          */
         bool isEmpty() const;
         
+        /**
+         * @brief Persist the last reached level index
+         * @param index Level index (0 = level1, 1 = level2, ...)
+         *
+         * Allows menu screens to render the appropriate parallax even when
+         * GameState has been destroyed.
+         */
+        void setLastLevelIndex(int index) { m_lastLevelIndex = index; }
+
+        /**
+         * @brief Retrieve the last reached level index
+         * @return Last known level index (defaults to 0)
+         */
+        int getLastLevelIndex() const { return m_lastLevelIndex; }
+        
     private:
         sf::RenderWindow& window;           ///< Reference to the render window
         std::stack<std::unique_ptr<State>> states;  ///< Stack of states (top = active)
+        int m_lastLevelIndex{0};            ///< Persisted last level index for menu parallax
     };
 
     /**
