@@ -24,6 +24,7 @@
 #include "gui/GUIHelper.h"
 #include "gui/ParallaxSystem.h"
 #include "gui/GameState.h"
+#include "gui/Accessibility.h"
 #include <memory>
 
 namespace rtype::client::gui {
@@ -133,6 +134,50 @@ SettingsState::SettingsState(StateManager& stateManager)
     resetKeybindsRect.setFillColor(sf::Color(40, 40, 40));
     resetKeybindsRect.setOutlineColor(sf::Color::White);
     resetKeybindsRect.setOutlineThickness(1.5f);
+
+    // Daltonism modes
+    daltonismModes = {"None", "Protanopia", "Deuteranopia", "Tritanopia", "Achromatopsia"};
+    // Clamp loaded value into range
+    {
+        int loaded = config.getDaltonismMode();
+        if (loaded < 0 || loaded >= static_cast<int>(daltonismModes.size()))
+            loaded = 0;
+        currentDaltonismIndex = loaded;
+    }
+
+    // Apply loaded accessibility mode globally
+    Accessibility::instance().setMode(currentDaltonismIndex);
+
+    // Daltonism UI setup
+    daltonismTitleText.setFont(font);
+    daltonismTitleText.setString("Daltonism Mode");
+    daltonismTitleText.setCharacterSize(32);
+    daltonismTitleText.setFillColor(sf::Color::White);
+
+    daltonismValueText.setFont(font);
+    daltonismValueText.setCharacterSize(24);
+    daltonismValueText.setFillColor(sf::Color(200, 200, 200));
+    daltonismValueText.setString(daltonismModes[currentDaltonismIndex]);
+
+    // "<" button
+    daltonismLeftRect.setSize(sf::Vector2f(40.f, 40.f));
+    daltonismLeftRect.setFillColor(sf::Color(40, 40, 40));
+    daltonismLeftRect.setOutlineColor(sf::Color::White);
+    daltonismLeftRect.setOutlineThickness(2.f);
+    daltonismLeftText.setFont(font);
+    daltonismLeftText.setCharacterSize(24);
+    daltonismLeftText.setString("<");
+    daltonismLeftText.setFillColor(sf::Color::White);
+
+    // ">" button
+    daltonismRightRect.setSize(sf::Vector2f(40.f, 40.f));
+    daltonismRightRect.setFillColor(sf::Color(40, 40, 40));
+    daltonismRightRect.setOutlineColor(sf::Color::White);
+    daltonismRightRect.setOutlineThickness(2.f);
+    daltonismRightText.setFont(font);
+    daltonismRightText.setCharacterSize(24);
+    daltonismRightText.setString(">");
+    daltonismRightText.setFillColor(sf::Color::White);
 }
 
 /**
@@ -143,7 +188,7 @@ void SettingsState::onEnter() {
     float keybindsX = windowWidth / 2.0f - 420.0f;
     float keybindsY = windowHeight / 2.0f - 170.0f;
     float ipportX = windowWidth / 2.0f + 60.0f;
-    float ipportY = windowHeight / 2.0f - 120.0f;
+    float ipportY = windowHeight / 2.0f - 180.0f;
 
     // Settings title (top center)
     titleText.setPosition(windowWidth / 2.0f - titleText.getLocalBounds().width / 2.0f, 40.0f);
@@ -171,6 +216,13 @@ void SettingsState::onEnter() {
     box1Hint.setPosition(box1Rect.getPosition().x + 10.0f, box1Rect.getPosition().y + 15.0f);
     box2Hint.setPosition(box2Rect.getPosition().x + 10.0f, box2Rect.getPosition().y + 15.0f);
 
+    // Daltonism section (below IP/PORT)
+    float daltonismY = ipportY + 300.0f;
+    daltonismTitleText.setPosition(ipportX, daltonismY);
+    // Format: make the mode text itself the button
+    daltonismValueText.setPosition(ipportX, daltonismY + 55.0f);
+    daltonismValueText.setString(daltonismModes[currentDaltonismIndex]);
+
     // Return button (top left)
     float returnButtonWidth = 150.0f;
     float returnButtonHeight = 50.0f;
@@ -195,6 +247,8 @@ void SettingsState::onExit() {
     }
     config.setIP(box1Value);
     config.setPort(box2Value);
+    // Save daltonism mode
+    config.setDaltonismMode(currentDaltonismIndex);
     config.save();
 }
 
@@ -247,8 +301,21 @@ void SettingsState::handleEvent(const sf::Event& event) {
             }
             box1Value = config.getIP();
             box2Value = config.getPort();
+            // Update daltonism
+            int loaded = config.getDaltonismMode();
+            if (loaded < 0 || loaded >= static_cast<int>(daltonismModes.size())) loaded = 0;
+            currentDaltonismIndex = loaded;
+            daltonismValueText.setString(daltonismModes[currentDaltonismIndex]);
+            Accessibility::instance().setMode(currentDaltonismIndex);
             editingKeybind = -1;
             keybindHintText.setString("");
+        }
+
+        // Daltonism: clicking the text cycles through modes
+        if (daltonismValueText.getGlobalBounds().contains(mousePos)) {
+            currentDaltonismIndex = (currentDaltonismIndex + 1) % static_cast<int>(daltonismModes.size());
+            daltonismValueText.setString(daltonismModes[currentDaltonismIndex]);
+            Accessibility::instance().setMode(currentDaltonismIndex);
         }
     }
     if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
@@ -324,6 +391,13 @@ void SettingsState::update(float deltaTime) {
     else
         resetKeybindsRect.setFillColor(sf::Color(40, 40, 40));
 
+    // Hover effect for daltonism text
+    if (daltonismValueText.getGlobalBounds().contains(sf::Vector2f(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y)))) {
+        daltonismValueText.setFillColor(sf::Color::White);
+    } else {
+        daltonismValueText.setFillColor(sf::Color(200,200,200));
+    }
+
     // Update parallax
     if (m_parallaxSystem) {
         m_parallaxSystem->update(deltaTime);
@@ -368,6 +442,27 @@ void SettingsState::render(sf::RenderWindow& window) {
         window.draw(box2Hint);
     else
         window.draw(box2Text);
+
+    // Daltonism
+    window.draw(daltonismTitleText);
+    window.draw(daltonismValueText);
+
+    // Apply colorblind post-process over the whole frame
+    if (Accessibility::instance().isEnabled()) {
+        static sf::Texture screenTexture;
+        sf::Vector2u size = window.getSize();
+        if (screenTexture.getSize() != size) {
+            screenTexture.create(size.x, size.y);
+        }
+        // Capture current frame
+        screenTexture.update(window);
+        sf::Sprite screenSprite(screenTexture);
+        if (auto* shader = Accessibility::instance().getShader()) {
+            sf::RenderStates states;
+            states.shader = shader;
+            window.draw(screenSprite, states);
+        }
+    }
 
     // Draw return button
     window.draw(returnButtonRect);

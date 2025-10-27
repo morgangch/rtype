@@ -21,6 +21,7 @@
 #include "ParallaxSystem.h"
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace rtype::client::gui {
 
@@ -133,6 +134,16 @@ private:
     sf::Text ipPortTitleText;                   ///< "Network Settings" section title
     sf::Text ipLabelText;                       ///< "IP Address:" label
     sf::Text portLabelText;                     ///< "Port:" label
+
+    // Daltonism UI Elements
+    sf::Text daltonismTitleText;                ///< "Daltonism Mode" title
+    sf::Text daltonismValueText;                ///< Current daltonism mode label
+    sf::Text daltonismLeftText;                 ///< "<" button label
+    sf::Text daltonismRightText;                ///< ">" button label
+    sf::RectangleShape daltonismLeftRect;       ///< Clickable area for "<"
+    sf::RectangleShape daltonismRightRect;      ///< Clickable area for ">"
+    std::vector<std::string> daltonismModes;    ///< List of available modes
+    int currentDaltonismIndex{0};               ///< Current selected index
     /**
      * @name Parallax background (lazy-initialized)
      *
