@@ -204,7 +204,7 @@ void room_controller::initializeLobbyState(ECS::EntityID player) {
 // HELPER FUNCTIONS - Projectile Handling
 // ============================================================================
 
-ECS::EntityID room_controller::createServerProjectile(ECS::EntityID room, float x, float y, bool isCharged) {
+ECS::EntityID room_controller::createServerProjectile(float x, float y, bool isCharged) {
     auto projectile = root.world.CreateEntity();
 
     // Projectile starts at given position with offset
