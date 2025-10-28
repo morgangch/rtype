@@ -37,6 +37,8 @@
 
 #include <common/utils/bytes_printer.h>
 
+#include "components/LinkedRoom.h"
+
 using namespace rtype::server::controllers;
 using namespace rtype::server::services;
 
@@ -230,7 +232,7 @@ void room_controller::initializeLobbyState(ECS::EntityID player) {
 // HELPER FUNCTIONS - Projectile Handling
 // ============================================================================
 
-ECS::EntityID room_controller::createServerProjectile(float x, float y, bool isCharged) {
+ECS::EntityID room_controller::createServerProjectile(ECS::EntityID room, float x, float y, bool isCharged) {
     auto projectile = root.world.CreateEntity();
     
     // Projectile starts at given position with offset
@@ -260,7 +262,7 @@ ECS::EntityID room_controller::createServerProjectile(float x, float y, bool isC
     root.world.AddComponent<rtype::common::components::Velocity>(projectile, projectileVx, projectileVy, projectileSpeed);
     root.world.AddComponent<rtype::common::components::Team>(projectile, rtype::common::components::TeamType::Player);
     root.world.AddComponent<rtype::common::components::Projectile>(projectile, damage, piercing, true /* serverOwned */, projectileSpeed, rtype::common::components::ProjectileType::Basic);
-    
+    root.world.AddComponent<rtype::server::components::LinkedRoom>(projectile, room);
     return projectile;
 }
 
@@ -281,8 +283,8 @@ void room_controller::broadcastProjectileSpawn(ECS::EntityID projectile, ECS::En
     spawnPkt.damage = proj->damage;
     spawnPkt.piercing = proj->piercing;
     spawnPkt.isCharged = isCharged;
-
-    auto players_in_room = player_service::findPlayersByRoomCode(room);
+    
+    auto players_in_room = player_service::findPlayersByRoom(room);
     for (auto pid : players_in_room) {
         auto* lobbyState = root.world.GetComponent<rtype::server::components::LobbyState>(pid);
         if (!lobbyState || !lobbyState->isInGame) continue; // Only send to players in-game
@@ -416,7 +418,7 @@ void room_controller::handlePlayerShoot(const packet_t &packet) {
     }
     
     // Use extracted helper functions
-    ECS::EntityID projectile = createServerProjectile(playerX, playerY, isCharged);
+    ECS::EntityID projectile = createServerProjectile(room, playerX, playerY, isCharged);
     broadcastProjectileSpawn(projectile, player, room, isCharged);
 }
 
@@ -434,6 +436,9 @@ void room_controller::handleJoinRoomPacket(const packet_t &packet) {
         std::cerr << "ERROR: Room not found for join code " << p->joinCode << std::endl;
         return;
     }
+
+    // Register the room association for the player
+    root.world.AddComponent<components::LinkedRoom>(player, room);
     
     // Send join acceptance to the player
     sendJoinAccepted(player, room);
@@ -637,8 +642,8 @@ void room_controller::handleSpawnBossRequest(const packet_t& packet) {
     root.world.AddComponent<rtype::common::components::Velocity>(boss, -50.0f, 0.0f, 50.0f);
     root.world.AddComponent<rtype::common::components::Health>(boss, 50);
     root.world.AddComponent<rtype::common::components::Team>(boss, rtype::common::components::TeamType::Enemy);
-    root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, rtype::common::components::EnemyType::TankDestroyer);
-    
+    root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, rtype::common::components::EnemyType::Boss);
+    root.world.AddComponent<rtype::server::components::LinkedRoom>(boss, room);
     std::cout << "SERVER: Admin spawned boss (id=" << boss << ") in room " << room << std::endl;
     
     // Broadcast boss spawn to all players in the room
