@@ -18,6 +18,7 @@
 #include "packet.h"
 #include "packethandler.h"
 #include "ECS/Types.h"
+#include "ECS/World.h"
 
 namespace rtype::server::controllers::room_controller {
     /**
@@ -126,7 +127,18 @@ namespace rtype::server::controllers::room_controller {
      * @param isCharged Whether this is a charged shot
      */
     void broadcastProjectileSpawn(ECS::EntityID projectile, ECS::EntityID owner, ECS::EntityID room, bool isCharged);
-    
+
+    /**
+     * @brief Create an enemy projectile entity on the server
+     * @param x Starting X position
+     * @param y Starting Y position
+     * @param vx X velocity
+     * @param vy Y velocity
+     * @param world The ECS world
+     * @return The created projectile entity ID
+     */
+    ECS::EntityID createEnemyProjectile(float x, float y, float vx, float vy, ECS::World& world);
+
     // === Join Room Helper Functions ===
     
     /**

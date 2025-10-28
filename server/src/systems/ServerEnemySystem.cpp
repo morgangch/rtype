@@ -13,6 +13,8 @@
 #include <common/components/Health.h>
 #include <common/components/Team.h>
 #include <common/components/EnemyType.h>
+#include <common/components/FireRate.h>
+#include <common/components/Collision.h>
 // Server components
 #include "components/RoomProperties.h"
 #include "components/PlayerConn.h"
@@ -67,6 +69,12 @@ void ServerEnemySystem::spawnBoss(ECS::World& world, ECS::EntityID room, rtype::
     world.AddComponent<rtype::common::components::Health>(boss, 50); // Boss has 50 HP
     world.AddComponent<rtype::common::components::Team>(boss, rtype::common::components::TeamType::Enemy);
     world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, rtype::common::components::EnemyType::TankDestroyer);
+
+    // Add FireRate component for boss shooting
+    world.AddComponent<rtype::common::components::FireRate>(boss, 0.8f); // Boss fires every 0.8s
+
+    // Add Collision component for boss bounce logic (MovementSystem needs it)
+    world.AddComponent<rtype::common::components::Collision>(boss, 150.0f, 100.0f); // TankDestroyer size
 
     std::cout << "SERVER: Spawning boss (id=" << boss << ") in room " << room << std::endl;
 
@@ -310,6 +318,13 @@ void ServerEnemySystem::spawnEnemy(ECS::World& world, ECS::EntityID room, rtype:
     root.world.AddComponent<rtype::common::components::Health>(enemy, hp);
     root.world.AddComponent<rtype::common::components::Team>(enemy, rtype::common::components::TeamType::Enemy);
     root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(enemy, type);
+
+    // Add FireRate component so enemy can shoot
+    float fireInterval = 2.0f; // Default fire rate
+    if (type == rtype::common::components::EnemyType::Shooter) {
+        fireInterval = 1.5f; // Shooter fires faster
+    }
+    root.world.AddComponent<rtype::common::components::FireRate>(enemy, fireInterval);
 
     SpawnEnemyPacket pkt{};
     pkt.enemyId = static_cast<uint32_t>(enemy);

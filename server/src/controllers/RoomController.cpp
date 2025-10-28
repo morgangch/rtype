@@ -268,9 +268,9 @@ void room_controller::broadcastProjectileSpawn(ECS::EntityID projectile, ECS::En
     auto* pos = root.world.GetComponent<rtype::common::components::Position>(projectile);
     auto* vel = root.world.GetComponent<rtype::common::components::Velocity>(projectile);
     auto* proj = root.world.GetComponent<rtype::common::components::Projectile>(projectile);
-    
+
     if (!pos || !vel || !proj) return;
-    
+
     SpawnProjectilePacket spawnPkt{};
     spawnPkt.projectileId = static_cast<uint32_t>(projectile);
     spawnPkt.ownerId = static_cast<uint32_t>(owner);
@@ -281,17 +281,38 @@ void room_controller::broadcastProjectileSpawn(ECS::EntityID projectile, ECS::En
     spawnPkt.damage = proj->damage;
     spawnPkt.piercing = proj->piercing;
     spawnPkt.isCharged = isCharged;
-    
+
     auto players_in_room = player_service::findPlayersByRoomCode(room);
     for (auto pid : players_in_room) {
         auto* lobbyState = root.world.GetComponent<rtype::server::components::LobbyState>(pid);
         if (!lobbyState || !lobbyState->isInGame) continue; // Only send to players in-game
-        
+
         auto *pconn = root.world.GetComponent<rtype::server::components::PlayerConn>(pid);
         if (!pconn) continue;
-        
+
         pconn->packet_manager.sendPacketBytesSafe(&spawnPkt, sizeof(spawnPkt), SPAWN_PROJECTILE, nullptr, false);
     }
+}
+
+ECS::EntityID room_controller::createEnemyProjectile(float x, float y, float vx, float vy, ECS::World& world) {
+    auto projectile = world.CreateEntity();
+
+    // Enemy projectile position with offset
+    float projectileX = x - 12.0f; // Offset to spawn from left edge of enemy
+    float projectileY = y;
+
+    // Enemy projectile parameters
+    float speed = std::sqrt(vx * vx + vy * vy);
+    uint16_t damage = 1;
+    bool piercing = false;
+
+    // Add components to server projectile (Enemy team)
+    world.AddComponent<rtype::common::components::Position>(projectile, projectileX, projectileY, 0.0f);
+    world.AddComponent<rtype::common::components::Velocity>(projectile, vx, vy, speed);
+    world.AddComponent<rtype::common::components::Team>(projectile, rtype::common::components::TeamType::Enemy);
+    world.AddComponent<rtype::common::components::Projectile>(projectile, damage, piercing, true /* serverOwned */, speed, rtype::common::components::ProjectileType::Basic);
+
+    return projectile;
 }
 
 // ============================================================================

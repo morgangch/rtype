@@ -1,19 +1,20 @@
 /**
  * @file GameLogicSystems.cpp
  * @brief ECS systems implementation for game logic
- * 
- * This file contains all ECS system update logic:
- * - Movement System: Updates positions based on velocity
- * - Input System: Processes player keyboard input
- * - Fire Rate System: Manages shooting cooldowns
- * - Invulnerability System: Manages damage immunity
- * - Enemy Spawn System: Spawns enemies periodically
- * - Enemy AI System: Enemy shooting logic
- * - Cleanup System: Removes off-screen entities
- * - Collision System: Detects and handles collisions
- * 
- * Part of the modular GameState implementation.
- * 
+ *
+ * CLIENT-SIDE PREDICTION ARCHITECTURE:
+ * - Uses shared systems from common/ for identical simulation on client and server
+ * - No position verification needed - deterministic physics guarantee sync
+ * - Server only sends: spawn, destruction (not position updates)
+ *
+ * Systems:
+ * - Movement System: common/systems/MovementSystem (shared)
+ * - Input System: Player input processing
+ * - Fire Rate System: common/systems/FireRateSystem (shared)
+ * - Enemy AI System: common/systems/EnemyAISystem (shared)
+ * - Collision System: Local feedback only (sounds)
+ * - Cleanup System: Off-screen entity removal
+ *
  * @author R-TYPE Development Team
  * @date 2025
  */
@@ -23,6 +24,9 @@
 #include "packetmanager.h"
 #include "network/network.h"
 #include "network/senders.h"
+#include <common/systems/MovementSystem.h>
+#include <common/systems/FireRateSystem.h>
+#include <common/systems/EnemyAISystem.h>
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -31,44 +35,9 @@
 namespace rtype::client::gui {
 
 void GameState::updateMovementSystem(float deltaTime) {
-    auto* positions = m_world.GetAllComponents<rtype::common::components::Position>();
-    if (!positions) return;
-    
-    for (auto& [entity, posPtr] : *positions) {
-        auto& pos = *posPtr;
-        auto* vel = m_world.GetComponent<rtype::common::components::Velocity>(entity);
-        
-        if (!vel) continue;
-        
-        // Update position
-        pos.x += vel->vx * deltaTime;
-        pos.y += vel->vy * deltaTime;
-        
-        // Boss bounce logic (vertical oscillation)
-        auto* enemyType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(entity);
-        if (enemyType && enemyType->type == rtype::common::components::EnemyType::TankDestroyer) {
-            auto* sprite = m_world.GetComponent<rtype::client::components::Sprite>(entity);
-            if (sprite) {
-                float halfHeight = sprite->size.y / 2.0f;
-                // Bounce at top or bottom of screen
-                if (pos.y - halfHeight <= 0.0f) {
-                    pos.y = halfHeight;
-                    vel->vy = std::abs(vel->vy);  // Go down
-                } else if (pos.y + halfHeight >= SCREEN_HEIGHT) {
-                    pos.y = SCREEN_HEIGHT - halfHeight;
-                    vel->vy = -std::abs(vel->vy);  // Go up
-                }
-            }
-        }
-        
-        // Clamp velocity to max speed
-        float speed = std::sqrt(vel->vx * vel->vx + vel->vy * vel->vy);
-        if (speed > vel->maxSpeed && vel->maxSpeed > 0.0f) {
-            float scale = vel->maxSpeed / speed;
-            vel->vx *= scale;
-            vel->vy *= scale;
-        }
-    }
+    // CLIENT-SIDE PREDICTION: Use shared MovementSystem
+    // Identical logic on client and server = perfect sync (no verification needed)
+    rtype::common::systems::MovementSystem::update(m_world, deltaTime);
 }
 
 void GameState::updateInputSystem(float deltaTime) {
@@ -188,12 +157,9 @@ void GameState::updateAnimationSystem(float deltaTime) {
 }
 
 void GameState::updateFireRateSystem(float deltaTime) {
-    auto* fireRates = m_world.GetAllComponents<rtype::common::components::FireRate>();
-    if (!fireRates) return;
-    
-    for (auto& [entity, fireRatePtr] : *fireRates) {
-        fireRatePtr->update(deltaTime);
-    }
+    // CLIENT-SIDE PREDICTION: Use shared FireRateSystem
+    // Decrements all cooldowns - identical logic on client and server
+    rtype::common::systems::FireRateSystem::update(m_world, deltaTime);
 }
 
 void GameState::updateChargedShotSystem(float deltaTime) {
@@ -221,91 +187,13 @@ void GameState::updateInvulnerabilitySystem(float deltaTime) {
 }
 
 void GameState::updateEnemyAISystem(float deltaTime) {
-    auto* teams = m_world.GetAllComponents<rtype::common::components::Team>();
-    if (!teams) return;
-    
-    // Find player position first
-    sf::Vector2f playerPos(0.0f, 0.0f);
-    bool playerFound = false;
-    auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
-    if (players) {
-        for (auto& [playerEntity, playerPtr] : *players) {
-            auto* pos = m_world.GetComponent<rtype::common::components::Position>(playerEntity);
-            if (pos) {
-                playerPos = sf::Vector2f(pos->x, pos->y);
-                playerFound = true;
-                break;
-            }
-        }
-    }
-    
-    for (auto& [entity, teamPtr] : *teams) {
-        // Only process enemies (not enemy projectiles)
-        if (teamPtr->team != rtype::common::components::TeamType::Enemy) continue;
-        if (!m_world.GetComponent<rtype::common::components::Health>(entity)) continue;
-        
-        auto* enemyType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(entity);
-        auto* fireRate = m_world.GetComponent<rtype::common::components::FireRate>(entity);
-        auto* pos = m_world.GetComponent<rtype::common::components::Position>(entity);
-        
-        if (!fireRate || !pos || !fireRate->canFire()) continue;
+    // SERVER-AUTHORITATIVE: Enemy AI runs on server only
+    // Client does NOT create enemy projectiles - server broadcasts SPAWN_PROJECTILE
+    // We still need to update FireRate cooldowns for visual consistency
+    rtype::common::systems::FireRateSystem::update(m_world, deltaTime);
 
-        if (enemyType && enemyType->type == rtype::common::components::EnemyType::TankDestroyer) {
-            // EnemyType (TANK DESTROYER BOSS): Shoot in spread pattern (3 projectiles)
-            if (playerFound) {
-                // Calculate direction to player
-                float dx = playerPos.x - pos->x;
-                float dy = playerPos.y - pos->y;
-                float distance = std::sqrt(dx * dx + dy * dy);
-                
-                if (distance > 0.0f) {
-                    const float PROJECTILE_SPEED = 350.0f;
-                    float baseVx = (dx / distance) * PROJECTILE_SPEED;
-                    float baseVy = (dy / distance) * PROJECTILE_SPEED;
-                    
-                    // Center projectile - aimed at player
-                    createEnemyProjectile(pos->x, pos->y, baseVx, baseVy);
-                    
-                    // Spread pattern: ±15 degrees from center
-                    const float spreadAngle = 0.26f; // ~15 degrees in radians
-                    
-                    // Upper projectile (rotate counter-clockwise)
-                    float upperVx = baseVx * std::cos(spreadAngle) - baseVy * std::sin(spreadAngle);
-                    float upperVy = baseVx * std::sin(spreadAngle) + baseVy * std::cos(spreadAngle);
-                    createEnemyProjectile(pos->x, pos->y, upperVx, upperVy);
-                    
-                    // Lower projectile (rotate clockwise)
-                    float lowerVx = baseVx * std::cos(-spreadAngle) - baseVy * std::sin(-spreadAngle);
-                    float lowerVy = baseVx * std::sin(-spreadAngle) + baseVy * std::cos(-spreadAngle);
-                    createEnemyProjectile(pos->x, pos->y, lowerVx, lowerVy);
-                    
-                    fireRate->shoot();
-                }
-            }
-        } else if (enemyType && enemyType->type == rtype::common::components::EnemyType::Shooter) {
-            // Shooter enemy: aim at player
-            if (playerFound) {
-                // Calculate direction to player
-                float dx = playerPos.x - pos->x;
-                float dy = playerPos.y - pos->y;
-                float distance = std::sqrt(dx * dx + dy * dy);
-                
-                if (distance > 0.0f) {
-                    // Normalize and apply speed
-                    const float PROJECTILE_SPEED = 300.0f;
-                    float vx = (dx / distance) * PROJECTILE_SPEED;
-                    float vy = (dy / distance) * PROJECTILE_SPEED;
-                    
-                    createEnemyProjectile(pos->x, pos->y, vx, vy);
-                    fireRate->shoot();
-                }
-            }
-        } else {
-            // Basic red enemy: shoot straight left
-            createEnemyProjectile(pos->x, pos->y, -300.0f, 0.0f);
-            fireRate->shoot();
-        }
-    }
+    // NOTE: Enemy shooting logic removed from client
+    // Server handles all enemy AI and broadcasts projectile spawns
 }
 
 void GameState::updateCleanupSystem(float deltaTime) {
@@ -541,11 +429,16 @@ void GameState::updateCollisionSystem() {
 
 void GameState::handlePlayerFire() {
     if (m_playerEntity == 0) return;
-    
+
     auto* pos = m_world.GetComponent<rtype::common::components::Position>(m_playerEntity);
     if (!pos) return;
-    
-    createPlayerProjectile(pos->x, pos->y);
+
+    // SERVER-AUTHORITATIVE: Send shoot request to server
+    // Server will create projectile and broadcast SPAWN_PROJECTILE to all clients
+    rtype::client::network::senders::send_player_shoot(false, pos->x, pos->y);
+
+    // NOTE: Client no longer creates projectile locally
+    // Will receive SPAWN_PROJECTILE packet from server with actual projectile data
 }
 
 } // namespace rtype::client::gui

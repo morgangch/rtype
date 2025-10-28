@@ -73,30 +73,9 @@ public:
      * @param world Reference to the ECS world
      */
     void Cleanup(ECS::World& world) override;
-private:
-    /**
-     * @brief Handles tank destroyer (boss) shooting pattern (spread)
-     * Shoots three projectiles: center, upper, lower.
-     */
-    void handleTankDestroyerShooting(float x, float y, float targetX, float targetY, bool hasTarget, ECS::World& world);
 
-    /**
-     * @brief Handles shooter (advanced) enemy aiming
-     * Shoots a projectile aimed at the player.
-     */
-    void handleShooterShooting(float x, float y, float targetX, float targetY, bool hasTarget, ECS::World& world);
-
-    /**
-     * @brief Handles snake (basic) enemy shooting pattern (if applicable)
-     * Shoots a projectile in a zigzag pattern.
-     */
-    void handleSnakeShooting(float x, float y, float targetX, float targetY, bool hasTarget, ECS::World& world);
-
-    /**
-     * @brief Handles suicide (basic) enemy behavior.
-     * Follow the player and explode on contact.
-     */
-    void handleSuicideShooting(float x, float y, float targetX, float targetY, bool hasTarget, ECS::World& world);
+    // Note: Shooting logic now delegated to common/systems/EnemyAISystem
+    // This wrapper system calls the shared implementation for consistency
 };
 }
 

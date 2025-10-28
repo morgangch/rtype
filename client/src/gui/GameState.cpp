@@ -129,19 +129,29 @@ ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t 
     // Velocity
     m_world.AddComponent<rtype::common::components::Velocity>(entity, vx, vy, std::sqrt(vx*vx + vy*vy));
     
-    // Sprite - Different sprite for charged vs normal (textures pre-loaded in loadHUDTextures)
-    if (isCharged) {
-        // Charged projectile sprite - PROJECTILE_4 (rose/magenta, more dense and imposing)
+    // Sprite - Different sprite based on team and charged state
+    if (ownerId == 0) {
+        // Enemy projectile - PROJECTILE_2 (orange)
+        m_world.AddComponent<rtype::client::components::Sprite>(
+            entity,
+            rtype::client::assets::projectiles::PROJECTILE_2,
+            sf::Vector2f(81.0f, 17.0f),
+            true,
+            sf::IntRect(185, 0, 81, 17), // Frame 2, line 1: orange
+            0.4f); // Scale 0.4x (smaller than player projectiles)
+        std::cout << "[GameState]   Using ENEMY sprite (PROJECTILE_2, orange)" << std::endl;
+    } else if (isCharged) {
+        // Charged player projectile - PROJECTILE_4 (rose/magenta)
         m_world.AddComponent<rtype::client::components::Sprite>(
             entity,
             rtype::client::assets::projectiles::PROJECTILE_4,
             sf::Vector2f(81.0f, 17.0f),
             true,
             sf::IntRect(185, 17, 81, 17), // Frame 2, line 2: denser visual
-            0.6f); // Scale 0.6x (49px wide, 10px tall) - bigger than normal
-        std::cout << "[GameState]   Using CHARGED sprite (PROJECTILE_4, rect: 185,17,81,17, scale: 0.6)" << std::endl;
+            0.6f); // Scale 0.6x (bigger than normal)
+        std::cout << "[GameState]   Using CHARGED player sprite (PROJECTILE_4)" << std::endl;
     } else {
-        // Normal projectile sprite - PROJECTILE_1
+        // Normal player projectile - PROJECTILE_1
         m_world.AddComponent<rtype::client::components::Sprite>(
             entity,
             rtype::client::assets::projectiles::PROJECTILE_1,
@@ -149,14 +159,16 @@ ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t 
             true,
             sf::IntRect(185, 0, 81, 17),
             0.5f);
-        std::cout << "[GameState]   Using NORMAL sprite (PROJECTILE_1, rect: 185,0,81,17, scale: 0.5)" << std::endl;
+        std::cout << "[GameState]   Using NORMAL player sprite (PROJECTILE_1)" << std::endl;
     }
     
-    // Team - Player team (projectiles are always player team for now)
-    m_world.AddComponent<rtype::common::components::Team>(
-        entity, rtype::common::components::TeamType::Player);
-    
-    // Projectile data - mark as server-owned for prediction
+    // Team - Determine based on owner (0 = enemy, non-zero = player)
+    rtype::common::components::TeamType team = (ownerId == 0)
+        ? rtype::common::components::TeamType::Enemy
+        : rtype::common::components::TeamType::Player;
+    m_world.AddComponent<rtype::common::components::Team>(entity, team);
+
+    // Projectile data - mark as server-owned for server authority
     m_world.AddComponent<rtype::common::components::Projectile>(entity, damage, piercing, true /* serverOwned */);
     
     // Map server ID to local entity
