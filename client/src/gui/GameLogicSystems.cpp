@@ -2,18 +2,17 @@
  * @file GameLogicSystems.cpp
  * @brief ECS systems implementation for game logic
  *
- * CLIENT-SIDE PREDICTION ARCHITECTURE:
- * - Uses shared systems from common/ for identical simulation on client and server
- * - No position verification needed - deterministic physics guarantee sync
- * - Server only sends: spawn, destruction (not position updates)
+ * This file contains all ECS system update logic:
+ * - Movement System: Now uses common/systems/MovementSystem
+ * - Input System: Processes player keyboard input
+ * - Fire Rate System: Now uses common/systems/FireRateSystem
+ * - Invulnerability System: Manages damage immunity
+ * - Enemy Spawn System: Spawns enemies periodically
+ * - Enemy AI System: Now uses common/systems/EnemyAISystem
+ * - Cleanup System: Removes off-screen entities
+ * - Collision System: Detects and handles collisions
  *
- * Systems:
- * - Movement System: common/systems/MovementSystem (shared)
- * - Input System: Player input processing
- * - Fire Rate System: common/systems/FireRateSystem (shared)
- * - Enemy AI System: common/systems/EnemyAISystem (shared)
- * - Collision System: Local feedback only (sounds)
- * - Cleanup System: Off-screen entity removal
+ * Part of the modular GameState implementation.
  *
  * @author R-TYPE Development Team
  * @date 2025
@@ -35,9 +34,43 @@
 namespace rtype::client::gui {
 
 void GameState::updateMovementSystem(float deltaTime) {
-    // CLIENT-SIDE PREDICTION: Use shared MovementSystem
-    // Identical logic on client and server = perfect sync (no verification needed)
-    rtype::common::systems::MovementSystem::update(m_world, deltaTime);
+    // SERVER-AUTHORITATIVE: Only move player and projectiles locally.
+    // Enemies are moved by server state updates (EnemyStatePacket).
+    //
+    // We manually update positions for:
+    // - Player (local prediction)
+    // - Projectiles (for smooth rendering)
+    //
+    // Enemies receive position updates from server.
+
+    auto* positions = m_world.GetAllComponents<rtype::common::components::Position>();
+    if (!positions) return;
+
+    for (auto& [entity, posPtr] : *positions) {
+        auto& pos = *posPtr;
+        auto* vel = m_world.GetComponent<rtype::common::components::Velocity>(entity);
+        if (!vel) continue;
+
+        // Check if this is an enemy - skip if so (server-controlled)
+        auto* team = m_world.GetComponent<rtype::common::components::Team>(entity);
+        auto* health = m_world.GetComponent<rtype::common::components::Health>(entity);
+        if (team && health && team->team == rtype::common::components::TeamType::Enemy) {
+            // Enemy movement is controlled by server - skip
+            continue;
+        }
+
+        // Update position for player and projectiles
+        pos.x += vel->vx * deltaTime;
+        pos.y += vel->vy * deltaTime;
+
+        // Clamp velocity to max speed
+        float speed = std::sqrt(vel->vx * vel->vx + vel->vy * vel->vy);
+        if (speed > vel->maxSpeed && vel->maxSpeed > 0.0f) {
+            float scale = vel->maxSpeed / speed;
+            vel->vx *= scale;
+            vel->vy *= scale;
+        }
+    }
 }
 
 void GameState::updateInputSystem(float deltaTime) {
@@ -157,8 +190,7 @@ void GameState::updateAnimationSystem(float deltaTime) {
 }
 
 void GameState::updateFireRateSystem(float deltaTime) {
-    // CLIENT-SIDE PREDICTION: Use shared FireRateSystem
-    // Decrements all cooldowns - identical logic on client and server
+    // Use the common fire rate system
     rtype::common::systems::FireRateSystem::update(m_world, deltaTime);
 }
 
@@ -187,13 +219,14 @@ void GameState::updateInvulnerabilitySystem(float deltaTime) {
 }
 
 void GameState::updateEnemyAISystem(float deltaTime) {
-    // SERVER-AUTHORITATIVE: Enemy AI runs on server only
-    // Client does NOT create enemy projectiles - server broadcasts SPAWN_PROJECTILE
-    // We still need to update FireRate cooldowns for visual consistency
-    rtype::common::systems::FireRateSystem::update(m_world, deltaTime);
+    // SERVER-AUTHORITATIVE: Enemy AI is now executed ONLY on the server.
+    // The client no longer decides when enemies shoot or where they aim.
+    // Enemy projectiles are created by the server and sent via SPAWN_PROJECTILE packets.
+    //
+    // This function is kept for backwards compatibility but does nothing.
+    // All enemy behavior is controlled by the server to prevent cheating.
 
-    // NOTE: Enemy shooting logic removed from client
-    // Server handles all enemy AI and broadcasts projectile spawns
+    // DO NOTHING - server handles all enemy AI
 }
 
 void GameState::updateCleanupSystem(float deltaTime) {
@@ -303,23 +336,28 @@ void GameState::checkPlayerProjectilesVsEnemiesCollision(
                 sf::FloatRect enemyBounds = getBounds(enemyEntity, *enemyPosPtr);
                 
                 if (projBounds.intersects(enemyBounds)) {
-                    // COLLISION DETECTED - apply damage immediately for instant feedback
-                    enemyHealth->currentHp -= projData->damage;
-                    
-                    if (enemyHealth->currentHp <= 0) {
-                        enemyHealth->isAlive = false;
-                        toDestroy.push_back(enemyEntity); // Destroy enemy immediately (prediction)
+                    // SERVER-AUTHORITATIVE: Collision detected for visual feedback only.
+                    // The server will apply damage and send destruction packets.
+                    //
+                    // We keep collision detection for:
+                    // - Playing hit sounds immediately
+                    // - Showing particle effects
+                    // - Visual feedback for responsiveness
+                    //
+                    // But we DO NOT:
+                    // - Apply damage to enemy HP
+                    // - Destroy entities locally
+                    // - Mark entities for destruction
+                    //
+                    // The server will send ENTITY_DESTROY packets when entities die.
+
+                    // Play hit sound for immediate feedback
+                    if (m_soundManager.has(AudioFactory::SfxId::EnemyHit)) {
+                        m_soundManager.play(AudioFactory::SfxId::EnemyHit);
                     }
-                    
-                    // Handle projectile destruction based on piercing
-                    if (projData->piercing) {
-                        // Piercing projectile continues through enemies
-                        continue;
-                    } else {
-                        // Non-piercing projectile - ALWAYS destroy locally to prevent piercing through
-                        toDestroy.push_back(projEntity);
-                        break; // Stop checking collisions - projectile is destroyed
-                    }
+
+                    // NOTE: Projectile is NOT destroyed here. Server will send destruction packet.
+                    // This prevents client from cheating by manipulating collision detection.
                 }
             }
         }
@@ -349,8 +387,10 @@ void GameState::checkEnemyProjectilesVsPlayerCollision(
             sf::FloatRect projBounds = getBounds(projEntity, *projPosPtr);
             
             if (playerBounds.intersects(projBounds)) {
+                // Apply damage to player (player is client-controlled)
                 damagePlayer(projData->damage);
-                toDestroy.push_back(projEntity);
+
+                // SERVER-AUTHORITATIVE: Do NOT destroy projectile here.
             }
         }
     }
@@ -393,52 +433,28 @@ void GameState::updateCollisionSystem() {
     checkPlayerProjectilesVsEnemiesCollision(*positions, getBounds, toDestroy);
     checkEnemyProjectilesVsPlayerCollision(*positions, getBounds, toDestroy);
     
-    // Destroy all marked entities and play death sounds
-    for (auto entity : toDestroy) {
-        // Determine if this was a boss or regular enemy
-        auto* enemyType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(entity);
-        if (enemyType) {
-            if (enemyType->type == rtype::common::components::EnemyType::TankDestroyer) { // to do add other boss types
-                // Play boss death sound
-                if (m_soundManager.has(AudioFactory::SfxId::BossDeath)) {
-                    m_soundManager.play(AudioFactory::SfxId::BossDeath);
-                }
-                // Restore level background music after boss death
-                loadLevelMusic();
-            } else if (m_soundManager.has(AudioFactory::SfxId::EnemyDeath)) {
-                // Regular enemy death
-                m_soundManager.play(AudioFactory::SfxId::EnemyDeath);
-            }
-        }
+    // SERVER-AUTHORITATIVE: Do NOT destroy entities locally.
+    // The server will send ENTITY_DESTROY packets when entities die.
+    //
+    // toDestroy vector is now empty because we removed all markings.
+    // This prevents client from destroying entities without server confirmation.
+    //
+    // Entity destruction only happens in destroyEntityByServerId() when
+    // server sends ENTITY_DESTROY packet.
 
-        // Clean up server entity mapping if this was a server-owned entity
-        // Find and remove the reverse mapping (serverId → entityId)
-        for (auto it = m_serverEntityMap.begin(); it != m_serverEntityMap.end(); ) {
-            if (it->second == entity) {
-                std::cout << "[GameState] Cleaning up server mapping for locally destroyed entity: clientId=" << entity << " serverId=" << it->first << std::endl;
-                it = m_serverEntityMap.erase(it);
-                break;
-            } else {
-                ++it;
-            }
-        }
-
-        m_world.DestroyEntity(entity);
+    // NOTE: toDestroy vector should be empty now, but we keep this for safety
+    if (!toDestroy.empty()) {
+        std::cout << "[GameState] WARNING: toDestroy vector is not empty! This shouldn't happen with server-authoritative model." << std::endl;
     }
 }
 
 void GameState::handlePlayerFire() {
     if (m_playerEntity == 0) return;
-
+    
     auto* pos = m_world.GetComponent<rtype::common::components::Position>(m_playerEntity);
     if (!pos) return;
-
-    // SERVER-AUTHORITATIVE: Send shoot request to server
-    // Server will create projectile and broadcast SPAWN_PROJECTILE to all clients
-    rtype::client::network::senders::send_player_shoot(false, pos->x, pos->y);
-
-    // NOTE: Client no longer creates projectile locally
-    // Will receive SPAWN_PROJECTILE packet from server with actual projectile data
+    
+    createPlayerProjectile(pos->x, pos->y);
 }
 
 } // namespace rtype::client::gui
