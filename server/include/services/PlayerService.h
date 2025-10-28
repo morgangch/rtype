@@ -54,6 +54,13 @@ namespace rtype::server::services::player_service {
      * @return A vector of EntityIDs of players in the specified room
      */
     std::vector<ECS::EntityID> findPlayersByRoomCode(int room_code);
+
+    /**
+     * @brief Find players from a room entity ID
+     * @param room The room entity ID
+     * @return A vector of EntityIDs of players in the specified room
+     */
+    std::vector<ECS::EntityID> findPlayersByRoom(ECS::EntityID room);
 }
 
 #endif //PLAYERSERVICE_H
