@@ -116,7 +116,7 @@ namespace rtype::client::gui {
         
         // UI Text Elements
         sf::Text playersWaitingText;    ///< "Waiting for room host" for non-admin players
-    sf::Text actionButton;          ///< Deprecated: text hidden when using sprite (admin only)
+        sf::Text actionButton;          ///< Deprecated: text hidden when using sprite (admin only)
         sf::Text returnButton;          ///< "Return" button text for navigation back
         sf::Text serverCodeDisplay;     ///< Shows server code for sharing with others
         

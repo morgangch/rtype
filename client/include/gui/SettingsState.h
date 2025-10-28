@@ -91,6 +91,13 @@ public:
     ~SettingsState();
 
 private:
+    /**
+     * @brief Clamp a daltonism mode index to a valid range.
+     * @param mode The incoming mode index (may be out of range)
+     * @return 0 if out of range, otherwise the same index
+     */
+    int clampDaltonismMode(int mode) const;
+
     // State management
     StateManager& stateManager;         ///< Reference to state manager for transitions
     SettingsConfig config;              ///< Configuration manager for loading/saving settings

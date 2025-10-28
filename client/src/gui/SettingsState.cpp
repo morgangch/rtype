@@ -149,12 +149,7 @@ SettingsState::SettingsState(StateManager& stateManager)
     // Daltonism modes
     daltonismModes = {"None", "Protanopia", "Deuteranopia", "Tritanopia", "Achromatopsia"};
     // Clamp loaded value into range
-    {
-        int loaded = config.getDaltonismMode();
-        if (loaded < 0 || loaded >= static_cast<int>(daltonismModes.size()))
-            loaded = 0;
-        currentDaltonismIndex = loaded;
-    }
+    currentDaltonismIndex = clampDaltonismMode(config.getDaltonismMode());
 
     // Apply loaded accessibility mode globally
     Accessibility::instance().setMode(currentDaltonismIndex);
@@ -313,9 +308,7 @@ void SettingsState::handleEvent(const sf::Event& event) {
             box1Value = config.getIP();
             box2Value = config.getPort();
             // Update daltonism
-            int loaded = config.getDaltonismMode();
-            if (loaded < 0 || loaded >= static_cast<int>(daltonismModes.size())) loaded = 0;
-            currentDaltonismIndex = loaded;
+            currentDaltonismIndex = clampDaltonismMode(config.getDaltonismMode());
             daltonismValueText.setString(daltonismModes[currentDaltonismIndex]);
             Accessibility::instance().setMode(currentDaltonismIndex);
             editingKeybind = -1;
@@ -492,3 +485,10 @@ void SettingsState::render(sf::RenderWindow& window) {
 }
 
 } // namespace rtype::client::gui
+
+// Private helper
+int rtype::client::gui::SettingsState::clampDaltonismMode(int mode) const {
+    if (mode < 0 || mode >= static_cast<int>(daltonismModes.size()))
+        return 0;
+    return mode;
+}
