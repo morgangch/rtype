@@ -10,6 +10,8 @@
 #include "network/network.h"
 #include <iostream>
 
+#include "utils/endiane_converter.h"
+
 namespace rtype::client::network::senders {
     void send_game_start_request() {
         std::cout << "CLIENT: Sending GAME_START_REQUEST packet" << std::endl;
@@ -20,7 +22,8 @@ namespace rtype::client::network::senders {
 
     void send_join_room_request(const std::string &player_name, std::uint32_t room_code) {
         JoinRoomPacket p{};
-        p.joinCode = room_code;
+        p.joinCode =  room_code;
+        to_network_endian(p.joinCode);
         // Secure the player name to avoid overflow
         strncpy(p.name, player_name.c_str(), 31);
         p.name[31] = '\0';
@@ -39,6 +42,8 @@ namespace rtype::client::network::senders {
         p.isCharged = isCharged;
         p.playerX = playerX;
         p.playerY = playerY;
+        to_network_endian(p.playerX);
+        to_network_endian(p.playerY);
         rtype::client::network::pm.sendPacketBytesSafe(&p, sizeof(PlayerShootPacket), PLAYER_SHOOT, nullptr, true);
         std::cout << "CLIENT: Sent PLAYER_SHOOT (charged: " << isCharged << " pos: " << playerX << "," << playerY << ")" << std::endl;
     }
