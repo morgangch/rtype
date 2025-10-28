@@ -342,9 +342,8 @@ namespace rtype::client::gui {
             settingsRotation += 360.0f * deltaTime;
             if (settingsRotation >= 360.0f) settingsRotation -= 360.0f;
             settingsSprite.setRotation(settingsRotation);
-        } else if (settingsSpriteLoaded && !settingsHovered && settingsRotation != 0.0f) {
-            // Optional: gently ease back to 0 if needed; for now, keep last angle
         }
+        // When not hovered, keep last angle (optionally ease back to 0 in future)
 
         // Update parallax system if created
         if (m_parallaxSystem) {
