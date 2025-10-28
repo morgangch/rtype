@@ -17,6 +17,9 @@
 #ifndef ROOMPROPERTIESCOMPONENT_H
 #define ROOMPROPERTIESCOMPONENT_H
 
+#include <iostream>
+#include <__ostream/basic_ostream.h>
+
 #include "ECS/Component.h"
 #include "rtype.h"
 #include "components/PlayerConn.h"
@@ -52,9 +55,13 @@ namespace rtype::server::components {
          * @param important whether the packet is important (reliable)
          */
         void broadcastPacket(void *data, size_t size, uint8_t packetType, bool important) const {
-
             auto players = services::player_service::findPlayersByRoomCode(joinCode);
-            for (auto player : players) {
+
+            if (players.size() == 0) {
+                std::cout << "Room " << joinCode << " has no players to broadcast to." << std::endl;
+                return;
+            }
+            for (auto player: players) {
                 auto *pconn = root.world.GetComponent<rtype::server::components::PlayerConn>(player);
                 if (!pconn) {
                     continue;
@@ -63,6 +70,7 @@ namespace rtype::server::components {
                     &data, size, packetType, nullptr, important);
             }
         }
+
         /**
          * @brief Numeric room code used for joining private rooms
          */

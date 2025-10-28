@@ -60,6 +60,7 @@ namespace rtype::server::network::senders {
 
         GameStartPacket pkt{}; // Empty packet for game start signal
 
+        std::cout << "Broadcasting GAME_START to room " << room_id << std::endl;
         room->broadcastPacket(&pkt, sizeof(pkt), GAME_START, true);
     }
 

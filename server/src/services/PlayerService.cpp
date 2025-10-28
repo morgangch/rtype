@@ -20,6 +20,7 @@
 #include "packets.h"
 #include "components/LinkedRoom.h"
 #include "components/RoomProperties.h"
+#include "services/RoomService.h"
 
 using namespace rtype::server::services;
 
@@ -72,15 +73,15 @@ ECS::EntityID player_service::findPlayerByNetwork(const sockaddr_in &addr) {
 
 std::vector<ECS::EntityID> player_service::findPlayersByRoomCode(int room_code) {
     std::vector<ECS::EntityID> players_in_room;
-    auto players = root.world.GetAllComponents<rtype::common::components::Player>();
 
-    for (const auto &pair: *players) {
-        auto *player = root.world.GetComponent<components::PlayerConn>(pair.first);
-        if (player && player->room_code == room_code) {
-            players_in_room.push_back(pair.first);
-        }
+    auto room = room_service::getRoomByJoinCode(room_code);
+    if (!room) {
+        std::cout << "WARNING: No room found with join code " << room_code << std::endl;
+        return players_in_room;
     }
-    return players_in_room;
+    auto players = player_service::findPlayersByRoom(room);
+
+    return players;
 }
 
 std::vector<ECS::EntityID> player_service::findPlayersByRoom(ECS::EntityID room) {

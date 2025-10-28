@@ -50,7 +50,7 @@ public:
             int processedPackets = player->packet_handler.processPackets(player->packet_manager.fetchReceivedPackets());
             if (processedPackets > 0) {
                 player->last_packet_timestamp = rtype::tools::getCurrentTimestamp();
-                std::cout << "[PacketHandlingSystem] Processed " << processedPackets << " packet(s) for player " << entity << std::endl;
+                //std::cout << "[PacketHandlingSystem] Processed " << processedPackets << " packet(s) for player " << entity << std::endl;
             }
         }
     }
