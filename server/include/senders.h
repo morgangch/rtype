@@ -71,6 +71,15 @@ namespace rtype::server::network::senders {
      */
     void send_lobby_state(ECS::EntityID player, uint32_t totalPlayers, uint32_t readyPlayers);
 
+    /**
+     *
+     * @param room_id  The room entity ID to broadcast to
+     * @param enemyId The enemy entity ID
+     * @param enemyType The type of enemy
+     * @param x The X position
+     * @param y The Y position
+     * @param hp The enemy's hit points
+     */
     void broadcast_enemy_spawn(ECS::EntityID room_id, uint32_t enemyId, uint16_t enemyType, float x, float y, uint16_t hp);
 }
 
