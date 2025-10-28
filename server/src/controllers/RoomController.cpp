@@ -362,6 +362,9 @@ void room_controller::handlePlayerShoot(const packet_t &packet) {
 
     // Use extracted helper functions
     ECS::EntityID projectile = createServerProjectile(room, playerX, playerY, isCharged);
+    std::cout << "Player " << player << " shot a "
+              << (isCharged ? "CHARGED" : "regular") << " projectile (entity " << projectile << ") from position ("
+              << playerX << ", " << playerY << ")" << std::endl;
     broadcastProjectileSpawn(projectile, player, room, isCharged);
 }
 

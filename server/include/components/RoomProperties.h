@@ -67,7 +67,7 @@ namespace rtype::server::components {
                     continue;
                 }
                 pconn->packet_manager.sendPacketBytesSafe(
-                    &data, size, packetType, nullptr, important);
+                    data, size, packetType, nullptr, important);
             }
         }
 
