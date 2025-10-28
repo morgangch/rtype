@@ -169,26 +169,6 @@ SettingsState::SettingsState(StateManager& stateManager)
     daltonismValueText.setCharacterSize(24);
     daltonismValueText.setFillColor(sf::Color(200, 200, 200));
     daltonismValueText.setString(daltonismModes[currentDaltonismIndex]);
-
-    // "<" button
-    daltonismLeftRect.setSize(sf::Vector2f(40.f, 40.f));
-    daltonismLeftRect.setFillColor(sf::Color(40, 40, 40));
-    daltonismLeftRect.setOutlineColor(sf::Color::White);
-    daltonismLeftRect.setOutlineThickness(2.f);
-    daltonismLeftText.setFont(font);
-    daltonismLeftText.setCharacterSize(24);
-    daltonismLeftText.setString("<");
-    daltonismLeftText.setFillColor(sf::Color::White);
-
-    // ">" button
-    daltonismRightRect.setSize(sf::Vector2f(40.f, 40.f));
-    daltonismRightRect.setFillColor(sf::Color(40, 40, 40));
-    daltonismRightRect.setOutlineColor(sf::Color::White);
-    daltonismRightRect.setOutlineThickness(2.f);
-    daltonismRightText.setFont(font);
-    daltonismRightText.setCharacterSize(24);
-    daltonismRightText.setString(">");
-    daltonismRightText.setFillColor(sf::Color::White);
 }
 
 /**
