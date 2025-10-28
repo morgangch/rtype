@@ -1,0 +1,11 @@
+inf,7
+Default space background with procedural stars, debris, and enemies
+
+F BackgroundElement assets/maps/tiles/star_far.tile
+M BackgroundElement assets/maps/tiles/star_medium.tile
+N BackgroundElement assets/maps/tiles/star_near.tile
+D BackgroundElement assets/maps/tiles/debris.tile
+P PlayerSpawn assets/maps/tiles/player_spawn.tile
+E EnemyClassic assets/maps/tiles/enemy_basic.tile
+S EnemyElite assets/maps/tiles/enemy_elite.tile
+B EnemyBoss assets/maps/tiles/enemy_boss.tile

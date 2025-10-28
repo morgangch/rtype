@@ -1,0 +1,10 @@
+/// Near star layer - fastest, largest, brightest
+shape: particles
+count: 25
+speed: 120.0
+min_size: 1.5
+max_size: 4.0
+base_color_r: 255
+base_color_g: 255
+base_color_b: 255
+base_color_a: 255

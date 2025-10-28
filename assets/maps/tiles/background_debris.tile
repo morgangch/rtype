@@ -1,0 +1,23 @@
+/// Background element tile definition
+/// Decorative debris in the background (no collision)
+
+sprite: ./assets/sprites/background/debris_small.png
+
+/// Metadata
+layer: background
+depth: 0.3
+scale: 0.8
+
+SCRIPT_BEGIN
+/// Slow parallax movement
+MOVE LEFT 30
+
+/// Gentle rotation
+ROTATE speed:10
+
+/// No collision at all
+NO_COLLISION
+
+/// Fade in when spawned
+FADE_IN duration:0.5
+SCRIPT_END

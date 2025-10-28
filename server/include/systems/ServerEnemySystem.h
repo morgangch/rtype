@@ -9,23 +9,9 @@
 
 #include "ECS/System.h"
 #include "rtype.h"
-
-/**
- * @brief System responsible for enemy spawning and player state broadcasting
- * 
- * This system handles three main responsibilities:
- * 1. Spawns regular enemies every 2 seconds for active game rooms
- * 2. Spawns bosses every 3 minutes (only if no boss exists)
- * 3. Broadcasts player states to all clients at 20Hz for active games
- * 4. Cleans up dead entities and broadcasts destruction
- * 
- * All enemy spawns are server-authoritative and broadcast via SPAWN_ENEMY
- * packets to ensure all clients see the same enemies at the same time.
- * 
- * @note Priority: 5 (medium priority, gameplay system)
- */
-
+#include <mapparser.h>
 #include <map>
+#include <vector>
 #include <common/components/EnemyType.h>
 
 enum class EnemySpawnPhase {
@@ -46,6 +32,7 @@ struct EnemySpawnConfig {
  * @brief System responsible for enemy spawning and player state broadcasting
  *
  * Handles enemy and boss spawning, player state broadcasting, and entity cleanup.
+ * Now supports map-driven enemy spawning using the mapparser library.
  */
 class ServerEnemySystem : public ECS::System {
 public:
@@ -62,6 +49,14 @@ public:
      * Spawns enemies/bosses, broadcasts player states, and cleans up entities.
      */
     void Update(ECS::World &world, float deltaTime) override;
+
+    /**
+     * @brief Load enemy spawn locations from a map
+     * @param mapDir Path to the map directory
+     * @return True if loaded successfully, false otherwise
+     * Loads map tiles and filters enemy spawn locations by type.
+     */
+    bool loadMap(const std::string& mapDir);
 
     /**
      * @brief Spawns a regular enemy in the given room
@@ -89,12 +84,46 @@ private:
     float _stateTick; ///< Timer for player state broadcast
     static constexpr float STATE_TICK_INTERVAL = 0.05f;
 
+    // Map-driven spawning
+    bool _mapLoaded; ///< Whether a map has been loaded
+    std::vector<Tile> _classicEnemySpawns; ///< Classic enemy spawn tiles from map
+    std::vector<Tile> _eliteEnemySpawns; ///< Elite enemy spawn tiles from map
+    std::vector<Tile> _bossSpawns; ///< Boss spawn tiles from map
+    size_t _nextClassicIndex; ///< Next classic spawn index (for cycling)
+    size_t _nextEliteIndex; ///< Next elite spawn index (for cycling)
+    size_t _nextBossIndex; ///< Next boss spawn index (for cycling)
+
     // Update helpers
     void updatePhase(float deltaTime);
     void updateEnemySpawning(ECS::World& world, float deltaTime);
     void updateBossSpawning(ECS::World& world, float deltaTime);
     void updatePlayerStateBroadcast(ECS::World& world, float deltaTime);
     void cleanupDeadEntities(ECS::World& world);
+    
+    // Map-driven helper methods
+    /**
+     * @brief Get spawn position from tile or fallback to default
+     * @param tiles Vector of spawn tiles
+     * @param index Current spawn index (will be incremented and wrapped)
+     * @param defaultX Default X position if no tiles available
+     * @param defaultY Default Y position if no tiles available
+     * @return Spawn position as {x, y}
+     */
+    std::pair<float, float> getSpawnPosition(
+        const std::vector<Tile>& tiles,
+        size_t& index,
+        float defaultX,
+        float defaultY
+    );
+    
+    /**
+     * @brief Read enemy stats from tile metadata
+     * @param tile Tile with metadata
+     * @param outHp Output parameter for health
+     * @param outVx Output parameter for velocity X
+     * Reads "health" and "speed" keys from tile.definition.metadata
+     */
+    void readEnemyStats(const Tile& tile, int& outHp, float& outVx);
 };
 
 #endif // SERVER_ENEMY_SYSTEM_H

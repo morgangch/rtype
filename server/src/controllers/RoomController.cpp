@@ -12,6 +12,7 @@
 #include "components/PlayerConn.h"
 #include "components/RoomProperties.h"
 #include "components/LobbyState.h"
+#include "systems/ServerEnemySystem.h"
 #include "ECS/Types.h"
 #include "services/PlayerService.h"
 #include "services/RoomService.h"
@@ -330,6 +331,16 @@ void room_controller::handleGameStartRequest(const packet_t &packet) {
     
     rp->isGameStarted = true;
     std::cout << "✓ Game started for room " << rp->joinCode << " by admin player " << player << std::endl;
+    
+    // Load map for enemy spawning
+    auto* enemySystem = root.world.GetSystem<ServerEnemySystem>();
+    if (enemySystem) {
+        if (enemySystem->loadMap("assets/maps/default-space")) {
+            std::cout << "✓ SERVER: Loaded enemy spawn map 'default-space' for room " << rp->joinCode << std::endl;
+        } else {
+            std::cerr << "⚠ SERVER: Failed to load enemy spawn map, using hardcoded spawns" << std::endl;
+        }
+    }
     
     // Use extracted helper functions
     markPlayersAsInGame(room);

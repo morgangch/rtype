@@ -1,0 +1,10 @@
+/// Medium star layer - medium speed and size
+shape: particles
+count: 40
+speed: 60.0
+min_size: 1.0
+max_size: 3.0
+base_color_r: 220
+base_color_g: 220
+base_color_b: 220
+base_color_a: 180

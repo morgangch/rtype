@@ -14,6 +14,7 @@
 #include <ctime>
 #include <cmath>
 #include <algorithm>
+#include <iostream>
 
 namespace rtype::client::gui {
 
@@ -28,22 +29,9 @@ ParallaxSystem::ParallaxSystem(float screenWidth, float screenHeight)
     
     initializeGradientBackground();
     
-    // Initialize star layers with different properties
-    initializeStarLayer(m_farStars, 60, 20.0f, 0.5f, 1.5f, 
-                       sf::Color(200, 200, 200, 120));
-    
-    initializeStarLayer(m_mediumStars, 40, 60.0f, 1.0f, 3.0f, 
-                       sf::Color(220, 220, 220, 180));
-    
-    initializeStarLayer(m_nearStars, 25, 120.0f, 1.5f, 4.0f, 
-                       sf::Color::White);
-    
-    initializeDebris();
-
-    // Prepare a fixed row of red lights used by the hallway theme (evenly spaced)
+    // Initialize fixed red lights for hallway theme
     m_fixedRedLights.clear();
     float spacing = m_screenWidth / static_cast<float>(m_lightCount);
-    // place the flashing red lights slightly higher above the center stripe
     float y = m_screenHeight * 0.38f;
     for (int i = 0; i < m_lightCount; i++) {
         m_fixedRedLights.emplace_back(spacing * (i + 0.5f), y);
@@ -52,6 +40,157 @@ ParallaxSystem::ParallaxSystem(float screenWidth, float screenHeight)
 
     // Initialize small corridor panels used in hallway theme
     initializeHallwayPanels();
+    
+    // Load default space background from map
+    if (!loadFromMap("assets/maps/default-space")) {
+        std::cerr << "Failed to load default space map, using hardcoded fallback" << std::endl;
+        
+        // Fallback to hardcoded initialization
+        initializeStarLayer(m_farStars, 60, 20.0f, 0.5f, 1.5f, 
+                           sf::Color(200, 200, 200, 120));
+        
+        initializeStarLayer(m_mediumStars, 40, 60.0f, 1.0f, 3.0f, 
+                           sf::Color(220, 220, 220, 180));
+        
+        initializeStarLayer(m_nearStars, 25, 120.0f, 1.5f, 4.0f, 
+                           sf::Color::White);
+        
+        initializeDebris();
+    }
+}
+
+bool ParallaxSystem::loadFromMap(const std::string& mapDir) {
+    try {
+        auto& parser = MapParser::getInstance();
+        parser.loadFromDirectory(mapDir);
+        
+        const auto& layers = parser.getParallaxLayers();
+        std::cout << "Loading map from " << mapDir << std::endl;
+        std::cout << "  Parallax texture layers: " << layers.size() << std::endl;
+        
+        // Clear existing texture layers
+        m_textureLayers.clear();
+        
+        // Load texture-based parallax layers
+        for (const auto& layer : layers) {
+            TextureParallaxLayer texLayer;
+            
+            if (!texLayer.texture.loadFromFile(layer.texture_path)) {
+                std::cerr << "Failed to load parallax texture: " << layer.texture_path << std::endl;
+                continue;
+            }
+            
+            texLayer.texture.setRepeated(layer.repeat_x || layer.repeat_y);
+            texLayer.sprite.setTexture(texLayer.texture);
+            texLayer.scroll_speed = layer.scroll_speed;
+            texLayer.depth = layer.depth;
+            texLayer.repeat_x = layer.repeat_x;
+            texLayer.repeat_y = layer.repeat_y;
+            texLayer.offset_x = 0.0f;
+            
+            m_textureLayers.push_back(std::move(texLayer));
+            
+            std::cout << "  Loaded texture layer: " << layer.texture_path 
+                      << " (speed=" << layer.scroll_speed << ", depth=" << layer.depth << ")" << std::endl;
+        }
+        
+        // Load shape-based background elements (stars, debris, etc.)
+        auto backgroundTiles = parser.getTilesByType(TileType::BackgroundElement);
+        std::cout << "  Background shape elements: " << backgroundTiles.size() << std::endl;
+        
+        // Track which layers we've loaded to avoid duplicates
+        bool farStarsLoaded = false;
+        bool mediumStarsLoaded = false;
+        bool nearStarsLoaded = false;
+        bool debrisLoaded = false;
+        
+        for (const auto& tile : backgroundTiles) {
+            const auto& def = tile.definition;
+            
+            if (def.shape_type == ShapeType::Particles) {
+                // Load as a star layer (particles)
+                int count = std::stoi(def.metadata.at("count"));
+                float speed = std::stof(def.metadata.at("speed"));
+                float minSize = std::stof(def.metadata.at("min_size"));
+                float maxSize = std::stof(def.metadata.at("max_size"));
+                
+                sf::Color baseColor(
+                    std::stoi(def.metadata.at("base_color_r")),
+                    std::stoi(def.metadata.at("base_color_g")),
+                    std::stoi(def.metadata.at("base_color_b")),
+                    std::stoi(def.metadata.at("base_color_a"))
+                );
+                
+                // Determine which layer to initialize based on speed (only once per type)
+                // IMPORTANT: Pass member variable DIRECTLY to initializeStarLayer
+                if (speed < 50.0f && !farStarsLoaded) {
+                    initializeStarLayer(m_farStars, count, speed, minSize, maxSize, baseColor);
+                    farStarsLoaded = true;
+                    std::cout << "  Loaded far stars (count=" << count << ", speed=" << speed << ")" << std::endl;
+                } else if (speed < 100.0f && !mediumStarsLoaded) {
+                    initializeStarLayer(m_mediumStars, count, speed, minSize, maxSize, baseColor);
+                    mediumStarsLoaded = true;
+                    std::cout << "  Loaded medium stars (count=" << count << ", speed=" << speed << ")" << std::endl;
+                } else if (speed >= 100.0f && !nearStarsLoaded) {
+                    initializeStarLayer(m_nearStars, count, speed, minSize, maxSize, baseColor);
+                    nearStarsLoaded = true;
+                    std::cout << "  Loaded near stars (count=" << count << ", speed=" << speed << ")" << std::endl;
+                }
+                
+            } else if (def.shape_type == ShapeType::Rectangle && !debrisLoaded) {
+                // Load as debris
+                int count = std::stoi(def.metadata.at("count"));
+                float speed = std::stof(def.metadata.at("speed"));
+                float minWidth = std::stof(def.metadata.at("min_width"));
+                float maxWidth = std::stof(def.metadata.at("max_width"));
+                float minHeight = std::stof(def.metadata.at("min_height"));
+                float maxHeight = std::stof(def.metadata.at("max_height"));
+                float rotSpeedMin = std::stof(def.metadata.at("rotation_speed_min"));
+                float rotSpeedMax = std::stof(def.metadata.at("rotation_speed_max"));
+                
+                sf::Color baseColor(
+                    std::stoi(def.metadata.at("base_color_r")),
+                    std::stoi(def.metadata.at("base_color_g")),
+                    std::stoi(def.metadata.at("base_color_b"))
+                );
+                
+                m_debris.clear();
+                m_debris.reserve(count);
+                
+                for (int i = 0; i < count; i++) {
+                    SpaceDebris debris;
+                    debris.position.x = static_cast<float>(rand() % static_cast<int>(m_screenWidth + 400));
+                    debris.position.y = static_cast<float>(rand() % static_cast<int>(m_screenHeight));
+                    debris.size.x = minWidth + static_cast<float>(rand()) / RAND_MAX * (maxWidth - minWidth);
+                    debris.size.y = minHeight + static_cast<float>(rand()) / RAND_MAX * (maxHeight - minHeight);
+                    debris.rotation = static_cast<float>(rand() % 360);
+                    debris.rotationSpeed = rotSpeedMin + static_cast<float>(rand()) / RAND_MAX * (rotSpeedMax - rotSpeedMin);
+                    debris.speed = speed;
+                    // Add color variation
+                    int rVar = (rand() % 80) - 40;
+                    int gVar = (rand() % 60) - 30;
+                    int bVar = (rand() % 50) - 25;
+                    debris.color = sf::Color(
+                        std::clamp(baseColor.r + rVar, 0, 255),
+                        std::clamp(baseColor.g + gVar, 0, 255),
+                        std::clamp(baseColor.b + bVar, 0, 255)
+                    );
+                    m_debris.push_back(debris);
+                }
+                
+                debrisLoaded = true;
+                std::cout << "  Loaded debris (count=" << count << ", speed=" << speed << ")" << std::endl;
+            }
+        }
+        
+        std::cout << "Map loaded successfully from " << mapDir << std::endl;
+        return true;
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Error loading map parallax: " << e.what() << std::endl;
+        std::cerr << "Falling back to hardcoded defaults" << std::endl;
+        return false;
+    }
 }
 
 void ParallaxSystem::setTheme(Theme theme, bool immediate) {
@@ -81,6 +220,19 @@ void ParallaxSystem::update(float deltaTime) {
     updateStarLayer(m_farStars, deltaTime);
     updateStarLayer(m_mediumStars, deltaTime);
     updateStarLayer(m_nearStars, deltaTime);
+    
+    // Update texture-based parallax layers
+    for (auto& layer : m_textureLayers) {
+        layer.offset_x += layer.scroll_speed * deltaTime * 100.0f;
+        
+        // Wrap offset for repeating textures
+        if (layer.repeat_x) {
+            float textureWidth = static_cast<float>(layer.texture.getSize().x);
+            if (layer.offset_x >= textureWidth) {
+                layer.offset_x -= textureWidth;
+            }
+        }
+    }
     
     // Update space debris
     for (auto& debris : m_debris) {
@@ -248,6 +400,19 @@ void ParallaxSystem::render(sf::RenderWindow& window) {
     // Corridor panels sit at the same visual level as the background
     if (m_themeBlend > 0.01f) {
         renderPanelLayer(window, m_themeBlend);
+    }
+    
+    // 1.5. Render texture-based parallax layers (from map files)
+    for (auto& layer : m_textureLayers) {
+        layer.sprite.setPosition(-layer.offset_x, 0);
+        window.draw(layer.sprite);
+        
+        // If repeating horizontally, draw a second copy for seamless wrapping
+        if (layer.repeat_x) {
+            float textureWidth = static_cast<float>(layer.texture.getSize().x);
+            layer.sprite.setPosition(-layer.offset_x + textureWidth, 0);
+            window.draw(layer.sprite);
+        }
     }
     
     // 2. Render star layers (back to front)
