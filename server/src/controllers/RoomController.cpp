@@ -37,6 +37,7 @@
 
 #include <common/utils/bytes_printer.h>
 
+#include "common/utils/endiane_converter.h"
 #include "components/LinkedRoom.h"
 
 using namespace rtype::server::controllers;
@@ -341,7 +342,7 @@ void room_controller::handleGameStartRequest(const packet_t &packet) {
 
 void room_controller::handlePlayerInput(const packet_t &packet) {
     PlayerInputPacket *p = (PlayerInputPacket *) packet.data;
-    
+
     // Find the player entity by network address
     ECS::EntityID player = player_service::findPlayerByNetwork(packet.header.client_addr, packet.header.client_port);
     if (!player) return;
@@ -378,6 +379,11 @@ void room_controller::handlePlayerInput(const packet_t &packet) {
 void room_controller::handlePlayerShoot(const packet_t &packet) {
     // Parse packet to get charged shot flag and player position
     PlayerShootPacket *p = (PlayerShootPacket *) packet.data;
+
+    // Extract endianness
+    from_network_endian(p->playerX);
+    from_network_endian(p->playerY);
+
     bool isCharged = p->isCharged;
     float playerX = p->playerX;
     float playerY = p->playerY;
@@ -403,6 +409,9 @@ void room_controller::handlePlayerShoot(const packet_t &packet) {
 
 void room_controller::handleJoinRoomPacket(const packet_t &packet) {
     JoinRoomPacket *p = (JoinRoomPacket *) packet.data;
+
+    // Extract endianes
+    from_network_endian(p->joinCode);
     std::string ip_str = rtype::tools::ipToString(const_cast<uint8_t*>(packet.header.client_addr));
     
     // Find or create player entity, checking for active game conflict
@@ -439,6 +448,9 @@ void room_controller::handlePlayerReady(const packet_t &packet) {
     std::cout << "=== handlePlayerReady called (PUBLIC ROOMS ONLY) ===" << std::endl;
     
     PlayerReadyPacket *p = (PlayerReadyPacket *) packet.data;
+
+    // Extract endianes
+    // (none needed, just a bool)
     
     // Find the player entity by network address
     ECS::EntityID player = player_service::findPlayerByNetwork(packet.header.client_addr, packet.header.client_port);
