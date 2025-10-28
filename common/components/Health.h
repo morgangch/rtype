@@ -62,16 +62,16 @@ namespace rtype::common::components {
     public:
         /** @brief Current health points (0 = dead) */
         int currentHp;
-
+        
         /** @brief Maximum health capacity */
         int maxHp;
-
+        
         /** @brief Whether the entity is alive (false = dead/destroyed) */
         bool isAlive;
-
+        
         /** @brief Whether the entity is currently invulnerable to damage */
         bool invulnerable;
-
+        
         /** @brief Remaining invulnerability time in seconds */
         float invulnerabilityTimer;
 
@@ -87,12 +87,12 @@ namespace rtype::common::components {
          */
         Health(int maxHp = 100)
             : currentHp(maxHp)
-              , maxHp(maxHp)
-              , isAlive(true)
-              , invulnerable(false)
-              , invulnerabilityTimer(0.0f) {
-        }
+            , maxHp(maxHp)
+            , isAlive(true)
+            , invulnerable(false)
+            , invulnerabilityTimer(0.0f) {}
     };
 }
 
 #endif // COMMON_HEALTH_HPP
+
