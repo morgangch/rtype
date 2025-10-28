@@ -116,13 +116,25 @@ namespace rtype::client::gui {
         
         // UI Text Elements
         sf::Text playersWaitingText;    ///< "Waiting for room host" for non-admin players
-        sf::Text actionButton;          ///< "Start Game" button (admin only)
+    sf::Text actionButton;          ///< Deprecated: text hidden when using sprite (admin only)
         sf::Text returnButton;          ///< "Return" button text for navigation back
         sf::Text serverCodeDisplay;     ///< Shows server code for sharing with others
         
         // UI Visual Elements
-        sf::RectangleShape actionButtonRect;  ///< Clickable area for start game button (admin only)
+    sf::RectangleShape actionButtonRect;  ///< Clickable area for start game button (sprite drawn instead)
         sf::RectangleShape returnButtonRect;  ///< Clickable area for return button
+    // Return sprite resources (replaces text)
+    sf::Texture returnTexture;      ///< Texture for return button sprite
+    sf::Sprite returnSprite;        ///< Sprite for return button
+    bool returnSpriteLoaded{false}; ///< True if return texture loaded
+    bool returnHovered{false};      ///< Hover state for return button
+
+        // Start game (admin) button sprite resources
+        sf::Texture actionTexture;       ///< Texture for start game sprite (uses Ready.png)
+        sf::Sprite actionSprite;         ///< Sprite for start game
+        bool actionSpriteLoaded{false};  ///< True if action texture loaded
+        bool actionHovered{false};       ///< Hover state for start game
+        bool actionPressed{false};       ///< Mouse is pressed on the start button (for glow)
                 
         // UI Management Methods
         /**

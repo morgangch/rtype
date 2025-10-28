@@ -26,6 +26,7 @@
 #include "gui/GameState.h"
 #include "gui/Accessibility.h"
 #include <memory>
+#include "gui/AssetPaths.h"
 
 namespace rtype::client::gui {
 
@@ -93,8 +94,18 @@ SettingsState::SettingsState(StateManager& stateManager)
     box2Hint.setCharacterSize(18);
     box2Hint.setFillColor(sf::Color(180,180,180));
 
-    // Return button setup
-    GUIHelper::setupReturnButton(returnButton, returnButtonRect);
+    // Return button sprite setup
+    returnSpriteLoaded = returnTexture.loadFromFile(rtype::client::assets::ui::RETURN_BUTTON);
+    if (returnSpriteLoaded) {
+        returnTexture.setSmooth(true);
+        returnSprite.setTexture(returnTexture);
+        // Center origin for clean centering in rect
+        sf::Vector2u sz = returnTexture.getSize();
+        returnSprite.setOrigin(static_cast<float>(sz.x) * 0.5f, static_cast<float>(sz.y) * 0.5f);
+    } else {
+        // Fallback to legacy text button if texture missing
+        GUIHelper::setupReturnButton(returnButton, returnButtonRect);
+    }
 
     // Keybinds setup
     keybindTitleText.setFont(font);
@@ -224,13 +235,33 @@ void SettingsState::onEnter() {
     daltonismValueText.setString(daltonismModes[currentDaltonismIndex]);
 
     // Return button (top left)
-    float returnButtonWidth = 150.0f;
-    float returnButtonHeight = 50.0f;
-    returnButtonRect.setSize(sf::Vector2f(returnButtonWidth, returnButtonHeight));
-    returnButtonRect.setPosition(20.0f, 20.0f);
-    GUIHelper::centerText(returnButton,
-        returnButtonRect.getPosition().x + returnButtonWidth / 2.0f,
-        returnButtonRect.getPosition().y + returnButtonHeight / 2.0f);
+    float returnButtonWidth = 300.0f;  // larger, consistent size across states
+    float returnButtonHeight = 120.0f;  // larger, consistent size across states
+    // Anchor sprite near the left edge; match hitbox to the sprite's visual size
+    float leftMargin = 8.0f;
+    float topMargin = 10.0f; // moved a bit up
+    if (returnSpriteLoaded) {
+        sf::Vector2u texSize = returnTexture.getSize();
+        if (texSize.x > 0 && texSize.y > 0) {
+            float scale = std::min(returnButtonWidth / static_cast<float>(texSize.x),
+                                   returnButtonHeight / static_cast<float>(texSize.y));
+            returnSprite.setScale(scale, scale);
+            float scaledW = static_cast<float>(texSize.x) * scale;
+            float scaledH = static_cast<float>(texSize.y) * scale;
+            // Set sprite centered within its own bounds using top-left anchor
+            returnSprite.setPosition(leftMargin + scaledW * 0.5f, topMargin + scaledH * 0.5f);
+            // Make the clickable rect exactly match the sprite's bounds
+            returnButtonRect.setSize(sf::Vector2f(scaledW, scaledH));
+            returnButtonRect.setPosition(leftMargin, topMargin);
+            // Hover background removed; we only apply a slight shrink-on-hover to the sprite
+        }
+    } else {
+        returnButtonRect.setSize(sf::Vector2f(returnButtonWidth, returnButtonHeight));
+        returnButtonRect.setPosition(leftMargin, topMargin);
+        GUIHelper::centerText(returnButton,
+            returnButtonRect.getPosition().x + returnButtonWidth / 2.0f,
+            returnButtonRect.getPosition().y + returnButtonHeight / 2.0f);
+    }
 
     // Overlay default
     m_overlay.setFillColor(sf::Color(0,0,0,150));
@@ -367,11 +398,9 @@ void SettingsState::update(float deltaTime) {
     box1Text.setPosition(box1Rect.getPosition().x + 10, box1Rect.getPosition().y + 15);
     box2Text.setPosition(box2Rect.getPosition().x + 10, box2Rect.getPosition().y + 15);
 
-    // Button hover effect for return button
+    // Return hover detection (sprite)
     sf::Vector2i mousePos = sf::Mouse::getPosition();
-    GUIHelper::applyButtonHover(returnButtonRect, returnButton,
-        GUIHelper::isPointInRect(sf::Vector2f(mousePos.x, mousePos.y), returnButtonRect),
-        GUIHelper::Colors::RETURN_BUTTON, sf::Color(150, 70, 70, 200));
+    returnHovered = GUIHelper::isPointInRect(sf::Vector2f(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y)), returnButtonRect);
 
     // Keybinds: update key text labels
     for (int i = 0; i < KeybindCount; i++) {
@@ -465,8 +494,21 @@ void SettingsState::render(sf::RenderWindow& window) {
     }
 
     // Draw return button
-    window.draw(returnButtonRect);
-    window.draw(returnButton);
+    if (returnSpriteLoaded) {
+        // Apply slight shrink on hover
+        sf::Vector2f originalScale = returnSprite.getScale();
+        if (returnHovered) {
+            returnSprite.setScale(originalScale.x * 0.94f, originalScale.y * 0.94f);
+        }
+        window.draw(returnSprite);
+        // Restore scale for next frame/layout
+        if (returnHovered) {
+            returnSprite.setScale(originalScale);
+        }
+    } else {
+        window.draw(returnButtonRect);
+        window.draw(returnButton);
+    }
 }
 
 } // namespace rtype::client::gui

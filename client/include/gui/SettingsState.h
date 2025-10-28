@@ -107,6 +107,11 @@ private:
     sf::RectangleShape box1Rect;        ///< Input field background for IP
     sf::RectangleShape box2Rect;        ///< Input field background for Port
     sf::RectangleShape returnButtonRect;///< Clickable area for return button
+    sf::Texture returnTexture;          ///< Texture for return button sprite
+    sf::Sprite returnSprite;            ///< Sprite for return button
+    bool returnSpriteLoaded{false};     ///< True if return texture loaded
+    bool returnHovered{false};          ///< Hover state for return button
+    // Removed hover background rectangle; keep only shrink-on-hover effect
 
     // Input State
     std::string box1Value;              ///< Current IP address input
