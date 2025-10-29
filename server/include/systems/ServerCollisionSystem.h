@@ -54,18 +54,33 @@ public:
 
 private:
     /**
-     * @brief Checks collisions between projectiles and enemies
-     * 
+     * @brief Checks collisions between player projectiles and enemies
+     *
      * Iterates through all projectiles and enemies, performing AABB
      * collision tests. When a hit is detected:
      * - Applies damage to the enemy
      * - Destroys non-piercing projectiles
      * - Marks dead entities for destruction
-     * 
+     *
      * @param world The ECS world
      * @param toDestroy Vector to accumulate entities to destroy
      */
     void checkProjectileVsEnemyCollisions(ECS::World& world, std::vector<ECS::EntityID>& toDestroy);
+
+    /**
+     * @brief Checks collisions between enemy projectiles and players
+     *
+     * @param world The ECS world
+     * @param toDestroy Vector to accumulate entities to destroy
+     */
+    void checkEnemyProjectilesVsPlayerCollisions(ECS::World& world, std::vector<ECS::EntityID>& toDestroy);
+
+    /**
+     * @brief Checks collisions between players and enemies (direct contact)
+     *
+     * @param world The ECS world
+     */
+    void checkPlayerVsEnemyCollisions(ECS::World& world);
     
     /**
      * @brief Simple Axis-Aligned Bounding Box (AABB) collision test

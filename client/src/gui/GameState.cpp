@@ -26,6 +26,7 @@
 #include "gui/GUIHelper.h"
 #include "gui/AssetPaths.h"
 #include "gui/TextureCache.h"
+#include <common/systems/MovementSystem.h>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -179,27 +180,49 @@ ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t 
 }
 
 void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp) {
-    // Skip updates for local player (controlled by client input)
-    if (serverId == m_localPlayerServerId) {
-        return;
-    }
-    
     auto it = m_serverEntityMap.find(serverId);
     if (it == m_serverEntityMap.end()) {
         std::cout << "[GameState] Cannot update entity with serverId=" << serverId << " - not found in map" << std::endl;
         return;
     }
-    
+
     ECS::EntityID e = it->second;
-    auto* pos = m_world.GetComponent<rtype::common::components::Position>(e);
-    if (pos) { pos->x = x; pos->y = y; }
+
+    // SERVER-AUTHORITATIVE: Always update HP from server (even for local player)
+    // Health is managed by server for anti-cheat
     auto* health = m_world.GetComponent<rtype::common::components::Health>(e);
-    if (health) { health->currentHp = hp; }
+    if (health) {
+        health->currentHp = hp;
+        std::cout << "[GameState] Updated entity " << serverId << " HP: " << hp << std::endl;
+    }
+
+    // CLIENT-SIDE PREDICTION: Skip position updates for local player (controlled by client input)
+    // Remote players and enemies use server position
+    if (serverId == m_localPlayerServerId) {
+        return; // Don't override local player position (prediction)
+    }
+
+    auto* pos = m_world.GetComponent<rtype::common::components::Position>(e);
+    if (pos) {
+        pos->x = x;
+        pos->y = y;
+    }
 }
 
 void GameState::setLocalPlayerServerId(uint32_t serverId) {
     m_localPlayerServerId = serverId;
     std::cout << "[GameState] Local player server ID set to: " << serverId << std::endl;
+
+    // CRITICAL: Map local player entity to server ID if it exists
+    // This allows server to update local player's HP via PLAYER_STATE packets
+    // Note: Player entity might not be created yet (onEnter() not called),
+    // but mapping will be done in resetGame() when the entity is created
+    if (m_playerEntity != 0) {
+        m_serverEntityMap[serverId] = m_playerEntity;
+        std::cout << "[GameState] Mapped local player: serverId=" << serverId << " -> clientEntity=" << m_playerEntity << std::endl;
+    } else {
+        std::cout << "[GameState] Local player entity not created yet - will be mapped in resetGame()" << std::endl;
+    }
 }
 
 void GameState::setIsAdmin(bool isAdmin) {
@@ -391,10 +414,17 @@ void GameState::resumeGame() {
 void GameState::resetGame() {
     // Clear ECS world
     m_world.Clear();
-    
+
     // Create player entity
     m_playerEntity = createPlayer();
-    
+
+    // CRITICAL: Map local player entity to server ID if we already have one
+    // This ensures PLAYER_STATE packets can update the local player's HP
+    if (m_localPlayerServerId != 0) {
+        m_serverEntityMap[m_localPlayerServerId] = m_playerEntity;
+        std::cout << "[GameState::resetGame] Mapped local player: serverId=" << m_localPlayerServerId << " -> clientEntity=" << m_playerEntity << std::endl;
+    }
+
     // Reset flags
     m_isGameOver = false;
     m_gameStatus = GameStatus::Playing;
@@ -491,8 +521,7 @@ void GameState::update(float deltaTime) {
     updateChargedShotSystem(deltaTime);
     updateInvulnerabilitySystem(deltaTime);
     updateAnimationSystem(deltaTime);
-    updateMovementSystem(deltaTime);
-    updateEnemyAISystem(deltaTime);
+    rtype::common::systems::MovementSystem::update(m_world, deltaTime); // shared movement system
     updateCleanupSystem(deltaTime);
     updateCollisionSystem();
 }

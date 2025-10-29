@@ -74,6 +74,16 @@ void rtype::server::Rtype::loop(float deltaTime) {
             if (player && posPtr) {
                 clampPlayerPosition(posPtr.get());
             }
+
+            // Update invulnerability timers for all entities with Health
+            auto* health = world.GetComponent<rtype::common::components::Health>(entity);
+            if (health && health->invulnerable) {
+                health->invulnerabilityTimer -= deltaTime;
+                if (health->invulnerabilityTimer <= 0.0f) {
+                    health->invulnerable = false;
+                    health->invulnerabilityTimer = 0.0f;
+                }
+            }
         }
     }
 

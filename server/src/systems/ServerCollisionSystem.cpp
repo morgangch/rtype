@@ -13,6 +13,7 @@
 #include "rtype.h"
 #include "packetmanager.h"
 #include <common/components/EnemyType.h>
+#include <common/components/Player.h>
 #include <iostream>
 #include <cmath>
 #include <algorithm>
@@ -21,10 +22,12 @@ namespace rtype::server::systems {
 
 void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
     std::vector<ECS::EntityID> toDestroy;
-    
+
     // Check all collision types
     checkProjectileVsEnemyCollisions(world, toDestroy);
-    
+    checkEnemyProjectilesVsPlayerCollisions(world, toDestroy);
+    checkPlayerVsEnemyCollisions(world);  // Applies damage directly, no destruction
+
     // Remove duplicates from toDestroy list
     std::sort(toDestroy.begin(), toDestroy.end());
     toDestroy.erase(std::unique(toDestroy.begin(), toDestroy.end()), toDestroy.end());
@@ -186,6 +189,139 @@ void ServerCollisionSystem::broadcastEntityDestroyToAllRooms(
         }
         
         std::cout << "  ✓ Sent ENTITY_DESTROY to " << players.size() << " players in room " << roomPtr->joinCode << std::endl;
+    }
+}
+
+void ServerCollisionSystem::checkEnemyProjectilesVsPlayerCollisions(
+    ECS::World& world,
+    std::vector<ECS::EntityID>& toDestroy) {
+
+    auto* projectilePositions = world.GetAllComponents<rtype::common::components::Position>();
+    if (!projectilePositions) return;
+
+    // Iterate through all projectiles
+    for (const auto& [projEntity, projPosPtr] : *projectilePositions) {
+        auto* projTeam = world.GetComponent<rtype::common::components::Team>(projEntity);
+        auto* projData = world.GetComponent<rtype::common::components::Projectile>(projEntity);
+
+        // Skip if not an enemy projectile
+        if (!projTeam || !projData) continue;
+        if (projTeam->team != rtype::common::components::TeamType::Enemy) continue;
+
+        // Skip projectiles that just spawned
+        if (projData->distanceTraveled < 1.0f) continue;
+
+        float projX = projPosPtr->x;
+        float projY = projPosPtr->y;
+        float projW = 20.0f;
+        float projH = 10.0f;
+
+        // Check against all players
+        auto* playerComponents = world.GetAllComponents<rtype::common::components::Player>();
+        if (!playerComponents) continue;
+
+        for (const auto& [playerEntity, playerPtr] : *playerComponents) {
+            auto* playerPos = world.GetComponent<rtype::common::components::Position>(playerEntity);
+            auto* playerHealth = world.GetComponent<rtype::common::components::Health>(playerEntity);
+
+            if (!playerPos || !playerHealth) continue;
+            if (playerHealth->invulnerable) continue;  // Skip invulnerable players
+
+            float playerX = playerPos->x;
+            float playerY = playerPos->y;
+            float playerW = 33.0f;  // Player hitbox
+            float playerH = 17.0f;
+
+            // Check AABB collision
+            if (checkAABB(projX, projY, projW, projH, playerX, playerY, playerW, playerH)) {
+                std::cout << "[ServerCollisionSystem] Enemy projectile " << projEntity << " hit player " << playerEntity << std::endl;
+
+                // Damage player
+                playerHealth->currentHp -= projData->damage;
+                std::cout << "  Player health: " << playerHealth->currentHp << "/" << playerHealth->maxHp << std::endl;
+
+                // Grant invulnerability frames
+                playerHealth->invulnerable = true;
+                playerHealth->invulnerabilityTimer = 1.0f;  // 1 second invulnerability
+
+                if (playerHealth->currentHp <= 0) {
+                    std::cout << "  ✗ Player died!" << std::endl;
+                    playerHealth->isAlive = false;
+                    // TODO: Handle player death (game over, respawn, etc.)
+                }
+
+                // Destroy projectile
+                toDestroy.push_back(projEntity);
+                break;  // Projectile destroyed, stop checking
+            }
+        }
+    }
+}
+
+void ServerCollisionSystem::checkPlayerVsEnemyCollisions(ECS::World& world) {
+    auto* playerComponents = world.GetAllComponents<rtype::common::components::Player>();
+    if (!playerComponents) return;
+
+    for (const auto& [playerEntity, playerPtr] : *playerComponents) {
+        auto* playerPos = world.GetComponent<rtype::common::components::Position>(playerEntity);
+        auto* playerHealth = world.GetComponent<rtype::common::components::Health>(playerEntity);
+
+        if (!playerPos || !playerHealth) continue;
+        if (playerHealth->invulnerable) continue;  // Skip invulnerable players
+
+        float playerX = playerPos->x;
+        float playerY = playerPos->y;
+        float playerW = 33.0f;
+        float playerH = 17.0f;
+
+        // Check against all enemies
+        auto* enemyPositions = world.GetAllComponents<rtype::common::components::Position>();
+        if (!enemyPositions) continue;
+
+        for (const auto& [enemyEntity, enemyPosPtr] : *enemyPositions) {
+            if (enemyEntity == playerEntity) continue;
+
+            auto* enemyTeam = world.GetComponent<rtype::common::components::Team>(enemyEntity);
+            auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemyEntity);
+
+            // Check if this is an enemy
+            if (!enemyTeam || !enemyHealth) continue;
+            if (enemyTeam->team != rtype::common::components::TeamType::Enemy) continue;
+
+            float enemyX = enemyPosPtr->x;
+            float enemyY = enemyPosPtr->y;
+            float enemyW = 33.0f;
+            float enemyH = 36.0f;
+
+            // Boss has larger hitbox
+            auto* enemyType = world.GetComponent<rtype::common::components::EnemyTypeComponent>(enemyEntity);
+            if (enemyType && enemyType->type == rtype::common::components::EnemyType::TankDestroyer) {
+                enemyW = 33.0f * 5.0f;
+                enemyH = 36.0f * 5.0f;
+            }
+
+            // Check AABB collision
+            if (checkAABB(playerX, playerY, playerW, playerH, enemyX, enemyY, enemyW, enemyH)) {
+                std::cout << "[ServerCollisionSystem] Player " << playerEntity << " collided with enemy " << enemyEntity << std::endl;
+
+                // Damage player (contact damage = 1)
+                playerHealth->currentHp -= 1;
+                std::cout << "  Player health: " << playerHealth->currentHp << "/" << playerHealth->maxHp << std::endl;
+
+                // Grant invulnerability frames
+                playerHealth->invulnerable = true;
+                playerHealth->invulnerabilityTimer = 1.0f;
+
+                if (playerHealth->currentHp <= 0) {
+                    std::cout << "  ✗ Player died!" << std::endl;
+                    playerHealth->isAlive = false;
+                    // TODO: Handle player death
+                }
+
+                // Enemy doesn't get destroyed (player just takes damage)
+                break;  // Player hit, stop checking other enemies this frame
+            }
+        }
     }
 }
 

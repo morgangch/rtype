@@ -28,7 +28,7 @@ ECS::EntityID player_service::createNewPlayer(std::string name, int room_code, s
         // Basic player components so server can track and broadcast state
         root.world.AddComponent<rtype::common::components::Position>(player, 100.0f, 360.0f, 0.0f);
         root.world.AddComponent<rtype::common::components::Velocity>(player, 0.0f, 0.0f, 400.0f); // max speed 400
-        root.world.AddComponent<rtype::common::components::Health>(player, 100);
+        root.world.AddComponent<rtype::common::components::Health>(player, 3);
         root.world.AddComponent<rtype::common::components::Team>(player, rtype::common::components::TeamType::Player);
         root.world.AddComponent<rtype::server::components::PlayerConn>(player, ip, port, room_code);
     

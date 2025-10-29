@@ -297,15 +297,6 @@ namespace rtype::client::gui {
          */
         ECS::EntityID createEnemyProjectile(float x, float y, float vx = -300.0f, float vy = 0.0f);
 
-        /* === ECS System Updates === */
-        /**
-         * @brief Update movement system for all entities with Position and Velocity
-         * @param deltaTime Time elapsed since last frame
-         *
-         * Applies velocity to position for all moving entities.
-         */
-        void updateMovementSystem(float deltaTime);
-
         /**
          * @brief Update input system for player control
          * @param deltaTime Time elapsed since last frame
@@ -356,14 +347,6 @@ namespace rtype::client::gui {
          * Adjusts player sprite animation based on movement direction.
          */
         void updatePlayerAnimation(ECS::EntityID entity, rtype::client::components::Animation* animation, rtype::client::components::Sprite* sprite, bool isMovingUp);
-
-        /**
-         * @brief Update enemy AI behaviors
-         * @param deltaTime Time elapsed since last frame
-         *
-         * Controls enemy firing patterns and movement logic.
-         */
-        void updateEnemyAISystem(float deltaTime);
 
         /**
          * @brief Update cleanup system for out-of-bounds entities
