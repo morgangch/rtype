@@ -146,6 +146,7 @@ struct PlayerStatePacket {
     float dir;
     uint16_t hp;
     bool isAlive;
+    bool invulnerable; // Server-authoritative invulnerability state
 };
 
 // Server → All: Spawn a new enemy

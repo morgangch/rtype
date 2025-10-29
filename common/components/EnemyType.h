@@ -41,8 +41,9 @@ namespace rtype::common::components {
      */
     struct EnemyTypeComponent {
         EnemyType type;
-        
-        EnemyTypeComponent(EnemyType t = EnemyType::Basic) : type(t) {}
+        float lifeTime; ///< Time since spawn (for movement patterns)
+
+        EnemyTypeComponent(EnemyType t = EnemyType::Basic) : type(t), lifeTime(0.0f) {}
     };
     
 } // namespace rtype::common::components

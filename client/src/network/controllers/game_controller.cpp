@@ -98,7 +98,7 @@ namespace rtype::client::controllers::game_controller {
     void handle_player_state(const packet_t &packet) {
         PlayerStatePacket *p = (PlayerStatePacket *) packet.data;
         using rtype::client::gui::g_gameState;
-        if (g_gameState) g_gameState->updateEntityStateFromServer(p->playerId, p->x, p->y, p->hp);
+        if (g_gameState) g_gameState->updateEntityStateFromServer(p->playerId, p->x, p->y, p->hp, p->invulnerable);
     }
     
     void handle_lobby_state(const packet_t &packet) {

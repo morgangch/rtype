@@ -81,32 +81,28 @@ private:
      * @param world The ECS world
      */
     void checkPlayerVsEnemyCollisions(ECS::World& world);
-    
-    /**
-     * @brief Simple Axis-Aligned Bounding Box (AABB) collision test
-     * 
-     * Tests if two rectangular entities overlap using their center
-     * positions and dimensions.
-     * 
-     * @param x1,y1 Center coordinates of first entity
-     * @param w1,h1 Width and height of first entity
-     * @param x2,y2 Center coordinates of second entity
-     * @param w2,h2 Width and height of second entity
-     * @return True if the entities overlap, false otherwise
-     */
-    bool checkAABB(float x1, float y1, float w1, float h1,
-                   float x2, float y2, float w2, float h2);
-    
+
     /**
      * @brief Broadcasts entity destruction to all players in active games
-     * 
+     *
      * Sends ENTITY_DESTROY packet to all players in rooms where the
      * game has started, ensuring clients remove the entity locally.
-     * 
+     *
      * @param world The ECS world
      * @param entityId The ID of the entity being destroyed
      */
     void broadcastEntityDestroyToAllRooms(ECS::World& world, ECS::EntityID entityId);
+
+    /**
+     * @brief Broadcasts player state immediately after damage
+     *
+     * Sends PLAYER_STATE packet immediately after a player takes damage,
+     * ensuring clients update HP without waiting for the next broadcast tick.
+     *
+     * @param world The ECS world
+     * @param playerId The ID of the player whose state changed
+     */
+    void broadcastPlayerStateImmediate(ECS::World& world, ECS::EntityID playerId);
 };
 
 } // namespace rtype::server::systems

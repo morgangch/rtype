@@ -26,6 +26,7 @@
 #include <common/systems/MovementSystem.h>
 #include <common/systems/FireRateSystem.h>
 #include <common/systems/EnemyAISystem.h>
+#include <common/systems/CollisionSystem.h>
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -214,192 +215,84 @@ void GameState::updateCleanupSystem(float deltaTime) {
     }
 }
 
-void GameState::checkPlayerVsEnemiesCollision(
-    ECS::ComponentArray<rtype::common::components::Position>& positions,
-    const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds) {
-    
-    if (m_playerEntity == 0) return;
-    
-    auto* playerPos = m_world.GetComponent<rtype::common::components::Position>(m_playerEntity);
-    auto* playerHealth = m_world.GetComponent<rtype::common::components::Health>(m_playerEntity);
-    
-    if (!playerPos || !playerHealth || playerHealth->invulnerable) return;
-    
-    sf::FloatRect playerBounds = getBounds(m_playerEntity, *playerPos);
-    
-    for (const auto& [entity, posPtr] : positions) {
-        if (entity == m_playerEntity) continue;
-        
-        auto* team = m_world.GetComponent<rtype::common::components::Team>(entity);
-        auto* health = m_world.GetComponent<rtype::common::components::Health>(entity);
-        
-        // Check collision with enemies
-        if (team && health && team->team == rtype::common::components::TeamType::Enemy) {
-            sf::FloatRect enemyBounds = getBounds(entity, *posPtr);
-            
-            if (playerBounds.intersects(enemyBounds)) {
-                // SERVER-AUTHORITATIVE: Visual feedback only
-                // Server detects collision and applies damage
-                // Client receives updated HP via PLAYER_STATE packet
-
-                // Play hit sound for immediate feedback (optional)
-                if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) {
-                    m_soundManager.play(AudioFactory::SfxId::LoseLife);
-                }
-            }
-        }
-    }
-}
-
-// HYBRID CLIENT-SIDE PREDICTION + SERVER AUTHORITY:
-// - Client detects collisions immediately for low-latency feedback
-// - Client applies damage and destroys entities locally (optimistic prediction)
-// - Server also detects collisions and sends ENTITY_DESTROY for confirmation
-// - Client's destroyEntityByServerId() is idempotent (handles already-destroyed entities)
-// 
-// For SERVER-OWNED projectiles:
-//   - Client predicts collision → destroys enemy locally
-//   - Client does NOT destroy projectile (server decides when projectile dies)
-//   - Server confirms → sends ENTITY_DESTROY for both projectile and enemy
-// 
-// This gives instant feedback while maintaining server authority
-
-void GameState::checkPlayerProjectilesVsEnemiesCollision(
-    ECS::ComponentArray<rtype::common::components::Position>& positions,
-    const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds,
-    std::vector<ECS::EntityID>& toDestroy) {
-    
-    
-    for (const auto& [projEntity, projPosPtr] : positions) {
-        auto* projTeam = m_world.GetComponent<rtype::common::components::Team>(projEntity);
-        auto* projData = m_world.GetComponent<rtype::common::components::Projectile>(projEntity);
-        
-        // Skip if not a player projectile
-        if (!projTeam || !projData) continue;
-        if (projTeam->team != rtype::common::components::TeamType::Player) continue;
-        
-        sf::FloatRect projBounds = getBounds(projEntity, *projPosPtr);
-        
-        for (const auto& [enemyEntity, enemyPosPtr] : positions) {
-            if (enemyEntity == projEntity) continue;
-            
-            auto* enemyTeam = m_world.GetComponent<rtype::common::components::Team>(enemyEntity);
-            auto* enemyHealth = m_world.GetComponent<rtype::common::components::Health>(enemyEntity);
-            
-            // Check collision with enemies
-            if (enemyTeam && enemyHealth && enemyTeam->team == rtype::common::components::TeamType::Enemy) {
-                sf::FloatRect enemyBounds = getBounds(enemyEntity, *enemyPosPtr);
-                
-                if (projBounds.intersects(enemyBounds)) {
-                    // SERVER-AUTHORITATIVE: Collision detected for visual feedback only.
-                    // The server will apply damage and send destruction packets.
-                    //
-                    // We keep collision detection for:
-                    // - Playing hit sounds immediately
-                    // - Showing particle effects
-                    // - Visual feedback for responsiveness
-                    //
-                    // But we DO NOT:
-                    // - Apply damage to enemy HP
-                    // - Destroy entities locally
-                    // - Mark entities for destruction
-                    //
-                    // The server will send ENTITY_DESTROY packets when entities die.
-
-                    // NOTE: Visual/audio feedback for collision can be added here
-                    // For now, server handles all damage and destruction
-                    //if (m_soundManager.has(AudioFactory::SfxId::HitEnemy)) {
-                    //    m_soundManager.play(AudioFactory::SfxId::HitEnemy);
-                    //}
-
-                    // NOTE: Projectile is NOT destroyed here. Server will send destruction packet.
-                    // This prevents client from cheating by manipulating collision detection.
-                }
-            }
-        }
-    }
-}
-
-void GameState::checkEnemyProjectilesVsPlayerCollision(
-    ECS::ComponentArray<rtype::common::components::Position>& positions,
-    const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds,
-    std::vector<ECS::EntityID>& toDestroy) {
-    
-    if (m_playerEntity == 0) return;
-    
-    auto* playerPos = m_world.GetComponent<rtype::common::components::Position>(m_playerEntity);
-    auto* playerHealth = m_world.GetComponent<rtype::common::components::Health>(m_playerEntity);
-    
-    if (!playerPos || !playerHealth || playerHealth->invulnerable) return;
-    
-    sf::FloatRect playerBounds = getBounds(m_playerEntity, *playerPos);
-    
-    for (const auto& [projEntity, projPosPtr] : positions) {
-        auto* projTeam = m_world.GetComponent<rtype::common::components::Team>(projEntity);
-        auto* projData = m_world.GetComponent<rtype::common::components::Projectile>(projEntity);
-        
-        // Check if it's an enemy projectile
-        if (projTeam && projData && projTeam->team == rtype::common::components::TeamType::Enemy) {
-            sf::FloatRect projBounds = getBounds(projEntity, *projPosPtr);
-            
-            if (playerBounds.intersects(projBounds)) {
-                // SERVER-AUTHORITATIVE: Visual feedback only
-                // Server detects collision, applies damage, and sends PLAYER_STATE update
-                // Client receives updated HP and invulnerability status via network
-
-                // Play hit sound for immediate feedback
-                if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) {
-                    m_soundManager.play(AudioFactory::SfxId::LoseLife);
-                }
-
-                // NOTE: Do NOT destroy projectile or apply damage locally
-                // Server will send ENTITY_DESTROY for projectile after collision
-            }
-        }
-    }
-}
-
 void GameState::updateCollisionSystem() {
+    rtype::common::systems::CollisionHandlers handlers;
     std::vector<ECS::EntityID> toDestroy;
-    
-    // Get all positions for collision checks
-    auto* positions = m_world.GetAllComponents<rtype::common::components::Position>();
-    if (!positions) return;
-    
-    // Helper lambda to get entity bounds
-    auto getBounds = [this](ECS::EntityID entity, const rtype::common::components::Position& pos) -> sf::FloatRect {
-        auto* sprite = m_world.GetComponent<rtype::client::components::Sprite>(entity);
-        if (!sprite) return sf::FloatRect(pos.x, pos.y, 1.0f, 1.0f);
-        
-        float realWidth, realHeight;
-        
-        if (sprite->useTexture) {
-            // For textured sprites: use textureRect dimensions (actual frame size) * scale
-            realWidth = sprite->textureRect.width * sprite->scale;
-            realHeight = sprite->textureRect.height * sprite->scale;
-        } else {
-            // For colored shapes: use size directly (no scale)
-            realWidth = sprite->size.x;
-            realHeight = sprite->size.y;
+
+    handlers.onPlayerVsEnemy = [this](ECS::EntityID player, ECS::EntityID enemy, ECS::World& world) {
+        auto* playerHealth = world.GetComponent<rtype::common::components::Health>(player);
+        if (!playerHealth || playerHealth->invulnerable) return;
+
+        playerHealth->currentHp -= 1;
+        playerHealth->invulnerable = true;
+        playerHealth->invulnerabilityTimer = 1.0f;
+
+        if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) {
+            m_soundManager.play(AudioFactory::SfxId::LoseLife);
         }
-        
-        return sf::FloatRect(
-            pos.x - realWidth * 0.5f,
-            pos.y - realHeight * 0.5f,
-            realWidth,
-            realHeight
-        );
     };
-    
-    // Run collision detection subsystems
-    checkPlayerVsEnemiesCollision(*positions, getBounds);
-    checkPlayerProjectilesVsEnemiesCollision(*positions, getBounds, toDestroy);
-    checkEnemyProjectilesVsPlayerCollision(*positions, getBounds, toDestroy);
-    
-    // SERVER-AUTHORITATIVE: Do NOT destroy entities locally.
-    // The server will send ENTITY_DESTROY packets when entities die.
-    if (!toDestroy.empty()) {
-        std::cout << "[GameState] WARNING: toDestroy vector is not empty! This shouldn't happen with server-authoritative model." << std::endl;
+
+    handlers.onPlayerProjectileVsEnemy = [this, &toDestroy](ECS::EntityID proj, ECS::EntityID enemy, ECS::World& world) {
+        auto* projData = world.GetComponent<rtype::common::components::Projectile>(proj);
+        auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemy);
+        if (!projData || !enemyHealth) return;
+
+        enemyHealth->currentHp -= projData->damage;
+
+        if (enemyHealth->currentHp <= 0) {
+            toDestroy.push_back(enemy);
+        }
+
+        if (!projData->piercing) {
+            toDestroy.push_back(proj);
+        }
+    };
+
+    handlers.onEnemyProjectileVsPlayer = [this, &toDestroy](ECS::EntityID proj, ECS::EntityID player, ECS::World& world) {
+        auto* playerHealth = world.GetComponent<rtype::common::components::Health>(player);
+        auto* projData = world.GetComponent<rtype::common::components::Projectile>(proj);
+        if (!playerHealth || !projData || playerHealth->invulnerable) return;
+
+        playerHealth->currentHp -= projData->damage;
+        playerHealth->invulnerable = true;
+        playerHealth->invulnerabilityTimer = 1.0f;
+
+        if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) {
+            m_soundManager.play(AudioFactory::SfxId::LoseLife);
+        }
+
+        toDestroy.push_back(proj);
+    };
+
+    handlers.onSuicideExplosion = [this, &toDestroy](ECS::EntityID suicideEnemy, ECS::World& world) {
+        auto* enemyPos = world.GetComponent<rtype::common::components::Position>(suicideEnemy);
+        if (!enemyPos) return;
+
+        const float EXPLOSION_RADIUS = 100.0f;
+        const int EXPLOSION_DAMAGE = 2;
+
+        auto* playerHealth = world.GetComponent<rtype::common::components::Health>(m_playerEntity);
+        auto* playerPos = world.GetComponent<rtype::common::components::Position>(m_playerEntity);
+
+        if (playerHealth && playerPos && !playerHealth->invulnerable) {
+            float dx = playerPos->x - enemyPos->x;
+            float dy = playerPos->y - enemyPos->y;
+            float distance = std::sqrt(dx * dx + dy * dy);
+
+            if (distance <= EXPLOSION_RADIUS) {
+                playerHealth->currentHp -= EXPLOSION_DAMAGE;
+                playerHealth->invulnerable = true;
+                playerHealth->invulnerabilityTimer = 1.0f;
+            }
+        }
+
+        toDestroy.push_back(suicideEnemy);
+    };
+
+    rtype::common::systems::CollisionSystem::update(m_world, 0.0f, handlers);
+
+    for (auto entity : toDestroy) {
+        m_world.DestroyEntity(entity);
     }
 }
 

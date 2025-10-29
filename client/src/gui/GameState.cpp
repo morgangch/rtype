@@ -179,27 +179,19 @@ ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t 
     return entity;
 }
 
-void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp) {
+void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable) {
     auto it = m_serverEntityMap.find(serverId);
-    if (it == m_serverEntityMap.end()) {
-        std::cout << "[GameState] Cannot update entity with serverId=" << serverId << " - not found in map" << std::endl;
-        return;
-    }
+    if (it == m_serverEntityMap.end()) return;
 
     ECS::EntityID e = it->second;
 
-    // SERVER-AUTHORITATIVE: Always update HP from server (even for local player)
-    // Health is managed by server for anti-cheat
+    // Client-authoritative: ignore updates for local player
+    if (serverId == m_localPlayerServerId) return;
+
     auto* health = m_world.GetComponent<rtype::common::components::Health>(e);
     if (health) {
         health->currentHp = hp;
-        std::cout << "[GameState] Updated entity " << serverId << " HP: " << hp << std::endl;
-    }
-
-    // CLIENT-SIDE PREDICTION: Skip position updates for local player (controlled by client input)
-    // Remote players and enemies use server position
-    if (serverId == m_localPlayerServerId) {
-        return; // Don't override local player position (prediction)
+        health->invulnerable = invulnerable;
     }
 
     auto* pos = m_world.GetComponent<rtype::common::components::Position>(e);
@@ -511,10 +503,20 @@ void GameState::update(float deltaTime) {
     if (m_gameStatus == GameStatus::InGameMenu) {
         return; // Don't update game logic when in menu
     }
-    
+
+    // Check if player is dead (HP <= 0) - show game over screen
+    if (m_playerEntity != 0) {
+        auto* health = m_world.GetComponent<rtype::common::components::Health>(m_playerEntity);
+        if (health && health->currentHp <= 0) {
+            std::cout << "[GameState] Player died - showing game over screen" << std::endl;
+            showInGameMenu(true); // true = game over
+            return;
+        }
+    }
+
     // Update parallax background
     m_parallaxSystem.update(deltaTime);
-    
+
     // Run ECS systems in order
     updateInputSystem(deltaTime);
     updateFireRateSystem(deltaTime);

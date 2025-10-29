@@ -169,8 +169,9 @@ namespace rtype::client::gui {
          * @param x X position
          * @param y Y position
          * @param hp Health value
+         * @param invulnerable Invulnerability state from server
          */
-        void updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp);
+        void updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable);
 
         /**
          * @brief Destroy a local entity corresponding to a server entity id
@@ -362,36 +363,6 @@ namespace rtype::client::gui {
          * Orchestrates all collision checks between different entity types.
          */
         void updateCollisionSystem();
-
-        /* === Collision Detection Helpers === */
-        /**
-         * @brief Check collisions between player and enemies
-         * @param positions Component array of all positions
-         * @param getBounds Function to get bounding box from entity and position
-         *
-         * Damages player on enemy collision and handles invulnerability.
-         */
-        void checkPlayerVsEnemiesCollision(ECS::ComponentArray<rtype::common::components::Position>& positions, const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds);
-
-        /**
-         * @brief Check collisions between player projectiles and enemies
-         * @param positions Component array of all positions
-         * @param getBounds Function to get bounding box from entity and position
-         * @param toDestroy Vector to accumulate entities to destroy
-         *
-         * Damages enemies hit by player projectiles and destroys non-piercing projectiles.
-         */
-        void checkPlayerProjectilesVsEnemiesCollision(ECS::ComponentArray<rtype::common::components::Position>& positions, const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds, std::vector<ECS::EntityID>& toDestroy);
-
-        /**
-         * @brief Check collisions between enemy projectiles and player
-         * @param positions Component array of all positions
-         * @param getBounds Function to get bounding box from entity and position
-         * @param toDestroy Vector to accumulate entities to destroy
-         *
-         * Damages player hit by enemy projectiles and destroys the projectiles.
-         */
-        void checkEnemyProjectilesVsPlayerCollision(ECS::ComponentArray<rtype::common::components::Position>& positions, const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds, std::vector<ECS::EntityID>& toDestroy);
 
         /* === Gameplay Logic === */
         /**

@@ -218,6 +218,7 @@ void ServerEnemySystem::updatePlayerStateBroadcast(ECS::World& world, float delt
             s.dir = pos ? pos->rotation : 0.0f;
             s.hp = health ? static_cast<uint16_t>(health->currentHp) : 0;
             s.isAlive = health ? health->isAlive : false;
+            s.invulnerable = health ? health->invulnerable : false;
 
             // Send this player's state to everyone in the same room
             auto allPlayers = world.GetAllComponents<rtype::common::components::Player>();
@@ -241,13 +242,21 @@ void ServerEnemySystem::updatePlayerStateBroadcast(ECS::World& world, float delt
 void ServerEnemySystem::cleanupDeadEntities(ECS::World& world) {
     auto healths = world.GetAllComponents<rtype::common::components::Health>();
     if (!healths) return;
-    
+
     std::vector<ECS::EntityID> toDestroy;
     for (auto &pair : *healths) {
         ECS::EntityID eid = pair.first;
         auto* h = pair.second.get();
         if (!h) continue;
         if (!h->isAlive || h->currentHp <= 0) {
+            // Check if this is a player - don't destroy, show game over
+            auto* player = world.GetComponent<rtype::common::components::Player>(eid);
+            if (player) {
+                std::cout << "[ServerEnemySystem] Player " << eid << " (" << player->name << ") died - game over" << std::endl;
+                continue; // Don't destroy player entity, client shows game over screen
+            }
+
+            // Non-player entity (enemy/projectile) - destroy normally
             EntityDestroyPacket pkt{};
             pkt.entityId = static_cast<uint32_t>(eid);
             pkt.reason = 1; // killed

@@ -59,15 +59,7 @@ void rtype::server::Rtype::loop(float deltaTime) {
     auto* positions = world.GetAllComponents<rtype::common::components::Position>();
     if (positions) {
         for (auto& [entity, posPtr] : *positions) {
-            // Update projectile distance traveled (for collision skip logic)
-            auto* vel = world.GetComponent<rtype::common::components::Velocity>(entity);
-            auto* proj = world.GetComponent<rtype::common::components::Projectile>(entity);
-            if (proj && vel) {
-                float dx = vel->vx * deltaTime;
-                float dy = vel->vy * deltaTime;
-                float distance = std::sqrt(dx * dx + dy * dy);
-                proj->distanceTraveled += distance;
-            }
+            // Note: projectile distanceTraveled is now updated in MovementSystem (common)
 
             // Clamp player positions to game bounds (server-authoritative)
             auto* player = world.GetComponent<rtype::common::components::Player>(entity);
