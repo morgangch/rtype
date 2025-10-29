@@ -25,6 +25,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <string>
+#include "gui/AssetPaths.h"
 
 // External declaration of global player server ID set by JOIN_ROOM_ACCEPTED handler
 extern uint32_t g_playerServerId;
@@ -50,13 +51,29 @@ namespace rtype::client::gui {
         playersWaitingText.setCharacterSize(GUIHelper::Sizes::TITLE_FONT_SIZE - 28);
         playersWaitingText.setFillColor(GUIHelper::Colors::TEXT);
         
-        // Action button setup (admin only)
+        // Action button sprite (admin only)
         if (isAdmin) {
-            GUIHelper::setupButton(actionButton, actionButtonRect, "", GUIHelper::Sizes::BUTTON_FONT_SIZE);
+            actionSpriteLoaded = actionTexture.loadFromFile(rtype::client::assets::ui::READY_BUTTON);
+            if (!actionSpriteLoaded) {
+                GUIHelper::setupButton(actionButton, actionButtonRect, "", GUIHelper::Sizes::BUTTON_FONT_SIZE);
+            } else {
+                actionTexture.setSmooth(true);
+                actionSprite.setTexture(actionTexture);
+                sf::Vector2u sz = actionTexture.getSize();
+                actionSprite.setOrigin(static_cast<float>(sz.x) * 0.5f, static_cast<float>(sz.y) * 0.5f);
+            }
         }
         
-        // Return button
-        GUIHelper::setupReturnButton(returnButton, returnButtonRect);
+        // Return button sprite
+        returnSpriteLoaded = returnTexture.loadFromFile(rtype::client::assets::ui::RETURN_BUTTON);
+        if (returnSpriteLoaded) {
+            returnTexture.setSmooth(true);
+            returnSprite.setTexture(returnTexture);
+            sf::Vector2u sz = returnTexture.getSize();
+            returnSprite.setOrigin(static_cast<float>(sz.x) * 0.5f, static_cast<float>(sz.y) * 0.5f);
+        } else {
+            GUIHelper::setupReturnButton(returnButton, returnButtonRect);
+        }
         
         // Server code display setup
         serverCodeDisplay.setFont(font);
@@ -87,25 +104,51 @@ namespace rtype::client::gui {
         
         // Action button positioning (admin only, below the text)
         if (isAdmin) {
-            float buttonWidth = 300.0f;
-            float buttonHeight = 80.0f;
+            float buttonWidth = 520.0f;
+            float buttonHeight = 180.0f;
             float buttonY = centerY + 50.0f;
-            
-            actionButtonRect.setSize(sf::Vector2f(buttonWidth, buttonHeight));
-            actionButtonRect.setPosition(centerX - buttonWidth / 2, buttonY);
-            GUIHelper::centerText(actionButton,
-                      actionButtonRect.getPosition().x + buttonWidth / 2,
-                      actionButtonRect.getPosition().y + buttonHeight / 2);
+            if (actionSpriteLoaded) {
+                sf::Vector2u tex = actionTexture.getSize();
+                if (tex.x > 0 && tex.y > 0) {
+                    float scale = std::min(buttonWidth / static_cast<float>(tex.x),
+                                           buttonHeight / static_cast<float>(tex.y));
+                    actionSprite.setScale(scale, scale);
+                    float scaledW = static_cast<float>(tex.x) * scale;
+                    float scaledH = static_cast<float>(tex.y) * scale;
+                    actionSprite.setPosition(centerX, buttonY + scaledH * 0.5f);
+                    actionButtonRect.setSize(sf::Vector2f(scaledW, scaledH));
+                    actionButtonRect.setPosition(centerX - scaledW * 0.5f, buttonY);
+                }
+            } else {
+                actionButtonRect.setSize(sf::Vector2f(buttonWidth, buttonHeight));
+                actionButtonRect.setPosition(centerX - buttonWidth / 2, buttonY);
+            }
         }
         
-        // Return button positioning (top left)
-        float returnButtonWidth = 150.0f;
-        float returnButtonHeight = 50.0f;
-        returnButtonRect.setSize(sf::Vector2f(returnButtonWidth, returnButtonHeight));
-        returnButtonRect.setPosition(20.0f, 20.0f);
-        GUIHelper::centerText(returnButton,
-                  returnButtonRect.getPosition().x + returnButtonWidth / 2,
-                  returnButtonRect.getPosition().y + returnButtonHeight / 2);
+    // Return button positioning (top left)
+    float returnButtonWidth = 300.0f;
+    float returnButtonHeight = 120.0f;
+        float leftMargin = 8.0f;
+        float topMargin = 10.0f;
+        if (returnSpriteLoaded) {
+            sf::Vector2u tex = returnTexture.getSize();
+            if (tex.x > 0 && tex.y > 0) {
+                float scale = std::min(returnButtonWidth / static_cast<float>(tex.x),
+                                       returnButtonHeight / static_cast<float>(tex.y));
+                returnSprite.setScale(scale, scale);
+                float scaledW = static_cast<float>(tex.x) * scale;
+                float scaledH = static_cast<float>(tex.y) * scale;
+                returnSprite.setPosition(leftMargin + scaledW * 0.5f, topMargin + scaledH * 0.5f);
+                returnButtonRect.setSize(sf::Vector2f(scaledW, scaledH));
+                returnButtonRect.setPosition(leftMargin, topMargin);
+            }
+        } else {
+            returnButtonRect.setSize(sf::Vector2f(returnButtonWidth, returnButtonHeight));
+            returnButtonRect.setPosition(leftMargin, topMargin);
+            GUIHelper::centerText(returnButton,
+                      returnButtonRect.getPosition().x + returnButtonWidth / 2,
+                      returnButtonRect.getPosition().y + returnButtonHeight / 2);
+        }
         
         // Server code display positioning (top right, moved more to the left)
         sf::FloatRect codeTextBounds = serverCodeDisplay.getLocalBounds();
@@ -122,6 +165,9 @@ namespace rtype::client::gui {
                 break;
             case sf::Event::MouseButtonPressed:
                 handleMouseButtonEvent(event);
+                break;
+            case sf::Event::MouseButtonReleased:
+                if (isAdmin) actionPressed = false;
                 break;
             case sf::Event::MouseMoved:
                 handleMouseMoveEvent(event);
@@ -147,6 +193,7 @@ namespace rtype::client::gui {
             
             // Check action button click (admin only)
             if (isAdmin && GUIHelper::isPointInRect(mousePos, actionButtonRect)) {
+                actionPressed = true;
                 startGame();
             }
             // Check return button click
@@ -161,20 +208,11 @@ namespace rtype::client::gui {
         
         // Button hover effects for admin start button
         if (isAdmin) {
-            bool isActionHovered = GUIHelper::isPointInRect(mousePos, actionButtonRect);
-            if (isActionHovered) {
-                actionButtonRect.setFillColor(sf::Color(50, 150, 50, 200));
-                actionButton.setFillColor(sf::Color::Cyan);
-            } else {
-                actionButtonRect.setFillColor(sf::Color(50, 100, 50, 200));
-                actionButton.setFillColor(GUIHelper::Colors::TEXT);
-            }
+            actionHovered = GUIHelper::isPointInRect(mousePos, actionButtonRect);
         }
         
-        // Return button hover
-        GUIHelper::applyButtonHover(returnButtonRect, returnButton, 
-                                  GUIHelper::isPointInRect(mousePos, returnButtonRect),
-                                  GUIHelper::Colors::RETURN_BUTTON, sf::Color(150, 70, 70, 200));
+    // Return hover flag only (visuals applied at render)
+    returnHovered = GUIHelper::isPointInRect(mousePos, returnButtonRect);
     }
     
     void PrivateServerLobbyState::update(float deltaTime) {
@@ -199,13 +237,32 @@ namespace rtype::client::gui {
         
         // Render action button (admin only)
         if (isAdmin) {
-            window.draw(actionButtonRect);
-            window.draw(actionButton);
+            if (actionSpriteLoaded) {
+                if (actionPressed) {
+                    sf::Sprite glow = actionSprite;
+                    sf::Vector2f os = glow.getScale();
+                    glow.setScale(os.x * 1.12f, os.y * 1.12f);
+                    glow.setColor(sf::Color(255, 255, 0, 120));
+                    sf::RenderStates states;
+                    states.blendMode = sf::BlendAdd;
+                    window.draw(glow, states);
+                }
+                window.draw(actionSprite);
+            } else {
+                // Fallback: do not draw text per requirement
+            }
         }
         
         // Render return button
-        window.draw(returnButtonRect);
-        window.draw(returnButton);
+        if (returnSpriteLoaded) {
+            sf::Vector2f originalScale = returnSprite.getScale();
+            if (returnHovered) returnSprite.setScale(originalScale.x * 0.94f, originalScale.y * 0.94f);
+            window.draw(returnSprite);
+            if (returnHovered) returnSprite.setScale(originalScale);
+        } else {
+            window.draw(returnButtonRect);
+            window.draw(returnButton);
+        }
         
         // Render server code display
         window.draw(serverCodeDisplay);
@@ -244,7 +301,8 @@ namespace rtype::client::gui {
         if (g_gameState) {
             m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(g_gameState->getLevelIndex()), true);
         } else {
-            m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(0), true);
+            // Use persisted last level when returning from a session
+            m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(stateManager.getLastLevelIndex()), true);
         }
         m_overlay.setSize(sf::Vector2f(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y)));
         m_parallaxInitialized = true;

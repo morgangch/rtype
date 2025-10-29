@@ -126,6 +126,19 @@ namespace rtype::client::gui {
         sf::RectangleShape joinButtonRect;   ///< Clickable area for join server button
         sf::RectangleShape createButtonRect; ///< Clickable area for create server button
         sf::RectangleShape returnButtonRect; ///< Clickable area for return button
+        // Sprite-based buttons (match Public/Private menu buttons)
+        sf::Texture buttonTexture;           ///< Shared texture for join/create sprites
+        sf::Sprite joinButtonSprite;         ///< Sprite for Join button
+        sf::Sprite createButtonSprite;       ///< Sprite for Create button
+        bool buttonTextureLoaded{false};     ///< True if button texture loaded
+        bool joinHovered{false};             ///< Hover state for Join button
+        bool createHovered{false};           ///< Hover state for Create button
+        float joinBaseScale{1.0f};           ///< Base uniform scale for Join sprite
+        float createBaseScale{1.0f};         ///< Base uniform scale for Create sprite
+        sf::Texture returnTexture;      ///< Texture for return button sprite
+        sf::Sprite returnSprite;        ///< Sprite for return button
+        bool returnSpriteLoaded{false}; ///< True if return texture loaded
+        bool returnHovered{false};      ///< Hover state for return button
         
         // Input State Management
         std::string serverCode;         ///< Current server code input (max 4 digits)

@@ -21,6 +21,7 @@
 #include "ParallaxSystem.h"
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace rtype::client::gui {
 
@@ -90,6 +91,13 @@ public:
     ~SettingsState();
 
 private:
+    /**
+     * @brief Clamp a daltonism mode index to a valid range.
+     * @param mode The incoming mode index (may be out of range)
+     * @return 0 if out of range, otherwise the same index
+     */
+    int clampDaltonismMode(int mode) const;
+
     // State management
     StateManager& stateManager;         ///< Reference to state manager for transitions
     SettingsConfig config;              ///< Configuration manager for loading/saving settings
@@ -106,6 +114,11 @@ private:
     sf::RectangleShape box1Rect;        ///< Input field background for IP
     sf::RectangleShape box2Rect;        ///< Input field background for Port
     sf::RectangleShape returnButtonRect;///< Clickable area for return button
+    sf::Texture returnTexture;          ///< Texture for return button sprite
+    sf::Sprite returnSprite;            ///< Sprite for return button
+    bool returnSpriteLoaded{false};     ///< True if return texture loaded
+    bool returnHovered{false};          ///< Hover state for return button
+    // Removed hover background rectangle; keep only shrink-on-hover effect
 
     // Input State
     std::string box1Value;              ///< Current IP address input
@@ -133,6 +146,12 @@ private:
     sf::Text ipPortTitleText;                   ///< "Network Settings" section title
     sf::Text ipLabelText;                       ///< "IP Address:" label
     sf::Text portLabelText;                     ///< "Port:" label
+
+    // Daltonism UI Elements
+    sf::Text daltonismTitleText;                ///< "Daltonism Mode" title
+    sf::Text daltonismValueText;                ///< Current daltonism mode label
+    std::vector<std::string> daltonismModes;    ///< List of available modes
+    int currentDaltonismIndex{0};               ///< Current selected index
     /**
      * @name Parallax background (lazy-initialized)
      *

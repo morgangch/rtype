@@ -24,7 +24,9 @@
 #include "gui/GUIHelper.h"
 #include "gui/ParallaxSystem.h"
 #include "gui/GameState.h"
+#include "gui/Accessibility.h"
 #include <memory>
+#include "gui/AssetPaths.h"
 
 namespace rtype::client::gui {
 
@@ -92,8 +94,18 @@ SettingsState::SettingsState(StateManager& stateManager)
     box2Hint.setCharacterSize(18);
     box2Hint.setFillColor(sf::Color(180,180,180));
 
-    // Return button setup
-    GUIHelper::setupReturnButton(returnButton, returnButtonRect);
+    // Return button sprite setup
+    returnSpriteLoaded = returnTexture.loadFromFile(rtype::client::assets::ui::RETURN_BUTTON);
+    if (returnSpriteLoaded) {
+        returnTexture.setSmooth(true);
+        returnSprite.setTexture(returnTexture);
+        // Center origin for clean centering in rect
+        sf::Vector2u sz = returnTexture.getSize();
+        returnSprite.setOrigin(static_cast<float>(sz.x) * 0.5f, static_cast<float>(sz.y) * 0.5f);
+    } else {
+        // Fallback to legacy text button if texture missing
+        GUIHelper::setupReturnButton(returnButton, returnButtonRect);
+    }
 
     // Keybinds setup
     keybindTitleText.setFont(font);
@@ -133,6 +145,25 @@ SettingsState::SettingsState(StateManager& stateManager)
     resetKeybindsRect.setFillColor(sf::Color(40, 40, 40));
     resetKeybindsRect.setOutlineColor(sf::Color::White);
     resetKeybindsRect.setOutlineThickness(1.5f);
+
+    // Daltonism modes
+    daltonismModes = {"None", "Protanopia", "Deuteranopia", "Tritanopia", "Achromatopsia"};
+    // Clamp loaded value into range
+    currentDaltonismIndex = clampDaltonismMode(config.getDaltonismMode());
+
+    // Apply loaded accessibility mode globally
+    Accessibility::instance().setMode(currentDaltonismIndex);
+
+    // Daltonism UI setup
+    daltonismTitleText.setFont(font);
+    daltonismTitleText.setString("Daltonism Mode");
+    daltonismTitleText.setCharacterSize(32);
+    daltonismTitleText.setFillColor(sf::Color::White);
+
+    daltonismValueText.setFont(font);
+    daltonismValueText.setCharacterSize(24);
+    daltonismValueText.setFillColor(sf::Color(200, 200, 200));
+    daltonismValueText.setString(daltonismModes[currentDaltonismIndex]);
 }
 
 /**
@@ -143,7 +174,7 @@ void SettingsState::onEnter() {
     float keybindsX = windowWidth / 2.0f - 420.0f;
     float keybindsY = windowHeight / 2.0f - 170.0f;
     float ipportX = windowWidth / 2.0f + 60.0f;
-    float ipportY = windowHeight / 2.0f - 120.0f;
+    float ipportY = windowHeight / 2.0f - 180.0f;
 
     // Settings title (top center)
     titleText.setPosition(windowWidth / 2.0f - titleText.getLocalBounds().width / 2.0f, 40.0f);
@@ -171,14 +202,41 @@ void SettingsState::onEnter() {
     box1Hint.setPosition(box1Rect.getPosition().x + 10.0f, box1Rect.getPosition().y + 15.0f);
     box2Hint.setPosition(box2Rect.getPosition().x + 10.0f, box2Rect.getPosition().y + 15.0f);
 
+    // Daltonism section (below IP/PORT)
+    float daltonismY = ipportY + 300.0f;
+    daltonismTitleText.setPosition(ipportX, daltonismY);
+    // Format: make the mode text itself the button
+    daltonismValueText.setPosition(ipportX, daltonismY + 55.0f);
+    daltonismValueText.setString(daltonismModes[currentDaltonismIndex]);
+
     // Return button (top left)
-    float returnButtonWidth = 150.0f;
-    float returnButtonHeight = 50.0f;
-    returnButtonRect.setSize(sf::Vector2f(returnButtonWidth, returnButtonHeight));
-    returnButtonRect.setPosition(20.0f, 20.0f);
-    GUIHelper::centerText(returnButton,
-        returnButtonRect.getPosition().x + returnButtonWidth / 2.0f,
-        returnButtonRect.getPosition().y + returnButtonHeight / 2.0f);
+    float returnButtonWidth = 300.0f;  // larger, consistent size across states
+    float returnButtonHeight = 120.0f;  // larger, consistent size across states
+    // Anchor sprite near the left edge; match hitbox to the sprite's visual size
+    float leftMargin = 8.0f;
+    float topMargin = 10.0f; // moved a bit up
+    if (returnSpriteLoaded) {
+        sf::Vector2u texSize = returnTexture.getSize();
+        if (texSize.x > 0 && texSize.y > 0) {
+            float scale = std::min(returnButtonWidth / static_cast<float>(texSize.x),
+                                   returnButtonHeight / static_cast<float>(texSize.y));
+            returnSprite.setScale(scale, scale);
+            float scaledW = static_cast<float>(texSize.x) * scale;
+            float scaledH = static_cast<float>(texSize.y) * scale;
+            // Set sprite centered within its own bounds using top-left anchor
+            returnSprite.setPosition(leftMargin + scaledW * 0.5f, topMargin + scaledH * 0.5f);
+            // Make the clickable rect exactly match the sprite's bounds
+            returnButtonRect.setSize(sf::Vector2f(scaledW, scaledH));
+            returnButtonRect.setPosition(leftMargin, topMargin);
+            // Hover background removed; we only apply a slight shrink-on-hover to the sprite
+        }
+    } else {
+        returnButtonRect.setSize(sf::Vector2f(returnButtonWidth, returnButtonHeight));
+        returnButtonRect.setPosition(leftMargin, topMargin);
+        GUIHelper::centerText(returnButton,
+            returnButtonRect.getPosition().x + returnButtonWidth / 2.0f,
+            returnButtonRect.getPosition().y + returnButtonHeight / 2.0f);
+    }
 
     // Overlay default
     m_overlay.setFillColor(sf::Color(0,0,0,150));
@@ -195,6 +253,8 @@ void SettingsState::onExit() {
     }
     config.setIP(box1Value);
     config.setPort(box2Value);
+    // Save daltonism mode
+    config.setDaltonismMode(currentDaltonismIndex);
     config.save();
 }
 
@@ -209,7 +269,8 @@ void SettingsState::ensureParallaxInitialized(const sf::RenderWindow& window) {
     if (g_gameState) {
         m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(g_gameState->getLevelIndex()), true);
     } else {
-        m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(0), true);
+        // Fallback to last known level index persisted in StateManager
+        m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(stateManager.getLastLevelIndex()), true);
     }
     m_overlay.setSize(sf::Vector2f(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y)));
     m_parallaxInitialized = true;
@@ -246,8 +307,19 @@ void SettingsState::handleEvent(const sf::Event& event) {
             }
             box1Value = config.getIP();
             box2Value = config.getPort();
+            // Update daltonism
+            currentDaltonismIndex = clampDaltonismMode(config.getDaltonismMode());
+            daltonismValueText.setString(daltonismModes[currentDaltonismIndex]);
+            Accessibility::instance().setMode(currentDaltonismIndex);
             editingKeybind = -1;
             keybindHintText.setString("");
+        }
+
+        // Daltonism: clicking the text cycles through modes
+        if (daltonismValueText.getGlobalBounds().contains(mousePos)) {
+            currentDaltonismIndex = (currentDaltonismIndex + 1) % static_cast<int>(daltonismModes.size());
+            daltonismValueText.setString(daltonismModes[currentDaltonismIndex]);
+            Accessibility::instance().setMode(currentDaltonismIndex);
         }
     }
     if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
@@ -299,11 +371,9 @@ void SettingsState::update(float deltaTime) {
     box1Text.setPosition(box1Rect.getPosition().x + 10, box1Rect.getPosition().y + 15);
     box2Text.setPosition(box2Rect.getPosition().x + 10, box2Rect.getPosition().y + 15);
 
-    // Button hover effect for return button
+    // Return hover detection (sprite)
     sf::Vector2i mousePos = sf::Mouse::getPosition();
-    GUIHelper::applyButtonHover(returnButtonRect, returnButton,
-        GUIHelper::isPointInRect(sf::Vector2f(mousePos.x, mousePos.y), returnButtonRect),
-        GUIHelper::Colors::RETURN_BUTTON, sf::Color(150, 70, 70, 200));
+    returnHovered = GUIHelper::isPointInRect(sf::Vector2f(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y)), returnButtonRect);
 
     // Keybinds: update key text labels
     for (int i = 0; i < KeybindCount; i++) {
@@ -322,6 +392,13 @@ void SettingsState::update(float deltaTime) {
         resetKeybindsRect.setFillColor(sf::Color(60, 60, 60));
     else
         resetKeybindsRect.setFillColor(sf::Color(40, 40, 40));
+
+    // Hover effect for daltonism text
+    if (daltonismValueText.getGlobalBounds().contains(sf::Vector2f(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y)))) {
+        daltonismValueText.setFillColor(sf::Color::White);
+    } else {
+        daltonismValueText.setFillColor(sf::Color(200,200,200));
+    }
 
     // Update parallax
     if (m_parallaxSystem) {
@@ -368,9 +445,50 @@ void SettingsState::render(sf::RenderWindow& window) {
     else
         window.draw(box2Text);
 
+    // Daltonism
+    window.draw(daltonismTitleText);
+    window.draw(daltonismValueText);
+
+    // Apply colorblind post-process over the whole frame
+    if (Accessibility::instance().isEnabled()) {
+        static sf::Texture screenTexture;
+        sf::Vector2u size = window.getSize();
+        if (screenTexture.getSize() != size) {
+            screenTexture.create(size.x, size.y);
+        }
+        // Capture current frame
+        screenTexture.update(window);
+        sf::Sprite screenSprite(screenTexture);
+        if (auto* shader = Accessibility::instance().getShader()) {
+            sf::RenderStates states;
+            states.shader = shader;
+            window.draw(screenSprite, states);
+        }
+    }
+
     // Draw return button
-    window.draw(returnButtonRect);
-    window.draw(returnButton);
+    if (returnSpriteLoaded) {
+        // Apply slight shrink on hover
+        sf::Vector2f originalScale = returnSprite.getScale();
+        if (returnHovered) {
+            returnSprite.setScale(originalScale.x * 0.94f, originalScale.y * 0.94f);
+        }
+        window.draw(returnSprite);
+        // Restore scale for next frame/layout
+        if (returnHovered) {
+            returnSprite.setScale(originalScale);
+        }
+    } else {
+        window.draw(returnButtonRect);
+        window.draw(returnButton);
+    }
 }
 
 } // namespace rtype::client::gui
+
+// Private helper
+int rtype::client::gui::SettingsState::clampDaltonismMode(int mode) const {
+    if (mode < 0 || mode >= static_cast<int>(daltonismModes.size()))
+        return 0;
+    return mode;
+}

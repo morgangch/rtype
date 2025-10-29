@@ -73,6 +73,16 @@ namespace rtype::client::assets {
         constexpr const char* DEFAULT_MAP = "assets/maps/default.def";
     }
 
+    /**
+     * @brief UI icon paths
+     */
+    namespace ui {
+        constexpr const char* SETTINGS_GEAR = "assets/sprites/Settings/MetalGear.png";
+        constexpr const char* BUTTON = "assets/sprites/Buttons/Button.png";
+        constexpr const char* RETURN_BUTTON = "assets/sprites/Buttons/Return.png";
+        constexpr const char* READY_BUTTON = "assets/sprites/Buttons/Ready.png";
+    }
+
 } // namespace rtype::client::assets
 
 #endif // CLIENT_ASSET_PATHS_H
