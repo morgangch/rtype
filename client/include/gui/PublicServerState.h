@@ -112,12 +112,22 @@ namespace rtype::client::gui {
         
         // UI Text Elements
         sf::Text playersReadyText;      ///< Displays "Amount of players ready: X"
-        sf::Text readyButton;           ///< "Ready" or "Not ready" button text
+        sf::Text readyButton;           ///< Deprecated: text hidden when using sprite
         sf::Text returnButton;          ///< "Return" button text for navigation back
         
         // UI Visual Elements
-        sf::RectangleShape readyButtonRect;   ///< Clickable area for ready toggle button
+        sf::RectangleShape readyButtonRect;   ///< Clickable area for ready toggle button (sprite drawn instead)
         sf::RectangleShape returnButtonRect;  ///< Clickable area for return button
+        sf::Texture returnTexture;      ///< Texture for return button sprite
+        sf::Sprite returnSprite;        ///< Sprite for return button
+        bool returnSpriteLoaded{false}; ///< True if return texture loaded
+        bool returnHovered{false};      ///< Hover state for return button
+
+        // Ready button sprite resources
+        sf::Texture readyTexture;        ///< Texture for ready/start button sprite
+        sf::Sprite readySprite;          ///< Sprite for ready/start button
+        bool readySpriteLoaded{false};   ///< True if ready texture loaded
+        bool readyHovered{false};        ///< Hover state for ready button
         
         // Matchmaking State Management
         bool isReady;                   ///< Current ready state of this player

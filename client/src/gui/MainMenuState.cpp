@@ -18,6 +18,7 @@
 #include "gui/ParallaxSystem.h"
 #include "gui/AudioFactory.h"
 #include "gui/SettingsState.h"
+#include "gui/AssetPaths.h"
 #include <iostream>
 #include <cstdlib>
 
@@ -60,9 +61,36 @@ namespace rtype::client::gui {
         GUIHelper::setupButton(publicServersButton, publicButtonRect, "Public", GUIHelper::Sizes::BUTTON_FONT_SIZE);
         GUIHelper::setupButton(privateServersButton, privateButtonRect, "Private", GUIHelper::Sizes::BUTTON_FONT_SIZE);
 
-        // Settings button setup
-        GUIHelper::setupButton(settingsButtonText, settingsButtonRect, "Settings", 20.0f);
-        settingsButtonRect.setFillColor(GUIHelper::Colors::BUTTON_NORMAL);
+        // Load shared button texture for Public/Private buttons
+        buttonTextureLoaded = buttonTexture.loadFromFile(rtype::client::assets::ui::BUTTON);
+        if (buttonTextureLoaded) {
+            buttonTexture.setSmooth(true);
+            publicButtonSprite.setTexture(buttonTexture);
+            privateButtonSprite.setTexture(buttonTexture);
+            // Center origins for easy centering and hover scaling
+            sf::Vector2u texSize = buttonTexture.getSize();
+            publicButtonSprite.setOrigin(static_cast<float>(texSize.x) * 0.5f, static_cast<float>(texSize.y) * 0.5f);
+            privateButtonSprite.setOrigin(static_cast<float>(texSize.x) * 0.5f, static_cast<float>(texSize.y) * 0.5f);
+            publicHovered = false;
+            privateHovered = false;
+        }
+
+        // Settings button replaced by sprite; keep rect for positioning/click zone
+        // Load settings gear sprite
+        settingsSpriteLoaded = settingsTexture.loadFromFile(rtype::client::assets::ui::SETTINGS_GEAR);
+        if (settingsSpriteLoaded) {
+            settingsTexture.setSmooth(true);
+            settingsSprite.setTexture(settingsTexture);
+            // Center origin for clean rotation
+            sf::Vector2u sz = settingsTexture.getSize();
+            settingsSprite.setOrigin(static_cast<float>(sz.x) * 0.5f, static_cast<float>(sz.y) * 0.5f);
+            settingsRotation = 0.0f;
+            settingsHovered = false;
+        } else {
+            // Fallback: show legacy text button if texture missing
+            GUIHelper::setupButton(settingsButtonText, settingsButtonRect, "Settings", 20.0f);
+            settingsButtonRect.setFillColor(GUIHelper::Colors::BUTTON_NORMAL);
+        }
     }
     
     void MainMenuState::onEnter() {
@@ -73,6 +101,15 @@ namespace rtype::client::gui {
             m_musicManager.play(true);
         } else {
             std::cerr << "MainMenuState: could not load menu music: " << menuMusic << std::endl;
+        }
+
+        // Keep parallax theme in sync when coming back to the menu
+        if (m_parallaxSystem) {
+            if (g_gameState) {
+                setParallaxThemeFromLevel(g_gameState->getLevelIndex());
+            } else {
+                setParallaxThemeFromLevel(stateManager.getLastLevelIndex());
+            }
         }
     }
 
@@ -100,35 +137,81 @@ namespace rtype::client::gui {
         usernameText.setPosition(boxBounds.left + 10, boxBounds.top + 15);
         
         // Button positioning (below username box)
-        float buttonWidth = std::min(200.0f, windowSize.x * 0.25f);
+        float baseButtonWidth = std::min(200.0f, windowSize.x * 0.25f);
         float buttonHeight = 60.0f;
         float buttonSpacing = 20.0f;
         float buttonY = centerY + 80.0f;
-        
-        // Public servers button
-        publicButtonRect.setSize(sf::Vector2f(buttonWidth, buttonHeight));
-        publicButtonRect.setPosition(centerX - buttonWidth - buttonSpacing / 2, buttonY);
-        GUIHelper::centerText(publicServersButton, 
-                  publicButtonRect.getPosition().x + buttonWidth / 2,
-                  publicButtonRect.getPosition().y + buttonHeight / 2);
-        
-        // Private servers button
-        privateButtonRect.setSize(sf::Vector2f(buttonWidth, buttonHeight));
-        privateButtonRect.setPosition(centerX + buttonSpacing / 2, buttonY);
-        GUIHelper::centerText(privateServersButton,
-                  privateButtonRect.getPosition().x + buttonWidth / 2,
-                  privateButtonRect.getPosition().y + buttonHeight / 2);
+        float nudge = 20.0f; // move left button further left, right button further right
 
-        // Settings button positioning (top, more to the left)
-        float settingsWidth = 170.0f;
-        float settingsHeight = 60.0f;
-        float settingsX = 20.0f;
-        float settingsY = 20.0f;
+        // Compute dynamic widths based on text size + padding
+        const float horizontalPadding = 60.0f; // 30px each side
+        sf::FloatRect pubTextBounds = publicServersButton.getLocalBounds();
+        sf::FloatRect priTextBounds = privateServersButton.getLocalBounds();
+        float publicWidth = std::max(baseButtonWidth, pubTextBounds.width + horizontalPadding);
+        float privateWidth = std::max(baseButtonWidth, priTextBounds.width + horizontalPadding);
+
+        // Public servers button (slightly more to the left)
+        publicButtonRect.setSize(sf::Vector2f(publicWidth, buttonHeight));
+        publicButtonRect.setPosition(centerX - publicWidth - buttonSpacing / 2.0f - nudge, buttonY);
+        GUIHelper::centerText(publicServersButton, 
+                  publicButtonRect.getPosition().x + publicWidth / 2.0f,
+                  publicButtonRect.getPosition().y + buttonHeight / 2.0f);
+        
+        // Private servers button (slightly more to the right) — can have different width
+        privateButtonRect.setSize(sf::Vector2f(privateWidth, buttonHeight));
+        privateButtonRect.setPosition(centerX + buttonSpacing / 2.0f + nudge, buttonY);
+        GUIHelper::centerText(privateServersButton,
+                  privateButtonRect.getPosition().x + privateWidth / 2.0f,
+                  privateButtonRect.getPosition().y + buttonHeight / 2.0f);
+
+        // If button sprites are available, scale and position them to fit their rects
+        if (buttonTextureLoaded) {
+            sf::Vector2u texSize = buttonTexture.getSize();
+            if (texSize.x > 0 && texSize.y > 0) {
+                // Compute base uniform scale to fit within each rect while preserving aspect ratio
+                const float sizeMul = 5.00f;
+                publicBaseScale = std::min(publicWidth / static_cast<float>(texSize.x),
+                                           buttonHeight / static_cast<float>(texSize.y)) * sizeMul;
+                privateBaseScale = std::min(privateWidth / static_cast<float>(texSize.x),
+                                            buttonHeight / static_cast<float>(texSize.y)) * sizeMul;
+
+                publicButtonSprite.setScale(publicBaseScale, publicBaseScale);
+                privateButtonSprite.setScale(privateBaseScale, privateBaseScale);
+
+                // Center sprites within their respective rects
+                const float spriteYOffset = 6.0f;
+                sf::Vector2f pubCenter(publicButtonRect.getPosition().x + publicWidth * 0.5f,
+                                       publicButtonRect.getPosition().y + buttonHeight * 0.5f);
+                sf::Vector2f priCenter(privateButtonRect.getPosition().x + privateWidth * 0.5f,
+                                       privateButtonRect.getPosition().y + buttonHeight * 0.5f);
+                publicButtonSprite.setPosition(pubCenter.x, pubCenter.y + spriteYOffset);
+                privateButtonSprite.setPosition(priCenter.x, priCenter.y + spriteYOffset);
+            }
+        }
+
+    // Settings button positioning (top-left).
+    float settingsWidth = 140.0f;
+    float settingsHeight = 90.0f;
+    float settingsX = 2.0f;
+    float settingsY = 12.0f;
         settingsButtonRect.setSize(sf::Vector2f(settingsWidth, settingsHeight));
         settingsButtonRect.setPosition(settingsX, settingsY);
-        GUIHelper::centerText(settingsButtonText,
-            settingsButtonRect.getPosition().x + settingsWidth / 2,
-            settingsButtonRect.getPosition().y + settingsHeight / 2);
+        if (settingsSpriteLoaded) {
+            // Scale sprite to fit height of the button rect
+            sf::Vector2u texSize = settingsTexture.getSize();
+            if (texSize.y != 0) {
+                float scale = settingsHeight * 1.2f / static_cast<float>(texSize.y);
+                settingsSprite.setScale(scale, scale);
+            }
+            // Center in the rect
+            sf::Vector2f center(settingsButtonRect.getPosition().x + settingsWidth * 0.5f,
+                                settingsButtonRect.getPosition().y + settingsHeight * 0.5f);
+            settingsSprite.setPosition(center);
+        } else {
+            GUIHelper::centerText(settingsButtonText,
+                settingsButtonRect.getPosition().x + settingsWidth / 2,
+                settingsButtonRect.getPosition().y + settingsHeight / 2);
+        }
 
     // Update overlay size to current window
     m_overlay.setSize(sf::Vector2f(static_cast<float>(windowSize.x), static_cast<float>(windowSize.y)));
@@ -207,30 +290,32 @@ namespace rtype::client::gui {
     void MainMenuState::handleMouseMoveEvent(const sf::Event& event) {
         sf::Vector2f mousePos(event.mouseMove.x, event.mouseMove.y);
         
-        // Public button hover
-        GUIHelper::applyButtonHover(publicButtonRect, publicServersButton, 
-                                  GUIHelper::isPointInRect(mousePos, publicButtonRect),
-                                  GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
-        
-        // Private button hover
-        GUIHelper::applyButtonHover(privateButtonRect, privateServersButton, 
-                                  GUIHelper::isPointInRect(mousePos, privateButtonRect),
-                                  GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
+        // Button hover handling
+        if (buttonTextureLoaded) {
+            publicHovered = GUIHelper::isPointInRect(mousePos, publicButtonRect);
+            privateHovered = GUIHelper::isPointInRect(mousePos, privateButtonRect);
+        } else {
+            // Fallback to rectangle hover visuals
+            GUIHelper::applyButtonHover(publicButtonRect, publicServersButton, 
+                                      GUIHelper::isPointInRect(mousePos, publicButtonRect),
+                                      GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
+            GUIHelper::applyButtonHover(privateButtonRect, privateServersButton, 
+                                      GUIHelper::isPointInRect(mousePos, privateButtonRect),
+                                      GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
+        }
 
-        // Settings button hover
-        GUIHelper::applyButtonHover(settingsButtonRect, settingsButtonText,
-                                  GUIHelper::isPointInRect(mousePos, settingsButtonRect),
-                                  GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
+        // Settings hover: detect over rect; spin handled in update()
+        if (settingsSpriteLoaded) {
+            settingsHovered = GUIHelper::isPointInRect(mousePos, settingsButtonRect);
+        } else {
+            // Fallback hover effect for text button
+            GUIHelper::applyButtonHover(settingsButtonRect, settingsButtonText,
+                                      GUIHelper::isPointInRect(mousePos, settingsButtonRect),
+                                      GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
+        }
     }
     
     void MainMenuState::handleKeyPressEvent(const sf::Event& event) {
-        // Debug mode: D to launch game directly
-        if (event.key.code == sf::Keyboard::D) {
-            std::cout << "DEBUG MODE Launching game directly with D" << std::endl;
-            stateManager.changeState(std::make_unique<GameState>(stateManager));
-            return;
-        }
-        
         // Escape key to exit
         if (event.key.code == sf::Keyboard::Escape) {
             std::exit(0);
@@ -251,6 +336,14 @@ namespace rtype::client::gui {
         // Ensure text stays positioned correctly
         sf::FloatRect boxBounds = usernameBox.getGlobalBounds();
         usernameText.setPosition(boxBounds.left + 10, boxBounds.top + 15);
+
+        // Spin gear on hover
+        if (settingsSpriteLoaded && settingsHovered) {
+            settingsRotation += 360.0f * deltaTime;
+            if (settingsRotation >= 360.0f) settingsRotation -= 360.0f;
+            settingsSprite.setRotation(settingsRotation);
+        }
+        // When not hovered, keep last angle (optionally ease back to 0 in future)
 
         // Update parallax system if created
         if (m_parallaxSystem) {
@@ -284,24 +377,34 @@ namespace rtype::client::gui {
             window.draw(usernameText);
         }
         
-        // Render buttons
-        window.draw(publicButtonRect);
-        window.draw(publicServersButton);
-        window.draw(privateButtonRect);
-        window.draw(privateServersButton);
+        // Render Public/Private buttons (sprite if available; fallback to rectangles)
+        if (buttonTextureLoaded) {
+            // Apply slight hover scaling
+            const float hoverScaleFactor = 1.06f;
+            publicButtonSprite.setScale(publicBaseScale * (publicHovered ? hoverScaleFactor : 1.0f),
+                                        publicBaseScale * (publicHovered ? hoverScaleFactor : 1.0f));
+            privateButtonSprite.setScale(privateBaseScale * (privateHovered ? hoverScaleFactor : 1.0f),
+                                         privateBaseScale * (privateHovered ? hoverScaleFactor : 1.0f));
 
-        // Render settings button
-        window.draw(settingsButtonRect);
-        window.draw(settingsButtonText);
+            window.draw(publicButtonSprite);
+            window.draw(privateButtonSprite);
+            // Draw button labels on top
+            window.draw(publicServersButton);
+            window.draw(privateServersButton);
+        } else {
+            window.draw(publicButtonRect);
+            window.draw(publicServersButton);
+            window.draw(privateButtonRect);
+            window.draw(privateServersButton);
+        }
 
-        // Debug mode indicator
-        sf::Text debugText;
-        debugText.setFont(GUIHelper::getFont());
-        debugText.setString("DEBUG MODE Press D to launch game directly");
-        debugText.setCharacterSize(16);
-        debugText.setFillColor(sf::Color(100, 100, 100, 200));
-        debugText.setPosition(10.0f, window.getSize().y - 30.0f);
-        window.draw(debugText);
+        // Render settings as sprite (fallback to text if needed)
+        if (settingsSpriteLoaded) {
+            window.draw(settingsSprite);
+        } else {
+            window.draw(settingsButtonRect);
+            window.draw(settingsButtonText);
+        }
     }
 
     void MainMenuState::ensureParallaxInitialized(const sf::RenderWindow& window) {
@@ -316,7 +419,8 @@ namespace rtype::client::gui {
         if (g_gameState) {
             setParallaxThemeFromLevel(g_gameState->getLevelIndex());
         } else {
-            m_parallaxSystem->setTheme(ParallaxSystem::Theme::SpaceDefault, true);
+            // Otherwise use the last persisted level index from the state manager
+            setParallaxThemeFromLevel(stateManager.getLastLevelIndex());
         }
 
         // Ensure overlay sized to window as well

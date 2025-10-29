@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include "gui/Accessibility.h"
 
 namespace rtype::client::gui {
 
@@ -251,6 +252,8 @@ GameState::GameState(StateManager& stateManager)
     : m_stateManager(stateManager), m_parallaxSystem(SCREEN_WIDTH, SCREEN_HEIGHT) {
     // Load keybinds and settings from config file
     m_config.load();
+    // Apply daltonism mode globally
+    rtype::client::gui::Accessibility::instance().setMode(m_config.getDaltonismMode());
     
     setupGameOverUI();
     // set global pointer so network handlers can access the active GameState
@@ -565,6 +568,8 @@ void GameState::advanceLevel() {
     if (m_levelIndex >= 3) {
         std::cout << "[GameState] Final level cleared. Returning to main menu." << std::endl;
         m_musicManager.stop();
+        // Persist last level index for menu parallax
+        m_stateManager.setLastLevelIndex(m_levelIndex);
         m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
         return;
     }
@@ -616,6 +621,22 @@ void GameState::render(sf::RenderWindow& window) {
     // Render menu if in menu state
     if (m_gameStatus == GameStatus::InGameMenu) {
         renderGameOverMenu(window);
+    }
+
+    // Apply colorblind post-process over the whole frame
+    if (Accessibility::instance().isEnabled()) {
+        static sf::Texture screenTexture;
+        sf::Vector2u size = window.getSize();
+        if (screenTexture.getSize() != size) {
+            screenTexture.create(size.x, size.y);
+        }
+        screenTexture.update(window);
+        sf::Sprite screenSprite(screenTexture);
+        if (auto* shader = Accessibility::instance().getShader()) {
+            sf::RenderStates states;
+            states.shader = shader;
+            window.draw(screenSprite, states);
+        }
     }
 }
 
