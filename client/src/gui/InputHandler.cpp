@@ -26,12 +26,210 @@ void GameState::handleEvent(const sf::Event& event) {
         handleMenuInput(event);
         return;
     }
-    
+
     // Handle gameplay input
+    // Separate keyboard, joystick and mouse handling to avoid union misuse
     if (event.type == sf::Event::KeyPressed) {
+        std::cout << "Key Pressed: " << event.key.code << std::endl;
         handleKeyPressed(event.key.code);
-    } else if (event.type == sf::Event::KeyReleased) {
+        return;
+    }
+
+    if (event.type == sf::Event::KeyReleased) {
+        std::cout << "Key Released: " << event.key.code << std::endl;
         handleKeyReleased(event.key.code);
+        return;
+    }
+
+    // Joystick axis movement -> map to directions (with deadzone)
+    if (event.type == sf::Event::JoystickMoved) {
+        int axisIndex = static_cast<int>(event.joystickMove.axis);
+        float pos = event.joystickMove.position; // -100..100
+        const float DEADZONE = 20.0f;
+
+        // Axis code encoding: 30000 + axisIndex*10 + dir(0=neg,1=pos)
+        int axisNegCode = 30000 + axisIndex * 10 + 0;
+        int axisPosCode = 30000 + axisIndex * 10 + 1;
+
+        int upSec = m_config.getSecondaryKeybind("up");
+        int downSec = m_config.getSecondaryKeybind("down");
+        int leftSec = m_config.getSecondaryKeybind("left");
+        int rightSec = m_config.getSecondaryKeybind("right");
+
+        bool consumed = false;
+        if (pos < -DEADZONE) {
+            if (axisNegCode == upSec) { m_keyUp = true; consumed = true; }
+            if (axisNegCode == leftSec) { m_keyLeft = true; consumed = true; }
+        } else {
+            if (axisNegCode == upSec) m_keyUp = false;
+            if (axisNegCode == leftSec) m_keyLeft = false;
+        }
+
+        if (pos > DEADZONE) {
+            if (axisPosCode == downSec) { m_keyDown = true; consumed = true; }
+            if (axisPosCode == rightSec) { m_keyRight = true; consumed = true; }
+        } else {
+            if (axisPosCode == downSec) m_keyDown = false;
+            if (axisPosCode == rightSec) m_keyRight = false;
+        }
+
+        if (!consumed) {
+            if (event.joystickMove.axis == sf::Joystick::X) {
+                m_keyLeft = (pos < -DEADZONE);
+                m_keyRight = (pos > DEADZONE);
+            } else if (event.joystickMove.axis == sf::Joystick::Y) {
+                m_keyUp = (pos < -DEADZONE);
+                m_keyDown = (pos > DEADZONE);
+            }
+        }
+        return;
+    }
+
+    // Joystick buttons
+    if (event.type == sf::Event::JoystickButtonPressed) {
+        int btn = event.joystickButton.button;
+        std::cout << "Joystick Button Pressed: Button " << btn << std::endl;
+        int code = 10000 + btn; // joystick button encoding
+
+        int upSec = m_config.getSecondaryKeybind("up");
+        int downSec = m_config.getSecondaryKeybind("down");
+        int leftSec = m_config.getSecondaryKeybind("left");
+        int rightSec = m_config.getSecondaryKeybind("right");
+        int shootSec = m_config.getSecondaryKeybind("shoot");
+
+        if (code == upSec) m_keyUp = true;
+        if (code == downSec) m_keyDown = true;
+        if (code == leftSec) m_keyLeft = true;
+        if (code == rightSec) m_keyRight = true;
+        if (code == shootSec) {
+            m_keyFire = true;
+            auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
+            if (players) {
+                for (auto& [entity, playerPtr] : *players) {
+                    auto* chargedShot = m_world.GetComponent<rtype::common::components::ChargedShot>(entity);
+                    if (chargedShot) chargedShot->startCharge();
+                }
+            }
+        }
+
+        // Fallback: button 9 = pause/menu
+        if (btn == 9) {
+            showInGameMenu(false);
+            return;
+        }
+        return;
+    }
+
+    if (event.type == sf::Event::JoystickButtonReleased) {
+        int btn = event.joystickButton.button;
+        std::cout << "Joystick Button Released: Button " << btn << std::endl;
+        int code = 10000 + btn;
+
+        int upSec = m_config.getSecondaryKeybind("up");
+        int downSec = m_config.getSecondaryKeybind("down");
+        int leftSec = m_config.getSecondaryKeybind("left");
+        int rightSec = m_config.getSecondaryKeybind("right");
+        int shootSec = m_config.getSecondaryKeybind("shoot");
+
+        if (code == upSec) m_keyUp = false;
+        if (code == downSec) m_keyDown = false;
+        if (code == leftSec) m_keyLeft = false;
+        if (code == rightSec) m_keyRight = false;
+        if (code == shootSec) {
+            m_keyFire = false;
+            // same release logic as keyboard
+            auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
+            if (players) {
+                for (auto& [entity, playerPtr] : *players) {
+                    auto* chargedShot = m_world.GetComponent<rtype::common::components::ChargedShot>(entity);
+                    auto* pos = m_world.GetComponent<rtype::common::components::Position>(entity);
+                    auto* fireRate = m_world.GetComponent<rtype::common::components::FireRate>(entity);
+                    if (chargedShot && pos && fireRate && chargedShot->isCharging) {
+                        bool wasFullyCharged = chargedShot->release();
+                        if (fireRate->canFire()) {
+                            rtype::client::network::senders::send_player_shoot(wasFullyCharged, pos->x, pos->y);
+                            if (wasFullyCharged) {
+                                if (m_soundManager.has(AudioFactory::SfxId::ChargedShoot)) {
+                                    m_soundManager.play(AudioFactory::SfxId::ChargedShoot);
+                                }
+                            } else {
+                                if (m_soundManager.has(AudioFactory::SfxId::Shoot)) {
+                                    m_soundManager.play(AudioFactory::SfxId::Shoot);
+                                }
+                            }
+                            fireRate->shoot();
+                        }
+                    }
+                }
+            }
+        }
+        return;
+    }
+
+    // Mouse buttons (left = shoot)
+    if (event.type == sf::Event::MouseButtonPressed) {
+        if (event.mouseButton.button == sf::Mouse::Left) {
+            // mouse encoding: 20000 + button
+            int code = 20000 + static_cast<int>(event.mouseButton.button);
+            int shootSec = m_config.getSecondaryKeybind("shoot");
+            if (code == shootSec) {
+                m_keyFire = true;
+                auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
+                if (players) {
+                    for (auto& [entity, playerPtr] : *players) {
+                        auto* chargedShot = m_world.GetComponent<rtype::common::components::ChargedShot>(entity);
+                        if (chargedShot) chargedShot->startCharge();
+                    }
+                }
+            } else {
+                // also accept left mouse as default fire
+                m_keyFire = true;
+                auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
+                if (players) {
+                    for (auto& [entity, playerPtr] : *players) {
+                        auto* chargedShot = m_world.GetComponent<rtype::common::components::ChargedShot>(entity);
+                        if (chargedShot) chargedShot->startCharge();
+                    }
+                }
+            }
+        }
+        return;
+    }
+
+    if (event.type == sf::Event::MouseButtonReleased) {
+        if (event.mouseButton.button == sf::Mouse::Left) {
+            int code = 20000 + static_cast<int>(event.mouseButton.button);
+            int shootSec = m_config.getSecondaryKeybind("shoot");
+            if (code == shootSec || true) {
+                // release logic identical to keyboard
+                m_keyFire = false;
+                auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
+                if (players) {
+                    for (auto& [entity, playerPtr] : *players) {
+                        auto* chargedShot = m_world.GetComponent<rtype::common::components::ChargedShot>(entity);
+                        auto* pos = m_world.GetComponent<rtype::common::components::Position>(entity);
+                        auto* fireRate = m_world.GetComponent<rtype::common::components::FireRate>(entity);
+                        if (chargedShot && pos && fireRate && chargedShot->isCharging) {
+                            bool wasFullyCharged = chargedShot->release();
+                            if (fireRate->canFire()) {
+                                rtype::client::network::senders::send_player_shoot(wasFullyCharged, pos->x, pos->y);
+                                if (wasFullyCharged) {
+                                    if (m_soundManager.has(AudioFactory::SfxId::ChargedShoot)) {
+                                        m_soundManager.play(AudioFactory::SfxId::ChargedShoot);
+                                    }
+                                } else {
+                                    if (m_soundManager.has(AudioFactory::SfxId::Shoot)) {
+                                        m_soundManager.play(AudioFactory::SfxId::Shoot);
+                                    }
+                                }
+                                fireRate->shoot();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return;
     }
 }
 

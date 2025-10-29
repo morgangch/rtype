@@ -34,6 +34,13 @@ void SettingsConfig::initDefaults() {
     keybinds["left"] = sf::Keyboard::A;
     keybinds["right"] = sf::Keyboard::D;
     keybinds["shoot"] = sf::Keyboard::Space;
+    // Secondary bindings default to -1 (none). These are opaque integers and
+    // can encode joystick buttons (10000+button), mouse buttons (20000+button), etc.
+    secondaryKeybinds["up"] = 2001;
+    secondaryKeybinds["down"] = 2000;
+    secondaryKeybinds["left"] = 2001;
+    secondaryKeybinds["right"] = 2000;
+    secondaryKeybinds["shoot"] = 10000 + 7;  // Joystick button 7
 
     // Default network settings
     ip = "127.0.0.1";
@@ -93,6 +100,12 @@ sf::Keyboard::Key SettingsConfig::getKeybind(const std::string& action) const {
     return sf::Keyboard::Unknown;
 }
 
+int SettingsConfig::getSecondaryKeybind(const std::string& action) const {
+    auto it = secondaryKeybinds.find(action);
+    if (it != secondaryKeybinds.end()) return it->second;
+    return -1;
+}
+
 /**
  * @brief Set the keybind for a specific action
  * @param action The action name to set
@@ -100,6 +113,10 @@ sf::Keyboard::Key SettingsConfig::getKeybind(const std::string& action) const {
  */
 void SettingsConfig::setKeybind(const std::string& action, sf::Keyboard::Key key) {
     keybinds[action] = key;
+}
+
+void SettingsConfig::setSecondaryKeybind(const std::string& action, int code) {
+    secondaryKeybinds[action] = code;
 }
 
 /**
