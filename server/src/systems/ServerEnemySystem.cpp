@@ -70,6 +70,7 @@ void ServerEnemySystem::spawnBoss(ECS::World& world, ECS::EntityID room, rtype::
     world.AddComponent<rtype::common::components::Health>(boss, 50); // Boss has 50 HP
     world.AddComponent<rtype::common::components::Team>(boss, rtype::common::components::TeamType::Enemy);
     world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, rtype::common::components::EnemyType::Boss);
+    world.AddComponent<rtype::server::components::LinkedRoom>(boss, room);
 
     std::cout << "SERVER: Spawning boss (id=" << boss << ") in room " << room << std::endl;
 
@@ -281,6 +282,7 @@ void ServerEnemySystem::spawnEnemy(ECS::World &world, ECS::EntityID room, rtype:
     root.world.AddComponent<rtype::common::components::Health>(enemy, hp);
     root.world.AddComponent<rtype::common::components::Team>(enemy, rtype::common::components::TeamType::Enemy);
     root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(enemy, type);
+    root.world.AddComponent<rtype::server::components::LinkedRoom>(enemy, room);
 
     // SpawnEnemyPacket pkt{};
     // pkt.enemyId = static_cast<uint32_t>(enemy);

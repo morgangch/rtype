@@ -49,7 +49,7 @@ using namespace rtype::server::services;
 // ============================================================================
 
 void room_controller::markPlayersAsInGame(ECS::EntityID room) {
-    auto players_in_room = player_service::findPlayersByRoomCode(room);
+    auto players_in_room = player_service::findPlayersByRoom(room);
     std::cout << "Found " << players_in_room.size() << " players in room" << std::endl;
 
     for (auto pid: players_in_room) {
@@ -66,7 +66,7 @@ void room_controller::broadcastGameStart(ECS::EntityID room) {
 }
 
 void room_controller::broadcastPlayerRoster(ECS::EntityID room) {
-    auto players_in_room = player_service::findPlayersByRoomCode(room);
+    auto players_in_room = player_service::findPlayersByRoom(room);
 
     // Send all PLAYER_JOIN packets to each client so they can create remote player entities
     for (auto recipientPid: players_in_room) {
@@ -163,7 +163,7 @@ void room_controller::notifyJoiningPlayerOfExisting(ECS::EntityID player, ECS::E
     auto *playernet = root.world.GetComponent<components::PlayerConn>(player);
     if (!playernet) return;
 
-    auto players_in_room = player_service::findPlayersByRoomCode(room);
+    auto players_in_room = player_service::findPlayersByRoom(room);
 
     // Send existing players to the newly joined player
     for (auto existing: players_in_room) {
@@ -472,7 +472,7 @@ void room_controller::broadcastLobbyState(ECS::EntityID room) {
     }
 
     // Get all players in this room
-    auto players_in_room = player_service::findPlayersByRoomCode(room);
+    auto players_in_room = player_service::findPlayersByRoom(room);
 
     // Count total players and ready players (only count those not in game yet)
     uint32_t totalPlayers = 0;
