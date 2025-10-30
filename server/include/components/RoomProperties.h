@@ -18,8 +18,6 @@
 #define ROOMPROPERTIESCOMPONENT_H
 
 #include <iostream>
-#include <__ostream/basic_ostream.h>
-
 #include "ECS/Component.h"
 #include "rtype.h"
 #include "components/PlayerConn.h"
