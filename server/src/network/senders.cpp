@@ -174,4 +174,19 @@ namespace rtype::server::network::senders {
         }
         pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), PLAYER_STATE, nullptr, false);
     }
+
+
+    void broadcast_player_disconnect(ECS::EntityID room_id, uint32_t playerId) {
+        PlayerDisconnectPacket pkt{};
+        pkt.playerId = playerId;
+
+        // Convert to network endian
+        to_network_endian(pkt.playerId);
+        auto room = root.world.GetComponent<rtype::server::components::RoomProperties>(room_id);
+        if (!room) {
+            std::cerr << "ERROR: Cannot broadcast PlayerDisconnectPacket, room " << room_id << " not found" << std::endl;
+            return;
+        }
+        room->broadcastPacket(&pkt, sizeof(pkt), PLAYER_DISCONNECT, true);
+    }
 }

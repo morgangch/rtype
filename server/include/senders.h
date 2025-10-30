@@ -13,7 +13,7 @@
 
 namespace rtype::server::network::senders {
     /**
-     *
+     * Broadcasts an EntityDestroyPacket to all players in the specified room
      * @param room_id  The room to broadcast to
      * @param entity_id  The entity being destroyed
      * @param reason The reason code for destruction
@@ -22,7 +22,7 @@ namespace rtype::server::network::senders {
 
 
     /**
-     *
+     * Sends a PlayerStatePacket to a specific player about another player's state
      * @param room_id  The room to broadcast to
      * @param playerId  The player entity ID
      * @param x  The X position
@@ -61,7 +61,7 @@ namespace rtype::server::network::senders {
 
 
     /**
-     *
+     * Broadcasts a projectile spawn packet to all players in the specified room
      * @param room_id  The room to broadcast to
      * @param projectileId The projectile entity ID
      * @param ownerId The owner (shooter) entity ID
@@ -79,7 +79,7 @@ namespace rtype::server::network::senders {
 
 
     /**
-     *
+     * Sends the lobby state to the specified player
      * @param player  The player entity ID to send the lobby state to
      * @param totalPlayers Total number of players in the lobby
      * @param readyPlayers Number of players marked as ready
@@ -87,7 +87,7 @@ namespace rtype::server::network::senders {
     void send_lobby_state(ECS::EntityID player, uint32_t totalPlayers, uint32_t readyPlayers);
 
     /**
-     *
+     * Broadcasts an enemy spawn packet to all players in the specified room
      * @param room_id  The room entity ID to broadcast to
      * @param enemyId The enemy entity ID
      * @param enemyType The type of enemy
@@ -97,6 +97,14 @@ namespace rtype::server::network::senders {
      */
     void broadcast_enemy_spawn(ECS::EntityID room_id, uint32_t enemyId, common::components::EnemyType enemyType, float x, float y,
                                uint16_t hp);
+
+
+    /**
+     *  Broadcasts a player disconnect packet to all players in the specified room
+     * @param room_id  The room entity ID to broadcast to
+     * @param playerId  The player entity ID that disconnected
+     */
+    void broadcast_player_disconnect(ECS::EntityID room_id, uint32_t playerId);
 }
 
 #endif //SENDERS_H
