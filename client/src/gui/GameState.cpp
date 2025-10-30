@@ -189,11 +189,13 @@ void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y,
 
     ECS::EntityID e = it->second;
 
-    // Client-authoritative: ignore updates for local player
-    if (serverId == m_localPlayerServerId) return;
-
     auto* health = m_world.GetComponent<rtype::common::components::Health>(e);
     if (health) {
+        if (serverId == m_localPlayerServerId) {
+            health->invulnerable = invulnerable;
+            return;
+        }
+
         health->currentHp = hp;
         health->invulnerable = invulnerable;
     }
@@ -540,8 +542,8 @@ void GameState::update(float deltaTime) {
     updateInvulnerabilitySystem(deltaTime);
     updateAnimationSystem(deltaTime);
     rtype::common::systems::MovementSystem::update(m_world, deltaTime); // shared movement system
-    updateCleanupSystem(deltaTime);
     updateCollisionSystem();
+    updateCleanupSystem(deltaTime);
 }
 
 void GameState::updateBossMusicState() {

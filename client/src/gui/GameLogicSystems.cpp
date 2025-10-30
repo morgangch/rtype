@@ -232,16 +232,10 @@ void GameState::updateCollisionSystem() {
         }
     };
 
-    handlers.onPlayerProjectileVsEnemy = [this, &toDestroy, &handlers](ECS::EntityID proj, ECS::EntityID enemy, ECS::World& world) {
+    handlers.onPlayerProjectileVsEnemy = [this, &toDestroy](ECS::EntityID proj, ECS::EntityID enemy, ECS::World& world) {
         auto* projData = world.GetComponent<rtype::common::components::Projectile>(proj);
         auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemy);
         if (!projData || !enemyHealth) return;
-
-        auto* enemyType = world.GetComponent<rtype::common::components::EnemyTypeComponent>(enemy);
-        if (enemyType && enemyType->type == rtype::common::components::EnemyType::Suicide && handlers.onSuicideExplosion) {
-            handlers.onSuicideExplosion(enemy, world);
-            return;
-        }
 
         enemyHealth->currentHp -= projData->damage;
 

@@ -113,6 +113,8 @@ struct PlayerInputPacket {
     bool moveDown;
     bool moveLeft;
     bool moveRight;
+    float clientX;  // Client's predicted position X (for server validation)
+    float clientY;  // Client's predicted position Y (for server validation)
 };
 
 // Client → Server: Player shoot

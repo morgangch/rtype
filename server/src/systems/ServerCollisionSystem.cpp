@@ -23,31 +23,14 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
     rtype::common::systems::CollisionHandlers handlers;
     std::vector<ECS::EntityID> toDestroy;
 
-    handlers.onPlayerVsEnemy = [this](ECS::EntityID player, ECS::EntityID enemy, ECS::World& world) {
-        auto* playerHealth = world.GetComponent<rtype::common::components::Health>(player);
-        if (!playerHealth) return;
+    // NOTE: Player vs Enemy collisions disabled on server - handled client-side for better responsiveness
+    // Server acts as anti-cheat validator only
+    // handlers.onPlayerVsEnemy = nullptr;
 
-        playerHealth->currentHp -= 1;
-        playerHealth->invulnerable = true;
-        playerHealth->invulnerabilityTimer = 1.0f;
-
-        if (playerHealth->currentHp <= 0) {
-            playerHealth->isAlive = false;
-        }
-
-        broadcastPlayerStateImmediate(world, player);
-    };
-
-    handlers.onPlayerProjectileVsEnemy = [this, &toDestroy, &handlers](ECS::EntityID proj, ECS::EntityID enemy, ECS::World& world) {
+    handlers.onPlayerProjectileVsEnemy = [this, &toDestroy](ECS::EntityID proj, ECS::EntityID enemy, ECS::World& world) {
         auto* projData = world.GetComponent<rtype::common::components::Projectile>(proj);
         auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemy);
         if (!projData || !enemyHealth) return;
-
-        auto* enemyType = world.GetComponent<rtype::common::components::EnemyTypeComponent>(enemy);
-        if (enemyType && enemyType->type == rtype::common::components::EnemyType::Suicide && handlers.onSuicideExplosion) {
-            handlers.onSuicideExplosion(enemy, world);
-            return;
-        }
 
         enemyHealth->currentHp -= projData->damage;
 

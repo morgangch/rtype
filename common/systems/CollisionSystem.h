@@ -96,11 +96,11 @@ private:
 
                 if (checkAABB(playerPos->x, playerPos->y, playerW, playerH,
                              enemyPos->x, enemyPos->y, enemyW, enemyH)) {
-                    handlers.onPlayerVsEnemy(player, enemy, world);
-
                     auto* enemyType = world.GetComponent<components::EnemyTypeComponent>(enemy);
                     if (enemyType && enemyType->type == components::EnemyType::Suicide && handlers.onSuicideExplosion) {
                         handlers.onSuicideExplosion(enemy, world);
+                    } else {
+                        handlers.onPlayerVsEnemy(player, enemy, world);
                     }
                 }
             }

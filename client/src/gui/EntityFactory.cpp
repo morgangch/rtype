@@ -16,6 +16,7 @@
 #include "gui/TextureCache.h"
 #include <cstdlib>
 #include <cmath>
+#include <iostream>
 
 namespace rtype::client::gui {
 
@@ -196,9 +197,7 @@ ECS::EntityID GameState::createSuicideEnemy(float x, float y) {
     auto entity = m_world.CreateEntity();
 
     m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
-
     m_world.AddComponent<rtype::common::components::Velocity>(entity, -150.0f, 0.0f, 200.0f);
-
     m_world.AddComponent<rtype::common::components::Health>(entity, 1);
 
     rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BASIC_ENEMY_2);
