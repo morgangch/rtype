@@ -300,6 +300,7 @@ void ServerEnemySystem::spawnEnemy(ECS::World &world, ECS::EntityID room, rtype:
     root.world.AddComponent<rtype::common::components::Health>(enemy, hp);
     root.world.AddComponent<rtype::common::components::Team>(enemy, rtype::common::components::TeamType::Enemy);
     root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(enemy, type);
+    root.world.AddComponent<rtype::server::components::LinkedRoom>(enemy, room);
 
     // Add FireRate component so enemy can shoot
     float fireInterval = 2.0f; // Default fire rate

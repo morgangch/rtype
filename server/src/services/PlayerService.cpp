@@ -41,7 +41,7 @@ ECS::EntityID player_service::createNewPlayer(std::string name, int room_code, s
     if (playerConn) {
         // Register all packet callbacks on this player's packet_handler
         rtype::server::controllers::room_controller::registerPlayerCallbacks(playerConn->packet_handler);
-        
+
         // Note: JOIN_ROOM_ACCEPTED is sent by handleJoinRoomPacket(), not here
         // This ensures correct room code and admin status are sent
     }
