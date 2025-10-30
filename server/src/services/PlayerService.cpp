@@ -18,6 +18,9 @@
 #include "components/PlayerConn.h"
 #include "controllers/RoomController.h"
 #include "packets.h"
+#include "components/LinkedRoom.h"
+#include "components/RoomProperties.h"
+#include "services/RoomService.h"
 
 using namespace rtype::server::services;
 
@@ -38,7 +41,7 @@ ECS::EntityID player_service::createNewPlayer(std::string name, int room_code, s
     if (playerConn) {
         // Register all packet callbacks on this player's packet_handler
         rtype::server::controllers::room_controller::registerPlayerCallbacks(playerConn->packet_handler);
-        
+
         // Note: JOIN_ROOM_ACCEPTED is sent by handleJoinRoomPacket(), not here
         // This ensures correct room code and admin status are sent
     }
@@ -70,11 +73,24 @@ ECS::EntityID player_service::findPlayerByNetwork(const sockaddr_in &addr) {
 
 std::vector<ECS::EntityID> player_service::findPlayersByRoomCode(int room_code) {
     std::vector<ECS::EntityID> players_in_room;
-    auto players = root.world.GetAllComponents<rtype::common::components::Player>();
+
+    auto room = room_service::getRoomByJoinCode(room_code);
+    if (!room) {
+        std::cout << "WARNING: No room found with join code " << room_code << std::endl;
+        return players_in_room;
+    }
+    auto players = player_service::findPlayersByRoom(room);
+
+    return players;
+}
+
+std::vector<ECS::EntityID> player_service::findPlayersByRoom(ECS::EntityID room) {
+    std::vector<ECS::EntityID> players_in_room;
+    auto players = root.world.GetAllComponents<rtype::server::components::PlayerConn>();
 
     for (const auto &pair: *players) {
-        auto *player = root.world.GetComponent<components::PlayerConn>(pair.first);
-        if (player && player->room_code == room_code) {
+        auto *linkedRoom = root.world.GetComponent<rtype::server::components::LinkedRoom>(pair.first);
+        if (linkedRoom && linkedRoom->room_id == room) {
             players_in_room.push_back(pair.first);
         }
     }

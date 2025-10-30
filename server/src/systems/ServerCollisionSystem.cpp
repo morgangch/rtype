@@ -17,6 +17,9 @@
 #include <cmath>
 #include <algorithm>
 
+#include "senders.h"
+#include "components/LinkedRoom.h"
+
 namespace rtype::server::systems {
 
 void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
