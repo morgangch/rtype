@@ -125,6 +125,22 @@ namespace rtype::client::gui {
     sf::RectangleShape publicButtonRect;   ///< Public servers button clickable area
     sf::RectangleShape privateButtonRect;  ///< Private servers button clickable area
     sf::RectangleShape settingsButtonRect; ///< Clickable area for settings button
+    // Settings gear sprite resources
+    sf::Texture settingsTexture;       ///< Texture for settings gear
+    sf::Sprite settingsSprite;         ///< Sprite for settings gear
+    bool settingsSpriteLoaded{false};  ///< True if gear texture loaded
+    float settingsRotation{0.0f};      ///< Current rotation angle for gear
+    bool settingsHovered{false};       ///< Hover state for gear
+
+    // Shared button sprite resources for Public/Private buttons
+    sf::Texture buttonTexture;         ///< Texture for reusable button sprite
+    sf::Sprite publicButtonSprite;     ///< Sprite for Public servers button
+    sf::Sprite privateButtonSprite;    ///< Sprite for Private servers button
+    bool buttonTextureLoaded{false};   ///< True if button texture loaded successfully
+    bool publicHovered{false};         ///< Hover state for public button
+    bool privateHovered{false};        ///< Hover state for private button
+    float publicBaseScale{1.0f};       ///< Base scale computed to fit rect (x=y)
+    float privateBaseScale{1.0f};      ///< Base scale computed to fit rect (x=y)
         
         // Input State
         std::string username;           ///< Current username input
