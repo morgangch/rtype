@@ -111,12 +111,13 @@ namespace rtype::server::controllers::room_controller {
     
     /**
      * @brief Create a projectile entity on the server
+     * @param room The room entity ID
      * @param x Starting X position
      * @param y Starting Y position
      * @param isCharged Whether this is a charged shot
      * @return The created projectile entity ID
      */
-    ECS::EntityID createServerProjectile(float x, float y, bool isCharged);
+    ECS::EntityID createServerProjectile(ECS::EntityID room, float x, float y, bool isCharged);
     
     /**
      * @brief Broadcast projectile spawn to all players in a room
