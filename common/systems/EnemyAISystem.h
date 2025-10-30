@@ -85,6 +85,9 @@ namespace rtype::common::systems {
 
                 if (!fireRate || !pos || !fireRate->canFire()) continue;
 
+                // Skip Suicide enemy - they don't shoot, they just explode
+                if (enemyType && enemyType->type == components::EnemyType::Suicide) continue;
+
                 // Handle shooting based on enemy type
                 if (enemyType && enemyType->type == components::EnemyType::TankDestroyer) {
                     handleTankDestroyerShooting(pos->x, pos->y, playerX, playerY, playerFound, createProjectile);

@@ -55,14 +55,17 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
     auto type = static_cast<rtype::common::components::EnemyType>(enemyType);
     
     switch (type) {
-        case rtype::common::components::EnemyType::TankDestroyer:  // Boss enemy
-            e = createTankDestroyer(x, y);          
+        case rtype::common::components::EnemyType::TankDestroyer:
+            e = createTankDestroyer(x, y);
             break;
         case rtype::common::components::EnemyType::Shooter:
             e = createShooterEnemy(x, y);
             break;
         case rtype::common::components::EnemyType::Snake:
             e = createSnakeEnemy(x, y);
+            break;
+        case rtype::common::components::EnemyType::Suicide:
+            e = createSuicideEnemy(x, y);
             break;
         case rtype::common::components::EnemyType::Basic:
         default:

@@ -637,7 +637,7 @@ void room_controller::handleSpawnBossRequest(const packet_t& packet) {
     root.world.AddComponent<rtype::common::components::Velocity>(boss, -50.0f, 0.0f, 50.0f);
     root.world.AddComponent<rtype::common::components::Health>(boss, 50);
     root.world.AddComponent<rtype::common::components::Team>(boss, rtype::common::components::TeamType::Enemy);
-    root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, rtype::common::components::EnemyType::Boss);
+    root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, rtype::common::components::EnemyType::TankDestroyer);
     
     std::cout << "SERVER: Admin spawned boss (id=" << boss << ") in room " << room << std::endl;
     

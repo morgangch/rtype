@@ -188,7 +188,34 @@ ECS::EntityID GameState::createShooterEnemy(float x, float y) {
     auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(
         entity, SHOOTER_FIRE_INTERVAL);
     fireRate->cooldown = randomCooldown;
-    
+
+    return entity;
+}
+
+ECS::EntityID GameState::createSuicideEnemy(float x, float y) {
+    auto entity = m_world.CreateEntity();
+
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, -150.0f, 0.0f, 200.0f);
+
+    m_world.AddComponent<rtype::common::components::Health>(entity, 1);
+
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BASIC_ENEMY_2);
+    m_world.AddComponent<rtype::client::components::Sprite>(
+        entity,
+        rtype::client::assets::enemies::BASIC_ENEMY_2,
+        sf::Vector2f(33.0f, 36.0f),
+        true,
+        sf::IntRect(0, 0, 33, 36),
+        2.5f);
+
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Enemy);
+
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
+        entity, rtype::common::components::EnemyType::Suicide);
+
     return entity;
 }
 

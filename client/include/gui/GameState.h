@@ -263,6 +263,14 @@ namespace rtype::client::gui {
         ECS::EntityID createShooterEnemy(float x, float y);
 
         /**
+         * @brief Create a suicide enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created suicide enemy
+         */
+        ECS::EntityID createSuicideEnemy(float x, float y);
+
+        /**
          * @brief Create a boss enemy entity
          * @param x X position
          * @param y Y position

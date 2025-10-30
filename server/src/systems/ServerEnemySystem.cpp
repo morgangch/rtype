@@ -152,8 +152,8 @@ void ServerEnemySystem::updateEnemySpawning(ECS::World& world, float deltaTime) 
             case EnemySpawnPhase::OnlyBasic:
                 // TO DO: change basic enemy type
                 //spawnAllowed = (type == rtype::common::components::EnemyType::Basic);
-                spawnAllowed = (type == rtype::common::components::EnemyType::Snake);
-                //spawnAllowed = (type == rtype::common::components::EnemyType::Suicide);
+                //spawnAllowed = (type == rtype::common::components::EnemyType::Snake);
+                spawnAllowed = (type == rtype::common::components::EnemyType::Suicide);
                 //spawnAllowed = (type == rtype::common::components::EnemyType::Turret);
                 break;
             case EnemySpawnPhase::BasicAndAdvanced:

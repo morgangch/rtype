@@ -43,16 +43,16 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
         auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemy);
         if (!projData || !enemyHealth) return;
 
+        auto* enemyType = world.GetComponent<rtype::common::components::EnemyTypeComponent>(enemy);
+        if (enemyType && enemyType->type == rtype::common::components::EnemyType::Suicide && handlers.onSuicideExplosion) {
+            handlers.onSuicideExplosion(enemy, world);
+            return;
+        }
+
         enemyHealth->currentHp -= projData->damage;
 
         if (enemyHealth->currentHp <= 0) {
             enemyHealth->isAlive = false;
-
-            auto* enemyType = world.GetComponent<rtype::common::components::EnemyTypeComponent>(enemy);
-            if (enemyType && enemyType->type == rtype::common::components::EnemyType::Suicide && handlers.onSuicideExplosion) {
-                handlers.onSuicideExplosion(enemy, world);
-            }
-
             toDestroy.push_back(enemy);
         }
 
