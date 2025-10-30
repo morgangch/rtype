@@ -13,6 +13,7 @@
 
 #include <ECS/ECS.h>
 #include <common/components/FireRate.h>
+#include <iostream>
 
 namespace rtype::common::systems {
     /**
@@ -38,7 +39,6 @@ namespace rtype::common::systems {
             auto* fireRates = world.GetAllComponents<components::FireRate>();
             if (!fireRates) return;
 
-            // Update cooldown for all entities with FireRate component
             for (auto& [entity, fireRatePtr] : *fireRates) {
                 fireRatePtr->update(deltaTime);
             }

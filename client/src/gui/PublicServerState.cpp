@@ -266,40 +266,6 @@ namespace rtype::client::gui {
         m_overlay.setSize(sf::Vector2f(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y)));
         m_parallaxInitialized = true;
     }
-
-    void PublicServerState::ensureParallaxInitialized(const sf::RenderWindow& window) {
-        if (m_parallaxInitialized) return;
-        m_parallaxSystem = std::make_unique<ParallaxSystem>(
-            static_cast<float>(window.getSize().x),
-            static_cast<float>(window.getSize().y)
-        );
-        // Select theme from current GameState if available
-        if (g_gameState) {
-            m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(g_gameState->getLevelIndex()), true);
-        } else {
-            // Use last known level index from StateManager to keep menu visuals consistent
-            m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(stateManager.getLastLevelIndex()), true);
-        }
-        m_overlay.setSize(sf::Vector2f(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y)));
-        m_parallaxInitialized = true;
-    }
-
-    void PublicServerState::ensureParallaxInitialized(const sf::RenderWindow& window) {
-        if (m_parallaxInitialized) return;
-        m_parallaxSystem = std::make_unique<ParallaxSystem>(
-            static_cast<float>(window.getSize().x),
-            static_cast<float>(window.getSize().y)
-        );
-        // Select theme from current GameState if available
-        if (g_gameState) {
-            m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(g_gameState->getLevelIndex()), true);
-        } else {
-            // Use last known level index from StateManager to keep menu visuals consistent
-            m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(stateManager.getLastLevelIndex()), true);
-        }
-        m_overlay.setSize(sf::Vector2f(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y)));
-        m_parallaxInitialized = true;
-    }
     
     void PublicServerState::toggleReady() {
         isReady = !isReady;

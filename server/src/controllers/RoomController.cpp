@@ -255,23 +255,20 @@ void room_controller::broadcastProjectileSpawn(ECS::EntityID projectile, ECS::En
     );
 }
 
-ECS::EntityID room_controller::createEnemyProjectile(float x, float y, float vx, float vy, ECS::World& world) {
+ECS::EntityID room_controller::createEnemyProjectile(ECS::EntityID room_id, float x, float y, float vx, float vy, ECS::World& world) {
     auto projectile = world.CreateEntity();
 
-    // Enemy projectile position with offset
-    float projectileX = x - 12.0f; // Offset to spawn from left edge of enemy
+    float projectileX = x - 12.0f;
     float projectileY = y;
-
-    // Enemy projectile parameters
     float speed = std::sqrt(vx * vx + vy * vy);
     uint16_t damage = 1;
     bool piercing = false;
 
-    // Add components to server projectile (Enemy team)
     world.AddComponent<rtype::common::components::Position>(projectile, projectileX, projectileY, 0.0f);
     world.AddComponent<rtype::common::components::Velocity>(projectile, vx, vy, speed);
     world.AddComponent<rtype::common::components::Team>(projectile, rtype::common::components::TeamType::Enemy);
-    world.AddComponent<rtype::common::components::Projectile>(projectile, damage, piercing, true /* serverOwned */, speed, rtype::common::components::ProjectileType::Basic);
+    world.AddComponent<rtype::common::components::Projectile>(projectile, damage, piercing, true, speed, rtype::common::components::ProjectileType::Basic);
+    world.AddComponent<rtype::server::components::LinkedRoom>(projectile, room_id);
 
     return projectile;
 }
@@ -598,7 +595,7 @@ void room_controller::handleSpawnBossRequest(const packet_t &packet) {
     if (enemyTypes) {
         for (auto &etPair: *enemyTypes) {
             auto *et = etPair.second.get();
-            if (et && et->type == rtype::common::components::EnemyType::Boss) {
+            if (et && et->type == rtype::common::components::EnemyType::TankDestroyer) {
                 auto *health = root.world.GetComponent<rtype::common::components::Health>(etPair.first);
                 if (health && health->isAlive && health->currentHp > 0) {
                     bossExists = true;
@@ -624,12 +621,12 @@ void room_controller::handleSpawnBossRequest(const packet_t &packet) {
     root.world.AddComponent<rtype::common::components::Health>(boss, 50);
     root.world.AddComponent<rtype::common::components::Team>(boss, rtype::common::components::TeamType::Enemy);
     root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(
-        boss, rtype::common::components::EnemyType::Boss);
+        boss, rtype::common::components::EnemyType::TankDestroyer);
     root.world.AddComponent<rtype::server::components::LinkedRoom>(boss, room);
     std::cout << "SERVER: Admin spawned boss (id=" << boss << ") in room " << room << std::endl;
 
     network::senders::broadcast_enemy_spawn(room, static_cast<uint32_t>(boss),
-                                            rtype::common::components::EnemyType::Boss,
+                                            rtype::common::components::EnemyType::TankDestroyer,
                                             spawnX, spawnY, 50);
 }
 

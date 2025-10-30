@@ -13,13 +13,10 @@ void EnemyAISystem::SetProjectileCallback(ProjectileCallback callback) {
 void EnemyAISystem::Update(ECS::World& world, float deltaTime) {
     if (!m_createProjectile) return;
 
-    // CRITICAL FIX: Update fire rate cooldowns (was missing before!)
     rtype::common::systems::FireRateSystem::update(world, deltaTime);
 
-    // Use common enemy AI system with server's projectile creation callback
-    // Lambda adapter to match the common system's signature (no ECS::World parameter)
-    auto createProjectile = [this, &world](float x, float y, float vx, float vy) {
-        m_createProjectile(x, y, vx, vy, world);
+    auto createProjectile = [this, &world](ECS::EntityID shooter, float x, float y, float vx, float vy) {
+        m_createProjectile(shooter, x, y, vx, vy, world);
     };
 
     rtype::common::systems::EnemyAISystem::update(world, deltaTime, createProjectile);

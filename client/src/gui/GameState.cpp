@@ -551,7 +551,6 @@ void GameState::updateBossMusicState() {
     if (bossAlive && !m_bossMusicActive) {
         // Start boss music
         const std::string bossMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::BossFight1);
-        const std::string bossMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::BossFight1);
         if (m_musicManager.loadFromFile(bossMusic)) {
             m_musicManager.setVolume(35.0f);
             m_musicManager.play(true);

@@ -26,19 +26,39 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
     rtype::common::systems::CollisionHandlers handlers;
     std::vector<ECS::EntityID> toDestroy;
 
-    // NOTE: Player vs Enemy collisions disabled on server - handled client-side for better responsiveness
-    // Server acts as anti-cheat validator only
-    // handlers.onPlayerVsEnemy = nullptr;
+    handlers.onPlayerVsEnemy = [this, &toDestroy](ECS::EntityID player, ECS::EntityID enemy, ECS::World& world) {
+        auto* playerHealth = world.GetComponent<rtype::common::components::Health>(player);
+        auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemy);
+        if (!playerHealth || !enemyHealth) return;
+
+        if (playerHealth->invulnerable || !playerHealth->isAlive || playerHealth->currentHp <= 0) return;
+
+        std::cout << "[COLLISION] Player " << player << " hit enemy " << enemy << " - HP: " << playerHealth->currentHp << " -> " << (playerHealth->currentHp - 1) << std::endl;
+
+        playerHealth->currentHp -= 1;
+        playerHealth->invulnerable = true;
+        playerHealth->invulnerabilityTimer = 1.0f;
+
+        if (playerHealth->currentHp <= 0) {
+            playerHealth->isAlive = false;
+            std::cout << "[COLLISION] Player " << player << " DIED from enemy contact" << std::endl;
+        }
+
+        broadcastPlayerStateImmediate(world, player);
+    };
 
     handlers.onPlayerProjectileVsEnemy = [this, &toDestroy](ECS::EntityID proj, ECS::EntityID enemy, ECS::World& world) {
         auto* projData = world.GetComponent<rtype::common::components::Projectile>(proj);
         auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemy);
         if (!projData || !enemyHealth) return;
 
+        std::cout << "[COLLISION] Projectile " << proj << " hit enemy " << enemy << " - Enemy HP: " << enemyHealth->currentHp << " -> " << (enemyHealth->currentHp - projData->damage) << std::endl;
+
         enemyHealth->currentHp -= projData->damage;
 
         if (enemyHealth->currentHp <= 0) {
             enemyHealth->isAlive = false;
+            std::cout << "[COLLISION] Enemy " << enemy << " DESTROYED" << std::endl;
             toDestroy.push_back(enemy);
         }
 
@@ -52,12 +72,15 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
         auto* playerHealth = world.GetComponent<rtype::common::components::Health>(player);
         if (!projData || !playerHealth) return;
 
+        std::cout << "[COLLISION] Enemy projectile " << proj << " hit player " << player << " - Player HP: " << playerHealth->currentHp << " -> " << (playerHealth->currentHp - projData->damage) << std::endl;
+
         playerHealth->currentHp -= projData->damage;
         playerHealth->invulnerable = true;
         playerHealth->invulnerabilityTimer = 1.0f;
 
         if (playerHealth->currentHp <= 0) {
             playerHealth->isAlive = false;
+            std::cout << "[COLLISION] Player " << player << " DIED from enemy projectile" << std::endl;
         }
 
         broadcastPlayerStateImmediate(world, player);
@@ -123,7 +146,7 @@ void ServerCollisionSystem::broadcastEntityDestroyToAllRooms(
     for (const auto& [roomEntity, roomPtr] : *roomProps) {
         if (!roomPtr->isGameStarted) continue;
 
-        auto players = rtype::server::services::player_service::findPlayersByRoomCode(roomEntity);
+        auto players = rtype::server::services::player_service::findPlayersByRoomCode(roomPtr->joinCode);
 
         for (auto playerId : players) {
             auto* lobbyState = world.GetComponent<rtype::server::components::LobbyState>(playerId);

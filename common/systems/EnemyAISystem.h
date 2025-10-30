@@ -21,6 +21,7 @@
 #include <common/components/EnemyType.h>
 #include <functional>
 #include <cmath>
+#include <iostream>
 
 namespace rtype::common::systems {
     /**
@@ -39,9 +40,9 @@ namespace rtype::common::systems {
     public:
         /**
          * @brief Callback type for creating projectiles
-         * Parameters: x, y, vx, vy
+         * Parameters: shooterEntity, x, y, vx, vy
          */
-        using ProjectileCallback = std::function<void(float, float, float, float)>;
+        using ProjectileCallback = std::function<void(ECS::EntityID, float, float, float, float)>;
 
         /**
          * @brief Update enemy AI and shooting behavior
@@ -55,7 +56,6 @@ namespace rtype::common::systems {
             auto* teams = world.GetAllComponents<components::Team>();
             if (!teams) return;
 
-            // Find player position first
             float playerX = 0.0f;
             float playerY = 0.0f;
             bool playerFound = false;
@@ -73,9 +73,7 @@ namespace rtype::common::systems {
                 }
             }
 
-            // Process all enemies
             for (auto& [entity, teamPtr] : *teams) {
-                // Only process enemies (not enemy projectiles)
                 if (teamPtr->team != components::TeamType::Enemy) continue;
                 if (!world.GetComponent<components::Health>(entity)) continue;
 
@@ -83,21 +81,18 @@ namespace rtype::common::systems {
                 auto* fireRate = world.GetComponent<components::FireRate>(entity);
                 auto* pos = world.GetComponent<components::Position>(entity);
 
-                if (!fireRate || !pos || !fireRate->canFire()) continue;
-
-                // Skip Suicide enemy - they don't shoot, they just explode
+                if (!fireRate || !pos) continue;
+                if (!fireRate->canFire()) continue;
                 if (enemyType && enemyType->type == components::EnemyType::Suicide) continue;
 
-                // Handle shooting based on enemy type
                 if (enemyType && enemyType->type == components::EnemyType::TankDestroyer) {
-                    handleTankDestroyerShooting(pos->x, pos->y, playerX, playerY, playerFound, createProjectile);
+                    handleTankDestroyerShooting(entity, pos->x, pos->y, playerX, playerY, playerFound, createProjectile);
                     fireRate->shoot();
                 } else if (enemyType && enemyType->type == components::EnemyType::Shooter) {
-                    handleShooterShooting(pos->x, pos->y, playerX, playerY, playerFound, createProjectile);
+                    handleShooterShooting(entity, pos->x, pos->y, playerX, playerY, playerFound, createProjectile);
                     fireRate->shoot();
                 } else {
-                    // Basic enemy: shoot straight left
-                    createProjectile(pos->x, pos->y, -300.0f, 0.0f);
+                    createProjectile(entity, pos->x, pos->y, -300.0f, 0.0f);
                     fireRate->shoot();
                 }
             }
@@ -106,6 +101,7 @@ namespace rtype::common::systems {
     private:
         /**
          * @brief Handle TankDestroyer boss shooting pattern (3-projectile spread)
+         * @param shooter Enemy entity ID
          * @param x Enemy X position
          * @param y Enemy Y position
          * @param targetX Player X position
@@ -113,7 +109,7 @@ namespace rtype::common::systems {
          * @param hasTarget Whether player was found
          * @param createProjectile Callback to create projectiles
          */
-        static void handleTankDestroyerShooting(float x, float y, float targetX, float targetY,
+        static void handleTankDestroyerShooting(ECS::EntityID shooter, float x, float y, float targetX, float targetY,
                                                 bool hasTarget, ProjectileCallback createProjectile) {
             if (!hasTarget) return;
 
@@ -129,7 +125,7 @@ namespace rtype::common::systems {
             float baseVy = (dy / distance) * PROJECTILE_SPEED;
 
             // Center projectile - aimed at player
-            createProjectile(x, y, baseVx, baseVy);
+            createProjectile(shooter, x, y, baseVx, baseVy);
 
             // Spread pattern: ±15 degrees from center
             const float spreadAngle = 0.26f; // ~15 degrees in radians
@@ -137,16 +133,17 @@ namespace rtype::common::systems {
             // Upper projectile (rotate counter-clockwise)
             float upperVx = baseVx * std::cos(spreadAngle) - baseVy * std::sin(spreadAngle);
             float upperVy = baseVx * std::sin(spreadAngle) + baseVy * std::cos(spreadAngle);
-            createProjectile(x, y, upperVx, upperVy);
+            createProjectile(shooter, x, y, upperVx, upperVy);
 
             // Lower projectile (rotate clockwise)
             float lowerVx = baseVx * std::cos(-spreadAngle) - baseVy * std::sin(-spreadAngle);
             float lowerVy = baseVx * std::sin(-spreadAngle) + baseVy * std::cos(-spreadAngle);
-            createProjectile(x, y, lowerVx, lowerVy);
+            createProjectile(shooter, x, y, lowerVx, lowerVy);
         }
 
         /**
          * @brief Handle Shooter enemy aiming at player
+         * @param shooter Enemy entity ID
          * @param x Enemy X position
          * @param y Enemy Y position
          * @param targetX Player X position
@@ -154,7 +151,7 @@ namespace rtype::common::systems {
          * @param hasTarget Whether player was found
          * @param createProjectile Callback to create projectiles
          */
-        static void handleShooterShooting(float x, float y, float targetX, float targetY,
+        static void handleShooterShooting(ECS::EntityID shooter, float x, float y, float targetX, float targetY,
                                          bool hasTarget, ProjectileCallback createProjectile) {
             if (!hasTarget) return;
 
@@ -170,7 +167,7 @@ namespace rtype::common::systems {
             float vx = (dx / distance) * PROJECTILE_SPEED;
             float vy = (dy / distance) * PROJECTILE_SPEED;
 
-            createProjectile(x, y, vx, vy);
+            createProjectile(shooter, x, y, vx, vy);
         }
     };
 }

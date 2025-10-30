@@ -84,7 +84,7 @@ void ServerEnemySystem::spawnBoss(ECS::World& world, ECS::EntityID room, rtype::
 
     // Send to all players in the room
     rtype::server::network::senders::broadcast_enemy_spawn(room, static_cast<uint32_t>(boss),
-                                                            rtype::common::components::EnemyType::Boss,
+                                                            rtype::common::components::EnemyType::TankDestroyer,
                                                             spawnX, spawnY, 50);
 }
 
@@ -135,22 +135,17 @@ void ServerEnemySystem::updateEnemySpawning(ECS::World& world, float deltaTime) 
             continue;
         config.timer = 0.0f;
 
-        // Only spawn types allowed in current phase
         bool spawnAllowed = false;
         switch (_phase) {
             case EnemySpawnPhase::OnlyBasic:
-                // TO DO: change basic enemy type
-                //spawnAllowed = (type == rtype::common::components::EnemyType::Basic);
-                //spawnAllowed = (type == rtype::common::components::EnemyType::Snake);
-                spawnAllowed = (type == rtype::common::components::EnemyType::Suicide);
-                //spawnAllowed = (type == rtype::common::components::EnemyType::Turret);
+                spawnAllowed = (type == rtype::common::components::EnemyType::Basic);
                 break;
             case EnemySpawnPhase::BasicAndAdvanced:
-                // TO DO: change advanced enemy type
-                spawnAllowed = (type == rtype::common::components::EnemyType::Basic || type == rtype::common::components::EnemyType::Shooter);
+                spawnAllowed = (type == rtype::common::components::EnemyType::Basic ||
+                               type == rtype::common::components::EnemyType::Shooter ||
+                               type == rtype::common::components::EnemyType::Suicide);
                 break;
             case EnemySpawnPhase::BossAndAll:
-                // TO DO: change boss type
                 spawnAllowed = (type != rtype::common::components::EnemyType::TankDestroyer);
                 break;
         }
@@ -228,23 +223,19 @@ void ServerEnemySystem::cleanupDeadEntities(ECS::World& world) {
         ECS::EntityID eid = pair.first;
         auto* h = pair.second.get();
         if (!h) continue;
-        if (!h->isAlive || h->currentHp <= 0) {
-            // Check if this is a player - don't destroy, show game over
+        if ((!h->isAlive || h->currentHp <= 0) && h->currentHp != -999) {
             auto* player = world.GetComponent<rtype::common::components::Player>(eid);
             if (player) {
-                std::cout << "[ServerEnemySystem] Player " << eid << " (" << player->name << ") died - game over" << std::endl;
-                continue; // Don't destroy player entity, client shows game over screen
+                if (h->currentHp != -999) {
+                    std::cout << "[ServerEnemySystem] Player " << eid << " (" << player->name << ") died - game over" << std::endl;
+                    h->currentHp = -999;
+                }
+                continue;
             }
 
-            // Non-player entity (enemy/projectile) - destroy normally
-            EntityDestroyPacket pkt{};
-            pkt.entityId = static_cast<uint32_t>(eid);
-            pkt.reason = 1; // killed
-
             auto room = world.GetComponent<rtype::server::components::LinkedRoom>(eid);
-            // Broadcast destroy packet to all players in the world (could restrict by room)
             if (room)
-                rtype::server::network::senders::broadcast_entity_destroy(room->room_id, static_cast<uint32_t>(eid), 1 /* killed */);
+                rtype::server::network::senders::broadcast_entity_destroy(room->room_id, static_cast<uint32_t>(eid), 1);
             toDestroy.push_back(eid);
         }
     }
@@ -302,20 +293,11 @@ void ServerEnemySystem::spawnEnemy(ECS::World &world, ECS::EntityID room, rtype:
     root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(enemy, type);
     root.world.AddComponent<rtype::server::components::LinkedRoom>(enemy, room);
 
-    // Add FireRate component so enemy can shoot
-    float fireInterval = 2.0f; // Default fire rate
+    float fireInterval = 2.0f;
     if (type == rtype::common::components::EnemyType::Shooter) {
-        fireInterval = 1.5f; // Shooter fires faster
+        fireInterval = 1.5f;
     }
     root.world.AddComponent<rtype::common::components::FireRate>(enemy, fireInterval);
-    root.world.AddComponent<rtype::server::components::LinkedRoom>(enemy, room);
-
-    // SpawnEnemyPacket pkt{};
-    // pkt.enemyId = static_cast<uint32_t>(enemy);
-    // pkt.enemyType = static_cast<uint16_t>(type);
-    // pkt.x = spawnX;
-    // pkt.y = spawnY;
-    // pkt.hp = hp;
 
     rtype::server::network::senders::broadcast_enemy_spawn(room, enemy, type, spawnX, spawnY, hp);
 }

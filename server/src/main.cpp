@@ -13,6 +13,8 @@
 #include <common/systems/MovementSystem.h>
 #include "components/LobbyState.h"
 #include "components/PlayerConn.h"
+#include "components/LinkedRoom.h"
+#include "senders.h"
 #include <chrono>
 #include <iostream>
 #include <cmath>
@@ -54,8 +56,6 @@ void net_loop() {
 void rtype::server::Rtype::loop(float deltaTime) {
     packetHandler.processPackets(packetManager.fetchReceivedPackets());
 
-    // SERVER-SIDE PREDICTION: Use shared MovementSystem
-    // Identical logic as client - guarantees synchronization
     rtype::common::systems::MovementSystem::update(world, deltaTime);
 
     // Server-specific post-movement processing
@@ -106,46 +106,30 @@ int main() {
     root.world.RegisterSystem<rtype::server::systems::ServerCollisionSystem>();
     std::cout << "✓ Registered ServerCollisionSystem" << std::endl;
 
-    // Register EnemyAISystem and configure projectile creation callback
     root.world.RegisterSystem<rtype::server::systems::EnemyAISystem>();
     auto* enemyAI = root.world.GetSystem<rtype::server::systems::EnemyAISystem>();
     if (enemyAI) {
-        enemyAI->SetProjectileCallback([](float x, float y, float vx, float vy, ECS::World& world) {
-            // Create enemy projectile on server
-            auto projectile = rtype::server::controllers::room_controller::createEnemyProjectile(x, y, vx, vy, world);
+        enemyAI->SetProjectileCallback([](ECS::EntityID shooter, float x, float y, float vx, float vy, ECS::World& world) {
+            auto* shooterRoom = world.GetComponent<rtype::server::components::LinkedRoom>(shooter);
+            if (!shooterRoom) return;
 
-            // Broadcast to all players in active games
-            // TODO: We need to get the room context here to broadcast properly
-            // For now, broadcast to all in-game players
-            auto* players = world.GetAllComponents<rtype::common::components::Player>();
-            if (!players) return;
+            auto projectile = rtype::server::controllers::room_controller::createEnemyProjectile(shooterRoom->room_id, x, y, vx, vy, world);
 
-            for (auto& [pid, playerPtr] : *players) {
-                auto* lobbyState = world.GetComponent<rtype::server::components::LobbyState>(pid);
-                if (!lobbyState || !lobbyState->isInGame) continue;
+            auto* pos = world.GetComponent<rtype::common::components::Position>(projectile);
+            auto* vel = world.GetComponent<rtype::common::components::Velocity>(projectile);
+            auto* proj = world.GetComponent<rtype::common::components::Projectile>(projectile);
 
-                auto* pconn = world.GetComponent<rtype::server::components::PlayerConn>(pid);
-                if (!pconn) continue;
-
-                // Build and send SPAWN_PROJECTILE packet
-                auto* pos = world.GetComponent<rtype::common::components::Position>(projectile);
-                auto* vel = world.GetComponent<rtype::common::components::Velocity>(projectile);
-                auto* proj = world.GetComponent<rtype::common::components::Projectile>(projectile);
-
-                if (pos && vel && proj) {
-                    SpawnProjectilePacket spawnPkt{};
-                    spawnPkt.projectileId = static_cast<uint32_t>(projectile);
-                    spawnPkt.ownerId = 0; // Enemy owned (no specific owner)
-                    spawnPkt.x = pos->x;
-                    spawnPkt.y = pos->y;
-                    spawnPkt.vx = vel->vx;
-                    spawnPkt.vy = vel->vy;
-                    spawnPkt.damage = proj->damage;
-                    spawnPkt.piercing = proj->piercing;
-                    spawnPkt.isCharged = false; // Enemy projectiles are never charged
-
-                    pconn->packet_manager.sendPacketBytesSafe(&spawnPkt, sizeof(spawnPkt), SPAWN_PROJECTILE, nullptr, false);
-                }
+            if (pos && vel && proj) {
+                rtype::server::network::senders::broadcast_projectile_spawn(
+                    shooterRoom->room_id,
+                    static_cast<uint32_t>(projectile),
+                    0,
+                    pos->x, pos->y,
+                    vel->vx, vel->vy,
+                    proj->damage,
+                    proj->piercing,
+                    false
+                );
             }
         });
         std::cout << "✓ Registered EnemyAISystem with projectile broadcast" << std::endl;
@@ -154,10 +138,18 @@ int main() {
     root.world.RegisterSystem<AdminDetectorSystem>();
 
     auto lastTime = std::chrono::high_resolution_clock::now();
+    constexpr float TARGET_DELTA = 1.0f / 60.0f;
 
     while (true) {
         auto currentTime = std::chrono::high_resolution_clock::now();
         float deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
+
+        if (deltaTime < TARGET_DELTA) {
+            std::this_thread::sleep_for(std::chrono::microseconds(static_cast<int>((TARGET_DELTA - deltaTime) * 1000000)));
+            currentTime = std::chrono::high_resolution_clock::now();
+            deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
+        }
+
         lastTime = currentTime;
         r.loop(deltaTime);
     }

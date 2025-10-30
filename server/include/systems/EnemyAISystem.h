@@ -36,9 +36,9 @@ class EnemyAISystem : public ECS::System {
 public:
     /**
      * @brief Callback type for projectile creation
-     * Parameters: x, y, vx, vy, world
+     * Parameters: shooterEntity, x, y, vx, vy, world
      */
-    using ProjectileCallback = std::function<void(float, float, float, float, ECS::World&)>;
+    using ProjectileCallback = std::function<void(ECS::EntityID, float, float, float, float, ECS::World&)>;
 private:
     ProjectileCallback m_createProjectile;
 public:

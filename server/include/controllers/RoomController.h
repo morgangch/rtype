@@ -136,9 +136,10 @@ namespace rtype::server::controllers::room_controller {
      * @param vx X velocity
      * @param vy Y velocity
      * @param world The ECS world
+     * @param room_id The room ID for broadcasting
      * @return The created projectile entity ID
      */
-    ECS::EntityID createEnemyProjectile(float x, float y, float vx, float vy, ECS::World& world);
+    ECS::EntityID createEnemyProjectile(ECS::EntityID room_id, float x, float y, float vx, float vy, ECS::World& world);
 
     // === Join Room Helper Functions ===
     
