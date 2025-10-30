@@ -35,6 +35,7 @@
 #include <functional>
 #include "MusicManager.h"
 #include "SoundManager.h"
+#include "HighscoreManager.h"
 
 namespace rtype::client::gui {
 
@@ -555,6 +556,12 @@ namespace rtype::client::gui {
         sf::Sprite m_fullHeartSprite;
         /// Sprite for empty/lost health heart
         sf::Sprite m_emptyHeartSprite;
+        /// Player score value
+        int m_score{0};
+        /// HUD text for score rendering
+        sf::Text m_scoreText;
+        /// Prevent duplicate save on repeated game-over triggers
+        bool m_scoreSaved{false};
 
         /* === Rendering === */
         /// Parallax background system for scrolling layers

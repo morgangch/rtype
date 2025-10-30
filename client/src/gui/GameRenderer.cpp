@@ -120,6 +120,14 @@ void GameState::renderHUD(sf::RenderWindow& window) {
             window.draw(m_emptyHeartSprite);
         }
     }
+
+    // Draw score (top-right)
+    m_scoreText.setString("score " + std::to_string(m_score));
+    sf::FloatRect bounds = m_scoreText.getLocalBounds();
+    float scoreX = SCREEN_WIDTH - 20.0f - bounds.width;
+    float scoreY = 20.0f;
+    m_scoreText.setPosition(scoreX, scoreY);
+    window.draw(m_scoreText);
 }
 
 void GameState::renderGameOverMenu(sf::RenderWindow& window) {

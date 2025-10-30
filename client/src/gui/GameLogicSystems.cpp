@@ -517,9 +517,18 @@ void GameState::updateCollisionSystem() {
                 }
                 // Restore level background music after boss death
                 loadLevelMusic();
+                // Award score for boss
+                m_score += 50;
             } else if (m_soundManager.has(AudioFactory::SfxId::EnemyDeath)) {
                 // Regular enemy death
                 m_soundManager.play(AudioFactory::SfxId::EnemyDeath);
+                // Award score for non-boss
+                if (enemyType->type == rtype::common::components::EnemyType::Shooter) {
+                    m_score += 20;
+                } else {
+                    // Basic or other
+                    m_score += 10;
+                }
             }
         }
 
