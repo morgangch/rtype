@@ -86,6 +86,9 @@ namespace rtype::common::systems {
                 if (enemyType && enemyType->type == components::EnemyType::Suicide) continue;
 
                 if (enemyType && enemyType->type == components::EnemyType::TankDestroyer) {
+                    if (!playerFound) {
+                        std::cout << "[EnemyAI] Boss " << entity << " cannot shoot - no player found!" << std::endl;
+                    }
                     handleTankDestroyerShooting(entity, pos->x, pos->y, playerX, playerY, playerFound, createProjectile);
                     fireRate->shoot();
                 } else if (enemyType && enemyType->type == components::EnemyType::Shooter) {

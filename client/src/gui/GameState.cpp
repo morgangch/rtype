@@ -39,9 +39,9 @@ GameState* g_gameState = nullptr;
 
 // Helper: create enemy from server info and store mapping
 ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float y, uint16_t hp, uint16_t enemyType) {
-    // If we already have an entity mapped, update it instead
     auto it = m_serverEntityMap.find(serverId);
     if (it != m_serverEntityMap.end()) {
+        std::cout << "[GameState] Enemy " << serverId << " already exists (clientId=" << it->second << "), updating position" << std::endl;
         ECS::EntityID existing = it->second;
         auto* pos = m_world.GetComponent<rtype::common::components::Position>(existing);
         if (pos) { pos->x = x; pos->y = y; }
@@ -50,7 +50,8 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
         return existing;
     }
 
-    // Create a new enemy based on enemyType
+    std::cout << "[GameState] Creating NEW enemy: serverId=" << serverId << " type=" << enemyType << " pos=(" << x << "," << y << ")" << std::endl;
+
     ECS::EntityID e;
     auto type = static_cast<rtype::common::components::EnemyType>(enemyType);
     
@@ -89,6 +90,7 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
 
     // Store mapping
     m_serverEntityMap[serverId] = e;
+    std::cout << "[GameState] ✓ Created enemy: clientId=" << e << " serverId=" << serverId << std::endl;
     return e;
 }
 
