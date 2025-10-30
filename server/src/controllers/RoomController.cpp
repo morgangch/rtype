@@ -608,7 +608,7 @@ void room_controller::handleSpawnBossRequest(const packet_t &packet) {
     std::cout << "SERVER: Admin spawned boss (id=" << boss << ") in room " << room << std::endl;
 
     network::senders::broadcast_enemy_spawn(room, static_cast<uint32_t>(boss),
-                                            static_cast<uint16_t>(rtype::common::components::EnemyType::Boss),
+                                            rtype::common::components::EnemyType::Boss,
                                             spawnX, spawnY, 50);
 }
 

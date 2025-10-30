@@ -82,16 +82,6 @@ private:
     bool checkAABB(float x1, float y1, float w1, float h1,
                    float x2, float y2, float w2, float h2);
     
-    /**
-     * @brief Broadcasts entity destruction to all players in active games
-     * 
-     * Sends ENTITY_DESTROY packet to all players in rooms where the
-     * game has started, ensuring clients remove the entity locally.
-     * 
-     * @param world The ECS world
-     * @param entityId The ID of the entity being destroyed
-     */
-    void broadcastEntityDestroyToAllRooms(ECS::World& world, ECS::EntityID entityId);
 };
 
 } // namespace rtype::server::systems

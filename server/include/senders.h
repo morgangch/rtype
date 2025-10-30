@@ -8,6 +8,7 @@
 #define SENDERS_H
 #include <cstdint>
 
+#include "common/components/EnemyType.h"
 #include "components/RoomProperties.h"
 
 namespace rtype::server::network::senders {
@@ -18,6 +19,20 @@ namespace rtype::server::network::senders {
      * @param reason The reason code for destruction
      */
     void broadcast_entity_destroy(ECS::EntityID room_id, uint32_t entity_id, uint16_t reason);
+
+
+    /**
+     *
+     * @param room_id  The room to broadcast to
+     * @param playerId  The player entity ID
+     * @param x  The X position
+     * @param y The Y position
+     * @param dir  The direction/rotation
+     * @param hp  The hit points
+     * @param isAlive  Whether the player is alive
+     */
+    void send_player_state(ECS::EntityID to_player, ECS::EntityID playerId, float x, float y, float dir, uint16_t hp,
+                                bool isAlive);
 
     /**
      * Broadcasts the game start packet to all players in the specified room
@@ -80,7 +95,8 @@ namespace rtype::server::network::senders {
      * @param y The Y position
      * @param hp The enemy's hit points
      */
-    void broadcast_enemy_spawn(ECS::EntityID room_id, uint32_t enemyId, uint16_t enemyType, float x, float y, uint16_t hp);
+    void broadcast_enemy_spawn(ECS::EntityID room_id, uint32_t enemyId, common::components::EnemyType enemyType, float x, float y,
+                               uint16_t hp);
 }
 
 #endif //SENDERS_H

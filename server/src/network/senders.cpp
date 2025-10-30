@@ -105,7 +105,7 @@ namespace rtype::server::network::senders {
         to_network_endian(spawnPkt.damage);
         auto room = root.world.GetComponent<rtype::server::components::RoomProperties>(room_id);
         if (!room) {
-            std::cerr << "ERROR: Cannot broadcast SpawnProjectilePacket, room " << room_id << " not found" << std::endl;
+            std::cerr << "ERRxOR: Cannot broadcast SpawnProjectilePacket, room " << room_id << " not found" << std::endl;
             return;
         }
         room->broadcastPacket(&spawnPkt, sizeof(spawnPkt), SPAWN_PROJECTILE, true);
@@ -128,10 +128,10 @@ namespace rtype::server::network::senders {
         pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), LOBBY_STATE, nullptr, true);
     }
 
-    void broadcast_enemy_spawn(ECS::EntityID room_id, uint32_t enemyId, uint16_t enemyType, float x, float y, uint16_t hp) {
+    void broadcast_enemy_spawn(ECS::EntityID room_id, uint32_t enemyId, common::components::EnemyType enemyType, float x, float y, uint16_t hp) {
         SpawnEnemyPacket pkt{};
         pkt.enemyId = enemyId;
-        pkt.enemyType = enemyType;
+        pkt.enemyType = static_cast<uint16_t>(enemyType);
         pkt.x = x;
         pkt.y = y;
         pkt.hp = hp;
@@ -151,8 +151,27 @@ namespace rtype::server::network::senders {
         room->broadcastPacket(&pkt, sizeof(pkt), SPAWN_ENEMY, true);
     }
 
+    void send_player_state(ECS::EntityID to_player, ECS::EntityID playerId, float x, float y, float dir, uint16_t hp, bool isAlive) {
+        PlayerStatePacket pkt{};
+        pkt.playerId = playerId;
+        pkt.x = x;
+        pkt.y = y;
+        pkt.dir = dir;
+        pkt.hp = hp;
+        pkt.isAlive = isAlive;
 
+        // Convert to network endian
+        to_network_endian(pkt.playerId);
+        to_network_endian(pkt.x);
+        to_network_endian(pkt.y);
+        to_network_endian(pkt.dir);
+        to_network_endian(pkt.hp);
 
-
-
+        auto *pconn = root.world.GetComponent<rtype::server::components::PlayerConn>(to_player);
+        if (!pconn) {
+            std::cerr << "ERROR: Cannot send PlayerStatePacket, player " << to_player << " has no PlayerConn" << std::endl;
+            return;
+        }
+        pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), PLAYER_STATE, nullptr, false);
+    }
 }
