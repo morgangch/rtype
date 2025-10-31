@@ -19,6 +19,10 @@
 #include "packethandler.h"
 #include "ECS/Types.h"
 
+namespace ECS {
+    class World;
+}
+
 namespace rtype::server::controllers::room_controller {
     /**
      * @brief Handle a client's request to join a room
@@ -119,6 +123,18 @@ namespace rtype::server::controllers::room_controller {
      */
     ECS::EntityID createServerProjectile(ECS::EntityID room, ECS::EntityID owner, float x, float y, bool isCharged);
     
+    /**
+     * @brief Create an enemy projectile with custom velocity
+     * @param room The room entity ID
+     * @param x Starting X position
+     * @param y Starting Y position
+     * @param vx Velocity X
+     * @param vy Velocity Y
+     * @param world The ECS world
+     * @return The created projectile entity ID
+     */
+    ECS::EntityID createEnemyProjectile(ECS::EntityID room, float x, float y, float vx, float vy, ECS::World& world);
+
     /**
      * @brief Broadcast projectile spawn to all players in a room
      * @param projectile The projectile entity ID

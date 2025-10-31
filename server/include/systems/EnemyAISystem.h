@@ -36,9 +36,9 @@ class EnemyAISystem : public ECS::System {
 public:
     /**
      * @brief Callback type for projectile creation
-     * Parameters: x, y, vx, vy, world
+     * Parameters: shooterEntity, x, y, vx, vy, world
      */
-    using ProjectileCallback = std::function<void(float, float, float, float, ECS::World&)>;
+    using ProjectileCallback = std::function<void(ECS::EntityID, float, float, float, float, ECS::World&)>;
 private:
     ProjectileCallback m_createProjectile;
 public:
@@ -73,18 +73,9 @@ public:
      * @param world Reference to the ECS world
      */
     void Cleanup(ECS::World& world) override;
-private:
-    /**
-     * @brief Handles boss shooting pattern (spread)
-     * Shoots three projectiles: center, upper, lower.
-     */
-    void handleBossShooting(float x, float y, float targetX, float targetY, bool hasTarget, ECS::World& world);
 
-    /**
-     * @brief Handles shooter enemy aiming
-     * Shoots a projectile aimed at the player.
-     */
-    void handleShooterShooting(float x, float y, float targetX, float targetY, bool hasTarget, ECS::World& world);
+    // Note: Shooting logic now delegated to common/systems/EnemyAISystem
+    // This wrapper system calls the shared implementation for consistency
 };
 }
 

@@ -1,19 +1,19 @@
 /**
  * @file GameLogicSystems.cpp
  * @brief ECS systems implementation for game logic
- * 
+ *
  * This file contains all ECS system update logic:
- * - Movement System: Updates positions based on velocity
+ * - Movement System: Now uses common/systems/MovementSystem
  * - Input System: Processes player keyboard input
- * - Fire Rate System: Manages shooting cooldowns
+ * - Fire Rate System: Now uses common/systems/FireRateSystem
  * - Invulnerability System: Manages damage immunity
  * - Enemy Spawn System: Spawns enemies periodically
- * - Enemy AI System: Enemy shooting logic
+ * - Enemy AI System: Now uses common/systems/EnemyAISystem
  * - Cleanup System: Removes off-screen entities
  * - Collision System: Detects and handles collisions
- * 
+ *
  * Part of the modular GameState implementation.
- * 
+ *
  * @author R-TYPE Development Team
  * @date 2025
  */
@@ -23,53 +23,16 @@
 #include "packetmanager.h"
 #include "network/network.h"
 #include "network/senders.h"
+#include <common/systems/MovementSystem.h>
+#include <common/systems/FireRateSystem.h>
+#include <common/systems/EnemyAISystem.h>
+#include <common/systems/CollisionSystem.h>
 #include <cmath>
 #include <iostream>
 #include <vector>
 #include <functional>
 
 namespace rtype::client::gui {
-
-void GameState::updateMovementSystem(float deltaTime) {
-    auto* positions = m_world.GetAllComponents<rtype::common::components::Position>();
-    if (!positions) return;
-    
-    for (auto& [entity, posPtr] : *positions) {
-        auto& pos = *posPtr;
-        auto* vel = m_world.GetComponent<rtype::common::components::Velocity>(entity);
-        
-        if (!vel) continue;
-        
-        // Update position
-        pos.x += vel->vx * deltaTime;
-        pos.y += vel->vy * deltaTime;
-        
-        // Boss bounce logic (vertical oscillation)
-        auto* enemyType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(entity);
-        if (enemyType && enemyType->type == rtype::common::components::EnemyType::Boss) {
-            auto* sprite = m_world.GetComponent<rtype::client::components::Sprite>(entity);
-            if (sprite) {
-                float halfHeight = sprite->size.y / 2.0f;
-                // Bounce at top or bottom of screen
-                if (pos.y - halfHeight <= 0.0f) {
-                    pos.y = halfHeight;
-                    vel->vy = std::abs(vel->vy);  // Go down
-                } else if (pos.y + halfHeight >= SCREEN_HEIGHT) {
-                    pos.y = SCREEN_HEIGHT - halfHeight;
-                    vel->vy = -std::abs(vel->vy);  // Go up
-                }
-            }
-        }
-        
-        // Clamp velocity to max speed
-        float speed = std::sqrt(vel->vx * vel->vx + vel->vy * vel->vy);
-        if (speed > vel->maxSpeed && vel->maxSpeed > 0.0f) {
-            float scale = vel->maxSpeed / speed;
-            vel->vx *= scale;
-            vel->vy *= scale;
-        }
-    }
-}
 
 void GameState::updateInputSystem(float deltaTime) {
     // Send player input to server periodically (20 times per second)
@@ -188,12 +151,18 @@ void GameState::updateAnimationSystem(float deltaTime) {
 }
 
 void GameState::updateFireRateSystem(float deltaTime) {
-    auto* fireRates = m_world.GetAllComponents<rtype::common::components::FireRate>();
-    if (!fireRates) return;
-    
-    for (auto& [entity, fireRatePtr] : *fireRates) {
-        fireRatePtr->update(deltaTime);
-    }
+    // Use the common fire rate system
+    rtype::common::systems::FireRateSystem::update(m_world, deltaTime);
+}
+
+void GameState::updateEnemyAISystem(float deltaTime) {
+    // Local prediction callback - creates enemy projectiles immediately on client
+    auto createProjectile = [this](ECS::EntityID shooter, float x, float y, float vx, float vy) {
+        createEnemyProjectile(x, y, vx, vy);
+    };
+
+    // Use shared EnemyAI logic for local prediction (server will confirm via SPAWN_PROJECTILE)
+    rtype::common::systems::EnemyAISystem::update(m_world, deltaTime, createProjectile);
 }
 
 void GameState::updateChargedShotSystem(float deltaTime) {
@@ -216,94 +185,6 @@ void GameState::updateInvulnerabilitySystem(float deltaTime) {
                 healthPtr->invulnerable = false;
                 healthPtr->invulnerabilityTimer = 0.0f;
             }
-        }
-    }
-}
-
-void GameState::updateEnemyAISystem(float deltaTime) {
-    auto* teams = m_world.GetAllComponents<rtype::common::components::Team>();
-    if (!teams) return;
-    
-    // Find player position first
-    sf::Vector2f playerPos(0.0f, 0.0f);
-    bool playerFound = false;
-    auto* players = m_world.GetAllComponents<rtype::common::components::Player>();
-    if (players) {
-        for (auto& [playerEntity, playerPtr] : *players) {
-            auto* pos = m_world.GetComponent<rtype::common::components::Position>(playerEntity);
-            if (pos) {
-                playerPos = sf::Vector2f(pos->x, pos->y);
-                playerFound = true;
-                break;
-            }
-        }
-    }
-    
-    for (auto& [entity, teamPtr] : *teams) {
-        // Only process enemies (not enemy projectiles)
-        if (teamPtr->team != rtype::common::components::TeamType::Enemy) continue;
-        if (!m_world.GetComponent<rtype::common::components::Health>(entity)) continue;
-        
-        auto* enemyType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(entity);
-        auto* fireRate = m_world.GetComponent<rtype::common::components::FireRate>(entity);
-        auto* pos = m_world.GetComponent<rtype::common::components::Position>(entity);
-        
-        if (!fireRate || !pos || !fireRate->canFire()) continue;
-        
-        if (enemyType && enemyType->type == rtype::common::components::EnemyType::Boss) {
-            // BOSS: Shoot in spread pattern (3 projectiles)
-            if (playerFound) {
-                // Calculate direction to player
-                float dx = playerPos.x - pos->x;
-                float dy = playerPos.y - pos->y;
-                float distance = std::sqrt(dx * dx + dy * dy);
-                
-                if (distance > 0.0f) {
-                    const float PROJECTILE_SPEED = 350.0f;
-                    float baseVx = (dx / distance) * PROJECTILE_SPEED;
-                    float baseVy = (dy / distance) * PROJECTILE_SPEED;
-                    
-                    // Center projectile - aimed at player
-                    createEnemyProjectile(pos->x, pos->y, baseVx, baseVy);
-                    
-                    // Spread pattern: ±15 degrees from center
-                    const float spreadAngle = 0.26f; // ~15 degrees in radians
-                    
-                    // Upper projectile (rotate counter-clockwise)
-                    float upperVx = baseVx * std::cos(spreadAngle) - baseVy * std::sin(spreadAngle);
-                    float upperVy = baseVx * std::sin(spreadAngle) + baseVy * std::cos(spreadAngle);
-                    createEnemyProjectile(pos->x, pos->y, upperVx, upperVy);
-                    
-                    // Lower projectile (rotate clockwise)
-                    float lowerVx = baseVx * std::cos(-spreadAngle) - baseVy * std::sin(-spreadAngle);
-                    float lowerVy = baseVx * std::sin(-spreadAngle) + baseVy * std::cos(-spreadAngle);
-                    createEnemyProjectile(pos->x, pos->y, lowerVx, lowerVy);
-                    
-                    fireRate->shoot();
-                }
-            }
-        } else if (enemyType && enemyType->type == rtype::common::components::EnemyType::Shooter) {
-            // Shooter enemy: aim at player
-            if (playerFound) {
-                // Calculate direction to player
-                float dx = playerPos.x - pos->x;
-                float dy = playerPos.y - pos->y;
-                float distance = std::sqrt(dx * dx + dy * dy);
-                
-                if (distance > 0.0f) {
-                    // Normalize and apply speed
-                    const float PROJECTILE_SPEED = 300.0f;
-                    float vx = (dx / distance) * PROJECTILE_SPEED;
-                    float vy = (dy / distance) * PROJECTILE_SPEED;
-                    
-                    createEnemyProjectile(pos->x, pos->y, vx, vy);
-                    fireRate->shoot();
-                }
-            }
-        } else {
-            // Basic red enemy: shoot straight left
-            createEnemyProjectile(pos->x, pos->y, -300.0f, 0.0f);
-            fireRate->shoot();
         }
     }
 }
@@ -344,189 +225,100 @@ void GameState::updateCleanupSystem(float deltaTime) {
     }
 }
 
-void GameState::checkPlayerVsEnemiesCollision(
-    ECS::ComponentArray<rtype::common::components::Position>& positions,
-    const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds) {
-    
-    if (m_playerEntity == 0) return;
-    
-    auto* playerPos = m_world.GetComponent<rtype::common::components::Position>(m_playerEntity);
-    auto* playerHealth = m_world.GetComponent<rtype::common::components::Health>(m_playerEntity);
-    
-    if (!playerPos || !playerHealth || playerHealth->invulnerable) return;
-    
-    sf::FloatRect playerBounds = getBounds(m_playerEntity, *playerPos);
-    
-    for (const auto& [entity, posPtr] : positions) {
-        if (entity == m_playerEntity) continue;
-        
-        auto* team = m_world.GetComponent<rtype::common::components::Team>(entity);
-        auto* health = m_world.GetComponent<rtype::common::components::Health>(entity);
-        
-        // Check collision with enemies
-        if (team && health && team->team == rtype::common::components::TeamType::Enemy) {
-            sf::FloatRect enemyBounds = getBounds(entity, *posPtr);
-            
-            if (playerBounds.intersects(enemyBounds)) {
-                damagePlayer(1);
-                // Ne PAS détruire l'ennemi - il continue à vivre
-            }
-        }
-    }
-}
-
-// HYBRID CLIENT-SIDE PREDICTION + SERVER AUTHORITY:
-// - Client detects collisions immediately for low-latency feedback
-// - Client applies damage and destroys entities locally (optimistic prediction)
-// - Server also detects collisions and sends ENTITY_DESTROY for confirmation
-// - Client's destroyEntityByServerId() is idempotent (handles already-destroyed entities)
-// 
-// For SERVER-OWNED projectiles:
-//   - Client predicts collision → destroys enemy locally
-//   - Client does NOT destroy projectile (server decides when projectile dies)
-//   - Server confirms → sends ENTITY_DESTROY for both projectile and enemy
-// 
-// This gives instant feedback while maintaining server authority
-
-void GameState::checkPlayerProjectilesVsEnemiesCollision(
-    ECS::ComponentArray<rtype::common::components::Position>& positions,
-    const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds,
-    std::vector<ECS::EntityID>& toDestroy) {
-    
-    
-    for (const auto& [projEntity, projPosPtr] : positions) {
-        auto* projTeam = m_world.GetComponent<rtype::common::components::Team>(projEntity);
-        auto* projData = m_world.GetComponent<rtype::common::components::Projectile>(projEntity);
-        
-        // Skip if not a player projectile
-        if (!projTeam || !projData) continue;
-        if (projTeam->team != rtype::common::components::TeamType::Player) continue;
-        
-        sf::FloatRect projBounds = getBounds(projEntity, *projPosPtr);
-        
-        for (const auto& [enemyEntity, enemyPosPtr] : positions) {
-            if (enemyEntity == projEntity) continue;
-            
-            auto* enemyTeam = m_world.GetComponent<rtype::common::components::Team>(enemyEntity);
-            auto* enemyHealth = m_world.GetComponent<rtype::common::components::Health>(enemyEntity);
-            
-            // Check collision with enemies
-            if (enemyTeam && enemyHealth && enemyTeam->team == rtype::common::components::TeamType::Enemy) {
-                sf::FloatRect enemyBounds = getBounds(enemyEntity, *enemyPosPtr);
-                
-                if (projBounds.intersects(enemyBounds)) {
-                    // COLLISION DETECTED - apply damage immediately for instant feedback
-                    enemyHealth->currentHp -= projData->damage;
-                    
-                    if (enemyHealth->currentHp <= 0) {
-                        enemyHealth->isAlive = false;
-                        toDestroy.push_back(enemyEntity); // Destroy enemy immediately (prediction)
-                    }
-                    
-                    // Handle projectile destruction based on piercing
-                    if (projData->piercing) {
-                        // Piercing projectile continues through enemies
-                        continue;
-                    } else {
-                        // Non-piercing projectile - ALWAYS destroy locally to prevent piercing through
-                        toDestroy.push_back(projEntity);
-                        break; // Stop checking collisions - projectile is destroyed
-                    }
-                }
-            }
-        }
-    }
-}
-
-void GameState::checkEnemyProjectilesVsPlayerCollision(
-    ECS::ComponentArray<rtype::common::components::Position>& positions,
-    const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds,
-    std::vector<ECS::EntityID>& toDestroy) {
-    
-    if (m_playerEntity == 0) return;
-    
-    auto* playerPos = m_world.GetComponent<rtype::common::components::Position>(m_playerEntity);
-    auto* playerHealth = m_world.GetComponent<rtype::common::components::Health>(m_playerEntity);
-    
-    if (!playerPos || !playerHealth || playerHealth->invulnerable) return;
-    
-    sf::FloatRect playerBounds = getBounds(m_playerEntity, *playerPos);
-    
-    for (const auto& [projEntity, projPosPtr] : positions) {
-        auto* projTeam = m_world.GetComponent<rtype::common::components::Team>(projEntity);
-        auto* projData = m_world.GetComponent<rtype::common::components::Projectile>(projEntity);
-        
-        // Check if it's an enemy projectile
-        if (projTeam && projData && projTeam->team == rtype::common::components::TeamType::Enemy) {
-            sf::FloatRect projBounds = getBounds(projEntity, *projPosPtr);
-            
-            if (playerBounds.intersects(projBounds)) {
-                damagePlayer(projData->damage);
-                toDestroy.push_back(projEntity);
-            }
-        }
-    }
-}
-
 void GameState::updateCollisionSystem() {
+    rtype::common::systems::CollisionHandlers handlers;
     std::vector<ECS::EntityID> toDestroy;
-    
-    // Get all positions for collision checks
-    auto* positions = m_world.GetAllComponents<rtype::common::components::Position>();
-    if (!positions) return;
-    
-    // Helper lambda to get entity bounds
-    auto getBounds = [this](ECS::EntityID entity, const rtype::common::components::Position& pos) -> sf::FloatRect {
-        auto* sprite = m_world.GetComponent<rtype::client::components::Sprite>(entity);
-        if (!sprite) return sf::FloatRect(pos.x, pos.y, 1.0f, 1.0f);
-        
-        float realWidth, realHeight;
-        
-        if (sprite->useTexture) {
-            // For textured sprites: use textureRect dimensions (actual frame size) * scale
-            realWidth = sprite->textureRect.width * sprite->scale;
-            realHeight = sprite->textureRect.height * sprite->scale;
-        } else {
-            // For colored shapes: use size directly (no scale)
-            realWidth = sprite->size.x;
-            realHeight = sprite->size.y;
+
+    handlers.onPlayerVsEnemy = [this](ECS::EntityID player, ECS::EntityID enemy, ECS::World& world) {
+        auto* playerHealth = world.GetComponent<rtype::common::components::Health>(player);
+        if (!playerHealth || playerHealth->invulnerable) return;
+
+        playerHealth->currentHp -= 1;
+        playerHealth->invulnerable = true;
+        playerHealth->invulnerabilityTimer = 1.0f;
+
+        if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) {
+            m_soundManager.play(AudioFactory::SfxId::LoseLife);
         }
-        
-        return sf::FloatRect(
-            pos.x - realWidth * 0.5f,
-            pos.y - realHeight * 0.5f,
-            realWidth,
-            realHeight
-        );
     };
-    
-    // Run collision detection subsystems
-    checkPlayerVsEnemiesCollision(*positions, getBounds);
-    checkPlayerProjectilesVsEnemiesCollision(*positions, getBounds, toDestroy);
-    checkEnemyProjectilesVsPlayerCollision(*positions, getBounds, toDestroy);
-    
-    // Destroy all marked entities and play death sounds
+
+    handlers.onPlayerProjectileVsEnemy = [this, &toDestroy](ECS::EntityID proj, ECS::EntityID enemy, ECS::World& world) {
+        auto* projData = world.GetComponent<rtype::common::components::Projectile>(proj);
+        auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemy);
+        if (!projData || !enemyHealth) return;
+
+        enemyHealth->currentHp -= projData->damage;
+
+        if (enemyHealth->currentHp <= 0) {
+            toDestroy.push_back(enemy);
+        }
+
+        if (!projData->piercing) {
+            toDestroy.push_back(proj);
+        }
+    };
+
+    handlers.onEnemyProjectileVsPlayer = [this, &toDestroy](ECS::EntityID proj, ECS::EntityID player, ECS::World& world) {
+        auto* playerHealth = world.GetComponent<rtype::common::components::Health>(player);
+        auto* projData = world.GetComponent<rtype::common::components::Projectile>(proj);
+        if (!playerHealth || !projData || playerHealth->invulnerable) return;
+
+        playerHealth->currentHp -= projData->damage;
+        playerHealth->invulnerable = true;
+        playerHealth->invulnerabilityTimer = 1.0f;
+
+        if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) {
+            m_soundManager.play(AudioFactory::SfxId::LoseLife);
+        }
+
+        toDestroy.push_back(proj);
+    };
+
+    handlers.onSuicideExplosion = [this, &toDestroy](ECS::EntityID suicideEnemy, ECS::World& world) {
+        auto* enemyPos = world.GetComponent<rtype::common::components::Position>(suicideEnemy);
+        if (!enemyPos) return;
+
+        const float EXPLOSION_RADIUS = 100.0f;
+        const int EXPLOSION_DAMAGE = 2;
+
+        auto* playerHealth = world.GetComponent<rtype::common::components::Health>(m_playerEntity);
+        auto* playerPos = world.GetComponent<rtype::common::components::Position>(m_playerEntity);
+
+        if (playerHealth && playerPos && !playerHealth->invulnerable) {
+            float dx = playerPos->x - enemyPos->x;
+            float dy = playerPos->y - enemyPos->y;
+            float distance = std::sqrt(dx * dx + dy * dy);
+
+            if (distance <= EXPLOSION_RADIUS) {
+                playerHealth->currentHp -= EXPLOSION_DAMAGE;
+                playerHealth->invulnerable = true;
+                playerHealth->invulnerabilityTimer = 1.0f;
+            }
+        }
+
+        toDestroy.push_back(suicideEnemy);
+    };
+
+    rtype::common::systems::CollisionSystem::update(m_world, 0.0f, handlers);
+
     for (auto entity : toDestroy) {
         // Determine if this was a boss or regular enemy
         auto* enemyType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(entity);
-            if (enemyType) {
-            if (enemyType->type == rtype::common::components::EnemyType::Boss) {
+        if (enemyType) {
+            if (enemyType->type == rtype::common::components::EnemyType::TankDestroyer) {
                 // Play boss death sound
                 if (m_soundManager.has(AudioFactory::SfxId::BossDeath)) {
                     m_soundManager.play(AudioFactory::SfxId::BossDeath);
                 }
                 // Restore level background music after boss death
                 loadLevelMusic();
-                // Score is server-authoritative; client no longer increments locally
             } else if (m_soundManager.has(AudioFactory::SfxId::EnemyDeath)) {
                 // Regular enemy death
                 m_soundManager.play(AudioFactory::SfxId::EnemyDeath);
-                // Score is server-authoritative; client no longer increments locally
             }
         }
 
         // Clean up server entity mapping if this was a server-owned entity
-        // Find and remove the reverse mapping (serverId → entityId)
         for (auto it = m_serverEntityMap.begin(); it != m_serverEntityMap.end(); ) {
             if (it->second == entity) {
                 std::cout << "[GameState] Cleaning up server mapping for locally destroyed entity: clientId=" << entity << " serverId=" << it->first << std::endl;

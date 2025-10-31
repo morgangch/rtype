@@ -96,8 +96,14 @@ namespace rtype::client::controllers::game_controller {
         from_network_endian(p->x);
         from_network_endian(p->y);
 
+        std::cout << "[CLIENT] Received SPAWN_ENEMY: id=" << p->enemyId << " type=" << static_cast<int>(p->enemyType)
+                  << " pos=(" << p->x << "," << p->y << ") hp=" << p->hp << std::endl;
+
         using rtype::client::gui::g_gameState;
-        if (!g_gameState) return;
+        if (!g_gameState) {
+            std::cout << "[CLIENT] ERROR: Cannot spawn enemy - g_gameState is null!" << std::endl;
+            return;
+        }
 
         // Create or update enemy entity on the client
         g_gameState->createEnemyFromServer(p->enemyId, p->x, p->y, p->hp, p->enemyType);
@@ -133,7 +139,7 @@ namespace rtype::client::controllers::game_controller {
         from_network_endian(p->hp);
 
         using rtype::client::gui::g_gameState;
-        if (g_gameState) g_gameState->updateEntityStateFromServer(p->playerId, p->x, p->y, p->hp);
+        if (g_gameState) g_gameState->updateEntityStateFromServer(p->playerId, p->x, p->y, p->hp, p->invulnerable);
     }
 
     void handle_lobby_state(const packet_t &packet) {

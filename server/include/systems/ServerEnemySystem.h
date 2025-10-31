@@ -87,7 +87,7 @@ private:
     std::map<rtype::common::components::EnemyType, EnemySpawnConfig> _enemyConfigs; ///< Enemy spawn configs
 
     float _stateTick; ///< Timer for player state broadcast
-    static constexpr float STATE_TICK_INTERVAL = 0.05f;
+    static constexpr float STATE_TICK_INTERVAL = 0.03f; // 30ms for better responsiveness
 
     // Update helpers
     void updatePhase(float deltaTime);
