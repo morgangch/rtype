@@ -31,6 +31,9 @@
 #include <iostream>
 #include "gui/Accessibility.h"
 
+// Global username defined in client/src/network/network.cpp
+extern std::string g_username;
+
 namespace rtype::client::gui {
 
 // Global GameState pointer definition
@@ -227,6 +230,12 @@ GameState::GameState(StateManager& stateManager)
     rtype::client::gui::Accessibility::instance().setMode(m_config.getDaltonismMode());
     
     setupGameOverUI();
+    // Setup HUD score text/defaults
+    m_score = 0;
+    m_scoreSaved = false;
+    m_scoreText.setFont(GUIHelper::getFont());
+    m_scoreText.setCharacterSize(24);
+    m_scoreText.setFillColor(GUIHelper::Colors::TEXT);
     // set global pointer so network handlers can access the active GameState
     g_gameState = this;
 }
@@ -364,6 +373,15 @@ void GameState::showInGameMenu(bool isGameOver) {
         } else {
             std::cerr << "GameState: could not load game over music: " << gameOverMusic << std::endl;
         }
+        // Persist highscore once when game over triggers
+        if (!m_scoreSaved) {
+            HighscoreManager mgr;
+            mgr.load();
+            HighscoreEntry e{::g_username, 1, m_score, 0};
+            mgr.add(e);
+            mgr.save();
+            m_scoreSaved = true;
+        }
     } else {
         // Pause background music while paused
         m_musicManager.setMuted(true);
@@ -394,6 +412,8 @@ void GameState::resetGame() {
     // Reset flags
     m_isGameOver = false;
     m_gameStatus = GameStatus::Playing;
+    m_score = 0;
+    m_scoreSaved = false;
 
     // Clear boss music/flag so a prior boss state doesn't trigger level advance
     m_bossMusicActive = false;
@@ -593,6 +613,12 @@ void GameState::render(sf::RenderWindow& window) {
             window.draw(screenSprite, states);
         }
     }
+}
+
+void GameState::setScoreFromServer(int newScore) {
+    m_score = newScore;
+    // m_scoreText string is updated during renderHUD, but we can pre-update for immediate reads
+    m_scoreText.setString("score " + std::to_string(m_score));
 }
 
 } // namespace rtype::client::gui

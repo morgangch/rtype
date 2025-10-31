@@ -34,6 +34,7 @@ enum Packets {
     SPAWN_PROJECTILE = 14,
     SPAWN_ENEMY = 15,
     SPAWN_BOSS_REQUEST = 16,
+    PLAYER_SCORE_UPDATE = 17,
 };
 
 
@@ -200,6 +201,14 @@ struct LobbyStatePacket {
 // Client → Server: Admin requests boss spawn (B key pressed)
 struct SpawnBossRequestPacket {
     // Empty packet - admin identity verified by server through connection
+};
+
+/**
+ * Server → Client: Update player's in-game score (server authoritative)
+ */
+struct PlayerScoreUpdatePacket {
+    uint32_t playerId; // server entity ID for the player
+    int32_t score;     // new absolute score value
 };
 
 #endif //PACKETS_H

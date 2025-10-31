@@ -19,6 +19,7 @@
 #include "gui/AudioFactory.h"
 #include "gui/SettingsState.h"
 #include "gui/AssetPaths.h"
+#include "gui/HighscoresState.h"
 #include <iostream>
 #include <cstdlib>
 
@@ -60,6 +61,7 @@ namespace rtype::client::gui {
         // Button setup using GUIHelper
         GUIHelper::setupButton(publicServersButton, publicButtonRect, "Public", GUIHelper::Sizes::BUTTON_FONT_SIZE);
         GUIHelper::setupButton(privateServersButton, privateButtonRect, "Private", GUIHelper::Sizes::BUTTON_FONT_SIZE);
+    GUIHelper::setupButton(highscoresButtonText, highscoresButtonRect, "Scores", GUIHelper::Sizes::BUTTON_FONT_SIZE);
 
         // Load shared button texture for Public/Private buttons
         buttonTextureLoaded = buttonTexture.loadFromFile(rtype::client::assets::ui::BUTTON);
@@ -67,12 +69,15 @@ namespace rtype::client::gui {
             buttonTexture.setSmooth(true);
             publicButtonSprite.setTexture(buttonTexture);
             privateButtonSprite.setTexture(buttonTexture);
+            highscoresButtonSprite.setTexture(buttonTexture);
             // Center origins for easy centering and hover scaling
             sf::Vector2u texSize = buttonTexture.getSize();
             publicButtonSprite.setOrigin(static_cast<float>(texSize.x) * 0.5f, static_cast<float>(texSize.y) * 0.5f);
             privateButtonSprite.setOrigin(static_cast<float>(texSize.x) * 0.5f, static_cast<float>(texSize.y) * 0.5f);
+            highscoresButtonSprite.setOrigin(static_cast<float>(texSize.x) * 0.5f, static_cast<float>(texSize.y) * 0.5f);
             publicHovered = false;
             privateHovered = false;
+            highscoresHovered = false;
         }
 
         // Settings button replaced by sprite; keep rect for positioning/click zone
@@ -213,6 +218,33 @@ namespace rtype::client::gui {
                 settingsButtonRect.getPosition().y + settingsHeight / 2);
         }
 
+    // Highscores button positioning (top-right)
+    const float hsButtonHeight = 60.0f;
+    const float hsHorizontalPadding = 60.0f;
+    sf::FloatRect hsTextBounds = highscoresButtonText.getLocalBounds();
+    float hsWidth = std::max(200.0f, hsTextBounds.width + hsHorizontalPadding);
+    float hsX = static_cast<float>(windowSize.x) - hsWidth - 12.0f;
+    float hsY = 12.0f;
+    highscoresButtonRect.setSize(sf::Vector2f(hsWidth, hsButtonHeight));
+    highscoresButtonRect.setPosition(hsX, hsY);
+    GUIHelper::centerText(highscoresButtonText,
+        highscoresButtonRect.getPosition().x + hsWidth * 0.5f,
+        highscoresButtonRect.getPosition().y + hsButtonHeight * 0.5f);
+
+    if (buttonTextureLoaded) {
+        sf::Vector2u texSize = buttonTexture.getSize();
+        if (texSize.x > 0 && texSize.y > 0) {
+            const float sizeMul = 3.8f;
+            highscoresBaseScale = std::min(hsWidth / static_cast<float>(texSize.x),
+                                           hsButtonHeight / static_cast<float>(texSize.y)) * sizeMul;
+            highscoresButtonSprite.setScale(highscoresBaseScale, highscoresBaseScale);
+            const float yOffset = 4.0f;
+            sf::Vector2f hsCenter(highscoresButtonRect.getPosition().x + hsWidth * 0.5f,
+                                  highscoresButtonRect.getPosition().y + hsButtonHeight * 0.5f);
+            highscoresButtonSprite.setPosition(hsCenter.x, hsCenter.y + yOffset);
+        }
+    }
+
     // Update overlay size to current window
     m_overlay.setSize(sf::Vector2f(static_cast<float>(windowSize.x), static_cast<float>(windowSize.y)));
     }
@@ -264,6 +296,10 @@ namespace rtype::client::gui {
             else if (GUIHelper::isPointInRect(mousePos, settingsButtonRect)) {
                 stateManager.changeState(std::make_unique<SettingsState>(stateManager));
             }
+            // Check highscores button (top-right)
+            else if (GUIHelper::isPointInRect(mousePos, highscoresButtonRect)) {
+                stateManager.pushState(std::make_unique<HighscoresState>(stateManager));
+            }
             // Click outside - stop typing
             else {
                 isTyping = false;
@@ -294,6 +330,7 @@ namespace rtype::client::gui {
         if (buttonTextureLoaded) {
             publicHovered = GUIHelper::isPointInRect(mousePos, publicButtonRect);
             privateHovered = GUIHelper::isPointInRect(mousePos, privateButtonRect);
+            highscoresHovered = GUIHelper::isPointInRect(mousePos, highscoresButtonRect);
         } else {
             // Fallback to rectangle hover visuals
             GUIHelper::applyButtonHover(publicButtonRect, publicServersButton, 
@@ -301,6 +338,9 @@ namespace rtype::client::gui {
                                       GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
             GUIHelper::applyButtonHover(privateButtonRect, privateServersButton, 
                                       GUIHelper::isPointInRect(mousePos, privateButtonRect),
+                                      GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
+            GUIHelper::applyButtonHover(highscoresButtonRect, highscoresButtonText,
+                                      GUIHelper::isPointInRect(mousePos, highscoresButtonRect),
                                       GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
         }
 
@@ -385,17 +425,23 @@ namespace rtype::client::gui {
                                         publicBaseScale * (publicHovered ? hoverScaleFactor : 1.0f));
             privateButtonSprite.setScale(privateBaseScale * (privateHovered ? hoverScaleFactor : 1.0f),
                                          privateBaseScale * (privateHovered ? hoverScaleFactor : 1.0f));
+            highscoresButtonSprite.setScale(highscoresBaseScale * (highscoresHovered ? hoverScaleFactor : 1.0f),
+                                            highscoresBaseScale * (highscoresHovered ? hoverScaleFactor : 1.0f));
 
             window.draw(publicButtonSprite);
             window.draw(privateButtonSprite);
+            window.draw(highscoresButtonSprite);
             // Draw button labels on top
             window.draw(publicServersButton);
             window.draw(privateServersButton);
+            window.draw(highscoresButtonText);
         } else {
             window.draw(publicButtonRect);
             window.draw(publicServersButton);
             window.draw(privateButtonRect);
             window.draw(privateServersButton);
+            window.draw(highscoresButtonRect);
+            window.draw(highscoresButtonText);
         }
 
         // Render settings as sprite (fallback to text if needed)

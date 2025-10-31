@@ -35,6 +35,7 @@
 #include <functional>
 #include "MusicManager.h"
 #include "SoundManager.h"
+#include "HighscoreManager.h"
 
 namespace rtype::client::gui {
 
@@ -269,6 +270,12 @@ namespace rtype::client::gui {
          * @param isAdmin True to mark as admin
          */
         void setIsAdmin(bool isAdmin); // Set whether the local player is room admin
+
+        /**
+         * @brief Set in-game score from server and update HUD text
+         * @param newScore Absolute score value as sent by the server
+         */
+        void setScoreFromServer(int newScore);
 
         /**
          * @brief Mute/unmute music
@@ -629,6 +636,12 @@ namespace rtype::client::gui {
         sf::Sprite m_fullHeartSprite;
         /// Sprite for empty/lost health heart
         sf::Sprite m_emptyHeartSprite;
+        /// Player score value
+        int m_score{0};
+        /// HUD text for score rendering
+        sf::Text m_scoreText;
+        /// Prevent duplicate save on repeated game-over triggers
+        bool m_scoreSaved{false};
 
         /* === Rendering === */
         /// Parallax background system for scrolling layers

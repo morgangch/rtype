@@ -509,7 +509,7 @@ void GameState::updateCollisionSystem() {
     for (auto entity : toDestroy) {
         // Determine if this was a boss or regular enemy
         auto* enemyType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(entity);
-        if (enemyType) {
+            if (enemyType) {
             if (enemyType->type == rtype::common::components::EnemyType::Boss) {
                 // Play boss death sound
                 if (m_soundManager.has(AudioFactory::SfxId::BossDeath)) {
@@ -517,9 +517,11 @@ void GameState::updateCollisionSystem() {
                 }
                 // Restore level background music after boss death
                 loadLevelMusic();
+                // Score is server-authoritative; client no longer increments locally
             } else if (m_soundManager.has(AudioFactory::SfxId::EnemyDeath)) {
                 // Regular enemy death
                 m_soundManager.play(AudioFactory::SfxId::EnemyDeath);
+                // Score is server-authoritative; client no longer increments locally
             }
         }
 

@@ -17,6 +17,7 @@
 #include "common/components/Projectile.h"
 #include "packets.h"
 #include <vector>
+#include <unordered_map>
 
 namespace rtype::server::systems {
 
@@ -53,6 +54,8 @@ public:
     void Update(ECS::World& world, float deltaTime) override;
 
 private:
+    // Track per-player accumulated score for this session
+    std::unordered_map<ECS::EntityID, int> _playerScores;
     /**
      * @brief Checks collisions between projectiles and enemies
      * 
