@@ -183,7 +183,7 @@ void GameState::handleMouseButtonReleased(const sf::Event& event) {
     int shootSec = m_config.getSecondaryKeybind("shoot");
 
     // Always allow left mouse as shoot (fallback behavior)
-    if (code == shootSec || event.mouseButton.button == sf::Mouse::Left) {
+    if (code == shootSec) {
         m_keyFire = false;
         releaseChargedShot();
     }
