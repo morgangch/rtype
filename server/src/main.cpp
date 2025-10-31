@@ -5,10 +5,16 @@
 #include "systems/PacketHandlingSystem.h"
 #include "systems/ServerEnemySystem.h"
 #include "systems/ServerCollisionSystem.h"
+#include "systems/EnemyAISystem.h"
 #include <common/components/Position.h>
 #include <common/components/Velocity.h>
 #include <common/components/Projectile.h>
 #include <common/components/Player.h>
+#include <common/systems/MovementSystem.h>
+#include "components/LobbyState.h"
+#include "components/PlayerConn.h"
+#include "components/LinkedRoom.h"
+#include "senders.h"
 #include <chrono>
 #include <iostream>
 #include <cmath>
@@ -49,38 +55,33 @@ void net_loop() {
 }
 void rtype::server::Rtype::loop(float deltaTime) {
     packetHandler.processPackets(packetManager.fetchReceivedPackets());
-    
-    // Simple server-side movement system (update positions based on velocity)
+
+    rtype::common::systems::MovementSystem::update(world, deltaTime);
+
+    // Server-specific post-movement processing
     auto* positions = world.GetAllComponents<rtype::common::components::Position>();
     if (positions) {
         for (auto& [entity, posPtr] : *positions) {
-            auto* vel = world.GetComponent<rtype::common::components::Velocity>(entity);
-            if (!vel) continue;
-            
-            // Calculate distance moved this frame
-            float dx = vel->vx * deltaTime;
-            float dy = vel->vy * deltaTime;
-            float distance = std::sqrt(dx * dx + dy * dy);
-            
-            // Update position
-            posPtr->x += dx;
-            posPtr->y += dy;
-            
+            // Note: projectile distanceTraveled is now updated in MovementSystem (common)
+
             // Clamp player positions to game bounds (server-authoritative)
             auto* player = world.GetComponent<rtype::common::components::Player>(entity);
-            if (player) {
-                if (posPtr)
-                    clampPlayerPosition(posPtr.get());
+            if (player && posPtr) {
+                clampPlayerPosition(posPtr.get());
             }
-            
-            // Update projectile distance traveled (for collision skip logic)
-            auto* proj = world.GetComponent<rtype::common::components::Projectile>(entity);
-            if (proj) {
-                proj->distanceTraveled += distance;
+
+            // Update invulnerability timers for all entities with Health
+            auto* health = world.GetComponent<rtype::common::components::Health>(entity);
+            if (health && health->invulnerable) {
+                health->invulnerabilityTimer -= deltaTime;
+                if (health->invulnerabilityTimer <= 0.0f) {
+                    health->invulnerable = false;
+                    health->invulnerabilityTimer = 0.0f;
+                }
             }
         }
     }
-    
+
     world.UpdateSystems(deltaTime);
 }
 
@@ -96,18 +97,59 @@ int main() {
     root.packetHandler.registerCallback(Packets::GAME_START_REQUEST, rtype::server::controllers::room_controller::handleGameStartRequest);
     root.packetHandler.registerCallback(Packets::PLAYER_INPUT, rtype::server::controllers::room_controller::handlePlayerInput);
     root.packetHandler.registerCallback(Packets::PLAYER_READY, rtype::server::controllers::room_controller::handlePlayerReady);
+    root.packetHandler.registerCallback(Packets::PLAYER_SHOOT, rtype::server::controllers::room_controller::handlePlayerShoot);
     std::cout << "✓ Registered PLAYER_READY callback (type " << static_cast<int>(Packets::PLAYER_READY) << ")" << std::endl;
+
+    // Register systems
     root.world.RegisterSystem<PacketHandlingSystem>();
     root.world.RegisterSystem<ServerEnemySystem>();
     root.world.RegisterSystem<rtype::server::systems::ServerCollisionSystem>();
     std::cout << "✓ Registered ServerCollisionSystem" << std::endl;
+
+    root.world.RegisterSystem<rtype::server::systems::EnemyAISystem>();
+    auto* enemyAI = root.world.GetSystem<rtype::server::systems::EnemyAISystem>();
+    if (enemyAI) {
+        enemyAI->SetProjectileCallback([](ECS::EntityID shooter, float x, float y, float vx, float vy, ECS::World& world) {
+            auto* shooterRoom = world.GetComponent<rtype::server::components::LinkedRoom>(shooter);
+            if (!shooterRoom) return;
+
+            auto projectile = rtype::server::controllers::room_controller::createEnemyProjectile(shooterRoom->room_id, x, y, vx, vy, world);
+
+            auto* pos = world.GetComponent<rtype::common::components::Position>(projectile);
+            auto* vel = world.GetComponent<rtype::common::components::Velocity>(projectile);
+            auto* proj = world.GetComponent<rtype::common::components::Projectile>(projectile);
+
+            if (pos && vel && proj) {
+                rtype::server::network::senders::broadcast_projectile_spawn(
+                    shooterRoom->room_id,
+                    static_cast<uint32_t>(projectile),
+                    0,
+                    pos->x, pos->y,
+                    vel->vx, vel->vy,
+                    proj->damage,
+                    proj->piercing,
+                    false
+                );
+            }
+        });
+        std::cout << "✓ Registered EnemyAISystem with projectile broadcast" << std::endl;
+    }
+
     root.world.RegisterSystem<AdminDetectorSystem>();
 
     auto lastTime = std::chrono::high_resolution_clock::now();
+    constexpr float TARGET_DELTA = 1.0f / 60.0f;
 
     while (true) {
         auto currentTime = std::chrono::high_resolution_clock::now();
         float deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
+
+        if (deltaTime < TARGET_DELTA) {
+            std::this_thread::sleep_for(std::chrono::microseconds(static_cast<int>((TARGET_DELTA - deltaTime) * 1000000)));
+            currentTime = std::chrono::high_resolution_clock::now();
+            deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
+        }
+
         lastTime = currentTime;
         r.loop(deltaTime);
     }

@@ -26,6 +26,7 @@
 #include "gui/GUIHelper.h"
 #include "gui/AssetPaths.h"
 #include "gui/TextureCache.h"
+#include <common/systems/MovementSystem.h>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -57,12 +58,17 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
     auto type = static_cast<rtype::common::components::EnemyType>(enemyType);
     
     switch (type) {
-        case rtype::common::components::EnemyType::Boss: {
-            e = createBoss(x, y);            
+        case rtype::common::components::EnemyType::TankDestroyer:
+            e = createTankDestroyer(x, y);
             break;
-        }
         case rtype::common::components::EnemyType::Shooter:
             e = createShooterEnemy(x, y);
+            break;
+        case rtype::common::components::EnemyType::Snake:
+            e = createSnakeEnemy(x, y);
+            break;
+        case rtype::common::components::EnemyType::Suicide:
+            e = createSuicideEnemy(x, y);
             break;
         case rtype::common::components::EnemyType::Basic:
         default:
@@ -168,12 +174,12 @@ ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t 
     return entity;
 }
 
-void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp) {
+void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable) {
     // Skip updates for local player (controlled by client input)
     if (serverId == m_localPlayerServerId) {
         return;
     }
-    
+
     auto it = m_serverEntityMap.find(serverId);
     if (it == m_serverEntityMap.end()) {
         std::cout << "[GameState] Cannot update entity with serverId=" << serverId << " - not found in map" << std::endl;
@@ -184,7 +190,10 @@ void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y,
     auto* pos = m_world.GetComponent<rtype::common::components::Position>(e);
     if (pos) { pos->x = x; pos->y = y; }
     auto* health = m_world.GetComponent<rtype::common::components::Health>(e);
-    if (health) { health->currentHp = hp; }
+    if (health) {
+        health->currentHp = hp;
+        health->invulnerable = invulnerable;
+    }
 }
 
 void GameState::setLocalPlayerServerId(uint32_t serverId) {
@@ -481,7 +490,7 @@ bool GameState::isBossActive() {
     if (!enemyTypes) return false;
     
     for (auto& [entity, enemyTypePtr] : *enemyTypes) {
-        if (enemyTypePtr->type == rtype::common::components::EnemyType::Boss) {
+        if (enemyTypePtr->type == rtype::common::components::EnemyType::TankDestroyer) {
             // Check if the boss is still alive (has Health component with HP > 0)
             auto* health = m_world.GetComponent<rtype::common::components::Health>(entity);
             if (health && health->currentHp > 0) {
@@ -507,13 +516,13 @@ void GameState::update(float deltaTime) {
     // Run ECS systems in order
     updateInputSystem(deltaTime);
     updateFireRateSystem(deltaTime);
+    updateEnemyAISystem(deltaTime);
     updateChargedShotSystem(deltaTime);
     updateInvulnerabilitySystem(deltaTime);
     updateAnimationSystem(deltaTime);
-    updateMovementSystem(deltaTime);
-    updateEnemyAISystem(deltaTime);
-    updateCleanupSystem(deltaTime);
+    rtype::common::systems::MovementSystem::update(m_world, deltaTime); // shared movement system
     updateCollisionSystem();
+    updateCleanupSystem(deltaTime);
 }
 
 void GameState::updateBossMusicState() {

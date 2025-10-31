@@ -7,7 +7,6 @@
 #include "FireRate.h"
 #include "Health.h"
 #include "Input.h"
-#include "Lifetime.h"
 #include "Player.h"
 #include "Position.h"
 #include "PowerUp.h"

@@ -250,8 +250,9 @@ namespace rtype::client::gui {
          * @param x X position
          * @param y Y position
          * @param hp Health value
+         * @param invulnerable Invulnerability state from server
          */
-        void updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp);
+        void updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable);
 
         /**
          * @brief Destroy a local entity corresponding to a server entity id
@@ -323,6 +324,16 @@ namespace rtype::client::gui {
         ECS::EntityID createEnemy(float x, float y);
 
         /**
+         * @brief Create a snake-type enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created snake enemy
+         *
+         * Creates a snake-type enemy with 1 HP that moves in a sine wave pattern.
+         */
+        ECS::EntityID createSnakeEnemy(float x, float y);
+
+        /**
          * @brief Create a shooter enemy entity
          * @param x X position
          * @param y Y position
@@ -333,6 +344,14 @@ namespace rtype::client::gui {
         ECS::EntityID createShooterEnemy(float x, float y);
 
         /**
+         * @brief Create a suicide enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created suicide enemy
+         */
+        ECS::EntityID createSuicideEnemy(float x, float y);
+
+        /**
          * @brief Create a boss enemy entity
          * @param x X position
          * @param y Y position
@@ -340,7 +359,7 @@ namespace rtype::client::gui {
          *
          * Creates a large boss entity with high HP (30) and alternating movement pattern.
          */
-        ECS::EntityID createBoss(float x, float y);
+        ECS::EntityID createTankDestroyer(float x, float y);
 
         /**
          * @brief Create a player projectile entity
@@ -374,15 +393,6 @@ namespace rtype::client::gui {
          */
         ECS::EntityID createEnemyProjectile(float x, float y, float vx = -300.0f, float vy = 0.0f);
 
-        /* === ECS System Updates === */
-        /**
-         * @brief Update movement system for all entities with Position and Velocity
-         * @param deltaTime Time elapsed since last frame
-         *
-         * Applies velocity to position for all moving entities.
-         */
-        void updateMovementSystem(float deltaTime);
-
         /**
          * @brief Update input system for player control
          * @param deltaTime Time elapsed since last frame
@@ -398,6 +408,15 @@ namespace rtype::client::gui {
          * Decrements cooldown timers for firing mechanics.
          */
         void updateFireRateSystem(float deltaTime);
+
+        /**
+         * @brief Update enemy AI shooting system with local prediction
+         * @param deltaTime Time elapsed since last frame
+         *
+         * Handles enemy shooting logic locally for immediate feedback.
+         * Server remains authoritative via SPAWN_PROJECTILE packets.
+         */
+        void updateEnemyAISystem(float deltaTime);
 
         /**
          * @brief Update charged shot system for player
@@ -435,14 +454,6 @@ namespace rtype::client::gui {
         void updatePlayerAnimation(ECS::EntityID entity, rtype::client::components::Animation* animation, rtype::client::components::Sprite* sprite, bool isMovingUp);
 
         /**
-         * @brief Update enemy AI behaviors
-         * @param deltaTime Time elapsed since last frame
-         *
-         * Controls enemy firing patterns and movement logic.
-         */
-        void updateEnemyAISystem(float deltaTime);
-
-        /**
          * @brief Update cleanup system for out-of-bounds entities
          * @param deltaTime Time elapsed since last frame
          *
@@ -456,36 +467,6 @@ namespace rtype::client::gui {
          * Orchestrates all collision checks between different entity types.
          */
         void updateCollisionSystem();
-
-        /* === Collision Detection Helpers === */
-        /**
-         * @brief Check collisions between player and enemies
-         * @param positions Component array of all positions
-         * @param getBounds Function to get bounding box from entity and position
-         *
-         * Damages player on enemy collision and handles invulnerability.
-         */
-        void checkPlayerVsEnemiesCollision(ECS::ComponentArray<rtype::common::components::Position>& positions, const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds);
-
-        /**
-         * @brief Check collisions between player projectiles and enemies
-         * @param positions Component array of all positions
-         * @param getBounds Function to get bounding box from entity and position
-         * @param toDestroy Vector to accumulate entities to destroy
-         *
-         * Damages enemies hit by player projectiles and destroys non-piercing projectiles.
-         */
-        void checkPlayerProjectilesVsEnemiesCollision(ECS::ComponentArray<rtype::common::components::Position>& positions, const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds, std::vector<ECS::EntityID>& toDestroy);
-
-        /**
-         * @brief Check collisions between enemy projectiles and player
-         * @param positions Component array of all positions
-         * @param getBounds Function to get bounding box from entity and position
-         * @param toDestroy Vector to accumulate entities to destroy
-         *
-         * Damages player hit by enemy projectiles and destroys the projectiles.
-         */
-        void checkEnemyProjectilesVsPlayerCollision(ECS::ComponentArray<rtype::common::components::Position>& positions, const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds, std::vector<ECS::EntityID>& toDestroy);
 
         /* === Gameplay Logic === */
         /**
