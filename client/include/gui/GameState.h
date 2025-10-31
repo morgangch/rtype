@@ -198,6 +198,12 @@ namespace rtype::client::gui {
         void setIsAdmin(bool isAdmin); // Set whether the local player is room admin
 
         /**
+         * @brief Set in-game score from server and update HUD text
+         * @param newScore Absolute score value as sent by the server
+         */
+        void setScoreFromServer(int newScore);
+
+        /**
          * @brief Mute/unmute music
          */
         void setMusicMuted(bool muted);

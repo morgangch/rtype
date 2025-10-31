@@ -129,6 +129,20 @@ namespace rtype::server::systems {
                         std::cout << "  ✓ Enemy destroyed!" << std::endl;
                         enemyHealth->isAlive = false;
                         toDestroy.push_back(enemyEntity);
+
+                        // Award score to projectile owner if available
+                        ECS::EntityID owner = projData->ownerId;
+                        if (owner != 0) {
+                            int points = 10; // default for basic
+                            if (enemyType && enemyType->type == rtype::common::components::EnemyType::Boss) {
+                                points = 50;
+                            } else if (enemyType && enemyType->type == rtype::common::components::EnemyType::Shooter) {
+                                points = 20;
+                            }
+                            // Accumulate and send update to owner
+                            _playerScores[owner] += points;
+                            rtype::server::network::senders::send_player_score(owner, static_cast<uint32_t>(owner), _playerScores[owner]);
+                        }
                     }
 
                     // Destroy projectile if not piercing

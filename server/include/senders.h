@@ -105,6 +105,14 @@ namespace rtype::server::network::senders {
      * @param playerId  The player entity ID that disconnected
      */
     void broadcast_player_disconnect(ECS::EntityID room_id, uint32_t playerId);
+
+    /**
+     * @brief Send server-authoritative in-game score to a specific player
+     * @param player The recipient player entity ID (for connection lookup)
+     * @param playerId The server entity ID of the player (echoed for client-side mapping)
+     * @param score New absolute score value
+     */
+    void send_player_score(ECS::EntityID player, uint32_t playerId, int32_t score);
 }
 
 #endif //SENDERS_H

@@ -615,4 +615,10 @@ void GameState::render(sf::RenderWindow& window) {
     }
 }
 
+void GameState::setScoreFromServer(int newScore) {
+    m_score = newScore;
+    // m_scoreText string is updated during renderHUD, but we can pre-update for immediate reads
+    m_scoreText.setString("score " + std::to_string(m_score));
+}
+
 } // namespace rtype::client::gui

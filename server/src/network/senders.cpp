@@ -189,4 +189,21 @@ namespace rtype::server::network::senders {
         }
         room->broadcastPacket(&pkt, sizeof(pkt), PLAYER_DISCONNECT, true);
     }
+
+    void send_player_score(ECS::EntityID player, uint32_t playerId, int32_t score) {
+        auto *pconn = root.world.GetComponent<rtype::server::components::PlayerConn>(player);
+        if (!pconn) {
+            std::cerr << "ERROR: Cannot send PlayerScoreUpdatePacket, player " << player << " has no PlayerConn" << std::endl;
+            return;
+        }
+
+        PlayerScoreUpdatePacket pkt{};
+        pkt.playerId = playerId;
+        pkt.score = score;
+
+        to_network_endian(pkt.playerId);
+        to_network_endian(pkt.score);
+
+        pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), PLAYER_SCORE_UPDATE, nullptr, false);
+    }
 }

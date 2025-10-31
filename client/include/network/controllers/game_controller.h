@@ -62,6 +62,11 @@ namespace rtype::client::controllers::game_controller {
      */
     void handle_spawn_projectile(const packet_t& packet);
 
+    /**
+     * @brief Handle PLAYER_SCORE_UPDATE packet from server.
+     */
+    void handle_player_score_update(const packet_t& packet);
+
 }
 
 #endif //GAME_CONTROLLER_H

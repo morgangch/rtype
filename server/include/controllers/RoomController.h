@@ -117,7 +117,7 @@ namespace rtype::server::controllers::room_controller {
      * @param isCharged Whether this is a charged shot
      * @return The created projectile entity ID
      */
-    ECS::EntityID createServerProjectile(ECS::EntityID room, float x, float y, bool isCharged);
+    ECS::EntityID createServerProjectile(ECS::EntityID room, ECS::EntityID owner, float x, float y, bool isCharged);
     
     /**
      * @brief Broadcast projectile spawn to all players in a room
