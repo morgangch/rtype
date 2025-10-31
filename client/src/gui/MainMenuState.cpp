@@ -61,7 +61,7 @@ namespace rtype::client::gui {
         // Button setup using GUIHelper
         GUIHelper::setupButton(publicServersButton, publicButtonRect, "Public", GUIHelper::Sizes::BUTTON_FONT_SIZE);
         GUIHelper::setupButton(privateServersButton, privateButtonRect, "Private", GUIHelper::Sizes::BUTTON_FONT_SIZE);
-    GUIHelper::setupButton(highscoresButtonText, highscoresButtonRect, "Scores", GUIHelper::Sizes::BUTTON_FONT_SIZE);
+    GUIHelper::setupButton(highscoresButtonText, highscoresButtonRect, "Score", GUIHelper::Sizes::BUTTON_FONT_SIZE);
 
         // Load shared button texture for Public/Private buttons
         buttonTextureLoaded = buttonTexture.loadFromFile(rtype::client::assets::ui::BUTTON);
@@ -224,7 +224,7 @@ namespace rtype::client::gui {
     sf::FloatRect hsTextBounds = highscoresButtonText.getLocalBounds();
     float hsWidth = std::max(200.0f, hsTextBounds.width + hsHorizontalPadding);
     float hsX = static_cast<float>(windowSize.x) - hsWidth - 12.0f;
-    float hsY = 12.0f;
+    float hsY = 28.0f;
     highscoresButtonRect.setSize(sf::Vector2f(hsWidth, hsButtonHeight));
     highscoresButtonRect.setPosition(hsX, hsY);
     GUIHelper::centerText(highscoresButtonText,
