@@ -18,7 +18,10 @@
 #include "packet.h"
 #include "packethandler.h"
 #include "ECS/Types.h"
-#include "ECS/World.h"
+
+namespace ECS {
+    class World;
+}
 
 namespace rtype::server::controllers::room_controller {
     /**
@@ -118,8 +121,20 @@ namespace rtype::server::controllers::room_controller {
      * @param isCharged Whether this is a charged shot
      * @return The created projectile entity ID
      */
-    ECS::EntityID createServerProjectile(ECS::EntityID room, float x, float y, bool isCharged);
+    ECS::EntityID createServerProjectile(ECS::EntityID room, ECS::EntityID owner, float x, float y, bool isCharged);
     
+    /**
+     * @brief Create an enemy projectile with custom velocity
+     * @param room The room entity ID
+     * @param x Starting X position
+     * @param y Starting Y position
+     * @param vx Velocity X
+     * @param vy Velocity Y
+     * @param world The ECS world
+     * @return The created projectile entity ID
+     */
+    ECS::EntityID createEnemyProjectile(ECS::EntityID room, float x, float y, float vx, float vy, ECS::World& world);
+
     /**
      * @brief Broadcast projectile spawn to all players in a room
      * @param projectile The projectile entity ID
@@ -128,19 +143,7 @@ namespace rtype::server::controllers::room_controller {
      * @param isCharged Whether this is a charged shot
      */
     void broadcastProjectileSpawn(ECS::EntityID projectile, ECS::EntityID owner, ECS::EntityID room, bool isCharged);
-
-    /**
-     * @brief Create an enemy projectile entity on the server
-     * @param x Starting X position
-     * @param y Starting Y position
-     * @param vx X velocity
-     * @param vy Y velocity
-     * @param world The ECS world
-     * @param room_id The room ID for broadcasting
-     * @return The created projectile entity ID
-     */
-    ECS::EntityID createEnemyProjectile(ECS::EntityID room_id, float x, float y, float vx, float vy, ECS::World& world);
-
+    
     // === Join Room Helper Functions ===
     
     /**

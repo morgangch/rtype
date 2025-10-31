@@ -302,6 +302,33 @@ void GameState::updateCollisionSystem() {
     rtype::common::systems::CollisionSystem::update(m_world, 0.0f, handlers);
 
     for (auto entity : toDestroy) {
+        // Determine if this was a boss or regular enemy
+        auto* enemyType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(entity);
+        if (enemyType) {
+            if (enemyType->type == rtype::common::components::EnemyType::TankDestroyer) {
+                // Play boss death sound
+                if (m_soundManager.has(AudioFactory::SfxId::BossDeath)) {
+                    m_soundManager.play(AudioFactory::SfxId::BossDeath);
+                }
+                // Restore level background music after boss death
+                loadLevelMusic();
+            } else if (m_soundManager.has(AudioFactory::SfxId::EnemyDeath)) {
+                // Regular enemy death
+                m_soundManager.play(AudioFactory::SfxId::EnemyDeath);
+            }
+        }
+
+        // Clean up server entity mapping if this was a server-owned entity
+        for (auto it = m_serverEntityMap.begin(); it != m_serverEntityMap.end(); ) {
+            if (it->second == entity) {
+                std::cout << "[GameState] Cleaning up server mapping for locally destroyed entity: clientId=" << entity << " serverId=" << it->first << std::endl;
+                it = m_serverEntityMap.erase(it);
+                break;
+            } else {
+                ++it;
+            }
+        }
+
         m_world.DestroyEntity(entity);
     }
 }

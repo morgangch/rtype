@@ -32,6 +32,9 @@
 #include <iostream>
 #include "gui/Accessibility.h"
 
+// Global username defined in client/src/network/network.cpp
+extern std::string g_username;
+
 namespace rtype::client::gui {
 
 // Global GameState pointer definition
@@ -39,9 +42,9 @@ GameState* g_gameState = nullptr;
 
 // Helper: create enemy from server info and store mapping
 ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float y, uint16_t hp, uint16_t enemyType) {
+    // If we already have an entity mapped, update it instead
     auto it = m_serverEntityMap.find(serverId);
     if (it != m_serverEntityMap.end()) {
-        std::cout << "[GameState] Enemy " << serverId << " already exists (clientId=" << it->second << "), updating position" << std::endl;
         ECS::EntityID existing = it->second;
         auto* pos = m_world.GetComponent<rtype::common::components::Position>(existing);
         if (pos) { pos->x = x; pos->y = y; }
@@ -50,8 +53,7 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
         return existing;
     }
 
-    std::cout << "[GameState] Creating NEW enemy: serverId=" << serverId << " type=" << enemyType << " pos=(" << x << "," << y << ")" << std::endl;
-
+    // Create a new enemy based on enemyType
     ECS::EntityID e;
     auto type = static_cast<rtype::common::components::EnemyType>(enemyType);
     
@@ -90,7 +92,6 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
 
     // Store mapping
     m_serverEntityMap[serverId] = e;
-    std::cout << "[GameState] ✓ Created enemy: clientId=" << e << " serverId=" << serverId << std::endl;
     return e;
 }
 
@@ -136,29 +137,19 @@ ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t 
     // Velocity
     m_world.AddComponent<rtype::common::components::Velocity>(entity, vx, vy, std::sqrt(vx*vx + vy*vy));
     
-    // Sprite - Different sprite based on team and charged state
-    if (ownerId == 0) {
-        // Enemy projectile - PROJECTILE_2 (orange)
-        m_world.AddComponent<rtype::client::components::Sprite>(
-            entity,
-            rtype::client::assets::projectiles::PROJECTILE_2,
-            sf::Vector2f(81.0f, 17.0f),
-            true,
-            sf::IntRect(185, 0, 81, 17), // Frame 2, line 1: orange
-            0.4f); // Scale 0.4x (smaller than player projectiles)
-        std::cout << "[GameState]   Using ENEMY sprite (PROJECTILE_2, orange)" << std::endl;
-    } else if (isCharged) {
-        // Charged player projectile - PROJECTILE_4 (rose/magenta)
+    // Sprite - Different sprite for charged vs normal (textures pre-loaded in loadHUDTextures)
+    if (isCharged) {
+        // Charged projectile sprite - PROJECTILE_4 (rose/magenta, more dense and imposing)
         m_world.AddComponent<rtype::client::components::Sprite>(
             entity,
             rtype::client::assets::projectiles::PROJECTILE_4,
             sf::Vector2f(81.0f, 17.0f),
             true,
             sf::IntRect(185, 17, 81, 17), // Frame 2, line 2: denser visual
-            0.6f); // Scale 0.6x (bigger than normal)
-        std::cout << "[GameState]   Using CHARGED player sprite (PROJECTILE_4)" << std::endl;
+            0.6f); // Scale 0.6x (49px wide, 10px tall) - bigger than normal
+        std::cout << "[GameState]   Using CHARGED sprite (PROJECTILE_4, rect: 185,17,81,17, scale: 0.6)" << std::endl;
     } else {
-        // Normal player projectile - PROJECTILE_1
+        // Normal projectile sprite - PROJECTILE_1
         m_world.AddComponent<rtype::client::components::Sprite>(
             entity,
             rtype::client::assets::projectiles::PROJECTILE_1,
@@ -166,16 +157,14 @@ ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t 
             true,
             sf::IntRect(185, 0, 81, 17),
             0.5f);
-        std::cout << "[GameState]   Using NORMAL player sprite (PROJECTILE_1)" << std::endl;
+        std::cout << "[GameState]   Using NORMAL sprite (PROJECTILE_1, rect: 185,0,81,17, scale: 0.5)" << std::endl;
     }
     
-    // Team - Determine based on owner (0 = enemy, non-zero = player)
-    rtype::common::components::TeamType team = (ownerId == 0)
-        ? rtype::common::components::TeamType::Enemy
-        : rtype::common::components::TeamType::Player;
-    m_world.AddComponent<rtype::common::components::Team>(entity, team);
-
-    // Projectile data - mark as server-owned for server authority
+    // Team - Player team (projectiles are always player team for now)
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Player);
+    
+    // Projectile data - mark as server-owned for prediction
     m_world.AddComponent<rtype::common::components::Projectile>(entity, damage, piercing, true /* serverOwned */);
     
     // Map server ID to local entity
@@ -186,43 +175,30 @@ ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t 
 }
 
 void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable) {
-    auto it = m_serverEntityMap.find(serverId);
-    if (it == m_serverEntityMap.end()) return;
-
-    ECS::EntityID e = it->second;
-
-    auto* health = m_world.GetComponent<rtype::common::components::Health>(e);
-    if (health) {
-        if (serverId == m_localPlayerServerId) {
-            health->invulnerable = invulnerable;
-            return;
-        }
-
-        health->currentHp = hp;
-        health->invulnerable = invulnerable;
+    // Skip updates for local player (controlled by client input)
+    if (serverId == m_localPlayerServerId) {
+        return;
     }
 
+    auto it = m_serverEntityMap.find(serverId);
+    if (it == m_serverEntityMap.end()) {
+        std::cout << "[GameState] Cannot update entity with serverId=" << serverId << " - not found in map" << std::endl;
+        return;
+    }
+    
+    ECS::EntityID e = it->second;
     auto* pos = m_world.GetComponent<rtype::common::components::Position>(e);
-    if (pos) {
-        pos->x = x;
-        pos->y = y;
+    if (pos) { pos->x = x; pos->y = y; }
+    auto* health = m_world.GetComponent<rtype::common::components::Health>(e);
+    if (health) {
+        health->currentHp = hp;
+        health->invulnerable = invulnerable;
     }
 }
 
 void GameState::setLocalPlayerServerId(uint32_t serverId) {
     m_localPlayerServerId = serverId;
     std::cout << "[GameState] Local player server ID set to: " << serverId << std::endl;
-
-    // CRITICAL: Map local player entity to server ID if it exists
-    // This allows server to update local player's HP via PLAYER_STATE packets
-    // Note: Player entity might not be created yet (onEnter() not called),
-    // but mapping will be done in resetGame() when the entity is created
-    if (m_playerEntity != 0) {
-        m_serverEntityMap[serverId] = m_playerEntity;
-        std::cout << "[GameState] Mapped local player: serverId=" << serverId << " -> clientEntity=" << m_playerEntity << std::endl;
-    } else {
-        std::cout << "[GameState] Local player entity not created yet - will be mapped in resetGame()" << std::endl;
-    }
 }
 
 void GameState::setIsAdmin(bool isAdmin) {
@@ -263,6 +239,12 @@ GameState::GameState(StateManager& stateManager)
     rtype::client::gui::Accessibility::instance().setMode(m_config.getDaltonismMode());
     
     setupGameOverUI();
+    // Setup HUD score text/defaults
+    m_score = 0;
+    m_scoreSaved = false;
+    m_scoreText.setFont(GUIHelper::getFont());
+    m_scoreText.setCharacterSize(24);
+    m_scoreText.setFillColor(GUIHelper::Colors::TEXT);
     // set global pointer so network handlers can access the active GameState
     g_gameState = this;
 }
@@ -400,6 +382,15 @@ void GameState::showInGameMenu(bool isGameOver) {
         } else {
             std::cerr << "GameState: could not load game over music: " << gameOverMusic << std::endl;
         }
+        // Persist highscore once when game over triggers
+        if (!m_scoreSaved) {
+            HighscoreManager mgr;
+            mgr.load();
+            HighscoreEntry e{::g_username, 1, m_score, 0};
+            mgr.add(e);
+            mgr.save();
+            m_scoreSaved = true;
+        }
     } else {
         // Pause background music while paused
         m_musicManager.setMuted(true);
@@ -423,20 +414,15 @@ void GameState::resumeGame() {
 void GameState::resetGame() {
     // Clear ECS world
     m_world.Clear();
-
+    
     // Create player entity
     m_playerEntity = createPlayer();
-
-    // CRITICAL: Map local player entity to server ID if we already have one
-    // This ensures PLAYER_STATE packets can update the local player's HP
-    if (m_localPlayerServerId != 0) {
-        m_serverEntityMap[m_localPlayerServerId] = m_playerEntity;
-        std::cout << "[GameState::resetGame] Mapped local player: serverId=" << m_localPlayerServerId << " -> clientEntity=" << m_playerEntity << std::endl;
-    }
-
+    
     // Reset flags
     m_isGameOver = false;
     m_gameStatus = GameStatus::Playing;
+    m_score = 0;
+    m_scoreSaved = false;
 
     // Clear boss music/flag so a prior boss state doesn't trigger level advance
     m_bossMusicActive = false;
@@ -504,7 +490,7 @@ bool GameState::isBossActive() {
     if (!enemyTypes) return false;
     
     for (auto& [entity, enemyTypePtr] : *enemyTypes) {
-        if (enemyTypePtr->type == rtype::common::components::EnemyType::TankDestroyer) { // to do add other boss types
+        if (enemyTypePtr->type == rtype::common::components::EnemyType::TankDestroyer) {
             // Check if the boss is still alive (has Health component with HP > 0)
             auto* health = m_world.GetComponent<rtype::common::components::Health>(entity);
             if (health && health->currentHp > 0) {
@@ -523,24 +509,14 @@ void GameState::update(float deltaTime) {
     if (m_gameStatus == GameStatus::InGameMenu) {
         return; // Don't update game logic when in menu
     }
-
-    // Check if player is dead (HP <= 0) - show game over screen
-    if (m_playerEntity != 0) {
-        auto* health = m_world.GetComponent<rtype::common::components::Health>(m_playerEntity);
-        if (health && health->currentHp <= 0) {
-            std::cout << "[GameState] Player died - showing game over screen" << std::endl;
-            showInGameMenu(true); // true = game over
-            return;
-        }
-    }
-
+    
     // Update parallax background
     m_parallaxSystem.update(deltaTime);
-
+    
     // Run ECS systems in order
     updateInputSystem(deltaTime);
     updateFireRateSystem(deltaTime);
-    updateEnemyAISystem(deltaTime); // Local prediction for enemy shooting
+    updateEnemyAISystem(deltaTime);
     updateChargedShotSystem(deltaTime);
     updateInvulnerabilitySystem(deltaTime);
     updateAnimationSystem(deltaTime);
@@ -562,8 +538,6 @@ void GameState::updateBossMusicState() {
             std::cerr << "GameState: could not load boss music: " << bossMusic << std::endl;
         }
     } else if (!bossAlive && m_bossMusicActive) {
-        // Boss died: advance level (plays test music and swaps background)
-        advanceLevel();
         // Boss died: advance level (plays test music and swaps background)
         advanceLevel();
         m_bossMusicActive = false;
@@ -648,6 +622,12 @@ void GameState::render(sf::RenderWindow& window) {
             window.draw(screenSprite, states);
         }
     }
+}
+
+void GameState::setScoreFromServer(int newScore) {
+    m_score = newScore;
+    // m_scoreText string is updated during renderHUD, but we can pre-update for immediate reads
+    m_scoreText.setString("score " + std::to_string(m_score));
 }
 
 } // namespace rtype::client::gui

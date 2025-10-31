@@ -14,8 +14,6 @@
 #include <ctime>
 #include <cmath>
 #include <algorithm>
-#include <cmath>
-#include <algorithm>
 
 namespace rtype::client::gui {
 
@@ -251,7 +249,7 @@ void ParallaxSystem::render(sf::RenderWindow& window) {
     if (m_themeBlend > 0.01f) {
         renderPanelLayer(window, m_themeBlend);
     }
-
+    
     // 2. Render star layers (back to front)
     renderStarLayer(window, m_farStars);
     renderStarLayer(window, m_mediumStars);
@@ -341,8 +339,6 @@ void ParallaxSystem::initializeHallwayTheme() {
 
 void ParallaxSystem::blendThemes(float t) {
     (void)t;
-    // This function is called during theme transitions to blend parameters
-    // The actual rendering is done in the render() function
 }
 
 void ParallaxSystem::reset() {

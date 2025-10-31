@@ -212,4 +212,17 @@ namespace rtype::client::controllers::game_controller {
         ECS::EntityID newAdminId = p->newAdminPlayerId;
         // TODO: Implement
     }
+
+    void handle_player_score_update(const packet_t &packet) {
+        PlayerScoreUpdatePacket *p = (PlayerScoreUpdatePacket *) packet.data;
+        from_network_endian(p->playerId);
+        from_network_endian(p->score);
+
+        using rtype::client::gui::g_gameState;
+        if (!g_gameState) return;
+
+        // If update is for the local player, reflect on HUD
+        // For simplicity, accept and set regardless; multi-player HUD can filter by playerId later.
+        g_gameState->setScoreFromServer(static_cast<int>(p->score));
+    }
 }

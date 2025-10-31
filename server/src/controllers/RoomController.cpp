@@ -204,7 +204,7 @@ void room_controller::initializeLobbyState(ECS::EntityID player) {
 // HELPER FUNCTIONS - Projectile Handling
 // ============================================================================
 
-ECS::EntityID room_controller::createServerProjectile(ECS::EntityID room, float x, float y, bool isCharged) {
+ECS::EntityID room_controller::createServerProjectile(ECS::EntityID room, ECS::EntityID owner, float x, float y, bool isCharged) {
     auto projectile = root.world.CreateEntity();
 
     // Projectile starts at given position with offset
@@ -237,7 +237,32 @@ ECS::EntityID room_controller::createServerProjectile(ECS::EntityID room, float 
     root.world.AddComponent<rtype::common::components::Projectile>(projectile, damage, piercing, true /* serverOwned */,
                                                                    projectileSpeed,
                                                                    rtype::common::components::ProjectileType::Basic);
+    // Set projectile owner for score attribution
+    auto *projComp = root.world.GetComponent<rtype::common::components::Projectile>(projectile);
+    if (projComp) projComp->ownerId = owner;
     root.world.AddComponent<rtype::server::components::LinkedRoom>(projectile, room);
+    return projectile;
+}
+
+ECS::EntityID room_controller::createEnemyProjectile(ECS::EntityID room, float x, float y, float vx, float vy, ECS::World& world) {
+    auto projectile = world.CreateEntity();
+
+    // Position
+    world.AddComponent<rtype::common::components::Position>(projectile, x, y, 0.0f);
+
+    // Velocity - custom direction
+    float speed = std::sqrt(vx * vx + vy * vy);
+    world.AddComponent<rtype::common::components::Velocity>(projectile, vx, vy, speed);
+
+    // Team - Enemy
+    world.AddComponent<rtype::common::components::Team>(projectile, rtype::common::components::TeamType::Enemy);
+
+    // Projectile - 1 damage, non-piercing
+    world.AddComponent<rtype::common::components::Projectile>(projectile, 1, false, false);
+
+    // Link to room
+    world.AddComponent<rtype::server::components::LinkedRoom>(projectile, room);
+
     return projectile;
 }
 
@@ -253,24 +278,6 @@ void room_controller::broadcastProjectileSpawn(ECS::EntityID projectile, ECS::En
         room, static_cast<uint32_t>(projectile), static_cast<uint32_t>(owner),
         pos->x, pos->y, vel->vx, vel->vy, proj->damage, proj->piercing, isCharged
     );
-}
-
-ECS::EntityID room_controller::createEnemyProjectile(ECS::EntityID room_id, float x, float y, float vx, float vy, ECS::World& world) {
-    auto projectile = world.CreateEntity();
-
-    float projectileX = x - 12.0f;
-    float projectileY = y;
-    float speed = std::sqrt(vx * vx + vy * vy);
-    uint16_t damage = 1;
-    bool piercing = false;
-
-    world.AddComponent<rtype::common::components::Position>(projectile, projectileX, projectileY, 0.0f);
-    world.AddComponent<rtype::common::components::Velocity>(projectile, vx, vy, speed);
-    world.AddComponent<rtype::common::components::Team>(projectile, rtype::common::components::TeamType::Enemy);
-    world.AddComponent<rtype::common::components::Projectile>(projectile, damage, piercing, true, speed, rtype::common::components::ProjectileType::Basic);
-    world.AddComponent<rtype::server::components::LinkedRoom>(projectile, room_id);
-
-    return projectile;
 }
 
 // ============================================================================
@@ -379,7 +386,7 @@ void room_controller::handlePlayerShoot(const packet_t &packet) {
     }
 
     // Use extracted helper functions
-    ECS::EntityID projectile = createServerProjectile(room, playerX, playerY, isCharged);
+    ECS::EntityID projectile = createServerProjectile(room, player, playerX, playerY, isCharged);
     std::cout << "Player " << player << " shot a "
               << (isCharged ? "CHARGED" : "regular") << " projectile (entity " << projectile << ") from position ("
               << playerX << ", " << playerY << ")" << std::endl;

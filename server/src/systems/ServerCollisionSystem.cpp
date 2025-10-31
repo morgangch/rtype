@@ -133,6 +133,7 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
         world.DestroyEntity(entity);
     }
 }
+
 void ServerCollisionSystem::broadcastEntityDestroyToAllRooms(
     ECS::World& world,
     ECS::EntityID entityId) {
@@ -151,10 +152,10 @@ void ServerCollisionSystem::broadcastEntityDestroyToAllRooms(
         for (auto playerId : players) {
             auto* lobbyState = world.GetComponent<rtype::server::components::LobbyState>(playerId);
             if (!lobbyState || !lobbyState->isInGame) continue;
-            
+
             auto* pconn = world.GetComponent<rtype::server::components::PlayerConn>(playerId);
             if (!pconn) continue;
-            
+
             pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), ENTITY_DESTROY, nullptr, false);
         }
     }

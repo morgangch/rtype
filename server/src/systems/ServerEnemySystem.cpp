@@ -13,8 +13,6 @@
 #include <common/components/Health.h>
 #include <common/components/Team.h>
 #include <common/components/EnemyType.h>
-#include <common/components/FireRate.h>
-#include <common/components/Collision.h>
 // Server components
 #include "components/RoomProperties.h"
 #include "components/PlayerConn.h"
@@ -71,20 +69,15 @@ void ServerEnemySystem::spawnBoss(ECS::World& world, ECS::EntityID room, rtype::
     world.AddComponent<rtype::common::components::Velocity>(boss, -50.0f, 0.0f, 50.0f);
     world.AddComponent<rtype::common::components::Health>(boss, 50); // Boss has 50 HP
     world.AddComponent<rtype::common::components::Team>(boss, rtype::common::components::TeamType::Enemy);
-    world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, rtype::common::components::EnemyType::TankDestroyer);
-
-    // Add FireRate component for boss shooting
-    world.AddComponent<rtype::common::components::FireRate>(boss, 0.8f); // Boss fires every 0.8s
-
-    // Add Collision component for boss bounce logic (MovementSystem needs it)
-    world.AddComponent<rtype::common::components::Collision>(boss, 150.0f, 100.0f); // TankDestroyer size
+    world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, rtype::common::components::EnemyType::Boss);
+    world.AddComponent<rtype::server::components::LinkedRoom>(boss, room);
 
     std::cout << "SERVER: Spawning boss (id=" << boss << ") in room " << room << std::endl;
 
 
     // Send to all players in the room
     rtype::server::network::senders::broadcast_enemy_spawn(room, static_cast<uint32_t>(boss),
-                                                            rtype::common::components::EnemyType::TankDestroyer,
+                                                            rtype::common::components::EnemyType::Boss,
                                                             spawnX, spawnY, 50);
 }
 
@@ -107,7 +100,7 @@ void ServerEnemySystem::updateBossSpawning(ECS::World& world, float deltaTime) {
         if (enemyTypes) {
             for (auto& etPair : *enemyTypes) {
                 auto* et = etPair.second.get();
-                if (et && et->type == rtype::common::components::EnemyType::TankDestroyer) {
+                if (et && et->type == rtype::common::components::EnemyType::Boss) {
                     auto* health = root.world.GetComponent<rtype::common::components::Health>(etPair.first);
                     if (health && health->isAlive && health->currentHp > 0) {
                         bossExists = true;
@@ -117,7 +110,7 @@ void ServerEnemySystem::updateBossSpawning(ECS::World& world, float deltaTime) {
             }
         }
         if (!bossExists) {
-            spawnBoss(world, room, rtype::common::components::EnemyType::TankDestroyer);
+            spawnBoss(world, room, rtype::common::components::EnemyType::Boss);
             _bossSpawned = true;
         }
     }
@@ -135,18 +128,23 @@ void ServerEnemySystem::updateEnemySpawning(ECS::World& world, float deltaTime) 
             continue;
         config.timer = 0.0f;
 
+        // Only spawn types allowed in current phase
         bool spawnAllowed = false;
         switch (_phase) {
             case EnemySpawnPhase::OnlyBasic:
+                // TO DO: change basic enemy type
                 spawnAllowed = (type == rtype::common::components::EnemyType::Basic);
+                //spawnAllowed = (type == rtype::common::components::EnemyType::Snake);
+                //spawnAllowed = (type == rtype::common::components::EnemyType::Suicide);
+                //spawnAllowed = (type == rtype::common::components::EnemyType::Turret);
                 break;
             case EnemySpawnPhase::BasicAndAdvanced:
-                spawnAllowed = (type == rtype::common::components::EnemyType::Basic ||
-                               type == rtype::common::components::EnemyType::Shooter ||
-                               type == rtype::common::components::EnemyType::Suicide);
+                // TO DO: change advanced enemy type
+                spawnAllowed = (type == rtype::common::components::EnemyType::Basic || type == rtype::common::components::EnemyType::Shooter);
                 break;
             case EnemySpawnPhase::BossAndAll:
-                spawnAllowed = (type != rtype::common::components::EnemyType::TankDestroyer);
+                // TO DO: change boss type
+                spawnAllowed = (type != rtype::common::components::EnemyType::Boss);
                 break;
         }
         if (!spawnAllowed) continue;
@@ -217,25 +215,18 @@ void ServerEnemySystem::updatePlayerStateBroadcast(ECS::World& world, float delt
 void ServerEnemySystem::cleanupDeadEntities(ECS::World& world) {
     auto healths = world.GetAllComponents<rtype::common::components::Health>();
     if (!healths) return;
-
+    
     std::vector<ECS::EntityID> toDestroy;
     for (auto &pair : *healths) {
         ECS::EntityID eid = pair.first;
         auto* h = pair.second.get();
         if (!h) continue;
-        if ((!h->isAlive || h->currentHp <= 0) && h->currentHp != -999) {
-            auto* player = world.GetComponent<rtype::common::components::Player>(eid);
-            if (player) {
-                if (h->currentHp != -999) {
-                    std::cout << "[ServerEnemySystem] Player " << eid << " (" << player->name << ") died - game over" << std::endl;
-                    h->currentHp = -999;
-                }
-                continue;
-            }
+        if (!h->isAlive || h->currentHp <= 0) {
 
             auto room = world.GetComponent<rtype::server::components::LinkedRoom>(eid);
+            // Broadcast destroy packet to all players in the world (could restrict by room)
             if (room)
-                rtype::server::network::senders::broadcast_entity_destroy(room->room_id, static_cast<uint32_t>(eid), 1);
+                rtype::server::network::senders::broadcast_entity_destroy(room->room_id, static_cast<uint32_t>(eid), 1 /* killed */);
             toDestroy.push_back(eid);
         }
     }
@@ -263,7 +254,7 @@ void ServerEnemySystem::spawnEnemy(ECS::World &world, ECS::EntityID room, rtype:
             break;
         case rtype::common::components::EnemyType::Snake:
             // TO DO: set stats for Snake
-            hp = 1; vx = -110.0f;
+            hp = 2; vx = -110.0f;
             break;
         case rtype::common::components::EnemyType::Suicide:
             // TO DO: set stats for Suicide
@@ -277,7 +268,7 @@ void ServerEnemySystem::spawnEnemy(ECS::World &world, ECS::EntityID room, rtype:
             // TO DO: set stats for Shooter
             hp = 3; vx = -120.0f;
             break;
-        case rtype::common::components::EnemyType::TankDestroyer:
+        case rtype::common::components::EnemyType::Boss:
             hp = 50; vx = -50.0f;
             break;
         default:
@@ -293,11 +284,12 @@ void ServerEnemySystem::spawnEnemy(ECS::World &world, ECS::EntityID room, rtype:
     root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(enemy, type);
     root.world.AddComponent<rtype::server::components::LinkedRoom>(enemy, room);
 
-    float fireInterval = 2.0f;
-    if (type == rtype::common::components::EnemyType::Shooter) {
-        fireInterval = 1.5f;
-    }
-    root.world.AddComponent<rtype::common::components::FireRate>(enemy, fireInterval);
+    // SpawnEnemyPacket pkt{};
+    // pkt.enemyId = static_cast<uint32_t>(enemy);
+    // pkt.enemyType = static_cast<uint16_t>(type);
+    // pkt.x = spawnX;
+    // pkt.y = spawnY;
+    // pkt.hp = hp;
 
     rtype::server::network::senders::broadcast_enemy_spawn(room, enemy, type, spawnX, spawnY, hp);
 }
