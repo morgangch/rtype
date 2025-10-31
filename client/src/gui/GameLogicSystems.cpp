@@ -155,6 +155,16 @@ void GameState::updateFireRateSystem(float deltaTime) {
     rtype::common::systems::FireRateSystem::update(m_world, deltaTime);
 }
 
+void GameState::updateEnemyAISystem(float deltaTime) {
+    // Local prediction callback - creates enemy projectiles immediately on client
+    auto createProjectile = [this](ECS::EntityID shooter, float x, float y, float vx, float vy) {
+        createEnemyProjectile(x, y, vx, vy);
+    };
+
+    // Use shared EnemyAI logic for local prediction (server will confirm via SPAWN_PROJECTILE)
+    rtype::common::systems::EnemyAISystem::update(m_world, deltaTime, createProjectile);
+}
+
 void GameState::updateChargedShotSystem(float deltaTime) {
     auto* chargedShots = m_world.GetAllComponents<rtype::common::components::ChargedShot>();
     if (!chargedShots) return;

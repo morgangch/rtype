@@ -329,6 +329,15 @@ namespace rtype::client::gui {
         void updateFireRateSystem(float deltaTime);
 
         /**
+         * @brief Update enemy AI shooting system with local prediction
+         * @param deltaTime Time elapsed since last frame
+         *
+         * Handles enemy shooting logic locally for immediate feedback.
+         * Server remains authoritative via SPAWN_PROJECTILE packets.
+         */
+        void updateEnemyAISystem(float deltaTime);
+
+        /**
          * @brief Update charged shot system for player
          * @param deltaTime Time elapsed since last frame
          *
