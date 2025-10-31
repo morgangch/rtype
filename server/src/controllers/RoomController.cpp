@@ -21,6 +21,7 @@
 #include <common/components/Team.h>
 #include <common/components/Projectile.h>
 #include <common/components/Health.h>
+#include <common/components/Score.h>
 #include <common/components/EnemyType.h>
 #include <iostream>
 #include <cstring>
@@ -57,6 +58,29 @@ void room_controller::markPlayersAsInGame(ECS::EntityID room) {
         if (lobbyState) {
             lobbyState->isInGame = true;
             std::cout << "  - Marked player " << pid << " as in-game" << std::endl;
+        }
+
+        // Reset player HP to 3 lives for the game start
+        auto *health = root.world.GetComponent<rtype::common::components::Health>(pid);
+        if (health) {
+            health->currentHp = 3;
+            health->maxHp = 3;
+            health->isAlive = true;
+            health->invulnerable = false;
+            health->invulnerabilityTimer = 0.0f;
+            std::cout << "  - Reset player " << pid << " HP to 3" << std::endl;
+        }
+
+        // Reset player score to 0 for the game start
+        auto *score = root.world.GetComponent<rtype::common::components::Score>(pid);
+        if (score) {
+            score->points = 0;
+            score->kills = 0;
+            score->deaths = 0;
+            score->combo = 0;
+            score->comboTimer = 0.0f;
+            score->highestCombo = 0;
+            std::cout << "  - Reset player " << pid << " score to 0" << std::endl;
         }
     }
 }

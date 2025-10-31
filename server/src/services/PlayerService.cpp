@@ -15,6 +15,7 @@
 #include <common/components/Velocity.h>
 #include <common/components/Health.h>
 #include <common/components/Team.h>
+#include <common/components/Score.h>
 #include "components/PlayerConn.h"
 #include "controllers/RoomController.h"
 #include "packets.h"
@@ -33,6 +34,7 @@ ECS::EntityID player_service::createNewPlayer(std::string name, int room_code, s
     root.world.AddComponent<rtype::common::components::Velocity>(player, 0.0f, 0.0f, 400.0f); // max speed 400
     root.world.AddComponent<rtype::common::components::Health>(player, 100);
     root.world.AddComponent<rtype::common::components::Team>(player, rtype::common::components::TeamType::Player);
+    root.world.AddComponent<rtype::common::components::Score>(player, 0, 0, 0); // Initialize score to 0
     root.world.AddComponent<rtype::server::components::PlayerConn>(player, ip, port, room_code);
 
     // CRITICAL: Register packet callbacks on the player's packet_handler

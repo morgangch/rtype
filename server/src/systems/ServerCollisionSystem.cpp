@@ -13,6 +13,7 @@
 #include "rtype.h"
 #include "packetmanager.h"
 #include <common/systems/CollisionSystem.h>
+#include <common/components/Score.h>
 #include <iostream>
 #include <cmath>
 #include <algorithm>
@@ -21,6 +22,26 @@
 #include "components/LinkedRoom.h"
 
 namespace rtype::server::systems {
+
+// Helper function to get score points for enemy type
+static int getScoreForEnemyType(rtype::common::components::EnemyType type) {
+    switch (type) {
+        case rtype::common::components::EnemyType::Basic:
+            return 10;
+        case rtype::common::components::EnemyType::Snake:
+            return 15;
+        case rtype::common::components::EnemyType::Suicide:
+            return 20;
+        case rtype::common::components::EnemyType::Turret:
+            return 25;
+        case rtype::common::components::EnemyType::Shooter:
+            return 30;
+        case rtype::common::components::EnemyType::TankDestroyer:
+            return 500; // Boss
+        default:
+            return 10;
+    }
+}
 
 void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
     rtype::common::systems::CollisionHandlers handlers;
@@ -59,6 +80,26 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
         if (enemyHealth->currentHp <= 0) {
             enemyHealth->isAlive = false;
             std::cout << "[COLLISION] Enemy " << enemy << " DESTROYED" << std::endl;
+
+            // Award score to the player who shot the projectile
+            ECS::EntityID shooter = projData->ownerId;
+            auto* shooterPlayer = world.GetComponent<rtype::common::components::Player>(shooter);
+            auto* shooterScore = world.GetComponent<rtype::common::components::Score>(shooter);
+
+            if (shooterPlayer && shooterScore) {
+                // Get enemy type to determine points
+                auto* enemyType = world.GetComponent<rtype::common::components::EnemyTypeComponent>(enemy);
+                int points = enemyType ? getScoreForEnemyType(enemyType->type) : 10;
+
+                shooterScore->points += points;
+                shooterScore->kills++;
+
+                std::cout << "[SCORE] Player " << shooter << " earned " << points << " points (Total: " << shooterScore->points << ")" << std::endl;
+
+                // Send score update to the player
+                network::senders::send_player_score(shooter, shooterPlayer->serverId, shooterScore->points);
+            }
+
             toDestroy.push_back(enemy);
         }
 
