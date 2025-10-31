@@ -36,10 +36,10 @@ void SettingsConfig::initDefaults() {
     keybinds["shoot"] = sf::Keyboard::Space;
     // Secondary bindings default to -1 (none). These are opaque integers and
     // can encode joystick buttons (10000+button), mouse buttons (20000+button), etc.
-    secondaryKeybinds["up"] = 2001;
-    secondaryKeybinds["down"] = 2000;
-    secondaryKeybinds["left"] = 2001;
-    secondaryKeybinds["right"] = 2000;
+    secondaryKeybinds["up"] = -1;
+    secondaryKeybinds["down"] = -1;
+    secondaryKeybinds["left"] = -1;
+    secondaryKeybinds["right"] = -1;
     secondaryKeybinds["shoot"] = 10000 + 7;  // Joystick button 7
 
     // Default network settings
