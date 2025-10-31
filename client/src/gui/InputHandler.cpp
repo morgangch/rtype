@@ -171,14 +171,9 @@ void GameState::handleJoystickButtonReleased(const sf::Event& event) {
 void GameState::handleMouseButtonPressed(const sf::Event& event) {
     if (event.mouseButton.button != sf::Mouse::Left) return;
 
-    int code = 20000 + static_cast<int>(event.mouseButton.button);
-    int shootSec = m_config.getSecondaryKeybind("shoot");
-
     // Always allow left mouse as shoot (fallback behavior)
-    if (code == shootSec || event.mouseButton.button == sf::Mouse::Left) {
-        m_keyFire = true;
-        startChargedShot();
-    }
+    m_keyFire = true;
+    startChargedShot();
 }
 
 void GameState::handleMouseButtonReleased(const sf::Event& event) {
