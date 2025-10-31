@@ -1,7 +1,6 @@
 /*
 ** ServerEntityCleanupSystem implementation
 */
-#include "systems/ServerEntityCleanupSystem.h"
 #include "rtype.h"
 #include "packets.h"
 #include <common/components/Health.h>
@@ -11,11 +10,11 @@
 #include "components/LinkedRoom.h"
 #include "components/PlayerConn.h"
 
-namespace rtype::server::components {
-    class LinkedRoom;
-}
+namespace rtype::server::systems {
 
-void ServerEntityCleanupSystem::Update(ECS::World &world, float deltaTime) {
+class ServerEntityCleanupSystem {
+public:
+    static void Update(ECS::World &world, float deltaTime) {
     // Find entities with Health and check for dead
     auto healths = root.world.GetAllComponents<rtype::common::components::Health>();
     if (!healths) return;
@@ -38,4 +37,7 @@ void ServerEntityCleanupSystem::Update(ECS::World &world, float deltaTime) {
     for (auto e: toDestroy) {
         root.world.DestroyEntity(e);
     }
-}
+    }
+};
+
+} // namespace rtype::server::systems

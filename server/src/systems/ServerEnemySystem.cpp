@@ -69,7 +69,7 @@ void ServerEnemySystem::spawnBoss(ECS::World& world, ECS::EntityID room, rtype::
     world.AddComponent<rtype::common::components::Velocity>(boss, -50.0f, 0.0f, 50.0f);
     world.AddComponent<rtype::common::components::Health>(boss, 50); // Boss has 50 HP
     world.AddComponent<rtype::common::components::Team>(boss, rtype::common::components::TeamType::Enemy);
-    world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, rtype::common::components::EnemyType::Boss);
+    world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, rtype::common::components::EnemyType::TankDestroyer);
     world.AddComponent<rtype::server::components::LinkedRoom>(boss, room);
 
     std::cout << "SERVER: Spawning boss (id=" << boss << ") in room " << room << std::endl;
@@ -77,7 +77,7 @@ void ServerEnemySystem::spawnBoss(ECS::World& world, ECS::EntityID room, rtype::
 
     // Send to all players in the room
     rtype::server::network::senders::broadcast_enemy_spawn(room, static_cast<uint32_t>(boss),
-                                                            rtype::common::components::EnemyType::Boss,
+                                                            rtype::common::components::EnemyType::TankDestroyer,
                                                             spawnX, spawnY, 50);
 }
 
@@ -100,7 +100,7 @@ void ServerEnemySystem::updateBossSpawning(ECS::World& world, float deltaTime) {
         if (enemyTypes) {
             for (auto& etPair : *enemyTypes) {
                 auto* et = etPair.second.get();
-                if (et && et->type == rtype::common::components::EnemyType::Boss) {
+                if (et && et->type == rtype::common::components::EnemyType::TankDestroyer) {
                     auto* health = root.world.GetComponent<rtype::common::components::Health>(etPair.first);
                     if (health && health->isAlive && health->currentHp > 0) {
                         bossExists = true;
@@ -110,7 +110,7 @@ void ServerEnemySystem::updateBossSpawning(ECS::World& world, float deltaTime) {
             }
         }
         if (!bossExists) {
-            spawnBoss(world, room, rtype::common::components::EnemyType::Boss);
+            spawnBoss(world, room, rtype::common::components::EnemyType::TankDestroyer);
             _bossSpawned = true;
         }
     }
@@ -144,7 +144,7 @@ void ServerEnemySystem::updateEnemySpawning(ECS::World& world, float deltaTime) 
                 break;
             case EnemySpawnPhase::BossAndAll:
                 // TO DO: change boss type
-                spawnAllowed = (type != rtype::common::components::EnemyType::Boss);
+                spawnAllowed = (type != rtype::common::components::EnemyType::TankDestroyer);
                 break;
         }
         if (!spawnAllowed) continue;
@@ -268,7 +268,7 @@ void ServerEnemySystem::spawnEnemy(ECS::World &world, ECS::EntityID room, rtype:
             // TO DO: set stats for Shooter
             hp = 3; vx = -120.0f;
             break;
-        case rtype::common::components::EnemyType::Boss:
+        case rtype::common::components::EnemyType::TankDestroyer:
             hp = 50; vx = -50.0f;
             break;
         default:
