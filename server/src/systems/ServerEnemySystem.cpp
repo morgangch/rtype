@@ -187,13 +187,24 @@ void ServerEnemySystem::updatePlayerStateBroadcast(ECS::World& world, float delt
         
         for (auto &pair : *players) {
             ECS::EntityID pid = pair.first;
+
+            // Determine the room for this player entity.
+            // Prefer the PlayerConn->room_code (network players), fall back to LinkedRoom for server-only entities
+            ECS::EntityID playerRoom = 0;
             auto* pconn = world.GetComponent<rtype::server::components::PlayerConn>(pid);
-            if (!pconn || pconn->room_code != room) continue; // Skip players not in this room
+            if (pconn) {
+                playerRoom = pconn->room_code;
+            } else {
+                auto* linked = world.GetComponent<rtype::server::components::LinkedRoom>(pid);
+                if (linked) playerRoom = linked->room_id;
+            }
+            if (playerRoom != room) continue; // Skip players not in this room
 
             auto* pos = world.GetComponent<rtype::common::components::Position>(pid);
             auto* health = world.GetComponent<rtype::common::components::Health>(pid);
+            if (!pos || !health) continue;
 
-            // Send this player's state to everyone in the same room
+            // Send this player's state to every networked client in the same room
             auto allPlayers = world.GetAllComponents<rtype::common::components::Player>();
             if (!allPlayers) continue;
             for (auto &pp : *allPlayers) {
@@ -202,7 +213,12 @@ void ServerEnemySystem::updatePlayerStateBroadcast(ECS::World& world, float delt
                 if (!other_room) continue;
                 // restrict to same room
                 if (other_room->room_id != room) continue;
-                rtype::server::network::senders::send_player_state(other, pid,pos->x, pos->y, pos->rotation, health->currentHp, health->isAlive);
+
+                // Only actually send to entities that have a PlayerConn (real network clients)
+                auto* otherConn = world.GetComponent<rtype::server::components::PlayerConn>(other);
+                if (!otherConn) continue;
+
+                rtype::server::network::senders::send_player_state(other, pid, pos->x, pos->y, pos->rotation, health->currentHp, health->isAlive);
             }
         }
     }

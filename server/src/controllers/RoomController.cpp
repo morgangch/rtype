@@ -40,6 +40,7 @@
 #include "senders.h"
 #include "common/utils/endiane_converter.h"
 #include "components/LinkedRoom.h"
+#include "components/Assistant.h"
 
 using namespace rtype::server::controllers;
 using namespace rtype::server::services;
@@ -321,6 +322,31 @@ void room_controller::handleGameStartRequest(const packet_t &packet) {
     markPlayersAsInGame(room);
     broadcastGameStart(room);
     broadcastPlayerRoster(room);
+
+    // Spawn an AI assistant only if there is exactly 1 human player in the room
+    {
+        auto players_in_room = player_service::findPlayersByRoom(room);
+        if (players_in_room.size() == 1) {
+            // Create assistant entity (server-controlled, not network-connected)
+            auto assistant = root.world.CreateEntity();
+            // Place assistant near the left side of the screen, centered vertically
+            root.world.AddComponent<rtype::common::components::Position>(assistant, 120.0f, 360.0f, 0.0f);
+            root.world.AddComponent<rtype::common::components::Velocity>(assistant, 0.0f, 0.0f, 200.0f);
+            root.world.AddComponent<rtype::common::components::Health>(assistant, 5);
+            root.world.AddComponent<rtype::common::components::Team>(assistant, rtype::common::components::TeamType::Player);
+            root.world.AddComponent<rtype::common::components::Player>(assistant, std::string("AI_ASSIST"), assistant);
+            // Assistant is a server-controlled entity and should NOT have a real PlayerConn
+            // That would cause networking code to attempt to send packets to an invalid address
+            // Instead we only attach a LinkedRoom so broadcasting systems can find it as a source
+            root.world.AddComponent<rtype::server::components::Assistant>(assistant, 0.0f);
+            root.world.AddComponent<rtype::server::components::LinkedRoom>(assistant, room);
+
+            std::cout << "SERVER: Spawned AI assistant " << assistant << " in room " << room << std::endl;
+
+            // Notify existing players in the room about the new assistant so clients create a remote player entity
+            notifyExistingPlayersOfNewJoin(assistant, std::string("AI_ASSIST"), room);
+        }
+    }
 }
 
 void room_controller::handlePlayerInput(const packet_t &packet) {
