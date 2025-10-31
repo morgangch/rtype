@@ -90,20 +90,94 @@ namespace rtype::client::gui {
         /**
          * @brief Handle a key pressed event
          * @param key SFML key code
+         * 
+         * Maps keys to configured actions via SettingsConfig. Uses helper methods
+         * for charged shot workflow. Handles reserved keys (Escape for pause, B for boss spawn).
          */
         void handleKeyPressed(sf::Keyboard::Key key);
 
         /**
          * @brief Handle a key released event
          * @param key SFML key code
+         * 
+         * Maps keys to configured actions via SettingsConfig. Uses helper methods
+         * for charged shot release workflow.
          */
         void handleKeyReleased(sf::Keyboard::Key key);
 
         /**
          * @brief Handle input specific to in-game menus
          * @param event The SFML event to handle
+         * 
+         * Processes keyboard and mouse input for pause/game-over menu navigation.
          */
         void handleMenuInput(const sf::Event& event);
+
+        /**
+         * @brief Handle joystick axis movement with deadzone and secondary binding support
+         * @param event The joystick axis movement event
+         * 
+         * Encodes axis movements as 30000 + axisIndex*10 + dir(0=neg,1=pos) and checks
+         * against secondary bindings. Falls back to common X/Y mapping if not consumed.
+         */
+        void handleJoystickAxis(const sf::Event& event);
+
+        /**
+         * @brief Handle joystick button press events
+         * @param event The joystick button pressed event
+         * 
+         * Encodes buttons as 10000 + button and checks secondary bindings for action mapping.
+         * Button 9 is hardcoded as pause/menu fallback.
+         */
+        void handleJoystickButtonPressed(const sf::Event& event);
+
+        /**
+         * @brief Handle joystick button release events
+         * @param event The joystick button released event
+         * 
+         * Releases mapped actions based on secondary binding configuration.
+         * Triggers charged shot release if mapped to shoot action.
+         */
+        void handleJoystickButtonReleased(const sf::Event& event);
+
+        /**
+         * @brief Handle mouse button press events
+         * @param event The mouse button pressed event
+         * 
+         * Encodes mouse buttons as 20000 + button. Left mouse button always acts
+         * as shoot fallback regardless of secondary binding configuration.
+         */
+        void handleMouseButtonPressed(const sf::Event& event);
+
+        /**
+         * @brief Handle mouse button release events
+         * @param event The mouse button released event
+         * 
+         * Triggers charged shot release workflow for configured or fallback mouse buttons.
+         */
+        void handleMouseButtonReleased(const sf::Event& event);
+
+        /**
+         * @brief Start charging all player charged shots
+         * 
+         * Iterates through all player entities and calls startCharge() on their
+         * ChargedShot component. Helper method to eliminate code duplication across
+         * keyboard, joystick, and mouse input handlers.
+         */
+        void startChargedShot();
+
+        /**
+         * @brief Release charged shots for all players and send to server
+         * 
+         * Handles the complete charged shot release workflow:
+         * - Releases charge and queries if fully charged
+         * - Checks fire rate cooldown
+         * - Sends shoot packet to server with current position
+         * - Plays appropriate sound effect (charged vs regular)
+         * 
+         * Helper method to eliminate code duplication across input handlers.
+         */
+        void releaseChargedShot();
 
         /**
          * @brief Per-frame update called by the StateManager
