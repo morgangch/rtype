@@ -249,6 +249,7 @@ void GameState::handleMenuInput(const sf::Event& event) {
                 resumeGame();
             } else {
                 // Return to main menu
+                m_stateManager.setLastLevelIndex(m_levelIndex);
                 m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
             }
         } else if (event.key.code == sf::Keyboard::Escape && !m_isGameOver) {
@@ -300,6 +301,7 @@ void GameState::handleMenuInput(const sf::Event& event) {
             }
             resumeGame();
         } else if (menuButton.contains(mousePos)) {
+            m_stateManager.setLastLevelIndex(m_levelIndex);
             m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
         }
     }

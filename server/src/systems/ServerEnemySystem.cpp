@@ -19,6 +19,9 @@
 // Common player component
 #include <common/components/Player.h>
 
+#include "senders.h"
+#include "components/LinkedRoom.h"
+
 void ServerEnemySystem::Update(ECS::World &world, float deltaTime) {
     updatePhase(deltaTime);
     updateEnemySpawning(world, deltaTime);
@@ -67,28 +70,15 @@ void ServerEnemySystem::spawnBoss(ECS::World& world, ECS::EntityID room, rtype::
     world.AddComponent<rtype::common::components::Health>(boss, 50); // Boss has 50 HP
     world.AddComponent<rtype::common::components::Team>(boss, rtype::common::components::TeamType::Enemy);
     world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, rtype::common::components::EnemyType::Boss);
+    world.AddComponent<rtype::server::components::LinkedRoom>(boss, room);
 
     std::cout << "SERVER: Spawning boss (id=" << boss << ") in room " << room << std::endl;
 
-    // Build SpawnEnemyPacket for boss
-    SpawnEnemyPacket pkt{};
-    pkt.enemyId = static_cast<uint32_t>(boss);
-    pkt.enemyType = static_cast<uint16_t>(rtype::common::components::EnemyType::Boss);
-    pkt.x = spawnX;
-    pkt.y = spawnY;
-    pkt.hp = 50;
 
     // Send to all players in the room
-    auto players = world.GetAllComponents<rtype::common::components::Player>();
-    if (!players) return;
-    for (auto &pp : *players) {
-        ECS::EntityID pid = pp.first;
-        auto *pconn = world.GetComponent<rtype::server::components::PlayerConn>(pid);
-        if (!pconn) continue;
-        if (pconn->room_code != room) continue;
-        pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), SPAWN_ENEMY, nullptr, true);
-        std::cout << "SERVER: Sent boss spawn packet to player " << pid << std::endl;
-    }
+    rtype::server::network::senders::broadcast_enemy_spawn(room, static_cast<uint32_t>(boss),
+                                                            rtype::common::components::EnemyType::Boss,
+                                                            spawnX, spawnY, 50);
 }
 
 void ServerEnemySystem::updateBossSpawning(ECS::World& world, float deltaTime) {
@@ -203,24 +193,16 @@ void ServerEnemySystem::updatePlayerStateBroadcast(ECS::World& world, float delt
             auto* pos = world.GetComponent<rtype::common::components::Position>(pid);
             auto* health = world.GetComponent<rtype::common::components::Health>(pid);
 
-            PlayerStatePacket s{};
-            s.playerId = static_cast<uint32_t>(pid);
-            s.x = pos ? pos->x : 0.0f;
-            s.y = pos ? pos->y : 0.0f;
-            s.dir = pos ? pos->rotation : 0.0f;
-            s.hp = health ? static_cast<uint16_t>(health->currentHp) : 0;
-            s.isAlive = health ? health->isAlive : false;
-
             // Send this player's state to everyone in the same room
             auto allPlayers = world.GetAllComponents<rtype::common::components::Player>();
             if (!allPlayers) continue;
             for (auto &pp : *allPlayers) {
                 ECS::EntityID other = pp.first;
-                auto* otherConn = world.GetComponent<rtype::server::components::PlayerConn>(other);
-                if (!otherConn) continue;
+                auto* other_room = world.GetComponent<rtype::server::components::LinkedRoom>(other);
+                if (!other_room) continue;
                 // restrict to same room
-                if (otherConn->room_code != room) continue;
-                otherConn->packet_manager.sendPacketBytesSafe(&s, sizeof(s), PLAYER_STATE, nullptr, true);
+                if (other_room->room_id != room) continue;
+                rtype::server::network::senders::send_player_state(other, pid,pos->x, pos->y, pos->rotation, health->currentHp, health->isAlive);
             }
         }
     }
@@ -240,21 +222,11 @@ void ServerEnemySystem::cleanupDeadEntities(ECS::World& world) {
         auto* h = pair.second.get();
         if (!h) continue;
         if (!h->isAlive || h->currentHp <= 0) {
-            EntityDestroyPacket pkt{};
-            pkt.entityId = static_cast<uint32_t>(eid);
-            pkt.reason = 1; // killed
 
+            auto room = world.GetComponent<rtype::server::components::LinkedRoom>(eid);
             // Broadcast destroy packet to all players in the world (could restrict by room)
-            auto allPlayers = world.GetAllComponents<rtype::common::components::Player>();
-            if (allPlayers) {
-                for (auto &pp : *allPlayers) {
-                    ECS::EntityID pid = pp.first;
-                    auto* pconn = world.GetComponent<rtype::server::components::PlayerConn>(pid);
-                    if (!pconn) continue;
-                    pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), ENTITY_DESTROY, nullptr, true);
-                }
-            }
-
+            if (room)
+                rtype::server::network::senders::broadcast_entity_destroy(room->room_id, static_cast<uint32_t>(eid), 1 /* killed */);
             toDestroy.push_back(eid);
         }
     }
@@ -267,7 +239,7 @@ void ServerEnemySystem::cleanupDeadEntities(ECS::World& world) {
 // PRIVATE METHODS - Boss Spawning Helper
 // ============================================================================
 
-void ServerEnemySystem::spawnEnemy(ECS::World& world, ECS::EntityID room, rtype::common::components::EnemyType type) {
+void ServerEnemySystem::spawnEnemy(ECS::World &world, ECS::EntityID room, rtype::common::components::EnemyType type) {
     // Spawn position logic (can be customized per type)
     float spawnX = 1280.0f + 24.0f;
     float spawnY = 100.0f + (rand() % 520);
@@ -310,21 +282,14 @@ void ServerEnemySystem::spawnEnemy(ECS::World& world, ECS::EntityID room, rtype:
     root.world.AddComponent<rtype::common::components::Health>(enemy, hp);
     root.world.AddComponent<rtype::common::components::Team>(enemy, rtype::common::components::TeamType::Enemy);
     root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(enemy, type);
+    root.world.AddComponent<rtype::server::components::LinkedRoom>(enemy, room);
 
-    SpawnEnemyPacket pkt{};
-    pkt.enemyId = static_cast<uint32_t>(enemy);
-    pkt.enemyType = static_cast<uint16_t>(type);
-    pkt.x = spawnX;
-    pkt.y = spawnY;
-    pkt.hp = hp;
+    // SpawnEnemyPacket pkt{};
+    // pkt.enemyId = static_cast<uint32_t>(enemy);
+    // pkt.enemyType = static_cast<uint16_t>(type);
+    // pkt.x = spawnX;
+    // pkt.y = spawnY;
+    // pkt.hp = hp;
 
-    auto players = root.world.GetAllComponents<rtype::common::components::Player>();
-    if (!players) return;
-    for (auto &pp : *players) {
-        ECS::EntityID pid = pp.first;
-        auto *pconn = root.world.GetComponent<rtype::server::components::PlayerConn>(pid);
-        if (!pconn) continue;
-        if (pconn->room_code != room) continue;
-        pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), SPAWN_ENEMY, nullptr, true);
-    }
+    rtype::server::network::senders::broadcast_enemy_spawn(room, enemy, type, spawnX, spawnY, hp);
 }

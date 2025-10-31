@@ -45,6 +45,9 @@ void SettingsConfig::initDefaults() {
     // Default network settings
     ip = "127.0.0.1";
     port = "4242";
+
+    // Accessibility defaults
+    daltonismMode = 0; // None
 }
 
 /**
@@ -180,6 +183,18 @@ void SettingsConfig::parseJSON(const std::string& content) {
                 std::string value = extractValue(line);
                 if (!value.empty()) port = value;
             }
+        } else {
+            // Top-level fields
+            if (line.find("\"daltonism_mode\"") != std::string::npos) {
+                std::string value = extractValue(line);
+                if (!value.empty()) {
+                    try {
+                        daltonismMode = std::stoi(value);
+                    } catch (...) {
+                        daltonismMode = 0;
+                    }
+                }
+            }
         }
     }
 }
@@ -211,7 +226,8 @@ std::string SettingsConfig::generateJSON() const {
     json << "  \"network\": {\n";
     json << "    \"ip\": \"" << ip << "\",\n";
     json << "    \"port\": \"" << port << "\"\n";
-    json << "  }\n";
+    json << "  },\n";
+    json << "  \"daltonism_mode\": " << daltonismMode << "\n";
     json << "}\n";
     return json.str();
 }

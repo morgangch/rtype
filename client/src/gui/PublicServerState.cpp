@@ -28,6 +28,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <string>
+#include "gui/AssetPaths.h"
 
 #include "network/network.h"
 
@@ -48,9 +49,27 @@ namespace rtype::client::gui {
         playersReadyText.setCharacterSize(GUIHelper::Sizes::TITLE_FONT_SIZE - 28);
         playersReadyText.setFillColor(GUIHelper::Colors::TEXT);
         
-        // Button setup using GUIHelper
-        GUIHelper::setupButton(readyButton, readyButtonRect, "", GUIHelper::Sizes::BUTTON_FONT_SIZE);
-        GUIHelper::setupReturnButton(returnButton, returnButtonRect);
+        // Ready button sprite (replaces text button)
+        readySpriteLoaded = readyTexture.loadFromFile(rtype::client::assets::ui::READY_BUTTON);
+        if (!readySpriteLoaded) {
+            // Fallback to simple rect for clicks; text remains empty and won't be drawn
+            GUIHelper::setupButton(readyButton, readyButtonRect, "", GUIHelper::Sizes::BUTTON_FONT_SIZE);
+        } else {
+            readyTexture.setSmooth(true);
+            readySprite.setTexture(readyTexture);
+            sf::Vector2u sz = readyTexture.getSize();
+            readySprite.setOrigin(static_cast<float>(sz.x) * 0.5f, static_cast<float>(sz.y) * 0.5f);
+        }
+        // Return button sprite
+        returnSpriteLoaded = returnTexture.loadFromFile(rtype::client::assets::ui::RETURN_BUTTON);
+        if (returnSpriteLoaded) {
+            returnTexture.setSmooth(true);
+            returnSprite.setTexture(returnTexture);
+            sf::Vector2u sz = returnTexture.getSize();
+            returnSprite.setOrigin(static_cast<float>(sz.x) * 0.5f, static_cast<float>(sz.y) * 0.5f);
+        } else {
+            GUIHelper::setupReturnButton(returnButton, returnButtonRect);
+        }
         
         updatePlayersReadyText();
     }
@@ -58,10 +77,6 @@ namespace rtype::client::gui {
     void PublicServerState::onEnter() {
         std::cout << "Entered Public Server state with username: " << username << std::endl;
         std::cout << "Connecting to public server..." << std::endl;
-        
-        // Connect to the public server using the NetworkManager
-        // Public server uses room ID 0 by convention
-// network::start_room_connection("127.0.0.1", 8080, username, 0);
     }
     
     void PublicServerState::onExit() {
@@ -76,25 +91,54 @@ namespace rtype::client::gui {
         // Players ready text positioning (center)
         GUIHelper::centerText(playersReadyText, centerX, centerY - 50.0f);
         
-        // Ready button positioning (below the text)
-        float buttonWidth = 300.0f;
-        float buttonHeight = 80.0f;
+    // Ready button positioning (below the text) using sprite
+    float buttonWidth = 520.0f;
+    float buttonHeight = 180.0f;
         float buttonY = centerY + 50.0f;
         
-        readyButtonRect.setSize(sf::Vector2f(buttonWidth, buttonHeight));
-        readyButtonRect.setPosition(centerX - buttonWidth / 2, buttonY);
-        GUIHelper::centerText(readyButton,
-                  readyButtonRect.getPosition().x + buttonWidth / 2,
-                  readyButtonRect.getPosition().y + buttonHeight / 2);
+        if (readySpriteLoaded) {
+            sf::Vector2u tex = readyTexture.getSize();
+            if (tex.x > 0 && tex.y > 0) {
+                float scale = std::min(buttonWidth / static_cast<float>(tex.x),
+                                       buttonHeight / static_cast<float>(tex.y));
+                readySprite.setScale(scale, scale);
+                float scaledW = static_cast<float>(tex.x) * scale;
+                float scaledH = static_cast<float>(tex.y) * scale;
+                readySprite.setPosition(centerX, buttonY + scaledH * 0.5f);
+                // Clickable rect matches the sprite bounds
+                readyButtonRect.setSize(sf::Vector2f(scaledW, scaledH));
+                readyButtonRect.setPosition(centerX - scaledW * 0.5f, buttonY);
+            }
+        } else {
+            readyButtonRect.setSize(sf::Vector2f(buttonWidth, buttonHeight));
+            readyButtonRect.setPosition(centerX - buttonWidth / 2, buttonY);
+            // Text hidden; no need to center
+        }
         
-        // Return button positioning (top left)
-        float returnButtonWidth = 150.0f;
-        float returnButtonHeight = 50.0f;
-        returnButtonRect.setSize(sf::Vector2f(returnButtonWidth, returnButtonHeight));
-        returnButtonRect.setPosition(20.0f, 20.0f);
-        GUIHelper::centerText(returnButton,
-                  returnButtonRect.getPosition().x + returnButtonWidth / 2,
-                  returnButtonRect.getPosition().y + returnButtonHeight / 2);
+    // Return button positioning (top left)
+    float returnButtonWidth = 300.0f;
+    float returnButtonHeight = 120.0f;
+        float leftMargin = 8.0f;
+        float topMargin = 10.0f;
+        if (returnSpriteLoaded) {
+            sf::Vector2u tex = returnTexture.getSize();
+            if (tex.x > 0 && tex.y > 0) {
+                float scale = std::min(returnButtonWidth / static_cast<float>(tex.x),
+                                       returnButtonHeight / static_cast<float>(tex.y));
+                returnSprite.setScale(scale, scale);
+                float scaledW = static_cast<float>(tex.x) * scale;
+                float scaledH = static_cast<float>(tex.y) * scale;
+                returnSprite.setPosition(leftMargin + scaledW * 0.5f, topMargin + scaledH * 0.5f);
+                returnButtonRect.setSize(sf::Vector2f(scaledW, scaledH));
+                returnButtonRect.setPosition(leftMargin, topMargin);
+            }
+        } else {
+            returnButtonRect.setSize(sf::Vector2f(returnButtonWidth, returnButtonHeight));
+            returnButtonRect.setPosition(leftMargin, topMargin);
+            GUIHelper::centerText(returnButton,
+                      returnButtonRect.getPosition().x + returnButtonWidth / 2,
+                      returnButtonRect.getPosition().y + returnButtonHeight / 2);
+        }
     }
     
     void PublicServerState::handleEvent(const sf::Event& event) {
@@ -145,14 +189,11 @@ namespace rtype::client::gui {
     void PublicServerState::handleMouseMoveEvent(const sf::Event& event) {
         sf::Vector2f mousePos(event.mouseMove.x, event.mouseMove.y);
         
-        // Button hover effects using GUIHelper
-        GUIHelper::applyButtonHover(readyButtonRect, readyButton, 
-                                  GUIHelper::isPointInRect(mousePos, readyButtonRect),
-                                  GUIHelper::Colors::BUTTON_NORMAL, GUIHelper::Colors::BUTTON_HOVER);
+    // Hover detection for ready sprite (visual applied in render if needed)
+    readyHovered = GUIHelper::isPointInRect(mousePos, readyButtonRect);
         
-        GUIHelper::applyButtonHover(returnButtonRect, returnButton, 
-                                  GUIHelper::isPointInRect(mousePos, returnButtonRect),
-                                  GUIHelper::Colors::RETURN_BUTTON, sf::Color(150, 70, 70, 200));
+    // Return hover flag only (visuals applied at render)
+    returnHovered = GUIHelper::isPointInRect(mousePos, returnButtonRect);
     }
     
     void PublicServerState::update(float deltaTime) {
@@ -178,13 +219,35 @@ namespace rtype::client::gui {
         // Render players ready text
         window.draw(playersReadyText);
         
-        // Render ready button
-        window.draw(readyButtonRect);
-        window.draw(readyButton);
+        // Render ready button (sprite)
+        if (readySpriteLoaded) {
+            // Glow effect when pressed (ready state)
+            if (isReady) {
+                sf::Sprite glow = readySprite;
+                sf::Vector2f os = glow.getScale();
+                glow.setScale(os.x * 1.12f, os.y * 1.12f);
+                glow.setColor(sf::Color(0, 255, 255, 120));
+                sf::RenderStates states;
+                states.blendMode = sf::BlendAdd;
+                window.draw(glow, states);
+            }
+            // Draw the base sprite
+            window.draw(readySprite);
+        } else {
+            // Fallback: invisible rect still clickable; not drawing text per requirement
+            // window.draw(readyButtonRect); // intentionally not drawn
+        }
         
         // Render return button
-        window.draw(returnButtonRect);
-        window.draw(returnButton);
+        if (returnSpriteLoaded) {
+            sf::Vector2f originalScale = returnSprite.getScale();
+            if (returnHovered) returnSprite.setScale(originalScale.x * 0.94f, originalScale.y * 0.94f);
+            window.draw(returnSprite);
+            if (returnHovered) returnSprite.setScale(originalScale);
+        } else {
+            window.draw(returnButtonRect);
+            window.draw(returnButton);
+        }
     }
 
     void PublicServerState::ensureParallaxInitialized(const sf::RenderWindow& window) {
@@ -197,7 +260,8 @@ namespace rtype::client::gui {
         if (g_gameState) {
             m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(g_gameState->getLevelIndex()), true);
         } else {
-            m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(0), true);
+            // Use last known level index from StateManager to keep menu visuals consistent
+            m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(stateManager.getLastLevelIndex()), true);
         }
         m_overlay.setSize(sf::Vector2f(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y)));
         m_parallaxInitialized = true;
@@ -208,13 +272,11 @@ namespace rtype::client::gui {
         
         if (isReady) {
             playersReady++;
-            readyButton.setString("Ready");
-            readyButtonRect.setFillColor(sf::Color(50, 150, 50, 200)); // Green when ready
+            // Visual handled by sprite glow; text removed
             std::cout << username << " is now ready!" << std::endl;
         } else {
             playersReady--;
-            readyButton.setString("Not ready");
-            readyButtonRect.setFillColor(sf::Color(70, 70, 70, 200)); // Gray when not ready
+            // Visual handled by absence of glow; text removed
             std::cout << username << " is no longer ready!" << std::endl;
         }
         
@@ -223,12 +285,5 @@ namespace rtype::client::gui {
     
     void PublicServerState::updatePlayersReadyText() {
         playersReadyText.setString("Amount of players ready " + std::to_string(playersReady));
-        
-        // Update button text based on ready state
-        if (isReady) {
-            readyButton.setString("Ready");
-        } else {
-            readyButton.setString("Not ready");
-        }
     }
 }

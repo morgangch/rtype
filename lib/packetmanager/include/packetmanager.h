@@ -1,12 +1,13 @@
 /**
  * @file packetmanager.h
- * @brief Network packet management system with reliability and sequencing
+ * @brief Network packet management system with reliability and sequencing (Thread-Safe)
  * @author R-Type Team
  * @date 2025
  *
  * This file contains the PacketManager class which handles reliable network
  * communication with automatic retransmission, sequence tracking, and packet
  * buffering for the R-Type game's networking layer.
+ * Thread-safe version with mutex protection.
  */
 
 #ifndef PACKETMANAGER_H
@@ -14,6 +15,7 @@
 
 #include <vector>
 #include <memory>
+#include <mutex>
 #include "packet.h"
 
 /**
@@ -27,7 +29,7 @@
 struct sockaddr_in;
 
 /**
- * @brief Network packet management system with reliability features
+ * @brief Network packet management system with reliability features (Thread-Safe)
  *
  * PacketManager provides reliable packet transmission over UDP by implementing:
  * - Automatic sequence numbering for packet ordering
@@ -35,6 +37,7 @@ struct sockaddr_in;
  * - Acknowledgment tracking and handling
  * - Packet buffering for send and receive operations
  * - Serialization and deserialization of packet data
+ * - Thread-safe operations with mutex protection
  *
  * The manager maintains separate buffers for incoming and outgoing packets,
  * tracks missed packets for retransmission, and provides both safe and
@@ -68,20 +71,21 @@ public:
     PacketManager& operator=(const PacketManager&) = delete;
 
     /**
-     * @brief Default move constructor for efficient transfers
+     * @brief Deleted move constructor (mutex is not moveable)
      */
-    PacketManager(PacketManager&&) = default;
+    PacketManager(PacketManager&&) = delete;
 
     /**
-     * @brief Default move assignment operator for efficient transfers
+     * @brief Deleted move assignment operator (mutex is not moveable)
      */
-    PacketManager& operator=(PacketManager&&) = default;
+    PacketManager& operator=(PacketManager&&) = delete;
 
     /**
      * @brief Deserializes raw packet bytes into a packet structure
      *
      * Converts raw network bytes into a structured packet_t object.
      * This is the unsafe version that requires pre-allocated packet storage.
+     * Thread-safe: This is a static method working on local data.
      *
      * @param data Pointer to raw packet bytes including header
      * @param size Total size of the raw packet data
@@ -95,6 +99,7 @@ public:
      *
      * Creates a new packet_t instance and deserializes raw bytes into it.
      * Returns a smart pointer for automatic memory management.
+     * Thread-safe: This is a static method working on local data.
      *
      * @param data Pointer to raw packet bytes including header
      * @param size Total size of the raw packet data
@@ -107,6 +112,7 @@ public:
      *
      * Converts a structured packet_t object into raw bytes suitable
      * for network transmission.
+     * Thread-safe: This is a static method working on local data.
      *
      * @param packet The packet structure to serialize
      * @return std::vector<uint8_t> Vector containing serialized packet bytes
@@ -114,7 +120,7 @@ public:
     static std::vector<uint8_t> serializePacket(const packet_t &packet);
 
     /**
-     * @brief Cleans up internal buffers and resets state
+     * @brief Cleans up internal buffers and resets state (Thread-Safe)
      *
      * Clears all pending packets, resets sequence numbers,
      * and prepares the manager for fresh operations.
@@ -122,7 +128,7 @@ public:
     void clean();
 
     /**
-     * @brief Handles incoming raw packet bytes from network socket
+     * @brief Handles incoming raw packet bytes from network socket (Thread-Safe)
      *
      * Processes raw packet data received from the network, including
      * header parsing, validation, and buffering for later retrieval.
@@ -135,7 +141,7 @@ public:
     void handlePacketBytes(const uint8_t *data, size_t size, sockaddr_in client_addr);
 
     /**
-     * @brief Safe packet transmission with automatic memory management
+     * @brief Safe packet transmission with automatic memory management (Thread-Safe)
      *
      * Creates a packet from the provided data, assigns sequence numbers
      * for important packets, and prepares it for transmission. Returns
@@ -151,7 +157,7 @@ public:
     std::unique_ptr<uint8_t[]> sendPacketBytesSafe(const void *data, size_t data_size, uint8_t packet_type, size_t *output_size, bool important = true);
 
     /**
-     * @brief Handles acknowledgment of missing packets
+     * @brief Handles acknowledgment of missing packets (Thread-Safe)
      *
      * Processes missed packet notifications and initiates retransmission
      * of important packets that were not acknowledged by the receiver.
@@ -159,7 +165,7 @@ public:
     void ackMissing();
 
     /**
-     * @brief Retrieves all received packets from the buffer
+     * @brief Retrieves all received packets from the buffer (Thread-Safe)
      *
      * Returns and clears the buffer of packets that have been received
      * and processed, ready for application-level handling.
@@ -169,7 +175,7 @@ public:
     std::vector<std::unique_ptr<packet_t> > fetchReceivedPackets();
 
     /**
-     * @brief Retrieves all packets queued for transmission
+     * @brief Retrieves all packets queued for transmission (Thread-Safe)
      *
      * Returns and clears the buffer of packets that are ready to be
      * sent over the network.
@@ -179,50 +185,46 @@ public:
     std::vector<std::unique_ptr<packet_t> > fetchPacketsToSend();
 
     /**
-     * @brief Gets the current send sequence ID
+     * @brief Gets the current send sequence ID (Thread-Safe)
      * @return uint32_t Current sequence ID for outgoing packets
      */
-    [[nodiscard]] uint32_t _get_send_seqid() const { return _send_seqid; }
+    [[nodiscard]] uint32_t _get_send_seqid() const;
 
     /**
-     * @brief Gets the current receive sequence ID
+     * @brief Gets the current receive sequence ID (Thread-Safe)
      * @return uint32_t Current sequence ID for incoming packets
      */
-    [[nodiscard]] uint32_t _get_recv_seqid() const { return _recv_seqid; }
+    [[nodiscard]] uint32_t _get_recv_seqid() const;
 
     /**
-     * @brief Gets the current authentication key
+     * @brief Gets the current authentication key (Thread-Safe)
      * @return uint32_t Current authentication key for packet validation
      */
-    [[nodiscard]] uint32_t _get_auth_key() const { return _auth_key; }
+    [[nodiscard]] uint32_t _get_auth_key() const;
 
     /**
-     * @brief Gets the transmission history buffer
-     * @return const std::vector<packet_t>* Pointer to sent packet history
+     * @brief Gets a copy of the transmission history buffer (Thread-Safe)
+     * @return std::vector<packet_t> Copy of sent packet history
      */
-    [[nodiscard]] const std::vector<packet_t> *_get_history_sent() const { return &_history_sent; }
+    [[nodiscard]] std::vector<packet_t> _get_history_sent() const;
 
     /**
-     * @brief Gets the list of missed packet sequence IDs
-     * @return const std::vector<uint32_t>* Pointer to missed packet sequence IDs
+     * @brief Gets a copy of the list of missed packet sequence IDs (Thread-Safe)
+     * @return std::vector<uint32_t> Copy of missed packet sequence IDs
      */
-    [[nodiscard]] const std::vector<uint32_t> *_get_missed_packets() const { return &_missed_packets; }
+    [[nodiscard]] std::vector<uint32_t> _get_missed_packets() const;
 
     /**
-     * @brief Gets the outgoing packet buffer
-     * @return const std::vector<std::unique_ptr<packet_t>>* Pointer to send buffer
+     * @brief Gets the count of packets in the outgoing buffer (Thread-Safe)
+     * @return size_t Number of packets waiting to be sent
      */
-    [[nodiscard]] const std::vector<std::unique_ptr<packet_t> > *_get_buffer_send() const {
-        return &_buffer_send;
-    }
+    [[nodiscard]] size_t _get_buffer_send_size() const;
 
     /**
-     * @brief Gets the incoming packet buffer
-     * @return const std::vector<std::unique_ptr<packet_t>>* Pointer to receive buffer
+     * @brief Gets the count of packets in the incoming buffer (Thread-Safe)
+     * @return size_t Number of packets received
      */
-    [[nodiscard]] const std::vector<std::unique_ptr<packet_t> > *_get_buffer_received() const {
-        return &_buffer_received;
-    }
+    [[nodiscard]] size_t _get_buffer_received_size() const;
 
 private:
     /**
@@ -261,7 +263,12 @@ private:
     std::vector<std::unique_ptr<packet_t> > _buffer_send;
 
     /**
-     * @brief Resends a packet with the specified sequence ID
+     * @brief Mutex for protecting all mutable state
+     */
+    mutable std::mutex _mutex;
+
+    /**
+     * @brief Resends a packet with the specified sequence ID (Internal, assumes lock held)
      *
      * Looks up a packet in the transmission history and queues it
      * for retransmission if found.
@@ -272,7 +279,7 @@ private:
     bool _resendPacket(uint32_t seqid);
 
     /**
-     * @brief Internal packet processing handler
+     * @brief Internal packet processing handler (Internal, assumes lock held)
      *
      * Processes a deserialized packet, handles sequence validation,
      * acknowledgments, and queues the packet for application processing.
