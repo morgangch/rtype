@@ -37,4 +37,7 @@
 # Configuration files
 config.json
 
+# Score files
+scores.json
+
 /build/
