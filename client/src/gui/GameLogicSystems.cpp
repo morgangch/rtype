@@ -237,8 +237,13 @@ void GameState::updateCollisionSystem() {
         playerHealth->invulnerable = true;
         playerHealth->invulnerabilityTimer = 1.0f;
 
-        if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) {
-            m_soundManager.play(AudioFactory::SfxId::LoseLife);
+        // Check for game over
+        if (playerHealth->currentHp <= 0) {
+            showInGameMenu(true); // Game Over
+        } else {
+            if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) {
+                m_soundManager.play(AudioFactory::SfxId::LoseLife);
+            }
         }
     };
 
@@ -267,8 +272,13 @@ void GameState::updateCollisionSystem() {
         playerHealth->invulnerable = true;
         playerHealth->invulnerabilityTimer = 1.0f;
 
-        if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) {
-            m_soundManager.play(AudioFactory::SfxId::LoseLife);
+        // Check for game over
+        if (playerHealth->currentHp <= 0) {
+            showInGameMenu(true); // Game Over
+        } else {
+            if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) {
+                m_soundManager.play(AudioFactory::SfxId::LoseLife);
+            }
         }
 
         toDestroy.push_back(proj);
@@ -293,6 +303,15 @@ void GameState::updateCollisionSystem() {
                 playerHealth->currentHp -= EXPLOSION_DAMAGE;
                 playerHealth->invulnerable = true;
                 playerHealth->invulnerabilityTimer = 1.0f;
+
+                // Check for game over
+                if (playerHealth->currentHp <= 0) {
+                    showInGameMenu(true); // Game Over
+                } else {
+                    if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) {
+                        m_soundManager.play(AudioFactory::SfxId::LoseLife);
+                    }
+                }
             }
         }
 
