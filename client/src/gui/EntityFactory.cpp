@@ -147,6 +147,12 @@ ECS::EntityID GameState::createSnakeEnemy(float x, float y) {
     m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
         entity, rtype::common::components::EnemyType::Snake);
     
+    // FireRate - Snake enemy shoots every 3.0 seconds
+    // Random initial cooldown to stagger shots
+    float randomCooldown = static_cast<float>(rand() % 1000) / 1000.0f * 3.0f;
+    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 3.0f);
+    fireRate->cooldown = randomCooldown;
+    
     return entity;
 }
 

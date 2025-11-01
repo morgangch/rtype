@@ -84,9 +84,8 @@ namespace rtype::common::systems {
                 if (!fireRate || !pos) continue;
                 if (!fireRate->canFire()) continue;
 
-                // Enemies that don't shoot
-                if (enemyType && (enemyType->type == components::EnemyType::Suicide ||
-                                  enemyType->type == components::EnemyType::Snake)) {
+                // Enemies that don't shoot (only Suicide)
+                if (enemyType && enemyType->type == components::EnemyType::Suicide) {
                     continue;
                 }
 
