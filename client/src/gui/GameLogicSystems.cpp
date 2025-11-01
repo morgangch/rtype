@@ -27,6 +27,9 @@
 #include <common/systems/FireRateSystem.h>
 #include <common/systems/EnemyAISystem.h>
 #include <common/systems/CollisionSystem.h>
+#include <common/systems/HomingSystem.h>
+#include <common/components/VesselClass.h>
+#include <common/components/Shield.h>
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -356,9 +359,105 @@ void GameState::handlePlayerFire() {
     if (m_playerEntity == 0) return;
     
     auto* pos = m_world.GetComponent<rtype::common::components::Position>(m_playerEntity);
+    auto* vesselClass = m_world.GetComponent<rtype::common::components::VesselClass>(m_playerEntity);
+    auto* chargedShot = m_world.GetComponent<rtype::common::components::ChargedShot>(m_playerEntity);
+    
     if (!pos) return;
     
-    createPlayerProjectile(pos->x, pos->y);
+    // If no vessel class, use default single shot
+    if (!vesselClass) {
+        createPlayerProjectile(pos->x, pos->y);
+        return;
+    }
+    
+    // Check if this is a charged shot
+    bool isCharged = chargedShot && chargedShot->isFullyCharged;
+    
+    if (isCharged) {
+        // Handle charged weapon modes
+        switch (vesselClass->chargedWeaponMode) {
+            case rtype::common::components::WeaponMode::Piercing:
+                // Crimson Striker - Piercing beam
+                createChargedProjectile(pos->x, pos->y);
+                break;
+                
+            case rtype::common::components::WeaponMode::Burst:
+                // Azure Phantom - Homing burst
+                createHomingBurst(pos->x, pos->y, vesselClass->projectileCount);
+                break;
+                
+            case rtype::common::components::WeaponMode::Single:
+                // Emerald Titan - Explosive bomb OR Solar Guardian - Shield
+                if (vesselClass->type == rtype::common::components::VesselType::EmeraldTitan) {
+                    createExplosiveProjectile(pos->x, pos->y, true);
+                } else if (vesselClass->type == rtype::common::components::VesselType::SolarGuardian) {
+                    // Activate shield
+                    auto* shield = m_world.GetComponent<rtype::common::components::Shield>(m_playerEntity);
+                    if (shield && shield->activate()) {
+                        std::cout << "[GameState] Shield activated! (3s duration, 6s cooldown)" << std::endl;
+                    } else {
+                        std::cout << "[GameState] Shield on cooldown!" << std::endl;
+                    }
+                }
+                break;
+                
+            default:
+                createChargedProjectile(pos->x, pos->y);
+                break;
+        }
+        
+        // Release the charge
+        if (chargedShot) {
+            chargedShot->release();
+        }
+    } else {
+        // Handle normal weapon modes
+        switch (vesselClass->normalWeaponMode) {
+            case rtype::common::components::WeaponMode::Single:
+                // Crimson Striker or Emerald Titan - Single projectile
+                if (vesselClass->type == rtype::common::components::VesselType::EmeraldTitan) {
+                    createExplosiveProjectile(pos->x, pos->y, false);
+                } else {
+                    createPlayerProjectile(pos->x, pos->y);
+                }
+                break;
+                
+            case rtype::common::components::WeaponMode::Dual:
+                // Azure Phantom - Dual projectiles
+                createDualProjectiles(pos->x, pos->y);
+                break;
+                
+            case rtype::common::components::WeaponMode::Spread:
+                // Solar Guardian - Shotgun spread
+                createSpreadShot(pos->x, pos->y, vesselClass->projectileCount);
+                break;
+                
+            default:
+                createPlayerProjectile(pos->x, pos->y);
+                break;
+        }
+    }
+}
+
+void GameState::updateHomingSystem(float deltaTime) {
+    // Use the common HomingSystem to update all homing projectiles
+    rtype::common::systems::HomingSystem::update(m_world, deltaTime);
+}
+
+void GameState::updateShieldSystem(float deltaTime) {
+    // Update all shields (cooldowns and active duration)
+    auto* shields = m_world.GetAllComponents<rtype::common::components::Shield>();
+    if (!shields) return;
+    
+    for (auto& [entity, shield] : *shields) {
+        shield->update(deltaTime);
+        
+        // Visual feedback (could be expanded with sprite effects)
+        if (shield->isActive && entity == m_playerEntity) {
+            // Shield is active on player - could add visual effect here
+            // For now, just ensure it's tracked
+        }
+    }
 }
 
 } // namespace rtype::client::gui

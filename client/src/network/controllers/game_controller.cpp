@@ -126,7 +126,12 @@ namespace rtype::client::controllers::game_controller {
         from_network_endian(p->newPlayerId);
 
         using rtype::client::gui::g_gameState;
-        if (g_gameState) g_gameState->createRemotePlayer(std::string(p->name), p->newPlayerId);
+        if (g_gameState) {
+            // Convert uint8_t to VesselType enum
+            rtype::common::components::VesselType vesselType = 
+                static_cast<rtype::common::components::VesselType>(p->vesselType);
+            g_gameState->createRemotePlayer(std::string(p->name), p->newPlayerId, vesselType);
+        }
     }
 
     void handle_player_state(const packet_t &packet) {

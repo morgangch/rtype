@@ -23,8 +23,9 @@
 10. [Development](#development)
 11. [Testing](#testing)
 12. [Documentation](#documentation)
-13. [Contributing](#contributing)
-14. [License](#license)
+13. [Vessel Classes System](#vessel-classes-system)
+14. [Contributing](#contributing)
+15. [License](#license)
 
 ---
 
@@ -1046,8 +1047,52 @@ sudo tcpdump -i any port 4242
 
 ---
 
-**Last Updated**: October 21, 2025  
-**Version**: 2.0  
+## Vessel Classes System
+
+R-Type features **4 unique playable vessel classes**, each with distinct characteristics, weapons, and playstyles.
+
+### Quick Overview
+
+| Vessel | Role | Weapon | Special Ability |
+|--------|------|--------|-----------------|
+| **Crimson Striker** | Balanced | Single → Piercing | Standard gameplay |
+| **Azure Phantom** | Speed | Dual → Homing Burst | Fast hit-and-run |
+| **Emerald Titan** | Power | Explosive AoE | Heavy artillery |
+| **Solar Guardian** | Defense | Spread → Shield | Tank & support |
+
+### Detailed Documentation
+
+For complete implementation details, see: **[VESSEL_CLASSES.md](./VESSEL_CLASSES.md)**
+
+This comprehensive guide includes:
+- ✅ Full architecture explanation
+- ✅ Implementation details for each component
+- ✅ Network synchronization protocol
+- ✅ Code examples and snippets
+- ✅ Testing procedures
+- ✅ Troubleshooting FAQ
+- ✅ Performance analysis
+- ✅ Balance considerations
+
+**Key Features**:
+- **4 vessel classes** with unique stats and weapons
+- **Special mechanics**: AoE explosions, homing projectiles, defensive shields
+- **Vessel selection UI** integrated into connection flow
+- **Network synchronization** of vessel types across clients
+- **ECS-based architecture** for clean, extensible code
+
+### How to Use
+
+1. Launch the client: `./build/bin/client`
+2. Click "Public Servers" or "Private Servers"
+3. **Vessel Selection Screen** appears
+4. Click on your preferred vessel (4 options in 2×2 grid)
+5. Click "CONFIRM" to join the game with your selected vessel
+
+---
+
+**Last Updated**: November 1, 2025  
+**Version**: 2.1  
 **Documentation Maintainer**: Morgan Guichard
 
 For more information, visit the [project repository](https://github.com/morgangch/rtype).

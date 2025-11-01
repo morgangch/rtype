@@ -19,8 +19,9 @@ namespace rtype::client::network::senders {
      * @brief Send a join room request to the server
      * @param player_name The player name
      * @param room_code The room code to join
+     * @param vessel_type The vessel type selected by the player (0-3)
      */
-    void send_join_room_request(const std::string &player_name, std::uint32_t room_code);
+    void send_join_room_request(const std::string &player_name, std::uint32_t room_code, uint8_t vessel_type = 0);
     
     /**
      * @brief Send a player ready state update to the server

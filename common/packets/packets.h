@@ -43,10 +43,12 @@ enum Packets {
  * Client → Server
  * @param name Player name (max 32 bytes)
  * @param joinCode Room ID to join. Use 0 to create a new room, 1 to join a public room.
+ * @param vesselType Vessel class selected by player (0=CrimsonStriker, 1=AzurePhantom, 2=EmeraldTitan, 3=SolarGuardian)
  */
 struct JoinRoomPacket {
     char name[32];
     uint32_t joinCode;
+    uint8_t vesselType; // 0-3 for the 4 vessel classes
 };
 
 /**
@@ -101,6 +103,7 @@ struct PongPacket {
 struct PlayerJoinPacket {
     uint32_t newPlayerId;
     char name[32];
+    uint8_t vesselType;  // Vessel class (0=CrimsonStriker, 1=AzurePhantom, 2=EmeraldTitan, 3=SolarGuardian)
 };
 
 // Serveur → All
@@ -150,6 +153,7 @@ struct PlayerStatePacket {
     uint16_t hp;
     bool isAlive;
     bool invulnerable; // Server-authoritative invulnerability state
+    uint8_t vesselType; // Vessel class (0-3) for visual sync
 };
 
 // Server → All: Spawn a new enemy

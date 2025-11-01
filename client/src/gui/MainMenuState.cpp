@@ -20,6 +20,8 @@
 #include "gui/SettingsState.h"
 #include "gui/AssetPaths.h"
 #include "gui/HighscoresState.h"
+#include "gui/VesselSelectionState.h"
+#include "gui/SettingsConfig.h"
 #include <iostream>
 #include <cstdlib>
 
@@ -481,9 +483,27 @@ namespace rtype::client::gui {
     }
     
     void MainMenuState::onPublicServersClick() {
-        std::cout << "Switching to Public Server state" << std::endl;
+        std::cout << "Switching to Vessel Selection for Public Server" << std::endl;
         std::string finalUsername = username.empty() ? GUIHelper::generateRandomUsername() : username;
-        stateManager.changeState(std::make_unique<PublicServerState>(stateManager, finalUsername));
+        
+        // Load server config
+        SettingsConfig config;
+        config.load();
+        std::string serverIp = config.getIP();
+        int serverPort = 4242;
+        try {
+            serverPort = std::stoi(config.getPort());
+            if (serverPort < 1 || serverPort > 65535) {
+                serverPort = 4242;
+            }
+        } catch (...) {
+            serverPort = 4242;
+        }
+        
+        // Go directly to vessel selection (room code 0 = public/create)
+        stateManager.changeState(std::make_unique<VesselSelectionState>(
+            stateManager, finalUsername, serverIp, serverPort, 0
+        ));
     }
     
     void MainMenuState::onPrivateServersClick() {

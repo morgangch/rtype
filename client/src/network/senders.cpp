@@ -18,9 +18,10 @@ namespace rtype::client::network::senders {
                                                        nullptr, true);
     }
 
-    void send_join_room_request(const std::string &player_name, std::uint32_t room_code) {
+    void send_join_room_request(const std::string &player_name, std::uint32_t room_code, uint8_t vessel_type) {
         JoinRoomPacket p{};
         p.joinCode =  room_code;
+        p.vesselType = vessel_type;
 
         // Convert to network endian
         to_network_endian(p.joinCode);

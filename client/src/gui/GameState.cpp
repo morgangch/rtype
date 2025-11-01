@@ -27,6 +27,7 @@
 #include "gui/AssetPaths.h"
 #include "gui/TextureCache.h"
 #include <common/systems/MovementSystem.h>
+#include <common/components/Shield.h>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -124,8 +125,10 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
     return e;
 }
 
-ECS::EntityID GameState::createRemotePlayer(const std::string &name, uint32_t serverId) {
-    std::cout << "[GameState] Creating remote player: name=" << name << " serverId=" << serverId << std::endl;
+ECS::EntityID GameState::createRemotePlayer(const std::string &name, uint32_t serverId, 
+                                            rtype::common::components::VesselType vesselType) {
+    std::cout << "[GameState] Creating remote player: name=" << name << " serverId=" << serverId 
+              << " vesselType=" << static_cast<int>(vesselType) << std::endl;
     
     // Check if we already have this player (shouldn't happen, but be safe)
     auto it = m_serverEntityMap.find(serverId);
@@ -134,16 +137,28 @@ ECS::EntityID GameState::createRemotePlayer(const std::string &name, uint32_t se
         return it->second;
     }
     
+    // Create VesselClass to get sprite sheet row
+    auto vesselClass = rtype::common::components::VesselClass(vesselType);
+    int spriteRow = vesselClass.getSpriteSheetRow();
+    
     // Create a player-like entity (non-controllable)
     ECS::EntityID e = m_world.CreateEntity();
     m_world.AddComponent<rtype::common::components::Position>(e, 100.0f, 360.0f, 0.0f);
-    m_world.AddComponent<rtype::client::components::Sprite>(e, rtype::client::assets::player::PLAYER_SPRITE, sf::Vector2f(33.0f, 17.0f), true, sf::IntRect(0,0,33,17), 3.0f);
-    m_world.AddComponent<rtype::common::components::Player>(e, name, serverId);
+    m_world.AddComponent<rtype::client::components::Sprite>(
+        e, 
+        rtype::client::assets::player::PLAYER_SPRITE, 
+        sf::Vector2f(33.0f, 17.0f), 
+        true, 
+        sf::IntRect(0, spriteRow, 33, 17),  // Use correct sprite sheet row for vessel type
+        3.0f);
+    m_world.AddComponent<rtype::common::components::Player>(e, name, serverId, vesselType);
+    m_world.AddComponent<rtype::common::components::VesselClass>(e, vesselClass);
     m_world.AddComponent<rtype::common::components::Health>(e, 3);
     m_world.AddComponent<rtype::common::components::Team>(e, rtype::common::components::TeamType::Player);
 
     m_serverEntityMap[serverId] = e;
-    std::cout << "[GameState] ✓ Created remote player entity: clientId=" << e << " serverId=" << serverId << std::endl;
+    std::cout << "[GameState] ✓ Created remote player entity: clientId=" << e << " serverId=" << serverId 
+              << " vessel=" << vesselClass.name << " spriteRow=" << spriteRow << std::endl;
     return e;
 }
 
@@ -482,6 +497,18 @@ void GameState::damagePlayer(int damage) {
         return; // Player is invulnerable
     }
     
+    // Check shield (Solar Guardian ability)
+    auto* shield = m_world.GetComponent<rtype::common::components::Shield>(m_playerEntity);
+    if (shield && shield->isActive) {
+        // Apply shield damage reduction
+        damage = shield->applyDamageReduction(damage);
+        if (damage == 0) {
+            std::cout << "[GameState] Shield blocked all damage!" << std::endl;
+            return; // Damage fully blocked
+        }
+        std::cout << "[GameState] Shield reduced damage to " << damage << std::endl;
+    }
+    
     // Apply damage
     health->currentHp -= damage;
     
@@ -547,6 +574,8 @@ void GameState::update(float deltaTime) {
     updateFireRateSystem(deltaTime);
     updateEnemyAISystem(deltaTime);
     updateChargedShotSystem(deltaTime);
+    updateHomingSystem(deltaTime);  // Update homing projectiles
+    updateShieldSystem(deltaTime);  // Update shields
     updateInvulnerabilitySystem(deltaTime);
     updateAnimationSystem(deltaTime);
     rtype::common::systems::MovementSystem::update(m_world, deltaTime); // shared movement system

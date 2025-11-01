@@ -29,7 +29,10 @@ namespace rtype::client::assets {
      * @brief Player vessel sprite paths
      */
     namespace player {
-        constexpr const char* PLAYER_SPRITE = "assets/sprites/PlayerVessel/PLAYER.gif";
+        constexpr const char* PLAYER_SPRITE = "assets/sprites/PlayerVessel/PLAYER.gif";  // Crimson Striker (default)
+        constexpr const char* PLAYER_AZURE = "assets/sprites/PlayerVessel/PLAYER_AZURE.gif";  // Azure Phantom (speed)
+        constexpr const char* PLAYER_EMERALD = "assets/sprites/PlayerVessel/PLAYER_EMERALD.gif";  // Emerald Titan (power)
+        constexpr const char* PLAYER_SOLAR = "assets/sprites/PlayerVessel/PLAYER_SOLAR.gif";  // Solar Guardian (defense)
     }
 
     /**
