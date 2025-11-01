@@ -56,7 +56,6 @@ namespace rtype::client::network::senders {
      * @param difficultyIndex 0=Easy,1=Normal,2=Hard (cosmetic for now)
      * @param friendlyFire Cosmetic toggle
      * @param aiAssist Spawn AI assistant when exactly one player
-     * @param godMode Admin HP becomes 1000
      * @param megaDamage Admin projectile damage becomes 1000
      */
     void send_lobby_settings_update(uint8_t difficultyIndex, bool friendlyFire, bool aiAssist, bool megaDamage);
