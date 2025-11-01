@@ -54,6 +54,8 @@ void room_controller::markPlayersAsInGame(ECS::EntityID room) {
     auto players_in_room = player_service::findPlayersByRoom(room);
     std::cout << "Found " << players_in_room.size() << " players in room" << std::endl;
 
+    auto *rp = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
+
     for (auto pid: players_in_room) {
         auto *lobbyState = root.world.GetComponent<rtype::server::components::LobbyState>(pid);
         if (lobbyState) {
@@ -61,7 +63,7 @@ void room_controller::markPlayersAsInGame(ECS::EntityID room) {
             std::cout << "  - Marked player " << pid << " as in-game" << std::endl;
         }
 
-        // Reset player HP to 3 lives for the game start
+        // Reset player HP for the game start
         auto *health = root.world.GetComponent<rtype::common::components::Health>(pid);
         if (health) {
             health->currentHp = 3;
@@ -82,6 +84,16 @@ void room_controller::markPlayersAsInGame(ECS::EntityID room) {
             score->comboTimer = 0.0f;
             score->highestCombo = 0;
             std::cout << "  - Reset player " << pid << " score to 0" << std::endl;
+        }
+
+        // Broadcast initial player state so clients see the correct HP immediately
+        auto *pos = root.world.GetComponent<rtype::common::components::Position>(pid);
+        if (pos && health) {
+            // Send to all players in the same room
+            for (auto recipientPid: players_in_room) {
+                network::senders::send_player_state(recipientPid, pid, pos->x, pos->y, pos->rotation,
+                                                    static_cast<uint16_t>(health->currentHp), health->isAlive);
+            }
         }
     }
 }
@@ -251,6 +263,12 @@ ECS::EntityID room_controller::createServerProjectile(ECS::EntityID room, ECS::E
         piercing = false;
     }
 
+    // Apply mega damage if the shooter is the admin and the setting is enabled
+    auto *rp = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
+    if (rp && rp->ownerId == owner && rp->megaDamageEnabled) {
+        damage = 1000;
+    }
+
     float projectileVx = projectileSpeed;
     float projectileVy = 0.0f;
 
@@ -347,10 +365,10 @@ void room_controller::handleGameStartRequest(const packet_t &packet) {
     broadcastGameStart(room);
     broadcastPlayerRoster(room);
 
-    // Spawn an AI assistant only if there is exactly 1 human player in the room
+    // Spawn an AI assistant only if there is exactly 1 human player in the room and AI assist is enabled
     {
         auto players_in_room = player_service::findPlayersByRoom(room);
-        if (players_in_room.size() == 1) {
+        if (players_in_room.size() == 1 && rp && rp->aiAssistEnabled) {
             // Create assistant entity (server-controlled, not network-connected)
             auto assistant = root.world.CreateEntity();
             // Place assistant near the left side of the screen, centered vertically
@@ -441,6 +459,48 @@ void room_controller::handlePlayerShoot(const packet_t &packet) {
               << (isCharged ? "CHARGED" : "regular") << " projectile (entity " << projectile << ") from position ("
               << playerX << ", " << playerY << ")" << std::endl;
     broadcastProjectileSpawn(projectile, player, room, isCharged);
+}
+
+void room_controller::handleLobbySettingsUpdate(const packet_t &packet) {
+    LobbySettingsUpdatePacket *p = (LobbySettingsUpdatePacket *) packet.data;
+
+    // Identify the player and room
+    ECS::EntityID player = player_service::findPlayerByNetwork(packet.header.client_addr, packet.header.client_port);
+    if (!player) {
+        std::cerr << "ERROR: Player not found for settings update" << std::endl;
+        return;
+    }
+
+    ECS::EntityID room = room_service::getRoomByPlayer(player);
+    if (!room) {
+        std::cerr << "ERROR: Player " << player << " not in a room for settings update" << std::endl;
+        return;
+    }
+
+    auto *rp = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
+    if (!rp) {
+        std::cerr << "ERROR: Room properties not found for settings update" << std::endl;
+        return;
+    }
+
+    // Only the room owner may update settings
+    if (rp->ownerId != player) {
+        std::cout << "WARNING: Non-admin player " << player << " attempted to update lobby settings in room " << room << std::endl;
+        return;
+    }
+
+    // Apply settings
+    rp->difficultyIndex = p->difficulty;
+    rp->friendlyFire = p->friendlyFire;
+    rp->aiAssistEnabled = p->aiAssist;
+    rp->megaDamageEnabled = p->megaDamage;
+
+    std::cout << "✓ Updated lobby settings for room " << room
+              << " [diff=" << static_cast<int>(rp->difficultyIndex)
+              << ", FF=" << (rp->friendlyFire ? "on" : "off")
+              << ", AI=" << (rp->aiAssistEnabled ? "on" : "off")
+              << ", MEGA=" << (rp->megaDamageEnabled ? "on" : "off")
+              << "]" << std::endl;
 }
 
 void room_controller::handleJoinRoomPacket(const packet_t &packet) {
@@ -695,7 +755,8 @@ void room_controller::registerPlayerCallbacks(PacketHandler &handler) {
     handler.registerCallback(Packets::PLAYER_READY, handlePlayerReady);
     handler.registerCallback(Packets::PLAYER_SHOOT, handlePlayerShoot);
     handler.registerCallback(Packets::SPAWN_BOSS_REQUEST, handleSpawnBossRequest);
+    handler.registerCallback(Packets::LOBBY_SETTINGS_UPDATE, handleLobbySettingsUpdate);
     std::cout <<
-            "✓ Registered player callbacks: JOIN_ROOM, GAME_START_REQUEST, PLAYER_INPUT, PLAYER_READY, PLAYER_SHOOT, SPAWN_BOSS_REQUEST"
+            "✓ Registered player callbacks: JOIN_ROOM, GAME_START_REQUEST, PLAYER_INPUT, PLAYER_READY, PLAYER_SHOOT, SPAWN_BOSS_REQUEST, LOBBY_SETTINGS_UPDATE"
             << std::endl;
 }

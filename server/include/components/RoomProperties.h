@@ -88,6 +88,12 @@ namespace rtype::server::components {
          * @brief Entity ID of the room owner (first player to create it)
          */
         ECS::EntityID ownerId = 0; // EntityID of the room owner (first player who created the room)
+
+        // Lobby settings (admin-controlled)
+        uint8_t difficultyIndex = 1;  // 0=Easy,1=Normal,2=Hard (cosmetic)
+        bool friendlyFire = false;    // cosmetic for now
+        bool aiAssistEnabled = false; // spawn AI assistant if exactly one human
+        bool megaDamageEnabled = false; // admin projectile dmg=1000
     };
 }
 

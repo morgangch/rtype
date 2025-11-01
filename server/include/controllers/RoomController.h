@@ -78,6 +78,12 @@ namespace rtype::server::controllers::room_controller {
     void handleSpawnBossRequest(const packet_t& packet);
 
     /**
+     * @brief Handle lobby settings updates from the admin client
+     * @param packet Incoming LOBBY_SETTINGS_UPDATE packet
+     */
+    void handleLobbySettingsUpdate(const packet_t& packet);
+
+    /**
      * @brief Broadcast the current lobby state to all players in a room
      * @param room Room entity ID representing the room
      *

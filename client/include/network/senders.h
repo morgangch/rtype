@@ -50,6 +50,15 @@ namespace rtype::client::network::senders {
      * Server will verify if the sender is an admin before spawning
      */
     void send_spawn_boss_request();
+
+    /**
+     * @brief Send a lobby settings update (admin-only) to the server.
+     * @param difficultyIndex 0=Easy,1=Normal,2=Hard (cosmetic for now)
+     * @param friendlyFire Cosmetic toggle
+     * @param aiAssist Spawn AI assistant when exactly one player
+     * @param megaDamage Admin projectile damage becomes 1000
+     */
+    void send_lobby_settings_update(uint8_t difficultyIndex, bool friendlyFire, bool aiAssist, bool megaDamage);
 }
 
 #endif //SENDERS_H
