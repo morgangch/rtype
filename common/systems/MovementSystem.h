@@ -361,15 +361,13 @@ namespace rtype::common::systems {
                                          components::EnemyTypeComponent& enemyType) {
             if (!vel) return;
 
-            // SERPENT: Large sinusoidal wave pattern (like real R-Type!)
-            const float HORIZONTAL_SPEED = -40.0f; // Advances slowly toward player
-            const float WAVE_AMPLITUDE = 180.0f;   // HUGE vertical amplitude (covers most of screen)
-            const float WAVE_FREQUENCY = 0.8f;     // Slower, more menacing waves
+            // SERPENT: Stays in center, only vertical wave movement!
+            const float WAVE_AMPLITUDE = 180.0f;   // HUGE vertical amplitude
+            const float WAVE_FREQUENCY = 0.8f;     // Slower, menacing waves
             
-            vel->vx = HORIZONTAL_SPEED;
+            vel->vx = 0.0f;
             
-            // Calculate smooth sine wave for vertical movement
-            float waveY = WAVE_AMPLITUDE * std::sin(enemyType.lifeTime * WAVE_FREQUENCY);
+            // Calculate smooth sine wave for vertical movement only
             vel->vy = WAVE_AMPLITUDE * WAVE_FREQUENCY * std::cos(enemyType.lifeTime * WAVE_FREQUENCY);
             
             // Keep serpent within screen bounds (100-620 for 720p screen)

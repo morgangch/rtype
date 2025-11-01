@@ -56,7 +56,7 @@ ServerEnemySystem::ServerEnemySystem()
     _levelDefinitions.push_back({
         rtype::common::components::EnemyType::Flanker,
         rtype::common::components::EnemyType::Flanker,
-        rtype::common::components::EnemyType::Serpent
+        rtype::common::components::EnemyType::Core
         //rtype::common::components::EnemyType::Basic,
         //rtype::common::components::EnemyType::Shielded,
         //rtype::common::components::EnemyType::TankDestroyer
@@ -137,35 +137,35 @@ void ServerEnemySystem::spawnBoss(ECS::World& world, ECS::EntityID room, rtype::
     float spawnX = 1280.0f - 100.0f;
     float spawnY = 360.0f; // Center Y of 720p screen
 
-    // Boss stats vary by type - make them VERY different!
+    // Boss stats vary by type
     int hp = 50;
-    float vx = -50.0f;
+    float vx = 0.0f;
     
     switch (bossType) {
         case rtype::common::components::EnemyType::TankDestroyer:
             hp = 50;
-            vx = 0.0f; // TankDestroyer stationary, only bounces vertically
+            vx = 0.0f;
             break;
             
         case rtype::common::components::EnemyType::Serpent:
-            hp = 80; // Serpent much tankier than TankDestroyer!
-            vx = -40.0f; // Serpent advances slowly in wave pattern
-            spawnY = 200.0f; // Spawn higher to show off wave movement
+            hp = 80;
+            vx = 0.0f;
+            spawnY = 360.0f;
             break;
             
         case rtype::common::components::EnemyType::Fortress:
             hp = 100;
-            vx = -15.0f; // Fortress ultra slow but extremely tanky
+            vx = 0.0f;
             break;
             
         case rtype::common::components::EnemyType::Core:
-            hp = 150; // Final boss - MASSIVE HP pool
-            vx = -30.0f;
+            hp = 150;
+            vx = 0.0f;
             break;
             
         default:
             hp = 50;
-            vx = -50.0f;
+            vx = 0.0f;
             break;
     }
 
@@ -175,14 +175,14 @@ void ServerEnemySystem::spawnBoss(ECS::World& world, ECS::EntityID room, rtype::
     world.AddComponent<rtype::common::components::Velocity>(boss, vx, 0.0f, std::abs(vx));
     world.AddComponent<rtype::common::components::Health>(boss, hp);
     world.AddComponent<rtype::common::components::Team>(boss, rtype::common::components::TeamType::Enemy);
-    world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, bossType); // Use the actual boss type!
+    world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, bossType);
     world.AddComponent<rtype::server::components::LinkedRoom>(boss, room);
 
     std::cout << "SERVER: 🔥 Spawning BOSS " << (int)bossType << " (id=" << boss << ") with " << hp << " HP in room " << room << std::endl;
 
     // Send to all players in the room with correct boss type
     rtype::server::network::senders::broadcast_enemy_spawn(room, static_cast<uint32_t>(boss),
-                                                            bossType, // Use actual boss type
+                                                            bossType,
                                                             spawnX, spawnY, hp);
 }
 
@@ -446,13 +446,6 @@ void ServerEnemySystem::spawnEnemy(ECS::World &world, ECS::EntityID room, rtype:
     root.world.AddComponent<rtype::common::components::Team>(enemy, rtype::common::components::TeamType::Enemy);
     root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(enemy, type);
     root.world.AddComponent<rtype::server::components::LinkedRoom>(enemy, room);
-
-    // SpawnEnemyPacket pkt{};
-    // pkt.enemyId = static_cast<uint32_t>(enemy);
-    // pkt.enemyType = static_cast<uint16_t>(type);
-    // pkt.x = spawnX;
-    // pkt.y = spawnY;
-    // pkt.hp = hp;
 
     rtype::server::network::senders::broadcast_enemy_spawn(room, enemy, type, spawnX, spawnY, hp);
 }

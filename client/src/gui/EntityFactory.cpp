@@ -476,8 +476,8 @@ ECS::EntityID GameState::createSerpentBoss(float x, float y) {
     auto entity = m_world.CreateEntity();
 
     m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
-    m_world.AddComponent<rtype::common::components::Velocity>(entity, -40.0f, 0.0f, 40.0f);
-    m_world.AddComponent<rtype::common::components::Health>(entity, 80); // Match server HP
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, 0.0f, 0.0f, 0.0f);
+    m_world.AddComponent<rtype::common::components::Health>(entity, 80);
 
     rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BOSS_ENEMY_2);
     m_world.AddComponent<rtype::client::components::Sprite>(
@@ -504,8 +504,8 @@ ECS::EntityID GameState::createFortressBoss(float x, float y) {
     auto entity = m_world.CreateEntity();
 
     m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
-    m_world.AddComponent<rtype::common::components::Velocity>(entity, -20.0f, 0.0f, 30.0f);
-    m_world.AddComponent<rtype::common::components::Health>(entity, 80);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, 0.0f, 0.0f, 0.0f);
+    m_world.AddComponent<rtype::common::components::Health>(entity, 100);
 
     rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BOSS_ENEMY_3);
     m_world.AddComponent<rtype::client::components::Sprite>(
@@ -533,8 +533,8 @@ ECS::EntityID GameState::createCoreBoss(float x, float y) {
     auto entity = m_world.CreateEntity();
 
     m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
-    m_world.AddComponent<rtype::common::components::Velocity>(entity, -40.0f, 0.0f, 80.0f);
-    m_world.AddComponent<rtype::common::components::Health>(entity, 100);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, 0.0f, 0.0f, 0.0f);
+    m_world.AddComponent<rtype::common::components::Health>(entity, 150);
 
     rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BOSS_ENEMY_4);
     m_world.AddComponent<rtype::client::components::Sprite>(
