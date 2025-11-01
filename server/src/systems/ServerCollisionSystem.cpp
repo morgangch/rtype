@@ -197,54 +197,48 @@ void ServerCollisionSystem::broadcastEntityDestroyToAllRooms(
     ECS::World& world,
     ECS::EntityID entityId) {
 
-    auto* roomProps = world.GetAllComponents<rtype::server::components::RoomProperties>();
-    if (!roomProps) return;
+    // Check if entity has a LinkedRoom component (projectiles, enemies)
+    auto* linkedRoom = world.GetComponent<rtype::server::components::LinkedRoom>(entityId);
+    if (linkedRoom) {
+        // Entity belongs to a specific room - only broadcast to that room
+        rtype::server::network::senders::broadcast_entity_destroy(linkedRoom->room_id, static_cast<uint32_t>(entityId), 1);
+        return;
+    }
 
-    EntityDestroyPacket pkt{};
-    pkt.entityId = static_cast<uint32_t>(entityId);
-
-    for (const auto& [roomEntity, roomPtr] : *roomProps) {
-        if (!roomPtr->isGameStarted) continue;
-
-        auto players = rtype::server::services::player_service::findPlayersByRoomCode(roomPtr->joinCode);
-
-        for (auto playerId : players) {
-            auto* lobbyState = world.GetComponent<rtype::server::components::LobbyState>(playerId);
-            if (!lobbyState || !lobbyState->isInGame) continue;
-
-            auto* pconn = world.GetComponent<rtype::server::components::PlayerConn>(playerId);
-            if (!pconn) continue;
-
-            pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), ENTITY_DESTROY, nullptr, false);
+    // For entities without LinkedRoom (like players), check if they have a PlayerConn
+    auto* pconn = world.GetComponent<rtype::server::components::PlayerConn>(entityId);
+    if (pconn && pconn->room_code != 0) {
+        // Player entity - find their room and broadcast to it
+        auto* roomProps = world.GetAllComponents<rtype::server::components::RoomProperties>();
+        if (roomProps) {
+            for (const auto& [roomEntity, roomPtr] : *roomProps) {
+                if (roomPtr->joinCode == pconn->room_code) {
+                    rtype::server::network::senders::broadcast_entity_destroy(roomEntity, static_cast<uint32_t>(entityId), 1);
+                    return;
+                }
+            }
         }
     }
+
+    // Fallback: entity doesn't belong to any specific room (shouldn't happen normally)
+    std::cerr << "WARNING: Entity " << entityId << " destroyed but has no room association" << std::endl;
 }
 
 void ServerCollisionSystem::broadcastPlayerStateImmediate(ECS::World& world, ECS::EntityID playerId) {
     auto* pos = world.GetComponent<rtype::common::components::Position>(playerId);
     auto* health = world.GetComponent<rtype::common::components::Health>(playerId);
-    auto* pconn = world.GetComponent<rtype::server::components::PlayerConn>(playerId);
+    auto* proom = world.GetComponent<rtype::server::components::LinkedRoom>(playerId);
 
-    if (!pos || !health || !pconn) return;
+    if (!pos || !health || !proom) return;
 
-    PlayerStatePacket pkt{};
-    pkt.playerId = static_cast<uint32_t>(playerId);
-    pkt.x = pos->x;
-    pkt.y = pos->y;
-    pkt.dir = pos->rotation;
-    pkt.hp = static_cast<uint16_t>(health->currentHp);
-    pkt.isAlive = health->isAlive;
-    pkt.invulnerable = health->invulnerable;
-
-    ECS::EntityID room = pconn->room_code;
     auto* allPlayers = world.GetAllComponents<rtype::common::components::Player>();
     if (!allPlayers) return;
 
     for (auto& [otherPid, playerPtr] : *allPlayers) {
-        auto* otherConn = world.GetComponent<rtype::server::components::PlayerConn>(otherPid);
-        if (!otherConn || otherConn->room_code != room) continue;
+        auto otherRoom = world.GetComponent<rtype::server::components::LinkedRoom>(otherPid);
+        if (!otherRoom || otherRoom->room_id != proom->room_id) continue;
 
-        otherConn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), PLAYER_STATE, nullptr, false);
+        network::senders::send_player_state(otherPid, playerId, pos->x, pos->y, pos->rotation, static_cast<uint16_t>(health->currentHp), health->isAlive);
     }
 }
 
