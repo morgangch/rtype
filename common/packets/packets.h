@@ -35,6 +35,7 @@ enum Packets {
     SPAWN_ENEMY = 15,
     SPAWN_BOSS_REQUEST = 16,
     PLAYER_SCORE_UPDATE = 17,
+    LOBBY_SETTINGS_UPDATE = 18,
 };
 
 
@@ -216,6 +217,23 @@ struct SpawnBossRequestPacket {
 struct PlayerScoreUpdatePacket {
     uint32_t playerId; // server entity ID for the player
     int32_t score;     // new absolute score value
+};
+
+/**
+ * Client (Admin) → Server: Update lobby settings for the room
+ * These settings are applied server-side on game start and during gameplay as appropriate.
+ * Currently used fields:
+ *  - aiAssist: whether to spawn an AI assistant when only one human player
+ *  - godMode: whether the admin should have 1000 HP
+ *  - megaDamage: whether the admin's projectiles should deal 1000 damage
+ * Cosmetic fields are included for future use:
+ *  - difficulty, friendlyFire
+ */
+struct LobbySettingsUpdatePacket {
+    uint8_t difficulty;   // 0 = Easy, 1 = Normal, 2 = Hard
+    bool friendlyFire;    // cosmetic for now
+    bool aiAssist;        // functional
+    bool megaDamage;      // functional
 };
 
 #endif //PACKETS_H

@@ -67,4 +67,20 @@ namespace rtype::client::network::senders {
         SpawnBossRequestPacket p{};
         pm.sendPacketBytesSafe(&p, sizeof(SpawnBossRequestPacket), SPAWN_BOSS_REQUEST, nullptr, true);
     }
+
+    void send_lobby_settings_update(uint8_t difficultyIndex, bool friendlyFire, bool aiAssist, bool megaDamage) {
+        LobbySettingsUpdatePacket p{};
+        p.difficulty = difficultyIndex;
+        p.friendlyFire = friendlyFire;
+        p.aiAssist = aiAssist;
+        p.megaDamage = megaDamage;
+
+        std::cout << "CLIENT: Sending LOBBY_SETTINGS_UPDATE packet: diff="
+                  << static_cast<int>(p.difficulty)
+                  << ", FF=" << (p.friendlyFire ? "on" : "off")
+                  << ", AI=" << (p.aiAssist ? "on" : "off")
+                  << ", MEGA=" << (p.megaDamage ? "on" : "off") << std::endl;
+
+        pm.sendPacketBytesSafe(&p, sizeof(LobbySettingsUpdatePacket), LOBBY_SETTINGS_UPDATE, nullptr, true);
+    }
 }

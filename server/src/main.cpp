@@ -99,6 +99,7 @@ int main() {
     root.packetHandler.registerCallback(Packets::PLAYER_INPUT, rtype::server::controllers::room_controller::handlePlayerInput);
     root.packetHandler.registerCallback(Packets::PLAYER_READY, rtype::server::controllers::room_controller::handlePlayerReady);
     root.packetHandler.registerCallback(Packets::PLAYER_SHOOT, rtype::server::controllers::room_controller::handlePlayerShoot);
+    root.packetHandler.registerCallback(Packets::LOBBY_SETTINGS_UPDATE, rtype::server::controllers::room_controller::handleLobbySettingsUpdate);
     std::cout << "✓ Registered PLAYER_READY callback (type " << static_cast<int>(Packets::PLAYER_READY) << ")" << std::endl;
 
     // Register systems
