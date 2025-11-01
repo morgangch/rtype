@@ -25,6 +25,7 @@
     #include <unistd.h>
 #endif
 
+#include "network/senders.h"
 #include "packets/packets.h"
 #include "utils/bytes_printer.h"
 
@@ -35,6 +36,10 @@ namespace rtype::client::network {
     PacketHandler ph;
     PacketManager pm;
 }
+
+// Global player info (shared with game_controller.cpp and lobby)
+std::string g_username = "Player";
+uint32_t g_playerServerId = 0;
 
 void network::loop_recv() {
     uint8_t buffer[MAX_PACKET_SIZE];
@@ -48,10 +53,7 @@ void network::loop_recv() {
 #endif
 
     if (n > 0) {
-        std::cout << "[INFO] Received UDP packet of size " << n << std::endl;
         PacketManager::deserializePacket(buffer, n, packet);
-        std::cout << "[INFO] Packet seqid: " << packet.header.seqid << ", type: " << static_cast<int>(packet.header.type) <<
-                std::endl;
 
         // For connected UDP socket, we need to create a dummy sockaddr_in for the packet manager
         struct sockaddr_in servaddr{};
@@ -88,9 +90,6 @@ void network::loop_send() {
             std::cerr << "[ERROR] Failed to send UDP packet to server: " << strerror(errno) << std::endl;
             std::cerr << "[DEBUG] bytes_sent: " << bytes_sent << ", errno: " << errno << std::endl;
 #endif
-        } else {
-            std::cout << "[INFO] Sent UDP packet of size " << serialized.size()
-                      << " bytes to server (packet type: " << static_cast<int>(packet->header.type) << ")" << std::endl;
         }
     }
 }
@@ -153,16 +152,12 @@ int network::init_udp_socket(const std::string &server_ip, int server_port) {
 
 int network::start_room_connection(const std::string &ip, int port, const std::string &player_name, uint32_t room_code) {
     init_udp_socket(ip, port);
-
-    // Build and send the JoinRoomPacket
-    JoinRoomPacket p{};
-    p.joinCode = room_code;
-
-    // Secure the player name to avoid overflow
-    strncpy(p.name, player_name.c_str(), 31);
-    p.name[31] = '\0';
-
-    pm.sendPacketBytesSafe(&p, sizeof(JoinRoomPacket), JOIN_ROOM, nullptr, true);
+    
+    // Store username globally so JOIN_ROOM_ACCEPTED handler can use it
+    g_username = player_name;
+    g_playerServerId = 0; // Reset on new connection
+    
+    senders::send_join_room_request(player_name, room_code);
     return 0;
 }
 

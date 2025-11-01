@@ -9,7 +9,10 @@
 
 #include "packets.h"
 #include "rtype.h"
-#include "../../../common/components/Player.h"
+#include <common/components/Player.h>
+
+#include "senders.h"
+#include "components/LinkedRoom.h"
 #include "components/PlayerConn.h"
 #include "components/RoomProperties.h"
 
@@ -72,24 +75,20 @@ ECS::EntityID room_service::findAvailablePublicRoom() {
 }
 
 ECS::EntityID room_service::getRoomByPlayer(ECS::EntityID player) {
-    auto *playerComp = root.world.GetComponent<server::components::PlayerConn>(player);
+    auto *room = root.world.GetComponent<server::components::LinkedRoom>(player);
 
-    if (playerComp) {
-        return playerComp->room_code;
+    if (room) {
+        return room->room_id;
     }
     return 0; // Return 0 if player not found or not in a room
 }
 
 void room_service::kickPlayer(ECS::EntityID player) {
-    auto *playerComp = root.world.GetComponent<components::PlayerConn>(player);
+    auto room = getRoomByPlayer(player);
 
-    if (playerComp) {
-        PlayerDisconnectPacket p;
-        p.playerId = player;
-        root.packetManager.sendPacketBytesSafe(&p, sizeof(PlayerDisconnectPacket), Packets::PLAYER_DISCONNECT, nullptr,
-                                               true);
-        root.world.DestroyEntity(player);
-    }
+    if (room)
+        network::senders::broadcast_player_disconnect(room, static_cast<uint32_t>(player));
+    root.world.DestroyEntity(player);
 }
 
 void room_service::closeRoom(ECS::EntityID room) {
@@ -105,4 +104,3 @@ void room_service::closeRoom(ECS::EntityID room) {
         root.world.DestroyEntity(room);
     }
 }
-

@@ -166,7 +166,7 @@ void testPacketSending(TestRunner &runner) {
 
     auto packet_data = manager.sendPacketBytesSafe(data, data_size, 1, &output_size, true);
 
-    runner.assertEqual("Send buffer size check", 1UL, manager._get_buffer_send()->size(),
+    runner.assertEqual("Send buffer size check", 1UL, manager._get_buffer_send_size(),
                        "Buffer should contain 1 packet");
     runner.assertEqual("Send sequence ID check", 1U, manager._get_send_seqid(), "Sequence ID should be 1");
 
@@ -205,7 +205,7 @@ void testPacketReception(TestRunner &runner) {
 
     std::vector<std::unique_ptr<packet_t> > mailbox = receiver.fetchReceivedPackets();
     runner.assertEqual("Received packets count", 1UL, mailbox.size(), "Should receive exactly 1 packet");
-    runner.assertEqual("Buffer cleared after fetch", 0UL, receiver._get_buffer_received()->size(),
+    runner.assertEqual("Buffer cleared after fetch", 0UL, receiver._get_buffer_received_size(),
                        "Buffer should be empty after fetch");
 
     free(data);
@@ -289,11 +289,11 @@ void testMissingPacketsAndAck(TestRunner &runner) {
                        "Should have seqid=3 after receiving packet 3");
 
     // Check missed packets list
-    const std::vector<uint32_t> *missed_packets = receiver._get_missed_packets();
-    runner.assertEqual("Missed packets count", 0UL, missed_packets->size(),
+    std::vector<uint32_t> missed_packets = receiver._get_missed_packets();
+    runner.assertEqual("Missed packets count", 0UL, missed_packets.size(),
                        "Should detect 0 missing packet (already concerted to a pending ack packet)");
-    if (!missed_packets->empty()) {
-        runner.assertEqual("Missing packet seqid", 2U, (*missed_packets)[0], "Should detect packet 2 as missing");
+    if (!missed_packets.empty()) {
+        runner.assertEqual("Missing packet seqid", 2U, missed_packets[0], "Should detect packet 2 as missing");
     }
 
     // Check that receiver generated ACK packets for missing packet
@@ -412,7 +412,7 @@ void corruptedPacketHeaderIsRejected(TestRunner &runner) {
         receiver.handlePacketBytes(corrupted_data, sizeof(corrupted_data), (sockaddr_in){});
     });
 
-    runner.assertEqual("No packets received from corrupted header", 0UL, receiver._get_buffer_received()->size(),
+    runner.assertEqual("No packets received from corrupted header", 0UL, receiver._get_buffer_received_size(),
                        "Corrupted packets should be rejected");
     runner.assertEqual("Receiver seqid unchanged after corruption", 0U, receiver._get_recv_seqid(),
                        "Seqid should remain 0");
@@ -437,7 +437,7 @@ void packetWithInvalidSizeIsRejected(TestRunner &runner) {
         });
     }
 
-    runner.assertEqual("No packets received with invalid size", 0UL, receiver._get_buffer_received()->size(),
+    runner.assertEqual("No packets received with invalid size", 0UL, receiver._get_buffer_received_size(),
                        "Invalid size packets should be rejected");
     free(data);
 }
@@ -449,7 +449,7 @@ void emptyPacketDataIsHandledCorrectly(TestRunner &runner) {
     // Use safer method to send empty packet
     auto packet_data = manager.sendPacketBytesSafe(nullptr, 0, 1, &output_size, true);
 
-    runner.assertEqual("Empty packet queued", 1UL, manager._get_buffer_send()->size(),
+    runner.assertEqual("Empty packet queued", 1UL, manager._get_buffer_send_size(),
                        "Empty packets should be allowed");
 
     std::vector<std::unique_ptr<packet_t> > packets = manager.fetchPacketsToSend();
@@ -473,7 +473,7 @@ void veryLargePacketIsHandled(TestRunner &runner) {
         auto packet_data = manager.sendPacketBytesSafe(large_data, data_size, 1, &output_size, true);
     });
 
-    runner.assertEqual("Large packet queued", 1UL, manager._get_buffer_send()->size(),
+    runner.assertEqual("Large packet queued", 1UL, manager._get_buffer_send_size(),
                        "Large packets should be handled");
 
     std::vector<std::unique_ptr<packet_t> > packets = manager.fetchPacketsToSend();
@@ -531,8 +531,8 @@ void multipleConsecutiveMissingPacketsAreDetected(TestRunner &runner) {
         receiver.handlePacketBytes(packet5.data(), packet5.size(), (sockaddr_in){});
     }
 
-    const std::vector<uint32_t> *missed_packets = receiver._get_missed_packets();
-    runner.assertEqual("Multiple consecutive missing packets detected", 0UL, missed_packets->size(),
+    std::vector<uint32_t> missed_packets = receiver._get_missed_packets();
+    runner.assertEqual("Multiple consecutive missing packets detected", 0UL, missed_packets.size(),
                        "Missing packets should be converted to ACKs");
 
     std::vector<std::unique_ptr<packet_t> > ack_packets = receiver.fetchPacketsToSend();
@@ -657,16 +657,16 @@ void packetManagerCleanupWorksCorrectly(TestRunner &runner) {
     manager.fetchPacketsToSend();
 
     runner.assertTrue("Buffers not empty before cleanup",
-                      manager._get_history_sent()->size() > 0 || manager._get_send_seqid() > 0,
+                      manager._get_history_sent().size() > 0 || manager._get_send_seqid() > 0,
                       "Manager should have some state before cleanup");
 
     manager.clean();
 
-    runner.assertEqual("Send buffer cleared", 0UL, manager._get_buffer_send()->size(),
+    runner.assertEqual("Send buffer cleared", 0UL, manager._get_buffer_send_size(),
                        "Send buffer should be empty after cleanup");
-    runner.assertEqual("Received buffer cleared", 0UL, manager._get_buffer_received()->size(),
+    runner.assertEqual("Received buffer cleared", 0UL, manager._get_buffer_received_size(),
                        "Received buffer should be empty after cleanup");
-    runner.assertEqual("History cleared", 0UL, manager._get_history_sent()->size(),
+    runner.assertEqual("History cleared", 0UL, manager._get_history_sent().size(),
                        "History should be empty after cleanup");
     runner.assertEqual("Send seqid reset", 0U, manager._get_send_seqid(), "Send seqid should be reset to 0");
     runner.assertEqual("Recv seqid reset", 0U, manager._get_recv_seqid(), "Recv seqid should be reset to 0");
@@ -680,7 +680,7 @@ void extremelySmallPacketIsHandled(TestRunner &runner) {
         receiver.handlePacketBytes(tiny_packet, sizeof(tiny_packet), (sockaddr_in){});
     });
 
-    runner.assertEqual("No packets received from tiny packet", 0UL, receiver._get_buffer_received()->size(),
+    runner.assertEqual("No packets received from tiny packet", 0UL, receiver._get_buffer_received_size(),
                        "Tiny packets should be rejected");
 }
 

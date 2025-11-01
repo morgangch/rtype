@@ -24,6 +24,8 @@
 #include "State.h"
 #include "StateManager.h"
 #include "GUIHelper.h"
+#include "ParallaxSystem.h"
+#include <memory>
 #include <SFML/Graphics.hpp>
 #include <string>
 
@@ -41,9 +43,7 @@ namespace rtype::client::gui {
      * - Controls game initiation for all players
      * 
      * **Player Role:**
-     * - Can toggle ready/not ready status
      * - Waits for admin to start the game
-     * - Sees current ready player count
      * 
      * Key features:
      * - Server code display for easy sharing
@@ -98,6 +98,14 @@ namespace rtype::client::gui {
          * Logs lobby entry and player information
          */
         void onEnter() override;
+
+        /**
+         * @brief Destroy the PrivateServerLobbyState
+         *
+         * Destructor defined in the .cpp so unique_ptr<ParallaxSystem>
+         * is destroyed where ParallaxSystem is a complete type.
+         */
+        ~PrivateServerLobbyState();
         
     private:
         // Core references and configuration
@@ -107,19 +115,27 @@ namespace rtype::client::gui {
         bool isAdmin;                   ///< Whether this player is the server administrator
         
         // UI Text Elements
-        sf::Text playersReadyText;      ///< Displays current ready player count
-        sf::Text actionButton;          ///< "Ready" for players, "Start Game" for admin
+        sf::Text playersWaitingText;    ///< "Waiting for room host" for non-admin players
+        sf::Text actionButton;          ///< Deprecated: text hidden when using sprite (admin only)
         sf::Text returnButton;          ///< "Return" button text for navigation back
         sf::Text serverCodeDisplay;     ///< Shows server code for sharing with others
         
         // UI Visual Elements
-        sf::RectangleShape actionButtonRect;  ///< Clickable area for main action button
+    sf::RectangleShape actionButtonRect;  ///< Clickable area for start game button (sprite drawn instead)
         sf::RectangleShape returnButtonRect;  ///< Clickable area for return button
-        
-        // Lobby State Management
-        bool isReady;                   ///< Current ready state of this player
-        int playersReady;               ///< Total number of players marked as ready
-        
+    // Return sprite resources (replaces text)
+    sf::Texture returnTexture;      ///< Texture for return button sprite
+    sf::Sprite returnSprite;        ///< Sprite for return button
+    bool returnSpriteLoaded{false}; ///< True if return texture loaded
+    bool returnHovered{false};      ///< Hover state for return button
+
+        // Start game (admin) button sprite resources
+        sf::Texture actionTexture;       ///< Texture for start game sprite (uses Ready.png)
+        sf::Sprite actionSprite;         ///< Sprite for start game
+        bool actionSpriteLoaded{false};  ///< True if action texture loaded
+        bool actionHovered{false};       ///< Hover state for start game
+        bool actionPressed{false};       ///< Mouse is pressed on the start button (for glow)
+                
         // UI Management Methods
         /**
          * @brief Initialize all UI elements with fonts, colors, and positioning
@@ -159,12 +175,6 @@ namespace rtype::client::gui {
         
         // Player Action Methods
         /**
-         * @brief Toggle the ready state for regular players
-         * Updates player count and button appearance
-         */
-        void toggleReady();
-        
-        /**
          * @brief Start the game (admin only)
          * Initiates game start sequence for all players in lobby
          */
@@ -172,17 +182,51 @@ namespace rtype::client::gui {
         
         // UI Update Methods
         /**
-         * @brief Update the ready player count display text
-         * Refreshes the "Amount of players ready: X" text
+         * @brief Update the waiting text display
+         * Shows "Waiting for room host" for non-admin players
          */
-        void updatePlayersReadyText();
+        void updateWaitingText();
         
         /**
-         * @brief Update the action button text and appearance
-         * Changes button text/color based on player role and ready state
+         * @brief Update the action button text and appearance (admin only)
+         * Changes button to "Start Game" for admin players
          */
         void updateActionButton();
+
+    private:
+        /**
+         * @name Parallax background (lazy-initialized)
+         *
+         * Multi-theme parallax background shown behind the lobby UI. The
+         * system is created lazily so it can be sized to the active render
+         * window. A semi-transparent black overlay (m_overlay) is drawn on
+         * top of the parallax to keep text and buttons readable.
+         *
+         * Note: the class destructor is defined out-of-line in the .cpp so
+         * the std::unique_ptr<ParallaxSystem> destructor is instantiated in a
+         * translation unit where ParallaxSystem is a complete type.
+         * @{ */
+        std::unique_ptr<ParallaxSystem> m_parallaxSystem; ///< Owned parallax system (created on demand)
+        bool m_parallaxInitialized{false};                 ///< True after creation & sizing
+        sf::RectangleShape m_overlay;                      ///< Semi-transparent overlay to improve contrast
+
+        /**
+         * @brief Ensure the parallax system exists and is sized to the provided window.
+         * @param window Render window used to size/create the parallax
+         */
+        void ensureParallaxInitialized(const sf::RenderWindow& window);
+        /** @} */
+        
+    public:
+        /**
+         * @brief Update lobby state from server broadcast
+         * @param totalPlayers Total number of players in the lobby
+         */
+        void updateFromServer(uint32_t totalPlayers);
     };
+    
+    // Global pointer to current lobby state for network callbacks
+    extern PrivateServerLobbyState* g_lobbyState;
 }
 
 #endif // CLIENT_PRIVATE_SERVER_LOBBY_STATE_HPP

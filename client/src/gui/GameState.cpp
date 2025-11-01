@@ -25,15 +25,236 @@
 #include "gui/AudioFactory.h"
 #include "gui/GUIHelper.h"
 #include "gui/AssetPaths.h"
+#include "gui/TextureCache.h"
+#include <common/systems/MovementSystem.h>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include "gui/Accessibility.h"
+
+// Global username defined in client/src/network/network.cpp
+extern std::string g_username;
 
 namespace rtype::client::gui {
 
+// Global GameState pointer definition
+GameState* g_gameState = nullptr;
+
+// Helper: create enemy from server info and store mapping
+ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float y, uint16_t hp, uint16_t enemyType) {
+    // If we already have an entity mapped, update it instead
+    auto it = m_serverEntityMap.find(serverId);
+    if (it != m_serverEntityMap.end()) {
+        ECS::EntityID existing = it->second;
+        auto* pos = m_world.GetComponent<rtype::common::components::Position>(existing);
+        if (pos) { pos->x = x; pos->y = y; }
+        auto* health = m_world.GetComponent<rtype::common::components::Health>(existing);
+        if (health) { health->currentHp = hp; }
+        return existing;
+    }
+
+    // Create a new enemy based on enemyType
+    ECS::EntityID e;
+    auto type = static_cast<rtype::common::components::EnemyType>(enemyType);
+    
+    switch (type) {
+        case rtype::common::components::EnemyType::TankDestroyer:
+            e = createTankDestroyer(x, y);
+            break;
+        case rtype::common::components::EnemyType::Shooter:
+            e = createShooterEnemy(x, y);
+            break;
+        case rtype::common::components::EnemyType::Snake:
+            e = createSnakeEnemy(x, y);
+            break;
+        case rtype::common::components::EnemyType::Suicide:
+            e = createSuicideEnemy(x, y);
+            break;
+        case rtype::common::components::EnemyType::Basic:
+        default:
+            e = createEnemy(x, y);
+            break;
+    }
+    
+    // Override HP with server value (server is authoritative)
+    auto* health = m_world.GetComponent<rtype::common::components::Health>(e);
+    if (health) {
+        health->currentHp = hp;
+        health->maxHp = hp;
+    }
+    
+    // Override position with server value
+    auto* pos = m_world.GetComponent<rtype::common::components::Position>(e);
+    if (pos) {
+        pos->x = x;
+        pos->y = y;
+    }
+
+    // Store mapping
+    m_serverEntityMap[serverId] = e;
+    return e;
+}
+
+ECS::EntityID GameState::createRemotePlayer(const std::string &name, uint32_t serverId) {
+    std::cout << "[GameState] Creating remote player: name=" << name << " serverId=" << serverId << std::endl;
+    
+    // Check if we already have this player (shouldn't happen, but be safe)
+    auto it = m_serverEntityMap.find(serverId);
+    if (it != m_serverEntityMap.end()) {
+        std::cout << "[GameState] WARNING: Remote player with serverId=" << serverId << " already exists (clientId=" << it->second << ")" << std::endl;
+        return it->second;
+    }
+    
+    // Create a player-like entity (non-controllable)
+    ECS::EntityID e = m_world.CreateEntity();
+    m_world.AddComponent<rtype::common::components::Position>(e, 100.0f, 360.0f, 0.0f);
+    m_world.AddComponent<rtype::client::components::Sprite>(e, rtype::client::assets::player::PLAYER_SPRITE, sf::Vector2f(33.0f, 17.0f), true, sf::IntRect(0,0,33,17), 3.0f);
+    m_world.AddComponent<rtype::common::components::Player>(e, name, serverId);
+    m_world.AddComponent<rtype::common::components::Health>(e, 3);
+    m_world.AddComponent<rtype::common::components::Team>(e, rtype::common::components::TeamType::Player);
+
+    m_serverEntityMap[serverId] = e;
+    std::cout << "[GameState] ✓ Created remote player entity: clientId=" << e << " serverId=" << serverId << std::endl;
+    return e;
+}
+
+ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t ownerId, float x, float y, float vx, float vy, uint16_t damage, bool piercing, bool isCharged) {
+    std::cout << "[GameState] Creating projectile from server: serverId=" << serverId << " owner=" << ownerId << " pos=(" << x << "," << y << ") vel=(" << vx << "," << vy << ") charged=" << isCharged << std::endl;
+    
+    // Check if we already have this projectile (shouldn't happen)
+    auto it = m_serverEntityMap.find(serverId);
+    if (it != m_serverEntityMap.end()) {
+        std::cout << "[GameState] WARNING: Projectile with serverId=" << serverId << " already exists" << std::endl;
+        return it->second;
+    }
+    
+    // Create projectile entity
+    auto entity = m_world.CreateEntity();
+    
+    // Position
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    
+    // Velocity
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, vx, vy, std::sqrt(vx*vx + vy*vy));
+    
+    // Sprite - Different sprite for charged vs normal (textures pre-loaded in loadHUDTextures)
+    if (isCharged) {
+        // Charged projectile sprite - PROJECTILE_4 (rose/magenta, more dense and imposing)
+        m_world.AddComponent<rtype::client::components::Sprite>(
+            entity,
+            rtype::client::assets::projectiles::PROJECTILE_4,
+            sf::Vector2f(81.0f, 17.0f),
+            true,
+            sf::IntRect(185, 17, 81, 17), // Frame 2, line 2: denser visual
+            0.6f); // Scale 0.6x (49px wide, 10px tall) - bigger than normal
+        std::cout << "[GameState]   Using CHARGED sprite (PROJECTILE_4, rect: 185,17,81,17, scale: 0.6)" << std::endl;
+    } else {
+        // Normal projectile sprite - PROJECTILE_1
+        m_world.AddComponent<rtype::client::components::Sprite>(
+            entity,
+            rtype::client::assets::projectiles::PROJECTILE_1,
+            sf::Vector2f(81.0f, 17.0f),
+            true,
+            sf::IntRect(185, 0, 81, 17),
+            0.5f);
+        std::cout << "[GameState]   Using NORMAL sprite (PROJECTILE_1, rect: 185,0,81,17, scale: 0.5)" << std::endl;
+    }
+    
+    // Team - Player team (projectiles are always player team for now)
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Player);
+    
+    // Projectile data - mark as server-owned for prediction
+    m_world.AddComponent<rtype::common::components::Projectile>(entity, damage, piercing, true /* serverOwned */);
+    
+    // Map server ID to local entity
+    m_serverEntityMap[serverId] = entity;
+    
+    std::cout << "[GameState] ✓ Created projectile entity: clientId=" << entity << " serverId=" << serverId << " damage=" << damage << " piercing=" << piercing << " serverOwned=TRUE" << std::endl;
+    return entity;
+}
+
+void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable) {
+    // Skip updates for local player (controlled by client input)
+    if (serverId == m_localPlayerServerId) {
+        return;
+    }
+
+    auto it = m_serverEntityMap.find(serverId);
+    if (it == m_serverEntityMap.end()) {
+        std::cout << "[GameState] Cannot update entity with serverId=" << serverId << " - not found in map" << std::endl;
+        return;
+    }
+    
+    ECS::EntityID e = it->second;
+    auto* pos = m_world.GetComponent<rtype::common::components::Position>(e);
+    if (pos) { pos->x = x; pos->y = y; }
+    auto* health = m_world.GetComponent<rtype::common::components::Health>(e);
+    if (health) {
+        health->currentHp = hp;
+        health->invulnerable = invulnerable;
+    }
+}
+
+void GameState::setLocalPlayerServerId(uint32_t serverId) {
+    m_localPlayerServerId = serverId;
+    std::cout << "[GameState] Local player server ID set to: " << serverId << std::endl;
+}
+
+void GameState::setIsAdmin(bool isAdmin) {
+    m_isAdmin = isAdmin;
+    std::cout << "[GameState] Player admin status set to: " << (isAdmin ? "ADMIN" : "PLAYER") << std::endl;
+}
+
+void GameState::destroyEntityByServerId(uint32_t serverId) {
+    auto it = m_serverEntityMap.find(serverId);
+    if (it == m_serverEntityMap.end()) {
+        // Entity not found - this is OK if we already destroyed it in client-side prediction
+        std::cout << "[GameState] Entity with serverId=" << serverId << " not found (already destroyed locally?)" << std::endl;
+        return;
+    }
+    ECS::EntityID e = it->second;
+    
+    // Check if entity still exists in world (might have been destroyed by client-side prediction)
+    // We can't directly check, so we'll try to get a component
+    auto* pos = m_world.GetComponent<rtype::common::components::Position>(e);
+    if (!pos) {
+        // Entity doesn't exist anymore - was already destroyed locally
+        std::cout << "[GameState] Entity clientId=" << e << " serverId=" << serverId << " already destroyed locally, cleaning up mapping" << std::endl;
+        m_serverEntityMap.erase(it);
+        return;
+    }
+    
+    std::cout << "[GameState] Destroying entity (server confirmation): clientId=" << e << " serverId=" << serverId << std::endl;
+    m_world.DestroyEntity(e);
+    m_serverEntityMap.erase(it);
+}
+
+
 GameState::GameState(StateManager& stateManager)
     : m_stateManager(stateManager), m_parallaxSystem(SCREEN_WIDTH, SCREEN_HEIGHT) {
+    // Load keybinds and settings from config file
+    m_config.load();
+    // Apply daltonism mode globally
+    rtype::client::gui::Accessibility::instance().setMode(m_config.getDaltonismMode());
+    
     setupGameOverUI();
+    // Setup HUD score text/defaults
+    m_score = 0;
+    m_scoreSaved = false;
+    m_scoreText.setFont(GUIHelper::getFont());
+    m_scoreText.setCharacterSize(24);
+    m_scoreText.setFillColor(GUIHelper::Colors::TEXT);
+    // set global pointer so network handlers can access the active GameState
+    g_gameState = this;
+}
+
+GameState::~GameState() {
+    if (g_gameState == this) g_gameState = nullptr;
+}
+
+int GameState::getLevelIndex() const {
+    return m_levelIndex;
 }
 
 void GameState::loadHUDTextures() {
@@ -62,6 +283,10 @@ void GameState::loadHUDTextures() {
     m_emptyHeartSprite.setTexture(m_heartTexture);
     m_emptyHeartSprite.setTextureRect(sf::IntRect(startX + frameWidth * 8, startY, frameWidth * 4, frameHeight * 2));
     m_emptyHeartSprite.setScale(0.08f, 0.08f);  // Scale down (992*0.08 = 79px, 432*0.08 = 35px)
+
+    // Pre-load projectile textures to avoid loading in hot path (entity creation)
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_1);
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_4);
 
     m_texturesLoaded = true;
 }
@@ -157,6 +382,15 @@ void GameState::showInGameMenu(bool isGameOver) {
         } else {
             std::cerr << "GameState: could not load game over music: " << gameOverMusic << std::endl;
         }
+        // Persist highscore once when game over triggers
+        if (!m_scoreSaved) {
+            HighscoreManager mgr;
+            mgr.load();
+            HighscoreEntry e{::g_username, 1, m_score, 0};
+            mgr.add(e);
+            mgr.save();
+            m_scoreSaved = true;
+        }
     } else {
         // Pause background music while paused
         m_musicManager.setMuted(true);
@@ -184,13 +418,14 @@ void GameState::resetGame() {
     // Create player entity
     m_playerEntity = createPlayer();
     
-    // Reset timers
-    m_enemySpawnTimer = 0.0f;
-    m_bossSpawnTimer = 0.0f;
-    
     // Reset flags
     m_isGameOver = false;
     m_gameStatus = GameStatus::Playing;
+    m_score = 0;
+    m_scoreSaved = false;
+
+    // Clear boss music/flag so a prior boss state doesn't trigger level advance
+    m_bossMusicActive = false;
 
     // Ensure level background music is playing after a reset
     loadLevelMusic();
@@ -255,7 +490,7 @@ bool GameState::isBossActive() {
     if (!enemyTypes) return false;
     
     for (auto& [entity, enemyTypePtr] : *enemyTypes) {
-        if (enemyTypePtr->type == rtype::common::components::EnemyType::Boss) {
+        if (enemyTypePtr->type == rtype::common::components::EnemyType::TankDestroyer) {
             // Check if the boss is still alive (has Health component with HP > 0)
             auto* health = m_world.GetComponent<rtype::common::components::Health>(entity);
             if (health && health->currentHp > 0) {
@@ -281,21 +516,20 @@ void GameState::update(float deltaTime) {
     // Run ECS systems in order
     updateInputSystem(deltaTime);
     updateFireRateSystem(deltaTime);
+    updateEnemyAISystem(deltaTime);
     updateChargedShotSystem(deltaTime);
     updateInvulnerabilitySystem(deltaTime);
     updateAnimationSystem(deltaTime);
-    updateMovementSystem(deltaTime);
-    updateEnemySpawnSystem(deltaTime);
-    updateEnemyAISystem(deltaTime);
-    updateCleanupSystem(deltaTime);
+    rtype::common::systems::MovementSystem::update(m_world, deltaTime); // shared movement system
     updateCollisionSystem();
+    updateCleanupSystem(deltaTime);
 }
 
 void GameState::updateBossMusicState() {
     bool bossAlive = isBossActive();
     if (bossAlive && !m_bossMusicActive) {
         // Start boss music
-        const std::string bossMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::BossFight);
+        const std::string bossMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::BossFight1);
         if (m_musicManager.loadFromFile(bossMusic)) {
             m_musicManager.setVolume(35.0f);
             m_musicManager.play(true);
@@ -304,14 +538,46 @@ void GameState::updateBossMusicState() {
             std::cerr << "GameState: could not load boss music: " << bossMusic << std::endl;
         }
     } else if (!bossAlive && m_bossMusicActive) {
-        // Boss died: restore level music
-        loadLevelMusic();
+        // Boss died: advance level (plays test music and swaps background)
+        advanceLevel();
         m_bossMusicActive = false;
     }
 }
 
+void GameState::advanceLevel() {
+    m_levelIndex += 1;
+    std::cout << "[GameState] Advancing to level index: " << m_levelIndex << std::endl;
+
+    // If we've exceeded the final level (3), return to main menu
+    if (m_levelIndex >= 3) {
+        std::cout << "[GameState] Final level cleared. Returning to main menu." << std::endl;
+        m_musicManager.stop();
+        // Persist last level index for menu parallax
+        m_stateManager.setLastLevelIndex(m_levelIndex);
+        m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
+        return;
+    }
+
+    // Use music from level 2 after defeating the boss of the level 1
+    const std::string level2Music = AudioFactory::getMusicPath(AudioFactory::MusicId::Level2);
+    if (m_musicManager.loadFromFile(level2Music)) {
+        m_musicManager.setVolume(40.0f);
+        m_musicManager.play(true);
+    } else {
+        std::cerr << "GameState: could not load level 2 music: " << level2Music << std::endl;
+    }
+
+    // Transition parallax to hallway theme for level 2
+    m_parallaxSystem.transitionToTheme(ParallaxSystem::Theme::HallwayLevel2, 1.0f);
+}
+
 void GameState::loadLevelMusic() {
-    const std::string levelMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::Level);
+    // Choose music based on current level index so resets keep the correct track
+    AudioFactory::MusicId id = AudioFactory::MusicId::Level1;
+    if (m_levelIndex == 1) id = AudioFactory::MusicId::Level2;
+    else if (m_levelIndex == 2) id = AudioFactory::MusicId::Level3;
+
+    const std::string levelMusic = AudioFactory::getMusicPath(id);
     if (m_musicManager.loadFromFile(levelMusic)) {
         m_musicManager.setVolume(30.0f);
         m_musicManager.play(true);
@@ -321,8 +587,14 @@ void GameState::loadLevelMusic() {
 }
 
 void GameState::render(sf::RenderWindow& window) {
-    // Render parallax background
-    m_parallaxSystem.render(window);
+    // Render parallax background or a temporary white background when forced
+    if (m_forceWhiteBackground) {
+        sf::RectangleShape bg(sf::Vector2f(SCREEN_WIDTH, SCREEN_HEIGHT));
+        bg.setFillColor(sf::Color::White);
+        window.draw(bg);
+    } else {
+        m_parallaxSystem.render(window);
+    }
     
     // Render all entities
     renderEntities(window);
@@ -334,6 +606,28 @@ void GameState::render(sf::RenderWindow& window) {
     if (m_gameStatus == GameStatus::InGameMenu) {
         renderGameOverMenu(window);
     }
+
+    // Apply colorblind post-process over the whole frame
+    if (Accessibility::instance().isEnabled()) {
+        static sf::Texture screenTexture;
+        sf::Vector2u size = window.getSize();
+        if (screenTexture.getSize() != size) {
+            screenTexture.create(size.x, size.y);
+        }
+        screenTexture.update(window);
+        sf::Sprite screenSprite(screenTexture);
+        if (auto* shader = Accessibility::instance().getShader()) {
+            sf::RenderStates states;
+            states.shader = shader;
+            window.draw(screenSprite, states);
+        }
+    }
+}
+
+void GameState::setScoreFromServer(int newScore) {
+    m_score = newScore;
+    // m_scoreText string is updated during renderHUD, but we can pre-update for immediate reads
+    m_scoreText.setString("score " + std::to_string(m_score));
 }
 
 } // namespace rtype::client::gui

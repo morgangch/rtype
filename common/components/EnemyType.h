@@ -19,9 +19,20 @@ namespace rtype::common::components {
      * @brief Different types of enemies with varying behaviors
      */
     enum class EnemyType {
+        // Basic enemy
         Basic,      ///< Basic enemy - moves left, shoots straight
-        Shooter,    ///< Shooter enemy - moves left and shoots at player
-        Boss        ///< Boss enemy - high HP, shoots in spread pattern
+        Snake,     ///< Snake enemy - moves in a sine wave pattern
+        Suicide,    ///< Suicide enemy - moves towards player and explodes on contact or death
+        Turret,     ///< Turret enemy - stays in place and shoots at player
+
+        // Advanced enemies
+        // to do add 3 advanced enemies
+        Shooter,    ///< shooter enemy - moves left and shoots at player
+        Shielded,    ///< shielded enemy - protected by a shield; only damaged by charged shots
+
+        // Boss enemies
+        // to do add 3 boss enemies
+        TankDestroyer,        ///< Tank destroyer boss - heavily armored, fires spread projectiles
     };
     
     /**
@@ -30,8 +41,9 @@ namespace rtype::common::components {
      */
     struct EnemyTypeComponent {
         EnemyType type;
-        
-        EnemyTypeComponent(EnemyType t = EnemyType::Basic) : type(t) {}
+        float lifeTime; ///< Time since spawn (for movement patterns)
+
+        EnemyTypeComponent(EnemyType t = EnemyType::Basic) : type(t), lifeTime(0.0f) {}
     };
     
 } // namespace rtype::common::components
