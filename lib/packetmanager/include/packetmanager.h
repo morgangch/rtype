@@ -227,6 +227,22 @@ public:
      */
     [[nodiscard]] size_t _get_buffer_received_size() const;
 
+    /**
+     * @brief Enable or disable compression for packet data (Thread-Safe)
+     *
+     * When enabled, all packet payloads will be compressed using zlib
+     * before transmission and decompressed upon reception.
+     *
+     * @param enable True to enable compression, false to disable
+     */
+    void setCompressionEnabled(bool enable);
+
+    /**
+     * @brief Check if compression is currently enabled (Thread-Safe)
+     * @return true if compression is enabled, false otherwise
+     */
+    [[nodiscard]] bool isCompressionEnabled() const;
+
 private:
     /**
      * @brief Current sequence ID for outgoing packets
@@ -269,6 +285,11 @@ private:
     mutable std::mutex _mutex;
 
     /**
+     * @brief Flag to enable/disable compression
+     */
+    bool _compression_enabled = true;
+
+    /**
      * @brief Resends a packet with the specified sequence ID (Internal, assumes lock held)
      *
      * Looks up a packet in the transmission history and queues it
@@ -289,8 +310,23 @@ private:
      */
     void _handlePacket(std::unique_ptr<packet_t> packet);
 
-    std::vector<unsigned char> compress_data(const void* data, size_t size);
-    std::vector<unsigned char> decompress_data(const void* data, size_t compressed_size, size_t original_size);
+    /**
+     * @brief Compress data using zlib
+     * @param data Pointer to data to compress
+     * @param size Size of data to compress
+     * @return Compressed data as vector
+     */
+    static std::vector<unsigned char> compress_data(const void* data, size_t size);
+
+    /**
+     * @brief Decompress data using zlib
+     * @param data Pointer to compressed data
+     * @param compressed_size Size of compressed data
+     * @param original_size Expected size after decompression
+     * @return Decompressed data as vector
+     */
+    static std::vector<unsigned char> decompress_data(const void* data, size_t compressed_size, size_t original_size);
+
 
 };
 
