@@ -29,15 +29,21 @@
 #include <common/components/EnemyType.h>
 
 enum class EnemySpawnPhase {
-    OnlyBasic,
-    BasicAndAdvanced,
-    BossAndAll
+    OnlyBasic,          // 0-60s: Basic enemies only
+    BasicAndAdvanced,   // 60-180s: Basic + Advanced enemies
+    BossPhase           // 180s+: Boss + Basic + Advanced enemies
 };
 
 struct EnemySpawnConfig {
     rtype::common::components::EnemyType type;
     float interval; // seconds between spawns
     float timer;    // current timer for this type
+};
+
+struct LevelDefinition {
+    rtype::common::components::EnemyType basicEnemy;
+    rtype::common::components::EnemyType advancedEnemy;
+    rtype::common::components::EnemyType bossEnemy;
 };
 
 
@@ -80,10 +86,12 @@ public:
     void spawnBoss(ECS::World& world, ECS::EntityID room, rtype::common::components::EnemyType bossType);
 
 private:
-    float _levelTimer; ///< Total time since game start
+    float _levelTimer; ///< Timer for current level (resets each level)
+    int _currentLevel; ///< Current level index (0-3 for 4 sub-levels)
     EnemySpawnPhase _phase; ///< Current enemy spawn phase
-    bool _bossSpawned; ///< Whether a boss is currently spawned
+    bool _bossSpawned; ///< Whether a boss is currently spawned for this level
 
+    std::vector<LevelDefinition> _levelDefinitions; ///< Enemy definitions for each level
     std::map<rtype::common::components::EnemyType, EnemySpawnConfig> _enemyConfigs; ///< Enemy spawn configs
 
     float _stateTick; ///< Timer for player state broadcast
@@ -95,6 +103,7 @@ private:
     void updateBossSpawning(ECS::World& world, float deltaTime);
     void updatePlayerStateBroadcast(ECS::World& world, float deltaTime);
     void cleanupDeadEntities(ECS::World& world);
+    void checkBossDeathAndAdvanceLevel(ECS::World& world);
 };
 
 #endif // SERVER_ENEMY_SYSTEM_H

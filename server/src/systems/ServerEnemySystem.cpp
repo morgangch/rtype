@@ -23,34 +23,105 @@
 #include "components/LinkedRoom.h"
 
 void ServerEnemySystem::Update(ECS::World &world, float deltaTime) {
-    updatePhase(deltaTime);
-    updateEnemySpawning(world, deltaTime);
-    updateBossSpawning(world, deltaTime);
+    // Only update spawn systems if there's at least one active game room
+    auto *rooms = world.GetAllComponents<rtype::server::components::RoomProperties>();
+    bool hasActiveGame = false;
+    if (rooms) {
+        for (auto &pair : *rooms) {
+            if (pair.second && pair.second->isGameStarted) {
+                hasActiveGame = true;
+                break;
+            }
+        }
+    }
+
+    // Only run enemy spawning logic if game is active
+    if (hasActiveGame) {
+        updatePhase(deltaTime);
+        updateEnemySpawning(world, deltaTime);
+        updateBossSpawning(world, deltaTime);
+        checkBossDeathAndAdvanceLevel(world);
+    }
+
+    // Always update player state broadcast (needed even in lobby)
     updatePlayerStateBroadcast(world, deltaTime);
     cleanupDeadEntities(world);
 }
 
 ServerEnemySystem::ServerEnemySystem()
-    : ECS::System("ServerEnemySystem", 5), _levelTimer(0.0f), _phase(EnemySpawnPhase::OnlyBasic), _bossSpawned(false), _stateTick(0.0f)
+    : ECS::System("ServerEnemySystem", 5), _levelTimer(0.0f), _currentLevel(0), _phase(EnemySpawnPhase::OnlyBasic), _bossSpawned(false), _stateTick(0.0f)
 {
-    // Example: configure spawn intervals for each type
+    // Define the 4 sub-levels
+    // Level 0: Basic + Shielded + TankDestroyer
+    _levelDefinitions.push_back({
+        rtype::common::components::EnemyType::Basic,
+        rtype::common::components::EnemyType::Shielded,
+        rtype::common::components::EnemyType::TankDestroyer
+    });
+
+    // Level 1: Snake + Flanker + Serpent
+    _levelDefinitions.push_back({
+        rtype::common::components::EnemyType::Snake,
+        rtype::common::components::EnemyType::Flanker,
+        rtype::common::components::EnemyType::Serpent
+    });
+
+    // Level 2: Suicide + Bomber + Fortress
+    _levelDefinitions.push_back({
+        rtype::common::components::EnemyType::Suicide,
+        rtype::common::components::EnemyType::Bomber,
+        rtype::common::components::EnemyType::Fortress
+    });
+
+    // Level 3: Pata + Waver + Core (FINAL BOSS)
+    _levelDefinitions.push_back({
+        rtype::common::components::EnemyType::Pata,
+        rtype::common::components::EnemyType::Waver,
+        rtype::common::components::EnemyType::Core
+    });
+
+    // Configure spawn intervals for all enemy types
+    // Basic enemies
     _enemyConfigs[rtype::common::components::EnemyType::Basic] = {rtype::common::components::EnemyType::Basic, 2.0f, 0.0f};
-    _enemyConfigs[rtype::common::components::EnemyType::Snake] = {rtype::common::components::EnemyType::Snake, 2.0f, 0.0f};
+    _enemyConfigs[rtype::common::components::EnemyType::Snake] = {rtype::common::components::EnemyType::Snake, 2.5f, 0.0f};
     _enemyConfigs[rtype::common::components::EnemyType::Suicide] = {rtype::common::components::EnemyType::Suicide, 3.0f, 0.0f};
-    _enemyConfigs[rtype::common::components::EnemyType::Turret] = {rtype::common::components::EnemyType::Turret, 4.0f, 0.0f};
-    _enemyConfigs[rtype::common::components::EnemyType::Shooter] = {rtype::common::components::EnemyType::Shooter, 4.0f, 0.0f};
-    // Add more types as needed
+    _enemyConfigs[rtype::common::components::EnemyType::Pata] = {rtype::common::components::EnemyType::Pata, 3.5f, 0.0f};
+
+    // Advanced enemies
+    _enemyConfigs[rtype::common::components::EnemyType::Shielded] = {rtype::common::components::EnemyType::Shielded, 5.0f, 0.0f};
+    _enemyConfigs[rtype::common::components::EnemyType::Flanker] = {rtype::common::components::EnemyType::Flanker, 4.5f, 0.0f};
+    _enemyConfigs[rtype::common::components::EnemyType::Bomber] = {rtype::common::components::EnemyType::Bomber, 6.0f, 0.0f};
+    _enemyConfigs[rtype::common::components::EnemyType::Waver] = {rtype::common::components::EnemyType::Waver, 4.0f, 0.0f};
 }
 
 void ServerEnemySystem::updatePhase(float deltaTime)
 {
     _levelTimer += deltaTime;
+
+    // Each level follows the same 3-minute pattern:
+    // 0-60s: Only basic enemies
+    // 60-180s: Basic + Advanced enemies
+    // 180s+: Boss spawns (+ basic + advanced continue)
+
+    EnemySpawnPhase previousPhase = _phase;
+
     if (_levelTimer < 60.0f) {
         _phase = EnemySpawnPhase::OnlyBasic;
     } else if (_levelTimer < 180.0f) {
         _phase = EnemySpawnPhase::BasicAndAdvanced;
     } else {
-        _phase = EnemySpawnPhase::BossAndAll;
+        _phase = EnemySpawnPhase::BossPhase;
+    }
+
+    // Only print when phase changes
+    if (_phase != previousPhase) {
+        std::cout << "[ServerEnemySystem] Level " << _currentLevel << " - Phase changed to: ";
+        switch (_phase) {
+            case EnemySpawnPhase::OnlyBasic: std::cout << "Basic Only"; break;
+            case EnemySpawnPhase::BasicAndAdvanced: std::cout << "Basic + Advanced"; break;
+            case EnemySpawnPhase::BossPhase: std::cout << "Boss Phase"; break;
+        }
+        std::cout << " (Timer: " << _levelTimer << "s)" << std::endl;
     }
 }
 
@@ -82,25 +153,35 @@ void ServerEnemySystem::spawnBoss(ECS::World& world, ECS::EntityID room, rtype::
 }
 
 void ServerEnemySystem::updateBossSpawning(ECS::World& world, float deltaTime) {
-    // Only spawn boss if phase is BossAndAll and not already spawned
-    if (_phase != EnemySpawnPhase::BossAndAll || _bossSpawned)
+    // Only spawn boss if we're in BossPhase and boss hasn't spawned yet for this level
+    if (_phase != EnemySpawnPhase::BossPhase || _bossSpawned)
         return;
+
+    // Check we have a valid level definition
+    if (_currentLevel >= (int)_levelDefinitions.size()) {
+        std::cout << "[ServerEnemySystem] WARNING: No level definition for level " << _currentLevel << std::endl;
+        return;
+    }
 
     auto *rooms = root.world.GetAllComponents<rtype::server::components::RoomProperties>();
     if (!rooms) return;
+
     for (auto &pair : *rooms) {
         ECS::EntityID room = pair.first;
         if (!pair.second) continue;
         auto *rp = pair.second.get();
         if (!rp || !rp->isGameStarted) continue;
 
-        // Check if a boss already exists in this room
+        // Get the boss type for the current level
+        rtype::common::components::EnemyType currentBossType = _levelDefinitions[_currentLevel].bossEnemy;
+
+        // Check if this specific boss already exists in this room
         bool bossExists = false;
         auto* enemyTypes = root.world.GetAllComponents<rtype::common::components::EnemyTypeComponent>();
         if (enemyTypes) {
             for (auto& etPair : *enemyTypes) {
                 auto* et = etPair.second.get();
-                if (et && et->type == rtype::common::components::EnemyType::TankDestroyer) {
+                if (et && et->type == currentBossType) {
                     auto* health = root.world.GetComponent<rtype::common::components::Health>(etPair.first);
                     if (health && health->isAlive && health->currentHp > 0) {
                         bossExists = true;
@@ -109,8 +190,11 @@ void ServerEnemySystem::updateBossSpawning(ECS::World& world, float deltaTime) {
                 }
             }
         }
+
         if (!bossExists) {
-            spawnBoss(world, room, rtype::common::components::EnemyType::TankDestroyer);
+            std::cout << "[ServerEnemySystem] Spawning boss for level " << _currentLevel
+                      << " (type " << (int)currentBossType << ")" << std::endl;
+            spawnBoss(world, room, currentBossType);
             _bossSpawned = true;
         }
     }
@@ -121,6 +205,16 @@ void ServerEnemySystem::updateBossSpawning(ECS::World& world, float deltaTime) {
 // ============================================================================
 
 void ServerEnemySystem::updateEnemySpawning(ECS::World& world, float deltaTime) {
+    // Check we have a valid level definition
+    if (_currentLevel >= (int)_levelDefinitions.size()) {
+        return;
+    }
+
+    // Get current level's enemy types
+    const LevelDefinition& currentLevelDef = _levelDefinitions[_currentLevel];
+    rtype::common::components::EnemyType basicType = currentLevelDef.basicEnemy;
+    rtype::common::components::EnemyType advancedType = currentLevelDef.advancedEnemy;
+
     // For each enemy type in config, check timer and spawn if needed
     for (auto& [type, config] : _enemyConfigs) {
         config.timer += deltaTime;
@@ -128,25 +222,25 @@ void ServerEnemySystem::updateEnemySpawning(ECS::World& world, float deltaTime) 
             continue;
         config.timer = 0.0f;
 
-        // Only spawn types allowed in current phase
+        // Determine if this enemy type should spawn based on current phase and level
         bool spawnAllowed = false;
         switch (_phase) {
             case EnemySpawnPhase::OnlyBasic:
-                // TO DO: change basic enemy type
-                spawnAllowed = (type == rtype::common::components::EnemyType::Basic);
-                //spawnAllowed = (type == rtype::common::components::EnemyType::Snake);
-                //spawnAllowed = (type == rtype::common::components::EnemyType::Suicide);
-                //spawnAllowed = (type == rtype::common::components::EnemyType::Turret);
+                // Only spawn basic enemy for current level
+                spawnAllowed = (type == basicType);
                 break;
+
             case EnemySpawnPhase::BasicAndAdvanced:
-                // TO DO: change advanced enemy type
-                spawnAllowed = (type == rtype::common::components::EnemyType::Basic || type == rtype::common::components::EnemyType::Shooter);
+                // Spawn both basic and advanced for current level
+                spawnAllowed = (type == basicType || type == advancedType);
                 break;
-            case EnemySpawnPhase::BossAndAll:
-                // TO DO: change boss type
-                spawnAllowed = (type != rtype::common::components::EnemyType::TankDestroyer);
+
+            case EnemySpawnPhase::BossPhase:
+                // Continue spawning basic and advanced during boss fight
+                spawnAllowed = (type == basicType || type == advancedType);
                 break;
         }
+
         if (!spawnAllowed) continue;
 
         // For each room that has started the game, spawn enemy of this type
@@ -264,31 +358,50 @@ void ServerEnemySystem::spawnEnemy(ECS::World &world, ECS::EntityID room, rtype:
     int hp = 1;
     float vx = -100.0f;
     switch (type) {
+        // Basic enemies
         case rtype::common::components::EnemyType::Basic:
-            // TO DO: set stats for Basic
             hp = 1; vx = -100.0f;
             break;
         case rtype::common::components::EnemyType::Snake:
-            // TO DO: set stats for Snake
-            hp = 2; vx = -110.0f;
+            hp = 2; vx = -120.0f;
             break;
         case rtype::common::components::EnemyType::Suicide:
-            // TO DO: set stats for Suicide
-            hp = 1; vx = -130.0f;
+            hp = 1; vx = -150.0f;
             break;
-        case rtype::common::components::EnemyType::Turret:
-            // TO DO: set stats for Turret
-            hp = 3; vx = -80.0f;
+        case rtype::common::components::EnemyType::Pata:
+            hp = 2; vx = -100.0f;
             break;
-        case rtype::common::components::EnemyType::Shooter:
-            // TO DO: set stats for Shooter
-            hp = 3; vx = -120.0f;
+
+        // Advanced enemies
+        case rtype::common::components::EnemyType::Shielded:
+            hp = 4; vx = -90.0f;
             break;
+        case rtype::common::components::EnemyType::Flanker:
+            hp = 3; vx = -90.0f;
+            break;
+        case rtype::common::components::EnemyType::Bomber:
+            hp = 3; vx = -70.0f;
+            break;
+        case rtype::common::components::EnemyType::Waver:
+            hp = 4; vx = -110.0f;
+            break;
+
+        // Boss enemies
         case rtype::common::components::EnemyType::TankDestroyer:
-            hp = 50; vx = -50.0f;
+            hp = 50; vx = 0.0f;
             break;
+        case rtype::common::components::EnemyType::Serpent:
+            hp = 60; vx = -60.0f;
+            break;
+        case rtype::common::components::EnemyType::Fortress:
+            hp = 80; vx = -20.0f;
+            break;
+        case rtype::common::components::EnemyType::Core:
+            hp = 100; vx = -40.0f;
+            break;
+
         default:
-            // TO DO: add new types here
+            hp = 1; vx = -100.0f;
             break;
     }
 
@@ -308,4 +421,68 @@ void ServerEnemySystem::spawnEnemy(ECS::World &world, ECS::EntityID room, rtype:
     // pkt.hp = hp;
 
     rtype::server::network::senders::broadcast_enemy_spawn(room, enemy, type, spawnX, spawnY, hp);
+}
+
+// ============================================================================
+// PRIVATE METHODS - Level Progression
+// ============================================================================
+
+void ServerEnemySystem::checkBossDeathAndAdvanceLevel(ECS::World& world) {
+    // Only check if we're in boss phase and boss was spawned
+    if (_phase != EnemySpawnPhase::BossPhase || !_bossSpawned) {
+        return;
+    }
+
+    // Check we have a valid level definition
+    if (_currentLevel >= (int)_levelDefinitions.size()) {
+        return;
+    }
+
+    // Check if the current level's boss is still alive
+    rtype::common::components::EnemyType currentBossType = _levelDefinitions[_currentLevel].bossEnemy;
+    bool bossStillAlive = false;
+
+    auto* enemyTypes = world.GetAllComponents<rtype::common::components::EnemyTypeComponent>();
+    if (enemyTypes) {
+        for (auto& etPair : *enemyTypes) {
+            auto* et = etPair.second.get();
+            if (et && et->type == currentBossType) {
+                auto* health = world.GetComponent<rtype::common::components::Health>(etPair.first);
+                if (health && health->isAlive && health->currentHp > 0) {
+                    bossStillAlive = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    // If boss is dead, advance to next level
+    if (!bossStillAlive) {
+        _currentLevel++;
+        std::cout << "[ServerEnemySystem] ========================================" << std::endl;
+        std::cout << "[ServerEnemySystem] Boss defeated! Advancing to level " << _currentLevel << std::endl;
+        std::cout << "[ServerEnemySystem] ========================================" << std::endl;
+
+        // Check if we've completed all 4 levels (game finished)
+        if (_currentLevel >= (int)_levelDefinitions.size()) {
+            std::cout << "[ServerEnemySystem] ALL LEVELS COMPLETED! Game finished!" << std::endl;
+            // TODO: Trigger game victory/end state
+            return;
+        }
+
+        // Reset for new level
+        _levelTimer = 0.0f;
+        _phase = EnemySpawnPhase::OnlyBasic;
+        _bossSpawned = false;
+
+        // Reset enemy spawn timers
+        for (auto& [type, config] : _enemyConfigs) {
+            config.timer = 0.0f;
+        }
+
+        std::cout << "[ServerEnemySystem] New level started: Level " << _currentLevel << std::endl;
+        std::cout << "[ServerEnemySystem] - Basic: " << (int)_levelDefinitions[_currentLevel].basicEnemy << std::endl;
+        std::cout << "[ServerEnemySystem] - Advanced: " << (int)_levelDefinitions[_currentLevel].advancedEnemy << std::endl;
+        std::cout << "[ServerEnemySystem] - Boss: " << (int)_levelDefinitions[_currentLevel].bossEnemy << std::endl;
+    }
 }

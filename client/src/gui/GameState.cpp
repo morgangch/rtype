@@ -56,13 +56,11 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
     // Create a new enemy based on enemyType
     ECS::EntityID e;
     auto type = static_cast<rtype::common::components::EnemyType>(enemyType);
-    
+
     switch (type) {
-        case rtype::common::components::EnemyType::TankDestroyer:
-            e = createTankDestroyer(x, y);
-            break;
-        case rtype::common::components::EnemyType::Shooter:
-            e = createShooterEnemy(x, y);
+        // Basic enemies
+        case rtype::common::components::EnemyType::Basic:
+            e = createEnemy(x, y);
             break;
         case rtype::common::components::EnemyType::Snake:
             e = createSnakeEnemy(x, y);
@@ -70,7 +68,38 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
         case rtype::common::components::EnemyType::Suicide:
             e = createSuicideEnemy(x, y);
             break;
-        case rtype::common::components::EnemyType::Basic:
+        case rtype::common::components::EnemyType::Pata:
+            e = createPataEnemy(x, y);
+            break;
+
+        // Advanced enemies
+        case rtype::common::components::EnemyType::Shielded:
+            e = createShieldedEnemy(x, y);
+            break;
+        case rtype::common::components::EnemyType::Flanker:
+            e = createFlankerEnemy(x, y);
+            break;
+        case rtype::common::components::EnemyType::Bomber:
+            e = createBomberEnemy(x, y);
+            break;
+        case rtype::common::components::EnemyType::Waver:
+            e = createWaverEnemy(x, y);
+            break;
+
+        // Boss enemies
+        case rtype::common::components::EnemyType::TankDestroyer:
+            e = createTankDestroyer(x, y);
+            break;
+        case rtype::common::components::EnemyType::Serpent:
+            e = createSerpentBoss(x, y);
+            break;
+        case rtype::common::components::EnemyType::Fortress:
+            e = createFortressBoss(x, y);
+            break;
+        case rtype::common::components::EnemyType::Core:
+            e = createCoreBoss(x, y);
+            break;
+
         default:
             e = createEnemy(x, y);
             break;

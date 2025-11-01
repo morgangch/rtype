@@ -334,16 +334,6 @@ namespace rtype::client::gui {
         ECS::EntityID createSnakeEnemy(float x, float y);
 
         /**
-         * @brief Create a shooter enemy entity
-         * @param x X position
-         * @param y Y position
-         * @return Entity ID of the created shooter enemy
-         *
-         * Creates a shooter-type enemy with 3 HP that fires projectiles at regular intervals.
-         */
-        ECS::EntityID createShooterEnemy(float x, float y);
-
-        /**
          * @brief Create a suicide enemy entity
          * @param x X position
          * @param y Y position
@@ -360,6 +350,86 @@ namespace rtype::client::gui {
          * Creates a large boss entity with high HP (30) and alternating movement pattern.
          */
         ECS::EntityID createTankDestroyer(float x, float y);
+
+        /**
+         * @brief Create a Pata enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Pata enemy
+         *
+         * Creates a Pata-type enemy with moderate HP and unique movement pattern.
+         */
+        ECS::EntityID createPataEnemy(float x, float y);
+
+        /**
+         * @brief Create a Shielded enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Shielded enemy
+         *
+         * Creates a Shielded enemy with protective shield mechanics and higher durability.
+         */
+        ECS::EntityID createShieldedEnemy(float x, float y);
+
+        /**
+         * @brief Create a Flanker enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Flanker enemy
+         *
+         * Creates a Flanker enemy that attempts to outmaneuver the player with agile movement.
+         */
+        ECS::EntityID createFlankerEnemy(float x, float y);
+
+        /**
+         * @brief Create a Bomber enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Bomber enemy
+         *
+         * Creates a Bomber enemy that drops explosive projectiles with area damage.
+         */
+        ECS::EntityID createBomberEnemy(float x, float y);
+
+        /**
+         * @brief Create a Waver enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Waver enemy
+         *
+         * Creates a Waver enemy with wave-pattern movement similar to snake but with distinct behavior.
+         */
+        ECS::EntityID createWaverEnemy(float x, float y);
+
+        /**
+         * @brief Create a Serpent Boss entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Serpent Boss
+         *
+         * Creates a large Serpent boss with segmented body mechanics and high HP pool.
+         */
+        ECS::EntityID createSerpentBoss(float x, float y);
+
+        /**
+         * @brief Create a Fortress Boss entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Fortress Boss
+         *
+         * Creates a stationary Fortress boss with heavy armor and multiple attack patterns.
+         */
+        ECS::EntityID createFortressBoss(float x, float y);
+
+        /**
+         * @brief Create a Core Boss entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Core Boss
+         *
+         * Creates the final Core boss with complex attack phases and maximum difficulty.
+         */
+        ECS::EntityID createCoreBoss(float x, float y);
 
         /**
          * @brief Create a player projectile entity

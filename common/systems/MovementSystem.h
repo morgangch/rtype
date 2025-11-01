@@ -101,17 +101,38 @@ namespace rtype::common::systems {
             auto* enemyType = world.GetComponent<components::EnemyTypeComponent>(entity);
             if (!enemyType) return;
 
-            // TankDestroyer boss: vertical only movement with bounce
+            // Boss movements
             if (enemyType->type == components::EnemyType::TankDestroyer) {
                 handleTankDestroyerMovement(world, entity, pos, vel);
             }
-            // Snake enemy: sine wave pattern
+            else if (enemyType->type == components::EnemyType::Serpent) {
+                handleSerpentMovement(world, entity, pos, vel, *enemyType);
+            }
+            else if (enemyType->type == components::EnemyType::Fortress) {
+                handleFortressMovement(world, entity, pos, vel, *enemyType);
+            }
+            else if (enemyType->type == components::EnemyType::Core) {
+                handleCoreMovement(world, entity, pos, vel, *enemyType);
+            }
+            // Basic enemy movements
             else if (enemyType->type == components::EnemyType::Snake) {
                 handleSnakeMovement(world, entity, pos, vel, *enemyType);
             }
-            // Suicide enemy: move towards player
             else if (enemyType->type == components::EnemyType::Suicide) {
                 handleSuicideMovement(world, entity, pos, vel);
+            }
+            else if (enemyType->type == components::EnemyType::Pata) {
+                handlePataMovement(world, entity, pos, vel, *enemyType);
+            }
+            // Advanced enemy movements
+            else if (enemyType->type == components::EnemyType::Flanker) {
+                handleFlankerMovement(world, entity, pos, vel);
+            }
+            else if (enemyType->type == components::EnemyType::Bomber) {
+                handleBomberMovement(world, entity, pos, vel);
+            }
+            else if (enemyType->type == components::EnemyType::Waver) {
+                handleWaverMovement(world, entity, pos, vel, *enemyType);
             }
         }
 
@@ -217,6 +238,188 @@ namespace rtype::common::systems {
                 }
 
                 break; // Only track first player
+            }
+        }
+
+        /**
+         * @brief Handle Pata enemy rapid vertical oscillation
+         * @param world The ECS world
+         * @param entity The entity to handle
+         * @param pos Reference to position component
+         * @param vel Pointer to velocity component
+         * @param enemyType Reference to enemy type component (contains lifeTime)
+         */
+        static void handlePataMovement(ECS::World& world, ECS::EntityID entity,
+                                      components::Position& pos, components::Velocity* vel,
+                                      components::EnemyTypeComponent& enemyType) {
+            if (!vel) return;
+
+            // Pata moves left and oscillates vertically very rapidly
+            const float HORIZONTAL_SPEED = -100.0f;
+            const float AMPLITUDE = 60.0f;        // Vertical oscillation amplitude
+            const float FREQUENCY = 4.0f;         // Wave frequency (fast oscillation)
+
+            vel->vx = HORIZONTAL_SPEED;
+            // Rapid vertical oscillation like "wing flapping"
+            vel->vy = AMPLITUDE * FREQUENCY * std::cos(enemyType.lifeTime * FREQUENCY);
+        }
+
+        /**
+         * @brief Handle Flanker enemy diagonal movement to position above/below player
+         * @param world The ECS world
+         * @param entity The entity to handle
+         * @param pos Reference to position component
+         * @param vel Pointer to velocity component
+         */
+        static void handleFlankerMovement(ECS::World& world, ECS::EntityID entity,
+                                         components::Position& pos, components::Velocity* vel) {
+            if (!vel) return;
+
+            // Find player
+            auto* players = world.GetAllComponents<components::Player>();
+            if (!players) {
+                vel->vx = -90.0f;
+                vel->vy = 0.0f;
+                return;
+            }
+
+            // Get first player position
+            for (auto& [playerEntity, playerPtr] : *players) {
+                auto* playerPos = world.GetComponent<components::Position>(playerEntity);
+                if (!playerPos) continue;
+
+                // Move diagonally to match player's Y position
+                const float HORIZONTAL_SPEED = -90.0f;
+                const float VERTICAL_SPEED = 120.0f;
+
+                vel->vx = HORIZONTAL_SPEED;
+
+                // Move toward player's Y position
+                float dy = playerPos->y - pos.y;
+                if (std::abs(dy) > 10.0f) {  // Dead zone
+                    vel->vy = (dy > 0.0f) ? VERTICAL_SPEED : -VERTICAL_SPEED;
+                } else {
+                    vel->vy = 0.0f;  // Stop when aligned
+                }
+
+                break;
+            }
+        }
+
+        /**
+         * @brief Handle Bomber enemy simple left movement (mines handled in AI system)
+         * @param world The ECS world
+         * @param entity The entity to handle
+         * @param pos Reference to position component
+         * @param vel Pointer to velocity component
+         */
+        static void handleBomberMovement(ECS::World& world, ECS::EntityID entity,
+                                        components::Position& pos, components::Velocity* vel) {
+            if (!vel) return;
+
+            // Bomber moves slowly left
+            vel->vx = -70.0f;
+            vel->vy = 0.0f;
+        }
+
+        /**
+         * @brief Handle Waver enemy erratic zigzag movement
+         * @param world The ECS world
+         * @param entity The entity to handle
+         * @param pos Reference to position component
+         * @param vel Pointer to velocity component
+         * @param enemyType Reference to enemy type component (contains lifeTime)
+         */
+        static void handleWaverMovement(ECS::World& world, ECS::EntityID entity,
+                                       components::Position& pos, components::Velocity* vel,
+                                       components::EnemyTypeComponent& enemyType) {
+            if (!vel) return;
+
+            // Waver moves in rapid zigzag pattern
+            const float HORIZONTAL_SPEED = -110.0f;
+            const float VERTICAL_AMPLITUDE = 150.0f;
+            const float FREQUENCY = 3.0f;  // Fast zigzag
+
+            vel->vx = HORIZONTAL_SPEED;
+
+            // Square wave pattern for sharp zigzag
+            float t = enemyType.lifeTime * FREQUENCY;
+            float zigzag = (std::sin(t) > 0.0f) ? 1.0f : -1.0f;
+            vel->vy = zigzag * VERTICAL_AMPLITUDE;
+        }
+
+        /**
+         * @brief Handle Serpent boss wave movement
+         * @param world The ECS world
+         * @param entity The entity to handle
+         * @param pos Reference to position component
+         * @param vel Pointer to velocity component
+         * @param enemyType Reference to enemy type component (contains lifeTime)
+         */
+        static void handleSerpentMovement(ECS::World& world, ECS::EntityID entity,
+                                         components::Position& pos, components::Velocity* vel,
+                                         components::EnemyTypeComponent& enemyType) {
+            if (!vel) return;
+
+            // Serpent head moves in large wave pattern
+            const float HORIZONTAL_SPEED = -60.0f;
+            const float AMPLITUDE = 120.0f;
+            const float FREQUENCY = 1.5f;
+
+            vel->vx = HORIZONTAL_SPEED;
+            vel->vy = AMPLITUDE * FREQUENCY * std::cos(enemyType.lifeTime * FREQUENCY);
+        }
+
+        /**
+         * @brief Handle Fortress boss stationary with orbiting turrets
+         * @param world The ECS world
+         * @param entity The entity to handle
+         * @param pos Reference to position component
+         * @param vel Pointer to velocity component
+         * @param enemyType Reference to enemy type component (contains lifeTime)
+         */
+        static void handleFortressMovement(ECS::World& world, ECS::EntityID entity,
+                                          components::Position& pos, components::Velocity* vel,
+                                          components::EnemyTypeComponent& enemyType) {
+            if (!vel) return;
+
+            // Fortress stays relatively stationary, only slight vertical drift
+            vel->vx = -20.0f;  // Very slow drift left
+            vel->vy = 30.0f * std::sin(enemyType.lifeTime * 0.5f);  // Gentle bobbing
+        }
+
+        /**
+         * @brief Handle Core boss multi-phase movement
+         * @param world The ECS world
+         * @param entity The entity to handle
+         * @param pos Reference to position component
+         * @param vel Pointer to velocity component
+         * @param enemyType Reference to enemy type component (contains lifeTime)
+         */
+        static void handleCoreMovement(ECS::World& world, ECS::EntityID entity,
+                                      components::Position& pos, components::Velocity* vel,
+                                      components::EnemyTypeComponent& enemyType) {
+            if (!vel) return;
+
+            auto* health = world.GetComponent<components::Health>(entity);
+            if (!health) return;
+
+            // Movement changes based on HP phase
+            float hpPercent = (float)health->currentHp / (float)health->maxHp;
+
+            if (hpPercent > 0.66f) {
+                // Phase 1: Slow circular movement
+                vel->vx = -40.0f;
+                vel->vy = 80.0f * std::sin(enemyType.lifeTime * 1.0f);
+            } else if (hpPercent > 0.33f) {
+                // Phase 2: Faster movement
+                vel->vx = -60.0f;
+                vel->vy = 120.0f * std::sin(enemyType.lifeTime * 2.0f);
+            } else {
+                // Phase 3: Erratic chaotic movement
+                float t = enemyType.lifeTime;
+                vel->vx = -80.0f + 40.0f * std::sin(t * 3.0f);
+                vel->vy = 150.0f * std::sin(t * 5.0f + std::cos(t * 2.0f));
             }
         }
     };
