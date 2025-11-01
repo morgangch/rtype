@@ -334,16 +334,6 @@ namespace rtype::client::gui {
         ECS::EntityID createSnakeEnemy(float x, float y);
 
         /**
-         * @brief Create a shooter enemy entity
-         * @param x X position
-         * @param y Y position
-         * @return Entity ID of the created shooter enemy
-         *
-         * Creates a shooter-type enemy with 3 HP that fires projectiles at regular intervals.
-         */
-        ECS::EntityID createShooterEnemy(float x, float y);
-
-        /**
          * @brief Create a suicide enemy entity
          * @param x X position
          * @param y Y position
@@ -360,6 +350,16 @@ namespace rtype::client::gui {
          * Creates a large boss entity with high HP (30) and alternating movement pattern.
          */
         ECS::EntityID createTankDestroyer(float x, float y);
+
+        // New enemy creation methods
+        ECS::EntityID createPataEnemy(float x, float y);
+        ECS::EntityID createShieldedEnemy(float x, float y);
+        ECS::EntityID createFlankerEnemy(float x, float y);
+        ECS::EntityID createBomberEnemy(float x, float y);
+        ECS::EntityID createWaverEnemy(float x, float y);
+        ECS::EntityID createSerpentBoss(float x, float y);
+        ECS::EntityID createFortressBoss(float x, float y);
+        ECS::EntityID createCoreBoss(float x, float y);
 
         /**
          * @brief Create a player projectile entity

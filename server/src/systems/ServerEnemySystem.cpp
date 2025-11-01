@@ -51,41 +51,47 @@ void ServerEnemySystem::Update(ECS::World &world, float deltaTime) {
 ServerEnemySystem::ServerEnemySystem()
     : ECS::System("ServerEnemySystem", 5), _levelTimer(0.0f), _currentLevel(0), _phase(EnemySpawnPhase::OnlyBasic), _bossSpawned(false), _stateTick(0.0f)
 {
-    // Define the 4 sub-levels (Level 1, Level 2, Level 3-Phase1, Level 3-Phase2)
-    // Level 0: Basic + Shooter + TankDestroyer
+    // Define the 4 sub-levels
+    // Level 0: Basic + Shielded + TankDestroyer
     _levelDefinitions.push_back({
         rtype::common::components::EnemyType::Basic,
-        rtype::common::components::EnemyType::Shooter,
+        rtype::common::components::EnemyType::Shielded,
         rtype::common::components::EnemyType::TankDestroyer
     });
 
-    // Level 1: Snake + Turret + Boss2 (TODO: create Boss2)
+    // Level 1: Snake + Flanker + Serpent
     _levelDefinitions.push_back({
         rtype::common::components::EnemyType::Snake,
-        rtype::common::components::EnemyType::Turret,
-        rtype::common::components::EnemyType::TankDestroyer  // Temporary - replace with Boss2
+        rtype::common::components::EnemyType::Flanker,
+        rtype::common::components::EnemyType::Serpent
     });
 
-    // Level 2: Suicide + Shielded + Boss3 (TODO: create Boss3 and Shielded)
+    // Level 2: Suicide + Bomber + Fortress
     _levelDefinitions.push_back({
         rtype::common::components::EnemyType::Suicide,
-        rtype::common::components::EnemyType::Shooter,  // Temporary - replace with Shielded
-        rtype::common::components::EnemyType::TankDestroyer  // Temporary - replace with Boss3
+        rtype::common::components::EnemyType::Bomber,
+        rtype::common::components::EnemyType::Fortress
     });
 
-    // Level 3: Basic4 + Advanced4 + Boss4 (TODO: create all)
+    // Level 3: Pata + Waver + Core (FINAL BOSS)
     _levelDefinitions.push_back({
-        rtype::common::components::EnemyType::Basic,  // Temporary - replace with Basic4
-        rtype::common::components::EnemyType::Shooter,  // Temporary - replace with Advanced4
-        rtype::common::components::EnemyType::TankDestroyer  // Temporary - replace with Boss4
+        rtype::common::components::EnemyType::Pata,
+        rtype::common::components::EnemyType::Waver,
+        rtype::common::components::EnemyType::Core
     });
 
     // Configure spawn intervals for all enemy types
+    // Basic enemies
     _enemyConfigs[rtype::common::components::EnemyType::Basic] = {rtype::common::components::EnemyType::Basic, 2.0f, 0.0f};
     _enemyConfigs[rtype::common::components::EnemyType::Snake] = {rtype::common::components::EnemyType::Snake, 2.5f, 0.0f};
     _enemyConfigs[rtype::common::components::EnemyType::Suicide] = {rtype::common::components::EnemyType::Suicide, 3.0f, 0.0f};
-    _enemyConfigs[rtype::common::components::EnemyType::Turret] = {rtype::common::components::EnemyType::Turret, 5.0f, 0.0f};
-    _enemyConfigs[rtype::common::components::EnemyType::Shooter] = {rtype::common::components::EnemyType::Shooter, 4.0f, 0.0f};
+    _enemyConfigs[rtype::common::components::EnemyType::Pata] = {rtype::common::components::EnemyType::Pata, 3.5f, 0.0f};
+
+    // Advanced enemies
+    _enemyConfigs[rtype::common::components::EnemyType::Shielded] = {rtype::common::components::EnemyType::Shielded, 5.0f, 0.0f};
+    _enemyConfigs[rtype::common::components::EnemyType::Flanker] = {rtype::common::components::EnemyType::Flanker, 4.5f, 0.0f};
+    _enemyConfigs[rtype::common::components::EnemyType::Bomber] = {rtype::common::components::EnemyType::Bomber, 6.0f, 0.0f};
+    _enemyConfigs[rtype::common::components::EnemyType::Waver] = {rtype::common::components::EnemyType::Waver, 4.0f, 0.0f};
 }
 
 void ServerEnemySystem::updatePhase(float deltaTime)
@@ -352,31 +358,50 @@ void ServerEnemySystem::spawnEnemy(ECS::World &world, ECS::EntityID room, rtype:
     int hp = 1;
     float vx = -100.0f;
     switch (type) {
+        // Basic enemies
         case rtype::common::components::EnemyType::Basic:
-            // TO DO: set stats for Basic
             hp = 1; vx = -100.0f;
             break;
         case rtype::common::components::EnemyType::Snake:
-            // TO DO: set stats for Snake
-            hp = 2; vx = -110.0f;
+            hp = 2; vx = -120.0f;
             break;
         case rtype::common::components::EnemyType::Suicide:
-            // TO DO: set stats for Suicide
-            hp = 1; vx = -130.0f;
+            hp = 1; vx = -150.0f;
             break;
-        case rtype::common::components::EnemyType::Turret:
-            // TO DO: set stats for Turret
-            hp = 3; vx = -80.0f;
+        case rtype::common::components::EnemyType::Pata:
+            hp = 2; vx = -100.0f;
             break;
-        case rtype::common::components::EnemyType::Shooter:
-            // TO DO: set stats for Shooter
-            hp = 3; vx = -120.0f;
+
+        // Advanced enemies
+        case rtype::common::components::EnemyType::Shielded:
+            hp = 4; vx = -90.0f;
             break;
+        case rtype::common::components::EnemyType::Flanker:
+            hp = 3; vx = -90.0f;
+            break;
+        case rtype::common::components::EnemyType::Bomber:
+            hp = 3; vx = -70.0f;
+            break;
+        case rtype::common::components::EnemyType::Waver:
+            hp = 4; vx = -110.0f;
+            break;
+
+        // Boss enemies
         case rtype::common::components::EnemyType::TankDestroyer:
-            hp = 50; vx = -50.0f;
+            hp = 50; vx = 0.0f;
             break;
+        case rtype::common::components::EnemyType::Serpent:
+            hp = 60; vx = -60.0f;
+            break;
+        case rtype::common::components::EnemyType::Fortress:
+            hp = 80; vx = -20.0f;
+            break;
+        case rtype::common::components::EnemyType::Core:
+            hp = 100; vx = -40.0f;
+            break;
+
         default:
-            // TO DO: add new types here
+            hp = 1; vx = -100.0f;
             break;
     }
 

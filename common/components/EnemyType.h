@@ -19,20 +19,23 @@ namespace rtype::common::components {
      * @brief Different types of enemies with varying behaviors
      */
     enum class EnemyType {
-        // Basic enemy
+        // Basic enemies (4 types)
         Basic,      ///< Basic enemy - moves left, shoots straight
-        Snake,     ///< Snake enemy - moves in a sine wave pattern
+        Snake,      ///< Snake enemy - moves in a sine wave pattern
         Suicide,    ///< Suicide enemy - moves towards player and explodes on contact or death
-        Turret,     ///< Turret enemy - stays in place and shoots at player
+        Pata,       ///< Pata enemy - rapid vertical oscillation, fires double shots
 
-        // Advanced enemies
-        // to do add 3 advanced enemies
-        Shooter,    ///< shooter enemy - moves left and shoots at player
-        Shielded,    ///< shielded enemy - protected by a shield; only damaged by charged shots
+        // Advanced enemies (4 types)
+        Shielded,   ///< Shielded enemy - cyclic invulnerability shield, vulnerable in intervals
+        Flanker,    ///< Flanker enemy - diagonal movement, fires perpendicular shots to force vertical dodging
+        Bomber,     ///< Bomber enemy - drops floating mines that explode after delay
+        Waver,      ///< Waver enemy - erratic zigzag movement, fires triple bursts
 
-        // Boss enemies
-        // to do add 3 boss enemies
-        TankDestroyer,        ///< Tank destroyer boss - heavily armored, fires spread projectiles
+        // Boss enemies (4 types)
+        TankDestroyer,  ///< Tank destroyer boss - vertical bounce, fires 3-projectile spread
+        Serpent,        ///< Serpent boss - multi-segment body with wave movement, head shoots spread
+        Fortress,       ///< Fortress boss - central core with 3 orbiting turrets, rotating laser when turrets destroyed
+        Core,           ///< Core boss (FINAL) - multi-phase evolution: circular->spiral+adds->chaotic pattern
     };
     
     /**

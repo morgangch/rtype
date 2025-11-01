@@ -26,18 +26,36 @@ namespace rtype::server::systems {
 // Helper function to get score points for enemy type
 static int getScoreForEnemyType(rtype::common::components::EnemyType type) {
     switch (type) {
+        // Basic enemies
         case rtype::common::components::EnemyType::Basic:
             return 10;
         case rtype::common::components::EnemyType::Snake:
             return 15;
         case rtype::common::components::EnemyType::Suicide:
             return 20;
-        case rtype::common::components::EnemyType::Turret:
+        case rtype::common::components::EnemyType::Pata:
             return 25;
-        case rtype::common::components::EnemyType::Shooter:
-            return 30;
+
+        // Advanced enemies
+        case rtype::common::components::EnemyType::Shielded:
+            return 50;
+        case rtype::common::components::EnemyType::Flanker:
+            return 40;
+        case rtype::common::components::EnemyType::Bomber:
+            return 45;
+        case rtype::common::components::EnemyType::Waver:
+            return 55;
+
+        // Boss enemies
         case rtype::common::components::EnemyType::TankDestroyer:
-            return 500; // Boss
+            return 500;
+        case rtype::common::components::EnemyType::Serpent:
+            return 750;
+        case rtype::common::components::EnemyType::Fortress:
+            return 1000;
+        case rtype::common::components::EnemyType::Core:
+            return 2000;
+
         default:
             return 10;
     }
