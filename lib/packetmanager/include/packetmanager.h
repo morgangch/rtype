@@ -17,6 +17,7 @@
 #include <memory>
 #include <mutex>
 #include "packet.h"
+#include <zlib.h>
 
 /**
  * @brief Maximum number of packets to keep in transmission history
@@ -287,6 +288,10 @@ private:
      * @param packet Smart pointer to the packet to process
      */
     void _handlePacket(std::unique_ptr<packet_t> packet);
+
+    std::vector<unsigned char> compress_data(const void* data, size_t size);
+    std::vector<unsigned char> decompress_data(const void* data, size_t compressed_size, size_t original_size);
+
 };
 
 #endif //PACKETMANAGER_H
