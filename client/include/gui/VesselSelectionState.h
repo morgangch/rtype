@@ -117,36 +117,18 @@ namespace rtype::client::gui {
         void goBack();
         
         /**
-         * @brief Renders a vessel card with preview, name, and stats
-         * @param window The SFML window to render to
-         * @param vesselType The vessel type to render
-         * @param position Position of the card center
-         * @param isSelected Whether this vessel is currently selected
-         * @param isHovered Whether this vessel is currently hovered
+         * @brief Compute responsive positions and sizes for UI elements.
+         * @param size Current render target dimensions (in pixels).
+         * @details Called each frame to adapt the layout to the window size.
          */
-        void renderVesselCard(
-            sf::RenderWindow& window,
-            rtype::common::components::VesselType vesselType,
-            const sf::Vector2f& position,
-            bool isSelected,
-            bool isHovered
-        );
-        
+        void layout(const sf::Vector2u& size);
+
         /**
-         * @brief Renders a stat bar with label and value
-         * @param window The SFML window to render to
-         * @param position Position of the stat bar
-         * @param label Label text (e.g., "Speed")
-         * @param value Normalized value (0.0 - 2.0)
-         * @param color Color of the bar
+         * @brief Render a single vessel row.
+         * @param window The window to draw into.
+         * @param i Index of the row to render (0..3).
          */
-        void renderStatBar(
-            sf::RenderWindow& window,
-            const sf::Vector2f& position,
-            const std::string& label,
-            float value,
-            const sf::Color& color
-        );
+        void renderRow(sf::RenderWindow& window, int i);
 
         StateManager& stateManager;
         std::string username;
@@ -154,32 +136,47 @@ namespace rtype::client::gui {
         int serverPort;
         uint32_t roomCode;
         
+        /** Currently selected vessel type (maps to row index 0..3). */
         rtype::common::components::VesselType selectedVessel;
-        int hoveredVesselIndex; // -1 if none
-        
+        /** Index of the row currently hovered by the mouse, or -1 if none. */
+        int hoveredRowIndex; // -1 if none
+
         // UI elements
         sf::Font font;
         sf::Text titleText;
-        sf::Text confirmButtonText;
-        sf::Text backButtonText;
-        sf::RectangleShape confirmButton;
-        sf::RectangleShape backButton;
-        
-        // Parallax background
+
+        // Parallax background and dark overlay (menu style)
         std::unique_ptr<ParallaxSystem> parallax;
-        
-        // Vessel card positions (4 vessels in 2x2 grid)
-        std::array<sf::Vector2f, 4> vesselCardPositions;
-        
-        // Animation
+        sf::RectangleShape m_overlay;
+
+        // Top-left return button sprite and clickable rect
+        sf::Texture m_returnTexture;
+        sf::Sprite m_returnSprite;
+        sf::FloatRect m_returnRect; // clickable area
+        bool m_returnSpriteLoaded{false};
+        bool m_returnHovered{false};
+
+        // Row visuals (4 rows)
+        sf::Texture rowSharedTexture; // single sheet with color rows
+        std::array<sf::Sprite, 4> rowSprites;
+        std::array<sf::RectangleShape, 4> rowBackgrounds;
+
+        // Ready button per row (sprite like lobby ready)
+        sf::Texture m_readyTexture;
+        std::array<sf::Sprite, 4> rowReadySprites;
+        std::array<bool, 4> rowReadyHovered{{false,false,false,false}};
+
+        // Row text blocks
+        std::array<sf::Text, 4> rowName;
+        std::array<sf::Text, 4> rowRole;
+        std::array<sf::Text, 4> rowShoot;
+        std::array<sf::Text, 4> rowCharged;
+        std::array<sf::Text, 4> rowSpeed;
+        std::array<sf::Text, 4> rowDefense;
+        std::array<sf::Text, 4> rowFireRate;
+
+        // Animation (for minor hover/selection effects)
         float animationTime;
-        
-        // Vessel preview sprites
-        std::array<sf::Sprite, 4> vesselSprites;
-        std::array<sf::Texture, 4> vesselTextures;
-        
-        bool confirmHovered;
-        bool backHovered;
     };
 }
 

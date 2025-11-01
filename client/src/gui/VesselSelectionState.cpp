@@ -7,6 +7,7 @@
 #include "gui/AssetPaths.h"
 #include "gui/TextureCache.h"
 #include "gui/FontManager.h"
+#include "gui/GUIHelper.h"
 #include "network/network.h"
 #include <iostream>
 #include <sstream>
@@ -26,213 +27,228 @@ namespace rtype::client::gui {
         serverPort(serverPort),
         roomCode(roomCode),
         selectedVessel(rtype::common::components::VesselType::CrimsonStriker),
-        hoveredVesselIndex(-1),
-        animationTime(0.0f),
-        confirmHovered(false),
-        backHovered(false)
+        hoveredRowIndex(-1),
+        m_returnSpriteLoaded(false),
+        m_returnHovered(false),
+        animationTime(0.0f)
     {
-        // Load font
+        // Font and title
         font = FontManager::getInstance().getDefaultFont();
-        
-        // Initialize parallax background (will be sized on first render)
-        // ParallaxSystem requires window dimensions, so we'll initialize it later
-        parallax = nullptr;
-        
-        // Setup title
         titleText.setFont(font);
         titleText.setString("SELECT YOUR VESSEL");
-        titleText.setCharacterSize(48);
+        titleText.setCharacterSize(36);
         titleText.setFillColor(sf::Color::White);
         titleText.setOutlineColor(sf::Color::Black);
         titleText.setOutlineThickness(2.0f);
-        
-        // Setup confirm button
-        confirmButtonText.setFont(font);
-        confirmButtonText.setString("CONFIRM");
-        confirmButtonText.setCharacterSize(32);
-        confirmButtonText.setFillColor(sf::Color::White);
-        
-        confirmButton.setSize(sf::Vector2f(200.0f, 60.0f));
-        confirmButton.setFillColor(sf::Color(0, 150, 0));
-        confirmButton.setOutlineColor(sf::Color::White);
-        confirmButton.setOutlineThickness(2.0f);
-        
-        // Setup back button
-        backButtonText.setFont(font);
-        backButtonText.setString("BACK");
-        backButtonText.setCharacterSize(32);
-        backButtonText.setFillColor(sf::Color::White);
-        
-        backButton.setSize(sf::Vector2f(150.0f, 60.0f));
-        backButton.setFillColor(sf::Color(150, 0, 0));
-        backButton.setOutlineColor(sf::Color::White);
-        backButton.setOutlineThickness(2.0f);
-        
-        // Setup vessel card positions (2x2 grid)
-        vesselCardPositions[0] = sf::Vector2f(300.0f, 300.0f);  // Top-left
-        vesselCardPositions[1] = sf::Vector2f(700.0f, 300.0f);  // Top-right
-        vesselCardPositions[2] = sf::Vector2f(300.0f, 550.0f);  // Bottom-left
-        vesselCardPositions[3] = sf::Vector2f(700.0f, 550.0f);  // Bottom-right
-        
-        // Load vessel sprites from single sprite sheet
-        // PLAYER.gif is 166x86 pixels: 5 frames × 5 rows (each frame is 33x17)
-        // Each vessel class is on a different row
+
+        // Overlay dim like other menus
+        m_overlay.setFillColor(sf::Color(0, 0, 0, 160));
+
+        // Return button sprite (top-left)
+        m_returnSpriteLoaded = m_returnTexture.loadFromFile(rtype::client::assets::ui::RETURN_BUTTON);
+        if (m_returnSpriteLoaded) {
+            m_returnTexture.setSmooth(true);
+            m_returnSprite.setTexture(m_returnTexture);
+            auto sz = m_returnTexture.getSize();
+            m_returnSprite.setOrigin(sz.x * 0.5f, sz.y * 0.5f);
+        }
+
+        // Use single shared sheet with colored rows, like before
         using namespace rtype::client::assets::player;
-        const std::array<int, 4> vesselRows = {
-            0,   // Row 0, y=0: Crimson Striker (red)
-            17,  // Row 1, y=17: Azure Phantom (blue)
-            34,  // Row 2, y=34: Emerald Titan (green)
-            51   // Row 3, y=51: Solar Guardian (yellow)
-        };
-        
-        // Load the single shared texture once (all vessels use PLAYER.gif)
-        if (!vesselTextures[0].loadFromFile(PLAYER_SPRITE)) {
-            std::cerr << "[VesselSelectionState] Failed to load vessel sprite sheet: " 
-                      << PLAYER_SPRITE << std::endl;
-            return;
+        if (!rowSharedTexture.loadFromFile(PLAYER_SPRITE)) {
+            std::cerr << "[VesselSelectionState] Failed to load player sheet: " << PLAYER_SPRITE << std::endl;
         }
-        
-        // Setup each vessel sprite with correct row from sprite sheet
-        for (size_t i = 0; i < 4; ++i) {
-            vesselTextures[i] = vesselTextures[0];  // Share the same texture
-            vesselSprites[i].setTexture(vesselTextures[i]);
-            vesselSprites[i].setTextureRect(sf::IntRect(0, vesselRows[i], 33, 17));  // Select correct row
-            vesselSprites[i].setScale(2.0f, 2.0f);
-            
-            // Center sprite
-            vesselSprites[i].setOrigin(16.5f, 8.5f);  // Half of 33x17
+        rowSharedTexture.setSmooth(true);
+        const int rowOffsets[4] = {0, 17, 34, 51};
+        for (int i = 0; i < 4; ++i) {
+            rowSprites[i].setTexture(rowSharedTexture);
+            rowSprites[i].setTextureRect(sf::IntRect(0, rowOffsets[i], 33, 17));
+            rowSprites[i].setScale(2.6f, 2.6f);
+            rowSprites[i].setOrigin(16.5f, 8.5f);
         }
+
+        // Ready button texture (like lobby Ready)
+        m_readyTexture.loadFromFile(rtype::client::assets::ui::READY_BUTTON);
+        m_readyTexture.setSmooth(true);
+
+        // Prepare row shapes and per-row UI
+        for (int i = 0; i < 4; ++i) {
+            rowBackgrounds[i].setFillColor(sf::Color(30, 30, 30, 190));
+            rowBackgrounds[i].setOutlineColor(sf::Color(100, 100, 100));
+            rowBackgrounds[i].setOutlineThickness(2.0f);
+
+            // Ready button sprite (drawn only for selected row)
+            rowReadySprites[i].setTexture(m_readyTexture);
+
+            rowName[i].setFont(font);
+            rowName[i].setCharacterSize(28);
+            rowName[i].setFillColor(sf::Color::White);
+
+            rowRole[i].setFont(font);
+            rowRole[i].setCharacterSize(18);
+            rowRole[i].setFillColor(sf::Color(200, 200, 200));
+
+            rowShoot[i].setFont(font);
+            rowShoot[i].setCharacterSize(18);
+            rowShoot[i].setFillColor(sf::Color::White);
+
+            rowCharged[i].setFont(font);
+            rowCharged[i].setCharacterSize(18);
+            rowCharged[i].setFillColor(sf::Color::White);
+
+            rowSpeed[i].setFont(font);
+            rowSpeed[i].setCharacterSize(18);
+            rowSpeed[i].setFillColor(sf::Color(180, 220, 255));
+
+            rowDefense[i].setFont(font);
+            rowDefense[i].setCharacterSize(18);
+            rowDefense[i].setFillColor(sf::Color(255, 220, 180));
+
+            rowFireRate[i].setFont(font);
+            rowFireRate[i].setCharacterSize(18);
+            rowFireRate[i].setFillColor(sf::Color(180, 255, 180));
+        }
+
+        // Content per design brief
+        rowName[0].setString("Crimson Striker");
+        rowRole[0].setString("Balanced");
+        rowShoot[0].setString("Shoot 1 dmg single");
+        rowCharged[0].setString("Charged 2 dmg piercing");
+        rowSpeed[0].setString("Speed 100");
+        rowDefense[0].setString("Defense 3 HP");
+        rowFireRate[0].setString("Fire rate 100");
+
+        rowName[1].setString("Azure Phantom");
+        rowRole[1].setString("Speed");
+        rowShoot[1].setString("Shoot 0.5 dmg rapid");
+        rowCharged[1].setString("Charged 1 dmg burst homing");
+        rowSpeed[1].setString("Speed 120");
+        rowDefense[1].setString("Defense 2 HP");
+        rowFireRate[1].setString("Fire rate 150");
+
+        rowName[2].setString("Emerald Titan");
+        rowRole[2].setString("Power");
+        rowShoot[2].setString("Shoot 2 dmg slow");
+        rowCharged[2].setString("Charged 4 dmg AoE");
+        rowSpeed[2].setString("Speed 80");
+        rowDefense[2].setString("Defense 4 HP");
+        rowFireRate[2].setString("Fire rate 70");
+
+        rowName[3].setString("Solar Guardian");
+        rowRole[3].setString("Defense");
+        rowShoot[3].setString("Shoot 0.5 dmg shotgun");
+        rowCharged[3].setString("Charged Shield");
+        rowSpeed[3].setString("Speed 90");
+        rowDefense[3].setString("Defense 5 HP");
+        rowFireRate[3].setString("Fire rate 100");
     }
 
     void VesselSelectionState::handleEvent(const sf::Event& event) {
-        if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
-            sf::Vector2f mousePos(static_cast<float>(event.mouseButton.x), 
-                                static_cast<float>(event.mouseButton.y));
-            
-            // Check vessel card clicks
-            for (size_t i = 0; i < 4; ++i) {
-                sf::FloatRect cardBounds(
-                    vesselCardPositions[i].x - 150.0f,
-                    vesselCardPositions[i].y - 100.0f,
-                    300.0f,
-                    200.0f
-                );
-                
-                if (cardBounds.contains(mousePos)) {
-                    selectedVessel = static_cast<rtype::common::components::VesselType>(i);
-                    std::cout << "[VesselSelectionState] Selected vessel: " << i << std::endl;
-                    return;
+        // Hover updates
+        if (event.type == sf::Event::MouseMoved) {
+            sf::Vector2f mouse(static_cast<float>(event.mouseMove.x), static_cast<float>(event.mouseMove.y));
+            m_returnHovered = m_returnRect.contains(mouse);
+            hoveredRowIndex = -1;
+            for (int i = 0; i < 4; ++i) {
+                if (rowBackgrounds[i].getGlobalBounds().contains(mouse)) {
+                    hoveredRowIndex = i;
                 }
+                rowReadyHovered[i] = rowReadySprites[i].getGlobalBounds().contains(mouse);
             }
-            
-            // Check confirm button click
-            if (confirmButton.getGlobalBounds().contains(mousePos)) {
-                confirmSelection();
-                return;
-            }
-            
-            // Check back button click
-            if (backButton.getGlobalBounds().contains(mousePos)) {
+            return;
+        }
+
+        // Clicks
+        if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+            sf::Vector2f mouse(static_cast<float>(event.mouseButton.x), static_cast<float>(event.mouseButton.y));
+            // Return top-left
+            if (m_returnRect.contains(mouse)) {
                 goBack();
                 return;
             }
+            // Select a row
+            for (int i = 0; i < 4; ++i) {
+                if (rowBackgrounds[i].getGlobalBounds().contains(mouse)) {
+                    selectedVessel = static_cast<rtype::common::components::VesselType>(i);
+                    return;
+                }
+            }
+            // Ready only on selected row
+            int sel = static_cast<int>(selectedVessel);
+            if (sel >= 0 && sel < 4 && rowReadySprites[sel].getGlobalBounds().contains(mouse)) {
+                confirmSelection();
+                return;
+            }
         }
-        
-        // ESC key to go back
+
+        // ESC to return
         if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
             goBack();
         }
     }
 
     void VesselSelectionState::update(float deltaTime) {
-        // Update parallax background
-        if (parallax) {
-            parallax->update(deltaTime);
-        }
-        
-        // Update animation time
+        if (parallax) parallax->update(deltaTime);
         animationTime += deltaTime;
-        
-        // Hover states are calculated during handleEvent for simplicity
-        hoveredVesselIndex = -1;
-        confirmHovered = false;
-        backHovered = false;
+
+        // Pulsate the selected vessel sprite slightly
+        const float baseScale = 2.6f;
+        for (int i = 0; i < 4; ++i) {
+            if (static_cast<int>(selectedVessel) == i) {
+                float pulse = 1.0f + 0.06f * std::sin(animationTime * 3.0f);
+                rowSprites[i].setScale(baseScale * pulse, baseScale * pulse);
+            } else {
+                rowSprites[i].setScale(baseScale, baseScale);
+            }
+        }
+
+        // Outline colors based on selection/hover
+        for (int i = 0; i < 4; ++i) {
+            if (static_cast<int>(selectedVessel) == i) {
+                rowBackgrounds[i].setOutlineColor(sf::Color::Cyan);
+                rowBackgrounds[i].setOutlineThickness(3.0f);
+            } else if (hoveredRowIndex == i) {
+                rowBackgrounds[i].setOutlineColor(sf::Color::White);
+                rowBackgrounds[i].setOutlineThickness(2.5f);
+            } else {
+                rowBackgrounds[i].setOutlineColor(sf::Color(100, 100, 100));
+                rowBackgrounds[i].setOutlineThickness(2.0f);
+            }
+        }
     }
 
     void VesselSelectionState::render(sf::RenderWindow& window) {
-        // Initialize parallax on first render
+        // Ensure parallax exists (match menu behavior)
         if (!parallax) {
             parallax = std::make_unique<ParallaxSystem>(
                 static_cast<float>(window.getSize().x),
                 static_cast<float>(window.getSize().y)
             );
         }
-        
-        // Draw parallax background
-        if (parallax) {
-            parallax->render(window);
-        }
-        
-        // Center title
-        sf::FloatRect titleBounds = titleText.getLocalBounds();
-        titleText.setPosition(
-            (window.getSize().x - titleBounds.width) / 2.0f - titleBounds.left,
-            50.0f
-        );
+
+        // Compute layout each frame for responsiveness
+        layout(window.getSize());
+
+        // Background parallax + overlay
+        if (parallax) parallax->render(window);
+        window.draw(m_overlay);
+
+        // Title centered near top
         window.draw(titleText);
-        
-        // Draw vessel cards
-        for (size_t i = 0; i < 4; ++i) {
-            bool isSelected = (static_cast<int>(selectedVessel) == static_cast<int>(i));
-            bool isHovered = (hoveredVesselIndex == static_cast<int>(i));
-            
-            renderVesselCard(
-                window,
-                static_cast<rtype::common::components::VesselType>(i),
-                vesselCardPositions[i],
-                isSelected,
-                isHovered
-            );
+
+        // Return button (hover scale)
+        if (m_returnSpriteLoaded) {
+            const float mul = m_returnHovered ? 0.96f : 1.0f;
+            auto s = m_returnSprite.getScale();
+            m_returnSprite.setScale(s.x * mul, s.y * mul);
+            window.draw(m_returnSprite);
+            m_returnSprite.setScale(s);
         }
-        
-        // Position and draw confirm button
-        confirmButton.setPosition(
-            window.getSize().x / 2.0f - confirmButton.getSize().x / 2.0f,
-            window.getSize().y - 100.0f
-        );
-        
-        if (confirmHovered) {
-            confirmButton.setFillColor(sf::Color(0, 200, 0));
-        } else {
-            confirmButton.setFillColor(sf::Color(0, 150, 0));
+
+        // Draw rows
+        for (int i = 0; i < 4; ++i) {
+            renderRow(window, i);
         }
-        
-        window.draw(confirmButton);
-        
-        sf::FloatRect confirmTextBounds = confirmButtonText.getLocalBounds();
-        confirmButtonText.setPosition(
-            confirmButton.getPosition().x + (confirmButton.getSize().x - confirmTextBounds.width) / 2.0f - confirmTextBounds.left,
-            confirmButton.getPosition().y + (confirmButton.getSize().y - confirmTextBounds.height) / 2.0f - confirmTextBounds.top
-        );
-        window.draw(confirmButtonText);
-        
-        // Position and draw back button
-        backButton.setPosition(50.0f, window.getSize().y - 100.0f);
-        
-        if (backHovered) {
-            backButton.setFillColor(sf::Color(200, 0, 0));
-        } else {
-            backButton.setFillColor(sf::Color(150, 0, 0));
-        }
-        
-        window.draw(backButton);
-        
-        sf::FloatRect backTextBounds = backButtonText.getLocalBounds();
-        backButtonText.setPosition(
-            backButton.getPosition().x + (backButton.getSize().x - backTextBounds.width) / 2.0f - backTextBounds.left,
-            backButton.getPosition().y + (backButton.getSize().y - backTextBounds.height) / 2.0f - backTextBounds.top
-        );
-        window.draw(backButtonText);
     }
 
     void VesselSelectionState::onEnter() {
@@ -262,120 +278,97 @@ namespace rtype::client::gui {
         stateManager.popState();
     }
 
-    void VesselSelectionState::renderVesselCard(
-        sf::RenderWindow& window,
-        rtype::common::components::VesselType vesselType,
-        const sf::Vector2f& position,
-        bool isSelected,
-        bool isHovered
-    ) {
-        // Card background
-        sf::RectangleShape cardBackground(sf::Vector2f(300.0f, 200.0f));
-        cardBackground.setPosition(position.x - 150.0f, position.y - 100.0f);
-        
-        if (isSelected) {
-            cardBackground.setFillColor(sf::Color(50, 50, 150, 200));
-            cardBackground.setOutlineColor(sf::Color::Cyan);
-            cardBackground.setOutlineThickness(4.0f);
-        } else if (isHovered) {
-            cardBackground.setFillColor(sf::Color(70, 70, 70, 200));
-            cardBackground.setOutlineColor(sf::Color::White);
-            cardBackground.setOutlineThickness(3.0f);
-        } else {
-            cardBackground.setFillColor(sf::Color(40, 40, 40, 200));
-            cardBackground.setOutlineColor(sf::Color(100, 100, 100));
-            cardBackground.setOutlineThickness(2.0f);
-        }
-        
-        window.draw(cardBackground);
-        
-        // Vessel sprite
-        int vesselIndex = static_cast<int>(vesselType);
-        if (vesselIndex >= 0 && vesselIndex < 4) {
-            vesselSprites[vesselIndex].setPosition(position.x, position.y - 30.0f);
-            
-            // Animate selected vessel
-            if (isSelected) {
-                float scale = 2.0f + 0.1f * std::sin(animationTime * 3.0f);
-                vesselSprites[vesselIndex].setScale(scale, scale);
-            } else {
-                vesselSprites[vesselIndex].setScale(2.0f, 2.0f);
+    void VesselSelectionState::layout(const sf::Vector2u& size) {
+    // Overlay covers full screen
+        m_overlay.setSize(sf::Vector2f(static_cast<float>(size.x), static_cast<float>(size.y)));
+
+        // Title centered
+    GUIHelper::centerText(titleText, size.x * 0.5f, 28.0f);
+
+        // Return button in top-left
+        const float btnW = 160.0f;
+        const float btnH = 90.0f;
+        const float x = 12.0f + btnW * 0.5f;
+        const float y = 12.0f + btnH * 0.5f;
+        if (m_returnSpriteLoaded) {
+            auto sz = m_returnTexture.getSize();
+            if (sz.y > 0) {
+                float scale = (btnH * 1.2f) / static_cast<float>(sz.y);
+                m_returnSprite.setScale(scale, scale);
             }
-            
-            window.draw(vesselSprites[vesselIndex]);
+            m_returnSprite.setPosition(x, y);
         }
-        
-        // Vessel name
-        const std::array<std::string, 4> vesselNames = {
-            "Crimson Striker",
-            "Azure Phantom",
-            "Emerald Titan",
-            "Solar Guardian"
-        };
-        
-        sf::Text nameText;
-        nameText.setFont(font);
-        nameText.setString(vesselNames[vesselIndex]);
-        nameText.setCharacterSize(20);
-        nameText.setFillColor(sf::Color::White);
-        
-        sf::FloatRect nameBounds = nameText.getLocalBounds();
-        nameText.setPosition(
-            position.x - nameBounds.width / 2.0f - nameBounds.left,
-            position.y + 50.0f
-        );
-        window.draw(nameText);
-        
-        // Vessel type label
-        const std::array<std::string, 4> vesselTypes = {
-            "Balanced",
-            "Speed",
-            "Power",
-            "Defense"
-        };
-        
-        sf::Text typeText;
-        typeText.setFont(font);
-        typeText.setString(vesselTypes[vesselIndex]);
-        typeText.setCharacterSize(16);
-        typeText.setFillColor(sf::Color(200, 200, 200));
-        
-        sf::FloatRect typeBounds = typeText.getLocalBounds();
-        typeText.setPosition(
-            position.x - typeBounds.width / 2.0f - typeBounds.left,
-            position.y + 75.0f
-        );
-        window.draw(typeText);
+        m_returnRect = sf::FloatRect(12.0f, 12.0f, btnW, btnH);
+
+        // Rows area
+        float top = 100.0f;
+        float bottom = static_cast<float>(size.y) - 24.0f;
+        float usable = bottom - top;
+        float rowH = std::min(170.0f, usable / 5.0f);
+        float gap = rowH * 0.25f;
+        float startY = top + gap * 0.5f;
+        float rowW = std::min(1000.0f, static_cast<float>(size.x) * 0.9f);
+        float rowX = (static_cast<float>(size.x) - rowW) * 0.5f;
+
+        for (int i = 0; i < 4; ++i) {
+            float yRow = startY + static_cast<float>(i) * (rowH + gap);
+            rowBackgrounds[i].setSize(sf::Vector2f(rowW, rowH));
+            rowBackgrounds[i].setPosition(rowX, yRow);
+
+            // Sprite at left
+            rowSprites[i].setPosition(rowX + 60.0f, yRow + rowH * 0.5f);
+
+            // Text columns
+            float textX = rowX + 120.0f;
+            float textY = yRow + 16.0f;
+            rowName[i].setPosition(textX, textY - 8.0f);
+            rowRole[i].setPosition(textX, textY + 26.0f);
+            rowShoot[i].setPosition(textX, textY + 26.0f + 24.0f);
+            rowCharged[i].setPosition(textX, textY + 26.0f + 24.0f + 22.0f);
+
+            // Keep X as before (right side), but vertically center the three stat labels
+            float statsX = rowX + rowW * 0.62f;
+            float centerY = yRow + rowH * 0.5f;
+            rowSpeed[i].setPosition(statsX, centerY - 26.0f);
+            rowDefense[i].setPosition(statsX, centerY);
+            rowFireRate[i].setPosition(statsX, centerY + 26.0f);
+
+            // Ready button to the right, outside the square
+            if (m_readyTexture.getSize().x > 0) {
+                float btnX = rowX + rowW + 50.0f;
+                float btnY = yRow + rowH * 0.5f;
+                auto sz = m_readyTexture.getSize();
+                rowReadySprites[i].setOrigin(sz.x * 0.5f, sz.y * 0.5f);
+                // Scale down gently to fit
+                float targetH = std::min(96.0f, rowH * 0.8f);
+                if (sz.y > 0) {
+                    float scale = targetH / static_cast<float>(sz.y);
+                    rowReadySprites[i].setScale(scale, scale);
+                }
+                rowReadySprites[i].setPosition(btnX, btnY);
+            }
+        }
     }
 
-    void VesselSelectionState::renderStatBar(
-        sf::RenderWindow& window,
-        const sf::Vector2f& position,
-        const std::string& label,
-        float value,
-        const sf::Color& color
-    ) {
-        // Label
-        sf::Text labelText;
-        labelText.setFont(font);
-        labelText.setString(label);
-        labelText.setCharacterSize(14);
-        labelText.setFillColor(sf::Color::White);
-        labelText.setPosition(position);
-        window.draw(labelText);
-        
-        // Background bar
-        sf::RectangleShape bgBar(sf::Vector2f(100.0f, 10.0f));
-        bgBar.setPosition(position.x + 80.0f, position.y);
-        bgBar.setFillColor(sf::Color(50, 50, 50));
-        window.draw(bgBar);
-        
-        // Value bar
-        float barWidth = (value / 2.0f) * 100.0f; // Normalize to 0-100
-        sf::RectangleShape valueBar(sf::Vector2f(barWidth, 10.0f));
-        valueBar.setPosition(position.x + 80.0f, position.y);
-        valueBar.setFillColor(color);
-        window.draw(valueBar);
+    void VesselSelectionState::renderRow(sf::RenderWindow& window, int i) {
+        window.draw(rowBackgrounds[i]);
+        window.draw(rowSprites[i]);
+        window.draw(rowName[i]);
+        window.draw(rowRole[i]);
+        window.draw(rowShoot[i]);
+        window.draw(rowCharged[i]);
+        window.draw(rowSpeed[i]);
+        window.draw(rowDefense[i]);
+        window.draw(rowFireRate[i]);
+
+        if (static_cast<int>(selectedVessel) == i && m_readyTexture.getSize().x > 0) {
+            // Apply slight hover scale when hovered
+            float mul = rowReadyHovered[i] ? 1.06f : 1.0f;
+            auto s = rowReadySprites[i].getScale();
+            rowReadySprites[i].setScale(s.x * mul, s.y * mul);
+            window.draw(rowReadySprites[i]);
+            rowReadySprites[i].setScale(s);
+        }
     }
 
 } // namespace rtype::client::gui
