@@ -442,17 +442,7 @@ size_t PacketManager::_get_buffer_received_size() const {
     return _buffer_received.size();
 }
 
-void PacketManager::setCompressionEnabled(bool enable) {
-    std::lock_guard<std::mutex> lock(_mutex);
-    _compression_enabled = enable;
-}
-
-bool PacketManager::isCompressionEnabled() const {
-    std::lock_guard<std::mutex> lock(_mutex);
-    return _compression_enabled;
-}
-
-std::vector<unsigned char> PacketManager::compress_data(const void* data, size_t size) {
+std::vector<unsigned char> compress_data(const void* data, size_t size) {
     if (!data || size == 0) {
         throw std::invalid_argument("Données invalides");
     }
@@ -476,7 +466,7 @@ std::vector<unsigned char> PacketManager::compress_data(const void* data, size_t
 
 // Décompresse les données
 // Retourne un vecteur contenant les données décompressées
-std::vector<unsigned char> PacketManager::decompress_data(const void* data, size_t compressed_size,
+std::vector<unsigned char> decompress_data(const void* data, size_t compressed_size,
                                            size_t original_size) {
     if (!data || compressed_size == 0) {
         throw std::invalid_argument("Données invalides");
