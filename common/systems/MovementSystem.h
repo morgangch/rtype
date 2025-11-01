@@ -128,8 +128,8 @@ namespace rtype::common::systems {
             else if (enemyType->type == components::EnemyType::Flanker) {
                 handleFlankerMovement(world, entity, pos, vel);
             }
-            else if (enemyType->type == components::EnemyType::Bomber) {
-                handleBomberMovement(world, entity, pos, vel);
+            else if (enemyType->type == components::EnemyType::Turret) {
+                handleTurretMovement(world, entity, pos, vel);
             }
             else if (enemyType->type == components::EnemyType::Waver) {
                 handleWaverMovement(world, entity, pos, vel, *enemyType);
@@ -307,18 +307,18 @@ namespace rtype::common::systems {
         }
 
         /**
-         * @brief Handle Bomber enemy simple left movement (mines handled in AI system)
+         * @brief Handle Turret enemy erratic zigzag movement
          * @param world The ECS world
          * @param entity The entity to handle
          * @param pos Reference to position component
          * @param vel Pointer to velocity component
          */
-        static void handleBomberMovement(ECS::World& world, ECS::EntityID entity,
-                                        components::Position& pos, components::Velocity* vel) {
+        static void handleTurretMovement(ECS::World& world, ECS::EntityID entity,
+                                       components::Position& pos, components::Velocity* vel) {
             if (!vel) return;
 
-            // Bomber moves slowly left
-            vel->vx = -70.0f;
+            // Turret is stationary
+            vel->vx = 0.0f;
             vel->vy = 0.0f;
         }
 

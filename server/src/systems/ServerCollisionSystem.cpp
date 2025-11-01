@@ -41,7 +41,7 @@ static int getScoreForEnemyType(rtype::common::components::EnemyType type) {
             return 50;
         case rtype::common::components::EnemyType::Flanker:
             return 40;
-        case rtype::common::components::EnemyType::Bomber:
+        case rtype::common::components::EnemyType::Turret:
             return 45;
         case rtype::common::components::EnemyType::Waver:
             return 55;

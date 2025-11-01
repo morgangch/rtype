@@ -28,7 +28,7 @@ namespace rtype::common::components {
         // Advanced enemies (4 types)
         Shielded,   ///< Shielded enemy - cyclic invulnerability shield, vulnerable in intervals
         Flanker,    ///< Flanker enemy - diagonal movement, fires perpendicular shots to force vertical dodging
-        Bomber,     ///< Bomber enemy - drops floating mines that explode after delay
+        Turret,     ///< Turret enemy - stationary turret, fires 3-shot burst aimed at player
         Waver,      ///< Waver enemy - erratic zigzag movement, fires triple bursts
 
         // Boss enemies (4 types)

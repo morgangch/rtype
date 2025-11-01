@@ -54,8 +54,8 @@ ServerEnemySystem::ServerEnemySystem()
     // Define the 4 sub-levels
     // Level 0: Basic + Shielded + TankDestroyer
     _levelDefinitions.push_back({
-        rtype::common::components::EnemyType::Flanker,
-        rtype::common::components::EnemyType::Flanker,
+        rtype::common::components::EnemyType::Turret,
+        rtype::common::components::EnemyType::Turret,
         rtype::common::components::EnemyType::Core
         //rtype::common::components::EnemyType::Basic,
         //rtype::common::components::EnemyType::Shielded,
@@ -69,10 +69,10 @@ ServerEnemySystem::ServerEnemySystem()
         rtype::common::components::EnemyType::Serpent
     });
 
-    // Level 2: Suicide + Bomber + Fortress
+    // Level 2: Suicide + Turret + Fortress
     _levelDefinitions.push_back({
         rtype::common::components::EnemyType::Suicide,
-        rtype::common::components::EnemyType::Bomber,
+        rtype::common::components::EnemyType::Turret,
         rtype::common::components::EnemyType::Fortress
     });
 
@@ -93,13 +93,13 @@ ServerEnemySystem::ServerEnemySystem()
     // Advanced enemies
     _enemyConfigs[rtype::common::components::EnemyType::Shielded] = {rtype::common::components::EnemyType::Shielded, 5.0f, 0.0f};
     _enemyConfigs[rtype::common::components::EnemyType::Flanker] = {rtype::common::components::EnemyType::Flanker, 4.5f, 0.0f};
-    _enemyConfigs[rtype::common::components::EnemyType::Bomber] = {rtype::common::components::EnemyType::Bomber, 6.0f, 0.0f};
+    _enemyConfigs[rtype::common::components::EnemyType::Turret] = {rtype::common::components::EnemyType::Turret, 5.5f, 0.0f};
     _enemyConfigs[rtype::common::components::EnemyType::Waver] = {rtype::common::components::EnemyType::Waver, 4.0f, 0.0f};
 }
 
 void ServerEnemySystem::updatePhase(float deltaTime)
 {
-    _levelTimer += 170.0f;
+    _levelTimer += deltaTime;
 
     // Each level follows the same 3-minute pattern:
     // 0-60s: Only basic enemies
@@ -413,8 +413,9 @@ void ServerEnemySystem::spawnEnemy(ECS::World &world, ECS::EntityID room, rtype:
         case rtype::common::components::EnemyType::Flanker:
             hp = 3; vx = -90.0f;
             break;
-        case rtype::common::components::EnemyType::Bomber:
-            hp = 3; vx = -70.0f;
+        case rtype::common::components::EnemyType::Turret:
+            hp = 5; vx = 0.0f;
+            spawnX = 1100.0f;
             break;
         case rtype::common::components::EnemyType::Waver:
             hp = 4; vx = -110.0f;

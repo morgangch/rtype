@@ -382,14 +382,14 @@ namespace rtype::client::gui {
         ECS::EntityID createFlankerEnemy(float x, float y);
 
         /**
-         * @brief Create a Bomber enemy entity
+         * @brief Create a Turret enemy entity
          * @param x X position
          * @param y Y position
-         * @return Entity ID of the created Bomber enemy
+         * @return Entity ID of the created Turret enemy
          *
-         * Creates a Bomber enemy that drops explosive projectiles with area damage.
+         * Creates a stationary Turret enemy that fires 3-shot bursts aimed at the player.
          */
-        ECS::EntityID createBomberEnemy(float x, float y);
+        ECS::EntityID createTurretEnemy(float x, float y);
 
         /**
          * @brief Create a Waver enemy entity

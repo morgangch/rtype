@@ -112,6 +112,10 @@ namespace rtype::common::systems {
                     handleFlankerShooting(entity, pos->x, pos->y, createProjectile);
                     fireRate->shoot();
                 }
+                else if (enemyType && enemyType->type == components::EnemyType::Turret) {
+                    handleTurretShooting(entity, pos->x, pos->y, playerX, playerY, playerFound, createProjectile);
+                    fireRate->shoot();
+                }
                 else if (enemyType && enemyType->type == components::EnemyType::Waver) {
                     handleWaverShooting(entity, pos->x, pos->y, playerX, playerY, playerFound, createProjectile);
                     fireRate->shoot();
@@ -224,6 +228,45 @@ namespace rtype::common::systems {
             // Fire downward (perpendicular to movement)
             createProjectile(shooter, x, y, 0.0f, 250.0f);  // Shoot down
             createProjectile(shooter, x, y, 0.0f, -250.0f); // Shoot up
+        }
+
+        /**
+         * @brief Handle Turret enemy 3-shot burst aimed at player
+         * Turret is stationary and fires a tight 3-projectile burst toward player
+         */
+        static void handleTurretShooting(ECS::EntityID shooter, float x, float y, float targetX, float targetY,
+                                        bool hasTarget, ProjectileCallback createProjectile) {
+            if (!hasTarget) {
+                // Default shoot left if no target
+                createProjectile(shooter, x, y, -300.0f, 0.0f);
+                return;
+            }
+
+            // Calculate direction to player
+            float dx = targetX - x;
+            float dy = targetY - y;
+            float distance = std::sqrt(dx * dx + dy * dy);
+            if (distance <= 0.0f) return;
+
+            const float PROJECTILE_SPEED = 400.0f;
+            float vx = (dx / distance) * PROJECTILE_SPEED;
+            float vy = (dy / distance) * PROJECTILE_SPEED;
+
+            // Fire 3-shot burst with tight spread (±5 degrees)
+            const float spreadAngle = 0.087f; // ~5 degrees in radians
+
+            // Center shot aimed directly at player
+            createProjectile(shooter, x, y, vx, vy);
+
+            // Upper shot (+5 degrees)
+            float upperVx = vx * std::cos(spreadAngle) - vy * std::sin(spreadAngle);
+            float upperVy = vx * std::sin(spreadAngle) + vy * std::cos(spreadAngle);
+            createProjectile(shooter, x, y, upperVx, upperVy);
+
+            // Lower shot (-5 degrees)
+            float lowerVx = vx * std::cos(-spreadAngle) - vy * std::sin(-spreadAngle);
+            float lowerVy = vx * std::sin(-spreadAngle) + vy * std::cos(-spreadAngle);
+            createProjectile(shooter, x, y, lowerVx, lowerVy);
         }
 
         /**

@@ -79,8 +79,8 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
         case rtype::common::components::EnemyType::Flanker:
             e = createFlankerEnemy(x, y);
             break;
-        case rtype::common::components::EnemyType::Bomber:
-            e = createBomberEnemy(x, y);
+        case rtype::common::components::EnemyType::Turret:
+            e = createTurretEnemy(x, y);
             break;
         case rtype::common::components::EnemyType::Waver:
             e = createWaverEnemy(x, y);

@@ -414,12 +414,12 @@ ECS::EntityID GameState::createFlankerEnemy(float x, float y) {
     return entity;
 }
 
-ECS::EntityID GameState::createBomberEnemy(float x, float y) {
+ECS::EntityID GameState::createTurretEnemy(float x, float y) {
     auto entity = m_world.CreateEntity();
 
     m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
-    m_world.AddComponent<rtype::common::components::Velocity>(entity, -70.0f, 0.0f, 70.0f);
-    m_world.AddComponent<rtype::common::components::Health>(entity, 3);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, 0.0f, 0.0f, 0.0f);  // Stationary
+    m_world.AddComponent<rtype::common::components::Health>(entity, 5);
 
     rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::ADVANCED_ENEMY_3);
     m_world.AddComponent<rtype::client::components::Sprite>(
@@ -434,11 +434,11 @@ ECS::EntityID GameState::createBomberEnemy(float x, float y) {
         entity, rtype::common::components::TeamType::Enemy);
 
     m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
-        entity, rtype::common::components::EnemyType::Bomber);
+        entity, rtype::common::components::EnemyType::Turret);
 
-    // Bomber drops mines every 6.0s (handled by AI system - mines to be implemented)
-    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 6.0f);
-    fireRate->cooldown = static_cast<float>(rand() % 1000) / 1000.0f * 6.0f;
+    // Turret fires 3-shot burst aimed at player every 2.5s
+    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 2.5f);
+    fireRate->cooldown = static_cast<float>(rand() % 1000) / 1000.0f * 2.5f;
 
     return entity;
 }
