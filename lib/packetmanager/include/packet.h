@@ -75,8 +75,18 @@ typedef struct packet_header_s {
      *
      * Indicates how many bytes of data follow the header.
      * Used for proper packet parsing and memory allocation.
+     * When compression is enabled, this is the compressed size.
      */
     uint32_t data_size;
+
+    /**
+     * @brief Original uncompressed size of the data
+     *
+     * When compression is enabled, this stores the original size
+     * of the data before compression. If 0, data is not compressed.
+     * Used for decompression buffer allocation.
+     */
+    uint32_t original_size;
 } packet_header_t;
 
 /**

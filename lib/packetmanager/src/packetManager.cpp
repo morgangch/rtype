@@ -11,6 +11,7 @@
 #include <memory>
 #include <stdexcept>
 #include <algorithm>
+#include <zlib.h>
 
 // Platform-specific network headers
 #ifdef _WIN32
@@ -43,8 +44,29 @@ packet_t PacketManager::deserializePacket(const uint8_t *data, size_t size, pack
     }
 
     if (packet.header.data_size > 0) {
-        packet.data = new uint8_t[packet.header.data_size];
-        std::memcpy(packet.data, data + sizeof(packet_header_t), packet.header.data_size);
+        const uint8_t* payload_data = data + sizeof(packet_header_t);
+
+        // Check if data is compressed (original_size != 0)
+        if (packet.header.original_size > 0) {
+            // Data is compressed - decompress it
+            try {
+                auto decompressed = decompress_data(payload_data, packet.header.data_size, packet.header.original_size);
+
+                // Allocate buffer and copy decompressed data
+                packet.data = new uint8_t[decompressed.size()];
+                std::memcpy(packet.data, decompressed.data(), decompressed.size());
+
+                // Update data_size to reflect decompressed size for application use
+                packet.header.data_size = decompressed.size();
+                packet.header.original_size = 0; // Clear to indicate data is now uncompressed
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Failed to decompress packet data: " + std::string(e.what()));
+            }
+        } else {
+            // Data is not compressed - use as-is
+            packet.data = new uint8_t[packet.header.data_size];
+            std::memcpy(packet.data, payload_data, packet.header.data_size);
+        }
     } else {
         packet.data = nullptr;
     }
@@ -91,18 +113,53 @@ std::unique_ptr<uint8_t[]> PacketManager::sendPacketBytesSafe(const void *data, 
     header.ack = 0;
     header.type = packet_type;
     header.auth = _auth_key;
-    header.data_size = data_size;
+    header.original_size = 0; // Will be set if compression is used
     std::memset(&header.client_addr, 0, sizeof(header.client_addr));
     header.client_port = 0;
 
-    packet->header = header;
-    // Make a copy of the input data for the packet
-    if (data_size > 0) {
-        packet->data = new uint8_t[data_size];
-        std::memcpy(packet->data, data, data_size);
+    void* packet_data = nullptr;
+    size_t packet_data_size = data_size;
+
+    // Compress data if compression is enabled and data size is significant (> 32 bytes)
+    if (_compression_enabled && data_size > 32) {
+        try {
+            auto compressed = compress_data(data, data_size);
+
+            // Only use compression if it actually reduces size
+            if (compressed.size() < data_size) {
+                header.original_size = data_size;
+                packet_data_size = compressed.size();
+                packet_data = new uint8_t[compressed.size()];
+                std::memcpy(packet_data, compressed.data(), compressed.size());
+            } else {
+                // Compression didn't help, use original data
+                header.original_size = 0;
+                packet_data_size = data_size;
+                if (data_size > 0) {
+                    packet_data = new uint8_t[data_size];
+                    std::memcpy(packet_data, data, data_size);
+                }
+            }
+        } catch (const std::exception& e) {
+            // Compression failed, use original data
+            header.original_size = 0;
+            packet_data_size = data_size;
+            if (data_size > 0) {
+                packet_data = new uint8_t[data_size];
+                std::memcpy(packet_data, data, data_size);
+            }
+        }
     } else {
-        packet->data = nullptr;
+        // Compression disabled or data too small - use original data
+        if (data_size > 0) {
+            packet_data = new uint8_t[data_size];
+            std::memcpy(packet_data, data, data_size);
+        }
     }
+
+    header.data_size = packet_data_size;
+    packet->header = header;
+    packet->data = static_cast<uint8_t*>(packet_data);
 
     // Serialize the packet
     std::vector<uint8_t> serialized_packet = serializePacket(*packet);
@@ -136,8 +193,29 @@ std::unique_ptr<packet_t> PacketManager::deserializePacketSafe(const uint8_t *da
     }
 
     if (packet->header.data_size > 0) {
-        packet->data = new uint8_t[packet->header.data_size];
-        std::memcpy(packet->data, data + sizeof(packet_header_t), packet->header.data_size);
+        const uint8_t* payload_data = data + sizeof(packet_header_t);
+
+        // Check if data is compressed (original_size != 0)
+        if (packet->header.original_size > 0) {
+            // Data is compressed - decompress it
+            try {
+                auto decompressed = decompress_data(payload_data, packet->header.data_size, packet->header.original_size);
+
+                // Allocate buffer and copy decompressed data
+                packet->data = new uint8_t[decompressed.size()];
+                std::memcpy(packet->data, decompressed.data(), decompressed.size());
+
+                // Update data_size to reflect decompressed size for application use
+                packet->header.data_size = decompressed.size();
+                packet->header.original_size = 0; // Clear to indicate data is now uncompressed
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Failed to decompress packet data: " + std::string(e.what()));
+            }
+        } else {
+            // Data is not compressed - use as-is
+            packet->data = new uint8_t[packet->header.data_size];
+            std::memcpy(packet->data, payload_data, packet->header.data_size);
+        }
     } else {
         packet->data = nullptr;
     }
@@ -364,7 +442,17 @@ size_t PacketManager::_get_buffer_received_size() const {
     return _buffer_received.size();
 }
 
-std::vector<unsigned char> compress_data(const void* data, size_t size) {
+void PacketManager::setCompressionEnabled(bool enable) {
+    std::lock_guard<std::mutex> lock(_mutex);
+    _compression_enabled = enable;
+}
+
+bool PacketManager::isCompressionEnabled() const {
+    std::lock_guard<std::mutex> lock(_mutex);
+    return _compression_enabled;
+}
+
+std::vector<unsigned char> PacketManager::compress_data(const void* data, size_t size) {
     if (!data || size == 0) {
         throw std::invalid_argument("Données invalides");
     }
@@ -388,7 +476,7 @@ std::vector<unsigned char> compress_data(const void* data, size_t size) {
 
 // Décompresse les données
 // Retourne un vecteur contenant les données décompressées
-std::vector<unsigned char> decompress_data(const void* data, size_t compressed_size,
+std::vector<unsigned char> PacketManager::decompress_data(const void* data, size_t compressed_size,
                                            size_t original_size) {
     if (!data || compressed_size == 0) {
         throw std::invalid_argument("Données invalides");
