@@ -149,8 +149,6 @@ ECS::EntityID GameState::createSnakeEnemy(float x, float y) {
     return entity;
 }
 
-// Legacy function removed - replaced by new enemy types (Shielded, Flanker, Bomber, Waver)
-
 ECS::EntityID GameState::createSuicideEnemy(float x, float y) {
     auto entity = m_world.CreateEntity();
 
@@ -313,10 +311,6 @@ ECS::EntityID GameState::createChargedProjectile(float x, float y) {
     
     return entity;
 }
-
-// ============================================================================
-// NEW ENEMY TYPES
-// ============================================================================
 
 ECS::EntityID GameState::createPataEnemy(float x, float y) {
     auto entity = m_world.CreateEntity();
