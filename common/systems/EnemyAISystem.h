@@ -336,20 +336,21 @@ namespace rtype::common::systems {
         }
 
         /**
-         * @brief Handle Fortress boss circular rotating pattern
+         * @brief Handle Fortress boss random non-targeted shooting pattern
+         * Shoots in random directions to avoid network saturation
+         * The boss stays stationary and fires projectiles randomly
          */
         static void handleFortressShooting(ECS::EntityID shooter, float x, float y, float targetX, float targetY,
                                           bool hasTarget, float lifeTime, ProjectileCallback createProjectile) {
-            const float PROJECTILE_SPEED = 300.0f;
-            const float rotationSpeed = 2.0f;  // Rotations per second
+            const float PROJECTILE_SPEED = 280.0f;
 
-            // Fire in 8 directions, rotating over time
-            float baseAngle = lifeTime * rotationSpeed;
-
-            for (int i = 0; i < 8; i++) {
-                float angle = baseAngle + (i * 3.14159f * 2.0f / 8.0f);  // 8 directions
-                float vx = std::cos(angle) * PROJECTILE_SPEED;
-                float vy = std::sin(angle) * PROJECTILE_SPEED;
+            // Fire 4 projectiles in random directions (not aimed at player)
+            // This reduces network traffic compared to 8-direction patterns
+            for (int i = 0; i < 4; i++) {
+                // Generate random angle for each projectile
+                float randomAngle = (std::rand() % 360) * 3.14159f / 180.0f;
+                float vx = std::cos(randomAngle) * PROJECTILE_SPEED;
+                float vy = std::sin(randomAngle) * PROJECTILE_SPEED;
                 createProjectile(shooter, x, y, vx, vy);
             }
         }

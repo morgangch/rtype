@@ -85,6 +85,16 @@ public:
      */
     void spawnBoss(ECS::World& world, ECS::EntityID room, rtype::common::components::EnemyType bossType);
 
+    /**
+     * @brief Spawns a turret for the Fortress boss
+     * @param world Reference to the ECS world
+     * @param room Room entity ID
+     * @param bossEntity The boss entity this turret belongs to
+     * @param offsetY Vertical offset from boss center
+     * @return EntityID of the spawned turret
+     */
+    ECS::EntityID spawnFortressTurret(ECS::World& world, ECS::EntityID room, ECS::EntityID bossEntity, float offsetY);
+
 private:
     float _levelTimer; ///< Timer for current level (resets each level)
     int _currentLevel; ///< Current level index (0-3 for 4 sub-levels)

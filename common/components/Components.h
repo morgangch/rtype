@@ -12,8 +12,10 @@
 #include "PowerUp.h"
 #include "Projectile.h"
 #include "Score.h"
+#include "Shield.h"
 #include "Team.h"
 #include "Transform.h"
+#include "TurretLink.h"
 #include "Velocity.h"
 
 #endif // COMMON_ALL_COMPONENTS_HPP

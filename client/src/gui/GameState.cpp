@@ -27,6 +27,8 @@
 #include "gui/AssetPaths.h"
 #include "gui/TextureCache.h"
 #include <common/systems/MovementSystem.h>
+#include <common/systems/FortressShieldSystem.h>
+#include <common/components/Shield.h>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -117,6 +119,17 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
     if (pos) {
         pos->x = x;
         pos->y = y;
+    }
+
+    // Detect and add shields for special entities
+    // Fortress turrets: Turret type spawned near a Fortress boss (right side of screen)
+    if (type == rtype::common::components::EnemyType::Turret && x > 1000.0f) {
+        // This is likely a Fortress turret (spawned on the right side with the boss)
+        // Add blue shield component
+        m_world.AddComponent<rtype::common::components::ShieldComponent>(
+            e, rtype::common::components::ShieldType::Blue, true);
+        
+        std::cout << "[GameState] Added BLUE shield to Fortress turret at (" << x << "," << y << ")" << std::endl;
     }
 
     // Store mapping
@@ -550,6 +563,7 @@ void GameState::update(float deltaTime) {
     updateInvulnerabilitySystem(deltaTime);
     updateAnimationSystem(deltaTime);
     rtype::common::systems::MovementSystem::update(m_world, deltaTime); // shared movement system
+    rtype::common::systems::FortressShieldSystem::update(m_world, deltaTime); // shield sync system
     updateCollisionSystem();
     updateCleanupSystem(deltaTime);
 }

@@ -15,6 +15,7 @@
 #include "gui/AssetPaths.h"
 #include "gui/TextureCache.h"
 #include "components/ShieldVisual.h"
+#include <common/components/Shield.h>
 #include <cstdlib>
 #include <cmath>
 #include <iostream>
@@ -370,6 +371,10 @@ ECS::EntityID GameState::createShieldedEnemy(float x, float y) {
     m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
         entity, rtype::common::components::EnemyType::Shielded);
 
+    // Add cyclic shield component (alternates on/off)
+    m_world.AddComponent<rtype::common::components::ShieldComponent>(
+        entity, rtype::common::components::ShieldType::Cyclic, true);
+
     // Add visual shield effect (blue pulsing circle)
     m_world.AddComponent<rtype::client::components::ShieldVisual>(
         entity,
@@ -522,8 +527,20 @@ ECS::EntityID GameState::createFortressBoss(float x, float y) {
     m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
         entity, rtype::common::components::EnemyType::Fortress);
 
-    // Fortress fires 8-directional rotating every 0.7s
-    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 0.7f);
+    // Add RED shield component (server-authoritative, client will sync)
+    m_world.AddComponent<rtype::common::components::ShieldComponent>(
+        entity, rtype::common::components::ShieldType::Red, true);
+
+    // Add RED shield visual effect (invincible boss shield)
+    m_world.AddComponent<rtype::client::components::ShieldVisual>(
+        entity,
+        120.0f,                                     // large radius for boss
+        sf::Color(255, 50, 50, 150),                // RED, semi-transparent
+        1.5f,                                       // slow pulse
+        4.0f);                                      // thick border
+
+    // Fortress fires randomly every 0.5s
+    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 0.5f);
     fireRate->cooldown = 0.0f;
 
     return entity;

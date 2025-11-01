@@ -12,6 +12,7 @@
 #include <common/components/Projectile.h>
 #include <common/components/Player.h>
 #include <common/systems/MovementSystem.h>
+#include <common/systems/FortressShieldSystem.h>
 #include "components/LobbyState.h"
 #include "components/PlayerConn.h"
 #include "components/LinkedRoom.h"
@@ -58,6 +59,9 @@ void rtype::server::Rtype::loop(float deltaTime) {
     packetHandler.processPackets(packetManager.fetchReceivedPackets());
 
     rtype::common::systems::MovementSystem::update(world, deltaTime);
+    
+    // Update Fortress shield system (check turret status and disable boss shield if needed)
+    rtype::common::systems::FortressShieldSystem::update(world, deltaTime);
 
     // Server-specific post-movement processing
     auto* positions = world.GetAllComponents<rtype::common::components::Position>();

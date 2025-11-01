@@ -13,7 +13,10 @@
 #include "rtype.h"
 #include "packetmanager.h"
 #include <common/systems/CollisionSystem.h>
+#include <common/systems/FortressShieldSystem.h>
 #include <common/components/Score.h>
+#include <common/components/Shield.h>
+#include <common/components/TurretLink.h>
 #include <iostream>
 #include <cmath>
 #include <algorithm>
@@ -91,16 +94,31 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
         auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemy);
         if (!projData || !enemyHealth) return;
 
-        // 🛡️ Shielded enemies: Only take damage from piercing shots (charged shots)!
-        auto* enemyType = world.GetComponent<rtype::common::components::EnemyTypeComponent>(enemy);
-        if (enemyType && enemyType->type == rtype::common::components::EnemyType::Shielded) {
-            if (!projData->piercing) {
-                // Normal projectile hits shield - blocked!
-                std::cout << "[COLLISION] 🛡️ Projectile " << proj << " BLOCKED by Shielded enemy " << enemy << " shield! (needs charged/piercing shot)" << std::endl;
+        // 🛡️ Check for active shields (Fortress boss, turrets, or shielded enemies)
+        auto* shield = world.GetComponent<rtype::common::components::ShieldComponent>(enemy);
+        if (shield && shield->isActive) {
+            // Red shield (Fortress boss) - completely invincible
+            if (shield->type == rtype::common::components::ShieldType::Red) {
+                std::cout << "[COLLISION] 🔴 Projectile " << proj << " BLOCKED by RED SHIELD on enemy " << enemy << "! (destroy turrets first)" << std::endl;
                 toDestroy.push_back(proj); // Projectile destroyed by shield
-                return; // No damage to shielded enemy
-            } else {
-                std::cout << "[COLLISION] ⚡ PIERCING shot " << proj << " BREAKS through shield of enemy " << enemy << "!" << std::endl;
+                return; // No damage
+            }
+            
+            // Blue shield (Turrets) - can be damaged but has shield visual
+            if (shield->type == rtype::common::components::ShieldType::Blue) {
+                std::cout << "[COLLISION] 🔵 Projectile " << proj << " hits BLUE SHIELD on turret " << enemy << " - taking damage!" << std::endl;
+                // Blue shields take damage, just visual indicator
+            }
+            
+            // Cyclic shield (Shielded enemy) - only piercing shots work
+            if (shield->type == rtype::common::components::ShieldType::Cyclic) {
+                if (!projData->piercing) {
+                    std::cout << "[COLLISION] 🛡️ Projectile " << proj << " BLOCKED by Shielded enemy " << enemy << " shield! (needs charged/piercing shot)" << std::endl;
+                    toDestroy.push_back(proj);
+                    return;
+                } else {
+                    std::cout << "[COLLISION] ⚡ PIERCING shot " << proj << " BREAKS through cyclic shield of enemy " << enemy << "!" << std::endl;
+                }
             }
         }
 
