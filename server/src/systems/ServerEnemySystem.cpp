@@ -54,9 +54,9 @@ ServerEnemySystem::ServerEnemySystem()
     // Define the 4 sub-levels
     // Level 0: Basic + Shielded + TankDestroyer
     _levelDefinitions.push_back({
-        rtype::common::components::EnemyType::Snake,
-        rtype::common::components::EnemyType::Snake,
-        rtype::common::components::EnemyType::Snake
+        rtype::common::components::EnemyType::Flanker,
+        rtype::common::components::EnemyType::Flanker,
+        rtype::common::components::EnemyType::Serpent
         //rtype::common::components::EnemyType::Basic,
         //rtype::common::components::EnemyType::Shielded,
         //rtype::common::components::EnemyType::TankDestroyer
@@ -99,7 +99,7 @@ ServerEnemySystem::ServerEnemySystem()
 
 void ServerEnemySystem::updatePhase(float deltaTime)
 {
-    _levelTimer += deltaTime;
+    _levelTimer += 170.0f;
 
     // Each level follows the same 3-minute pattern:
     // 0-60s: Only basic enemies
@@ -133,26 +133,57 @@ void ServerEnemySystem::updatePhase(float deltaTime)
 // ============================================================================
 
 void ServerEnemySystem::spawnBoss(ECS::World& world, ECS::EntityID room, rtype::common::components::EnemyType bossType) {
-    // Default: spawn classic boss (can be extended for multiple types)
+    // Spawn position
     float spawnX = 1280.0f - 100.0f;
     float spawnY = 360.0f; // Center Y of 720p screen
+
+    // Boss stats vary by type - make them VERY different!
+    int hp = 50;
+    float vx = -50.0f;
+    
+    switch (bossType) {
+        case rtype::common::components::EnemyType::TankDestroyer:
+            hp = 50;
+            vx = 0.0f; // TankDestroyer stationary, only bounces vertically
+            break;
+            
+        case rtype::common::components::EnemyType::Serpent:
+            hp = 80; // Serpent much tankier than TankDestroyer!
+            vx = -40.0f; // Serpent advances slowly in wave pattern
+            spawnY = 200.0f; // Spawn higher to show off wave movement
+            break;
+            
+        case rtype::common::components::EnemyType::Fortress:
+            hp = 100;
+            vx = -15.0f; // Fortress ultra slow but extremely tanky
+            break;
+            
+        case rtype::common::components::EnemyType::Core:
+            hp = 150; // Final boss - MASSIVE HP pool
+            vx = -30.0f;
+            break;
+            
+        default:
+            hp = 50;
+            vx = -50.0f;
+            break;
+    }
 
     // Create boss entity on server world
     auto boss = world.CreateEntity();
     world.AddComponent<rtype::common::components::Position>(boss, spawnX, spawnY, 0.0f);
-    world.AddComponent<rtype::common::components::Velocity>(boss, -50.0f, 0.0f, 50.0f);
-    world.AddComponent<rtype::common::components::Health>(boss, 50); // Boss has 50 HP
+    world.AddComponent<rtype::common::components::Velocity>(boss, vx, 0.0f, std::abs(vx));
+    world.AddComponent<rtype::common::components::Health>(boss, hp);
     world.AddComponent<rtype::common::components::Team>(boss, rtype::common::components::TeamType::Enemy);
-    world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, rtype::common::components::EnemyType::TankDestroyer);
+    world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, bossType); // Use the actual boss type!
     world.AddComponent<rtype::server::components::LinkedRoom>(boss, room);
 
-    std::cout << "SERVER: Spawning boss (id=" << boss << ") in room " << room << std::endl;
+    std::cout << "SERVER: 🔥 Spawning BOSS " << (int)bossType << " (id=" << boss << ") with " << hp << " HP in room " << room << std::endl;
 
-
-    // Send to all players in the room
+    // Send to all players in the room with correct boss type
     rtype::server::network::senders::broadcast_enemy_spawn(room, static_cast<uint32_t>(boss),
-                                                            rtype::common::components::EnemyType::TankDestroyer,
-                                                            spawnX, spawnY, 50);
+                                                            bossType, // Use actual boss type
+                                                            spawnX, spawnY, hp);
 }
 
 void ServerEnemySystem::updateBossSpawning(ECS::World& world, float deltaTime) {

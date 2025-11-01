@@ -262,27 +262,29 @@ namespace rtype::common::systems {
         }
 
         /**
-         * @brief Handle Serpent boss shooting (similar to TankDestroyer but 5-spread)
+         * @brief Handle Serpent boss shooting (5-spread pattern aimed at player)
+         * Serpent shoots a WIDE 5-projectile spread toward the player
+         * Unlike TankDestroyer (3-spread straight left), this actively tracks player!
          */
         static void handleSerpentShooting(ECS::EntityID shooter, float x, float y, float targetX, float targetY,
                                          bool hasTarget, ProjectileCallback createProjectile) {
-            if (!hasTarget) return;
-
-            float dx = targetX - x;
-            float dy = targetY - y;
+            // If no target, shoot spread to the left
+            float dx = hasTarget ? (targetX - x) : -1.0f;
+            float dy = hasTarget ? (targetY - y) : 0.0f;
             float distance = std::sqrt(dx * dx + dy * dy);
-            if (distance <= 0.0f) return;
+            if (distance <= 0.0f) distance = 1.0f;
 
-            const float PROJECTILE_SPEED = 320.0f;
+            const float PROJECTILE_SPEED = 350.0f; // Faster projectiles than TankDestroyer (320)
             float baseVx = (dx / distance) * PROJECTILE_SPEED;
             float baseVy = (dy / distance) * PROJECTILE_SPEED;
 
-            // 5-projectile spread: center, ±15deg, ±30deg
-            const float spread1 = 0.26f;  // 15 degrees
-            const float spread2 = 0.52f;  // 30 degrees
+            // WIDE 5-projectile spread: center, ±20deg, ±40deg (wider than TankDestroyer)
+            const float spread1 = 0.35f;  // ~20 degrees
+            const float spread2 = 0.70f;  // ~40 degrees
 
-            createProjectile(shooter, x, y, baseVx, baseVy);  // Center
+            createProjectile(shooter, x, y, baseVx, baseVy);  // Center shot
 
+            // Four additional shots in wide spread pattern
             for (float angle : {spread1, -spread1, spread2, -spread2}) {
                 float rotVx = baseVx * std::cos(angle) - baseVy * std::sin(angle);
                 float rotVy = baseVx * std::sin(angle) + baseVy * std::cos(angle);

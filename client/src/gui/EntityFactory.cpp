@@ -370,11 +370,11 @@ ECS::EntityID GameState::createShieldedEnemy(float x, float y) {
     m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
         entity, rtype::common::components::EnemyType::Shielded);
 
-    // 🛡️ Add visual shield effect (blue pulsing circle)
+    // Add visual shield effect (blue pulsing circle)
     m_world.AddComponent<rtype::client::components::ShieldVisual>(
         entity,
         50.0f,                                      // radius
-        sf::Color(100, 200, 255, 120),             // light blue, semi-transparent
+        sf::Color(100, 200, 255, 120),              // light blue, semi-transparent
         3.0f,                                       // pulse speed
         3.0f);                                      // border thickness
 
@@ -476,8 +476,8 @@ ECS::EntityID GameState::createSerpentBoss(float x, float y) {
     auto entity = m_world.CreateEntity();
 
     m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
-    m_world.AddComponent<rtype::common::components::Velocity>(entity, -60.0f, 0.0f, 60.0f);
-    m_world.AddComponent<rtype::common::components::Health>(entity, 60);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, -40.0f, 0.0f, 40.0f);
+    m_world.AddComponent<rtype::common::components::Health>(entity, 80); // Match server HP
 
     rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BOSS_ENEMY_2);
     m_world.AddComponent<rtype::client::components::Sprite>(
@@ -486,7 +486,7 @@ ECS::EntityID GameState::createSerpentBoss(float x, float y) {
         sf::Vector2f(33.0f, 36.0f),
         true,
         sf::IntRect(0, 0, 33, 36),
-        5.0f);  // Boss size
+        6.5f);
 
     m_world.AddComponent<rtype::common::components::Team>(
         entity, rtype::common::components::TeamType::Enemy);
@@ -494,8 +494,7 @@ ECS::EntityID GameState::createSerpentBoss(float x, float y) {
     m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
         entity, rtype::common::components::EnemyType::Serpent);
 
-    // Serpent fires 5-spread every 1.0s
-    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 1.0f);
+    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 0.7f);
     fireRate->cooldown = 0.0f;
 
     return entity;

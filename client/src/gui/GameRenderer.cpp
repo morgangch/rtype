@@ -94,7 +94,7 @@ void GameState::renderEntities(sf::RenderWindow& window) {
             window.draw(shape);
         }
 
-        // 🛡️ Draw shield visual effect if entity has ShieldVisual component
+        // Draw shield visual effect if entity has ShieldVisual component
         auto* shield = m_world.GetComponent<rtype::client::components::ShieldVisual>(entity);
         if (shield && shield->enabled) {
             // Update pulse animation

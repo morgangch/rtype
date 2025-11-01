@@ -49,12 +49,33 @@ public:
             height = 17.0f;
         } else if (team->team == components::TeamType::Enemy) {
             auto* enemyType = world.GetComponent<components::EnemyTypeComponent>(entity);
-            if (enemyType && enemyType->type == components::EnemyType::TankDestroyer) {
-                width = 33.0f * 5.0f;
-                height = 36.0f * 5.0f;
-            } else {
+            if (!enemyType) {
                 width = 33.0f;
                 height = 36.0f;
+            } else {
+                // Boss-specific collision sizes
+                switch (enemyType->type) {
+                    case components::EnemyType::TankDestroyer:
+                        width = 33.0f * 5.0f;   // TankDestroyer: 165x180
+                        height = 36.0f * 5.0f;
+                        break;
+                    case components::EnemyType::Serpent:
+                        width = 33.0f * 6.5f;   // Serpent: BIGGER! 214x234
+                        height = 36.0f * 6.5f;
+                        break;
+                    case components::EnemyType::Fortress:
+                        width = 33.0f * 7.0f;   // Fortress: HUGE! 231x252
+                        height = 36.0f * 7.0f;
+                        break;
+                    case components::EnemyType::Core:
+                        width = 33.0f * 8.0f;   // Core: MASSIVE! 264x288
+                        height = 36.0f * 8.0f;
+                        break;
+                    default:
+                        width = 33.0f;
+                        height = 36.0f;
+                        break;
+                }
             }
         }
     }
