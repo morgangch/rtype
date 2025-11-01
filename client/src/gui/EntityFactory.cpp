@@ -14,6 +14,7 @@
 #include "gui/GameState.h"
 #include "gui/AssetPaths.h"
 #include "gui/TextureCache.h"
+#include "components/ShieldVisual.h"
 #include <cstdlib>
 #include <cmath>
 #include <iostream>
@@ -362,6 +363,14 @@ ECS::EntityID GameState::createShieldedEnemy(float x, float y) {
 
     m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
         entity, rtype::common::components::EnemyType::Shielded);
+
+    // 🛡️ Add visual shield effect (blue pulsing circle)
+    m_world.AddComponent<rtype::client::components::ShieldVisual>(
+        entity,
+        50.0f,                                      // radius
+        sf::Color(100, 200, 255, 120),             // light blue, semi-transparent
+        3.0f,                                       // pulse speed
+        3.0f);                                      // border thickness
 
     // Shielded fires every 5.0s
     auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 5.0f);

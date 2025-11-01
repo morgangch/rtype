@@ -54,9 +54,9 @@ ServerEnemySystem::ServerEnemySystem()
     // Define the 4 sub-levels
     // Level 0: Basic + Shielded + TankDestroyer
     _levelDefinitions.push_back({
-        rtype::common::components::EnemyType::Basic,
         rtype::common::components::EnemyType::Shielded,
-        rtype::common::components::EnemyType::TankDestroyer
+        rtype::common::components::EnemyType::Shielded,
+        rtype::common::components::EnemyType::Shielded
     });
 
     // Level 1: Snake + Flanker + Serpent

@@ -16,6 +16,7 @@
 #include "gui/GameState.h"
 #include "gui/GUIHelper.h"
 #include "gui/TextureCache.h"
+#include "components/ShieldVisual.h"
 #include <sstream>
 #include <cmath>
 
@@ -91,6 +92,32 @@ void GameState::renderEntities(sf::RenderWindow& window) {
                              pos.y - sprite->size.y * 0.5f);
             shape.setFillColor(sprite->color);
             window.draw(shape);
+        }
+
+        // 🛡️ Draw shield visual effect if entity has ShieldVisual component
+        auto* shield = m_world.GetComponent<rtype::client::components::ShieldVisual>(entity);
+        if (shield && shield->enabled) {
+            // Update pulse animation
+            shield->pulseTimer += 0.016f; // Assume ~60 FPS
+            float pulseScale = 1.0f + 0.1f * std::sin(shield->pulseTimer * shield->pulseSpeed);
+            
+            // Draw outer circle (border)
+            sf::CircleShape outerCircle(shield->radius * pulseScale);
+            outerCircle.setPosition(pos.x - shield->radius * pulseScale, 
+                                   pos.y - shield->radius * pulseScale);
+            outerCircle.setFillColor(sf::Color::Transparent);
+            outerCircle.setOutlineColor(shield->color);
+            outerCircle.setOutlineThickness(shield->thickness);
+            window.draw(outerCircle);
+            
+            // Draw inner fill (more transparent)
+            sf::CircleShape innerCircle(shield->radius * pulseScale * 0.9f);
+            innerCircle.setPosition(pos.x - shield->radius * pulseScale * 0.9f, 
+                                   pos.y - shield->radius * pulseScale * 0.9f);
+            sf::Color fillColor = shield->color;
+            fillColor.a = static_cast<sf::Uint8>(fillColor.a * 0.3f); // 30% opacity for fill
+            innerCircle.setFillColor(fillColor);
+            window.draw(innerCircle);
         }
     }
 }

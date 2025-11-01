@@ -252,6 +252,16 @@ void GameState::updateCollisionSystem() {
         auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemy);
         if (!projData || !enemyHealth) return;
 
+        // 🛡️ Shielded enemies: Only take damage from piercing shots (charged shots)!
+        auto* enemyType = world.GetComponent<rtype::common::components::EnemyTypeComponent>(enemy);
+        if (enemyType && enemyType->type == rtype::common::components::EnemyType::Shielded) {
+            if (!projData->piercing) {
+                // Normal projectile hits shield - blocked!
+                toDestroy.push_back(proj); // Projectile destroyed by shield
+                return; // No damage to shielded enemy
+            }
+        }
+
         enemyHealth->currentHp -= projData->damage;
 
         if (enemyHealth->currentHp <= 0) {

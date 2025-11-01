@@ -91,6 +91,19 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
         auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemy);
         if (!projData || !enemyHealth) return;
 
+        // 🛡️ Shielded enemies: Only take damage from piercing shots (charged shots)!
+        auto* enemyType = world.GetComponent<rtype::common::components::EnemyTypeComponent>(enemy);
+        if (enemyType && enemyType->type == rtype::common::components::EnemyType::Shielded) {
+            if (!projData->piercing) {
+                // Normal projectile hits shield - blocked!
+                std::cout << "[COLLISION] 🛡️ Projectile " << proj << " BLOCKED by Shielded enemy " << enemy << " shield! (needs charged/piercing shot)" << std::endl;
+                toDestroy.push_back(proj); // Projectile destroyed by shield
+                return; // No damage to shielded enemy
+            } else {
+                std::cout << "[COLLISION] ⚡ PIERCING shot " << proj << " BREAKS through shield of enemy " << enemy << "!" << std::endl;
+            }
+        }
+
         std::cout << "[COLLISION] Projectile " << proj << " hit enemy " << enemy << " - Enemy HP: " << enemyHealth->currentHp << " -> " << (enemyHealth->currentHp - projData->damage) << std::endl;
 
         enemyHealth->currentHp -= projData->damage;
