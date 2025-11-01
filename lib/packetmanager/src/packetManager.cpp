@@ -363,3 +363,48 @@ size_t PacketManager::_get_buffer_received_size() const {
     std::lock_guard<std::mutex> lock(_mutex);
     return _buffer_received.size();
 }
+
+std::vector<unsigned char> compress_data(const void* data, size_t size) {
+    if (!data || size == 0) {
+        throw std::invalid_argument("Données invalides");
+    }
+
+    // Calcul de la taille maximale après compression
+    uLongf compressed_size = compressBound(size);
+    std::vector<unsigned char> compressed(compressed_size);
+
+    // Compression
+    int result = compress(compressed.data(), &compressed_size,
+                         static_cast<const Bytef*>(data), size);
+
+    if (result != Z_OK) {
+        throw std::runtime_error("Erreur de compression");
+    }
+
+    // Redimensionne au taille réelle
+    compressed.resize(compressed_size);
+    return compressed;
+}
+
+// Décompresse les données
+// Retourne un vecteur contenant les données décompressées
+std::vector<unsigned char> decompress_data(const void* data, size_t compressed_size,
+                                           size_t original_size) {
+    if (!data || compressed_size == 0) {
+        throw std::invalid_argument("Données invalides");
+    }
+
+    std::vector<unsigned char> decompressed(original_size);
+    uLongf decompressed_size = original_size;
+
+    // Décompression
+    int result = uncompress(decompressed.data(), &decompressed_size,
+                           static_cast<const Bytef*>(data), compressed_size);
+
+    if (result != Z_OK) {
+        throw std::runtime_error("Erreur de décompression");
+    }
+
+    decompressed.resize(decompressed_size);
+    return decompressed;
+}
