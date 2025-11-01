@@ -15,7 +15,9 @@
 
 #include "common/utils/endiane_converter.h"
 #include "services/PlayerService.h"
-#include "common/components/Player.h"
+
+#include <common/components/Player.h>
+#include <common/components/Health.h>
 
 namespace rtype::server::network::senders {
     void broadcast_entity_destroy(ECS::EntityID room_id, uint32_t entity_id, uint16_t reason) {
@@ -70,10 +72,9 @@ namespace rtype::server::network::senders {
         joinPkt.newPlayerId = new_player;
         strncpy(joinPkt.name, new_player_name.c_str(), sizeof(joinPkt.name) - 1);
         joinPkt.name[sizeof(joinPkt.name) - 1] = '\0';
-        
-        // Get vessel type from the new player's Player component
-        auto *newPlayerComp = root.world.GetComponent<rtype::common::components::Player>(new_player);
-        if (newPlayerComp) {
+
+        // Include vessel type for correct visuals client-side
+        if (auto *newPlayerComp = root.world.GetComponent<rtype::common::components::Player>(new_player)) {
             joinPkt.vesselType = static_cast<uint8_t>(newPlayerComp->vesselType);
         } else {
             joinPkt.vesselType = 0; // Default to CrimsonStriker if not found
@@ -168,6 +169,12 @@ namespace rtype::server::network::senders {
         pkt.dir = dir;
         pkt.hp = hp;
         pkt.isAlive = isAlive;
+
+        // Populate invulnerability and vessel type
+        auto *health = root.world.GetComponent<rtype::common::components::Health>(playerId);
+        pkt.invulnerable = health ? health->invulnerable : false;
+        auto *playerComp = root.world.GetComponent<rtype::common::components::Player>(playerId);
+        pkt.vesselType = playerComp ? static_cast<uint8_t>(playerComp->vesselType) : 0;
 
         // Convert to network endian
         to_network_endian(pkt.playerId);

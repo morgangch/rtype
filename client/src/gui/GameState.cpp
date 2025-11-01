@@ -274,6 +274,7 @@ void GameState::destroyEntityByServerId(uint32_t serverId) {
     m_serverEntityMap.erase(it);
 }
 
+extern uint8_t g_selectedVessel;
 
 GameState::GameState(StateManager& stateManager)
     : m_stateManager(stateManager), m_parallaxSystem(SCREEN_WIDTH, SCREEN_HEIGHT) {
@@ -458,9 +459,9 @@ void GameState::resumeGame() {
 void GameState::resetGame() {
     // Clear ECS world
     m_world.Clear();
-    
-    // Create player entity
-    m_playerEntity = createPlayer();
+
+    // Create player entity and use the vessel selected during connection (defaults to Crimson if not set)
+    m_playerEntity = createPlayer(static_cast<rtype::common::components::VesselType>(g_selectedVessel));
     
     // Reset flags
     m_isGameOver = false;

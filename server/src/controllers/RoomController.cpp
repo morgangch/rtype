@@ -142,8 +142,10 @@ ECS::EntityID room_controller::findOrCreatePlayer(const packet_t &packet, const 
         return player; // Existing player, not in game - allow rejoin
     }
 
-    // Player doesn't exist, create new one
-    player = player_service::createNewPlayer(playerName, joinCode, ipStr, port);
+    // Player doesn't exist, create new one with selected vessel type (from JoinRoomPacket)
+    const JoinRoomPacket *jp = reinterpret_cast<const JoinRoomPacket *>(packet.data);
+    auto vesselType = static_cast<rtype::common::components::VesselType>(jp ? jp->vesselType : 0);
+    player = player_service::createNewPlayer(playerName, joinCode, ipStr, port, vesselType);
 
     // Re-check to ensure player was created successfully
     player = player_service::findPlayerByNetwork(packet.header.client_addr, packet.header.client_port);
