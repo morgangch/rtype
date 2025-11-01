@@ -424,7 +424,7 @@ ECS::EntityID GameState::createTurretEnemy(float x, float y) {
 
     m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
     m_world.AddComponent<rtype::common::components::Velocity>(entity, 0.0f, 0.0f, 0.0f);  // Stationary
-    m_world.AddComponent<rtype::common::components::Health>(entity, 5);
+    m_world.AddComponent<rtype::common::components::Health>(entity, 1);  // 1 HP but shielded
 
     rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::ADVANCED_ENEMY_3);
     m_world.AddComponent<rtype::client::components::Sprite>(
@@ -440,6 +440,18 @@ ECS::EntityID GameState::createTurretEnemy(float x, float y) {
 
     m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
         entity, rtype::common::components::EnemyType::Turret);
+
+    // Add cyclic shield (requires charged shot like Shielded enemy)
+    m_world.AddComponent<rtype::common::components::ShieldComponent>(
+        entity, rtype::common::components::ShieldType::Cyclic, true);
+
+    // Add shield visual effect
+    m_world.AddComponent<rtype::client::components::ShieldVisual>(
+        entity,
+        50.0f,                                      // radius
+        sf::Color(150, 150, 255, 120),              // purple-ish blue
+        2.5f,                                       // pulse speed
+        3.0f);                                      // border thickness
 
     // Turret fires 3-shot burst aimed at player every 2.5s
     auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 2.5f);

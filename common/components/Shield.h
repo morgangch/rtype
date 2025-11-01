@@ -34,9 +34,11 @@ namespace rtype::common::components {
         bool isActive;          ///< Whether shield is currently active
         float cycleTimer;       ///< Timer for cyclic shields (Shielded enemy)
         float cycleDuration;    ///< Duration of shield cycle (on/off periods)
+        int hitsToBreak;        ///< Number of charged hits needed to break shield (for Red shields)
+        int currentHits;        ///< Current number of hits received
         
-        ShieldComponent(ShieldType t = ShieldType::None, bool active = true) 
-            : type(t), isActive(active), cycleTimer(0.0f), cycleDuration(2.0f) {}
+        ShieldComponent(ShieldType t = ShieldType::None, bool active = true, int hits = 0) 
+            : type(t), isActive(active), cycleTimer(0.0f), cycleDuration(2.0f), hitsToBreak(hits), currentHits(0) {}
     };
     
 } // namespace rtype::common::components

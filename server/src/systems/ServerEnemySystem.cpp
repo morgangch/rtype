@@ -56,12 +56,9 @@ ServerEnemySystem::ServerEnemySystem()
     // Define the 4 sub-levels
     // Level 0: Basic + Shielded + TankDestroyer
     _levelDefinitions.push_back({
-        rtype::common::components::EnemyType::Turret,
-        rtype::common::components::EnemyType::Turret,
-        rtype::common::components::EnemyType::Fortress
-        //rtype::common::components::EnemyType::Basic,
-        //rtype::common::components::EnemyType::Shielded,
-        //rtype::common::components::EnemyType::TankDestroyer
+        rtype::common::components::EnemyType::Basic,
+        rtype::common::components::EnemyType::Shielded,
+        rtype::common::components::EnemyType::TankDestroyer
     });
 
     // Level 1: Snake + Flanker + Serpent
@@ -158,8 +155,8 @@ void ServerEnemySystem::spawnBoss(ECS::World& world, ECS::EntityID room, rtype::
         case rtype::common::components::EnemyType::Fortress:
             hp = 100;
             vx = 0.0f;
-            spawnX = 1200.0f; // Fixed position on the right side
-            spawnY = 360.0f;  // Center of screen
+            spawnX = 1200.0f;
+            spawnY = 360.0f;
             break;
             
         case rtype::common::components::EnemyType::Core:
@@ -186,16 +183,16 @@ void ServerEnemySystem::spawnBoss(ECS::World& world, ECS::EntityID room, rtype::
 
     // Special handling for Fortress boss - spawn turrets and shields
     if (bossType == rtype::common::components::EnemyType::Fortress) {
-        // Add red shield to boss (invincible until turrets destroyed)
-        world.AddComponent<rtype::common::components::ShieldComponent>(boss, rtype::common::components::ShieldType::Red, true);
+        // Add red shield to boss - requires 2 charged shots to break
+        world.AddComponent<rtype::common::components::ShieldComponent>(boss, rtype::common::components::ShieldType::Red, true, 2);
         
         // Add TurretLink component to track turrets
         world.AddComponent<rtype::common::components::TurretLinkComponent>(boss);
         auto* turretLink = world.GetComponent<rtype::common::components::TurretLinkComponent>(boss);
         
-        // Spawn 2 turrets (top and bottom)
-        auto topTurret = spawnFortressTurret(world, room, boss, -100.0f);    // 100px above boss
-        auto bottomTurret = spawnFortressTurret(world, room, boss, 100.0f); // 100px below boss
+        // Spawn 2 turrets (top and bottom) - more separated for better visibility
+        auto topTurret = spawnFortressTurret(world, room, boss, -150.0f);    // 150px above boss
+        auto bottomTurret = spawnFortressTurret(world, room, boss, 150.0f); // 150px below boss
         
         // Link turrets to boss
         if (turretLink) {
@@ -203,7 +200,7 @@ void ServerEnemySystem::spawnBoss(ECS::World& world, ECS::EntityID room, rtype::
             turretLink->turrets.push_back(bottomTurret);
         }
         
-        std::cout << "SERVER: 🛡️  Fortress boss spawned with turrets (top=" << topTurret << ", bottom=" << bottomTurret << ")" << std::endl;
+        std::cout << "SERVER: 🛡️  Fortress boss spawned with turrets (top=" << topTurret << ", bottom=" << bottomTurret << ") - Shield requires 2 charged hits!" << std::endl;
     }
 
     // Send to all players in the room with correct boss type
@@ -440,7 +437,7 @@ void ServerEnemySystem::spawnEnemy(ECS::World &world, ECS::EntityID room, rtype:
             hp = 3; vx = -90.0f;
             break;
         case rtype::common::components::EnemyType::Turret:
-            hp = 5; vx = 0.0f;
+            hp = 1; vx = 0.0f; 
             spawnX = 1100.0f;
             break;
         case rtype::common::components::EnemyType::Waver:
@@ -476,8 +473,8 @@ void ServerEnemySystem::spawnEnemy(ECS::World &world, ECS::EntityID room, rtype:
     root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(enemy, type);
     root.world.AddComponent<rtype::server::components::LinkedRoom>(enemy, room);
 
-    // Add cyclic shield to Shielded enemy type
-    if (type == rtype::common::components::EnemyType::Shielded) {
+    // Add cyclic shield to Shielded enemy type and Turret type
+    if (type == rtype::common::components::EnemyType::Shielded || type == rtype::common::components::EnemyType::Turret) {
         root.world.AddComponent<rtype::common::components::ShieldComponent>(enemy, rtype::common::components::ShieldType::Cyclic, true);
     }
 

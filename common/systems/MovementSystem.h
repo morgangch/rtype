@@ -388,9 +388,9 @@ namespace rtype::common::systems {
                                           components::EnemyTypeComponent& enemyType) {
             if (!vel) return;
 
-            // Fortress stays relatively stationary, only slight vertical drift
-            vel->vx = -20.0f;  // Very slow drift left
-            vel->vy = 30.0f * std::sin(enemyType.lifeTime * 0.5f);  // Gentle bobbing
+            // Fortress is stationary
+            vel->vx = 0.0f;
+            vel->vy = 0.0f;
         }
 
         /**
