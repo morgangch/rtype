@@ -97,7 +97,7 @@ ServerEnemySystem::ServerEnemySystem()
 
 void ServerEnemySystem::updatePhase(float deltaTime)
 {
-    _levelTimer += 180.0f;
+    _levelTimer += deltaTime;
 
     // Each level follows the same 3-minute pattern:
     // 0-60s: Only basic enemies
