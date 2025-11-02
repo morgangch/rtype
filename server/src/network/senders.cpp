@@ -188,9 +188,10 @@ namespace rtype::server::network::senders {
         pkt.hp = hp;
         pkt.isAlive = isAlive;
 
-        // Populate invulnerability and vessel type
+        // Populate invulnerability, vessel type, and maxHp
         auto *health = root.world.GetComponent<rtype::common::components::Health>(playerId);
         pkt.invulnerable = health ? health->invulnerable : false;
+        pkt.maxHp = health ? health->maxHp : 3; // Send maxHp for heart display
         auto *playerComp = root.world.GetComponent<rtype::common::components::Player>(playerId);
         pkt.vesselType = playerComp ? static_cast<uint8_t>(playerComp->vesselType) : 0;
 
@@ -200,6 +201,7 @@ namespace rtype::server::network::senders {
         to_network_endian(pkt.y);
         to_network_endian(pkt.dir);
         to_network_endian(pkt.hp);
+        to_network_endian(pkt.maxHp);
 
         auto *pconn = root.world.GetComponent<rtype::server::components::PlayerConn>(to_player);
         if (!pconn) {

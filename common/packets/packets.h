@@ -153,6 +153,7 @@ struct PlayerStatePacket {
     float x, y;
     float dir;
     uint16_t hp;
+    uint16_t maxHp; // Maximum HP (varies by vessel type)
     bool isAlive;
     bool invulnerable; // Server-authoritative invulnerability state
     uint8_t vesselType; // Vessel class (0-3) for visual sync

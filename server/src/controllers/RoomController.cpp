@@ -81,10 +81,10 @@ void room_controller::markPlayersAsInGame(ECS::EntityID room) {
                     baseHp = 3; // Agile (low defense)
                     break;
                 case rtype::common::components::VesselType::EmeraldTitan:
-                    baseHp = 3; // Tank (requested: 3 instead of 4)
+                    baseHp = 4; // Tank (4 HP, 4 hearts)
                     break;
                 case rtype::common::components::VesselType::SolarGuardian:
-                    baseHp = 4; // Defense (requested: 4 instead of 5)
+                    baseHp = 5; // Defense (5 HP, 5 hearts)
                     break;
             }
             

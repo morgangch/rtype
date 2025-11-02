@@ -216,9 +216,19 @@ ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t 
     return entity;
 }
 
-void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable) {
-    // Skip updates for local player (controlled by client input)
+void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable, uint16_t maxHp) {
+    ECS::EntityID e = 0;
+    
+    // Handle local player specially
     if (serverId == m_localPlayerServerId) {
+        e = m_playerEntity;
+        // Update only health/maxHp for local player (position controlled by client input)
+        auto* health = m_world.GetComponent<rtype::common::components::Health>(e);
+        if (health) {
+            health->currentHp = hp;
+            health->maxHp = maxHp; // Update maxHp from server
+            health->invulnerable = invulnerable;
+        }
         return;
     }
 
@@ -228,12 +238,13 @@ void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y,
         return;
     }
     
-    ECS::EntityID e = it->second;
+    e = it->second;
     auto* pos = m_world.GetComponent<rtype::common::components::Position>(e);
     if (pos) { pos->x = x; pos->y = y; }
     auto* health = m_world.GetComponent<rtype::common::components::Health>(e);
     if (health) {
         health->currentHp = hp;
+        health->maxHp = maxHp; // Update maxHp from server
         health->invulnerable = invulnerable;
     }
 }

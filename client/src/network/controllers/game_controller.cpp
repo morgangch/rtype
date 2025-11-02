@@ -143,9 +143,10 @@ namespace rtype::client::controllers::game_controller {
         from_network_endian(p->x);
         from_network_endian(p->y);
         from_network_endian(p->hp);
+        from_network_endian(p->maxHp);
 
         using rtype::client::gui::g_gameState;
-        if (g_gameState) g_gameState->updateEntityStateFromServer(p->playerId, p->x, p->y, p->hp, p->invulnerable);
+        if (g_gameState) g_gameState->updateEntityStateFromServer(p->playerId, p->x, p->y, p->hp, p->invulnerable, p->maxHp);
     }
 
     void handle_lobby_state(const packet_t &packet) {

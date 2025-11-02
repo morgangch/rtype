@@ -255,8 +255,9 @@ namespace rtype::client::gui {
          * @param y Y position
          * @param hp Health value
          * @param invulnerable Invulnerability state from server
+         * @param maxHp Maximum health (varies by vessel type)
          */
-        void updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable);
+        void updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable, uint16_t maxHp = 3);
 
         /**
          * @brief Update shield state for an entity from server
