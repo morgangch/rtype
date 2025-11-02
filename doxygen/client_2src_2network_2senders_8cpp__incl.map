@@ -1,0 +1,39 @@
+<map id="client/src/network/senders.cpp" name="client/src/network/senders.cpp">
+<area shape="rect" id="Node000001" title=" " alt="" coords="314,5,453,45"/>
+<area shape="rect" id="Node000002" href="$client_2include_2network_2senders_8h.html" title=" " alt="" coords="5,93,148,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="314,47,135,93,134,87,313,42"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="341,93,425,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="386,46,386,79,381,79,381,46"/>
+<area shape="rect" id="Node000006" href="$client_2include_2network_2network_8h.html" title=" " alt="" coords="173,93,317,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="351,48,278,89,276,84,349,43"/>
+<area shape="rect" id="Node000016" title=" " alt="" coords="450,93,530,119"/>
+<area shape="poly" id="edge19_Node000001_Node000016" title=" " alt="" coords="411,43,464,83,461,87,408,48"/>
+<area shape="rect" id="Node000017" title=" " alt="" coords="554,93,741,119"/>
+<area shape="poly" id="edge20_Node000001_Node000017" title=" " alt="" coords="447,43,596,87,595,92,446,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="133,313,199,339"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="68,121,47,148,26,185,19,206,16,226,17,246,26,264,44,284,68,299,120,316,118,321,65,304,41,288,21,267,12,247,10,226,14,204,21,183,43,145,64,117"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="86,167,145,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="85,118,105,153,100,156,81,120"/>
+<area shape="poly" id="edge6_Node000006_Node000004" title=" " alt="" coords="225,121,150,162,148,157,223,116"/>
+<area shape="rect" id="Node000007" href="$packethandler_8h.html" title="Packet Handler System for routing network packets to registered callbacks." alt="" coords="182,167,307,192"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="247,119,247,153,242,153,242,119"/>
+<area shape="rect" id="Node000012" href="$packetmanager_8h.html" title="Network packet management system with reliability and sequencing (Thread&#45;Safe)" alt="" coords="415,167,549,192"/>
+<area shape="poly" id="edge13_Node000006_Node000012" title=" " alt="" coords="284,116,431,160,430,165,282,121"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="36,240,123,265"/>
+<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="219,194,120,237,118,232,217,190"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="147,240,271,265"/>
+<area shape="poly" id="edge9_Node000007_Node000009" title=" " alt="" coords="241,194,223,229,218,226,236,191"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="397,240,474,265"/>
+<area shape="poly" id="edge10_Node000007_Node000010" title=" " alt="" coords="276,190,392,232,390,237,274,195"/>
+<area shape="rect" id="Node000011" href="$packet_8h.html" title="Core packet structures for network communication." alt="" coords="295,240,373,265"/>
+<area shape="poly" id="edge11_Node000007_Node000011" title=" " alt="" coords="261,190,310,229,307,233,257,194"/>
+<area shape="poly" id="edge12_Node000011_Node000003" title=" " alt="" coords="308,268,207,310,205,305,306,263"/>
+<area shape="poly" id="edge15_Node000012_Node000010" title=" " alt="" coords="477,194,453,230,448,227,472,191"/>
+<area shape="poly" id="edge17_Node000012_Node000011" title=" " alt="" coords="459,194,372,236,369,232,457,190"/>
+<area shape="rect" id="Node000013" title=" " alt="" coords="499,240,561,265"/>
+<area shape="poly" id="edge14_Node000012_Node000013" title=" " alt="" coords="492,191,517,227,512,230,488,194"/>
+<area shape="rect" id="Node000014" title=" " alt="" coords="586,240,650,265"/>
+<area shape="poly" id="edge16_Node000012_Node000014" title=" " alt="" coords="505,190,585,231,583,236,503,194"/>
+<area shape="rect" id="Node000015" title=" " alt="" coords="675,240,732,265"/>
+<area shape="poly" id="edge18_Node000012_Node000015" title=" " alt="" coords="518,189,662,235,661,240,517,195"/>
+</map>

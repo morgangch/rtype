@@ -1,0 +1,19 @@
+<map id="client/src/gui/SettingsConfig.cpp" name="client/src/gui/SettingsConfig.cpp">
+<area shape="rect" id="Node000001" title="Implementation of settings configuration manager." alt="" coords="369,5,600,31"/>
+<area shape="rect" id="Node000002" href="$SettingsConfig_8h.html" title="Settings configuration manager for R&#45;TYPE client." alt="" coords="269,79,421,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="463,33,381,75,378,70,461,28"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="445,79,525,104"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="487,31,487,65,482,65,482,31"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="549,79,634,104"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="503,28,564,69,561,73,500,33"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,152,212,177"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="308,107,161,151,159,145,306,101"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="237,152,295,177"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="334,106,291,145,287,141,330,102"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="319,152,370,177"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="347,104,347,138,342,138,342,104"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="395,152,468,177"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="360,102,408,141,405,145,357,106"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="493,152,567,177"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="375,102,488,145,486,149,373,107"/>
+</map>

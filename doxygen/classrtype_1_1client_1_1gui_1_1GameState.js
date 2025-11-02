@@ -1,0 +1,38 @@
+var classrtype_1_1client_1_1gui_1_1GameState =
+[
+    [ "GameStatus", "classrtype_1_1client_1_1gui_1_1GameState.html#ac32b3cd31ae0a110b2618641ac17cac5", [
+      [ "Playing", "classrtype_1_1client_1_1gui_1_1GameState.html#ac32b3cd31ae0a110b2618641ac17cac5ac9dbb2b7c84159b632d71e512eba8428", null ],
+      [ "InGameMenu", "classrtype_1_1client_1_1gui_1_1GameState.html#ac32b3cd31ae0a110b2618641ac17cac5a3b01d9787e67e6f14b4377567e635090", null ]
+    ] ],
+    [ "GameState", "classrtype_1_1client_1_1gui_1_1GameState.html#a696d9b41e1dd5991df766dccc90a9265", null ],
+    [ "~GameState", "classrtype_1_1client_1_1gui_1_1GameState.html#a6d9145443ae0c55085953c5111f83fdf", null ],
+    [ "createEnemyFromServer", "classrtype_1_1client_1_1gui_1_1GameState.html#a0a589911e5733e7e5a7e47331ece7119", null ],
+    [ "createProjectileFromServer", "classrtype_1_1client_1_1gui_1_1GameState.html#ad0c84c2b28aad55dcca19c92e0ba5178", null ],
+    [ "createRemotePlayer", "classrtype_1_1client_1_1gui_1_1GameState.html#afea2712394e99c066fdd223fbe9114d5", null ],
+    [ "destroyEntityByServerId", "classrtype_1_1client_1_1gui_1_1GameState.html#ae4ce790ddb039726538ce2df5cc300ea", null ],
+    [ "getLevelIndex", "classrtype_1_1client_1_1gui_1_1GameState.html#a5f19466ca25ca47d3270a1a114d623dd", null ],
+    [ "handleEvent", "classrtype_1_1client_1_1gui_1_1GameState.html#a1f67ab2938d121b87437cf0404d0b159", null ],
+    [ "handleJoystickAxis", "classrtype_1_1client_1_1gui_1_1GameState.html#a084a1c1c6331731188fb1b3b5bb7fc25", null ],
+    [ "handleJoystickButtonPressed", "classrtype_1_1client_1_1gui_1_1GameState.html#a0d143572663dfc2f8b18570f8b2e5614", null ],
+    [ "handleJoystickButtonReleased", "classrtype_1_1client_1_1gui_1_1GameState.html#acbfceb988c1dc393eb823888f99953e1", null ],
+    [ "handleKeyPressed", "classrtype_1_1client_1_1gui_1_1GameState.html#a44e1a734b0de1baa1b462537e9182352", null ],
+    [ "handleKeyReleased", "classrtype_1_1client_1_1gui_1_1GameState.html#a0b6c2def65a3c5f11bcb2bc28816d48c", null ],
+    [ "handleMenuInput", "classrtype_1_1client_1_1gui_1_1GameState.html#a09e802806604d3849025067ab152be47", null ],
+    [ "handleMouseButtonPressed", "classrtype_1_1client_1_1gui_1_1GameState.html#ad05b292b25e7ba001217ab328e8a50b2", null ],
+    [ "handleMouseButtonReleased", "classrtype_1_1client_1_1gui_1_1GameState.html#abde718cd6dc783b5bc621eb6034e8608", null ],
+    [ "isMusicMuted", "classrtype_1_1client_1_1gui_1_1GameState.html#afb04d794c4305ff88e407be550c06236", null ],
+    [ "onEnter", "classrtype_1_1client_1_1gui_1_1GameState.html#a74b8c29b5ec4c368c9fcfe7968a578e2", null ],
+    [ "onExit", "classrtype_1_1client_1_1gui_1_1GameState.html#a03c7aed98a74954d2f25f27cc43736c3", null ],
+    [ "releaseChargedShot", "classrtype_1_1client_1_1gui_1_1GameState.html#a89ffdd373f556b0deab5afe7a498ffdb", null ],
+    [ "render", "classrtype_1_1client_1_1gui_1_1GameState.html#af99d292c9547fb04e75c50aec91d6778", null ],
+    [ "setIsAdmin", "classrtype_1_1client_1_1gui_1_1GameState.html#a6ae64bfc33240afe4aa2232f2296a181", null ],
+    [ "setLevelIndex", "classrtype_1_1client_1_1gui_1_1GameState.html#afeb927432518074c3f04562b983a5e19", null ],
+    [ "setLocalPlayerServerId", "classrtype_1_1client_1_1gui_1_1GameState.html#a1727a3e39f9c9e3a4f126da0b845a307", null ],
+    [ "setLocalVesselType", "classrtype_1_1client_1_1gui_1_1GameState.html#a7c409cbde31030d751eae0c9d42acef9", null ],
+    [ "setMusicMuted", "classrtype_1_1client_1_1gui_1_1GameState.html#ab3e59691396c6801b78d82289331aa68", null ],
+    [ "setScoreFromServer", "classrtype_1_1client_1_1gui_1_1GameState.html#a09ef7395b87fc9c2f7d26f0b8450f702", null ],
+    [ "startChargedShot", "classrtype_1_1client_1_1gui_1_1GameState.html#acfda5b791740d1d7704e781edc6bb5b2", null ],
+    [ "update", "classrtype_1_1client_1_1gui_1_1GameState.html#a796060a09b4228320f74960a5970ae25", null ],
+    [ "updateEntityStateFromServer", "classrtype_1_1client_1_1gui_1_1GameState.html#a34619bf3fafe1ae9ed3f34624b7bbe27", null ],
+    [ "updateShieldStateFromServer", "classrtype_1_1client_1_1gui_1_1GameState.html#aaed3fbcb8951cf4f4402981604b16223", null ]
+];

@@ -1,0 +1,7 @@
+<map id="client/include/gui/HighscoresState.h" name="client/include/gui/HighscoresState.h">
+<area shape="rect" id="Node000001" title="SFML state that renders the Highscores screen (top scores list)." alt="" coords="141,5,285,45"/>
+<area shape="rect" id="Node000002" href="$HighscoresState_8cpp.html" title="Implementation of the SFML Highscores screen (top scores list)." alt="" coords="5,93,187,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="178,56,124,95,120,91,175,52"/>
+<area shape="rect" id="Node000003" href="$MainMenuState_8cpp.html" title="Implementation of the MainMenuState class." alt="" coords="211,101,450,126"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="252,51,316,98,313,103,249,56"/>
+</map>

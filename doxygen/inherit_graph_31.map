@@ -1,0 +1,19 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="Node000000" href="$classrtype_1_1client_1_1gui_1_1State.html" title="Abstract base class for all GUI states." alt="" coords="5,229,133,269"/>
+<area shape="rect" id="Node000001" href="$classrtype_1_1client_1_1gui_1_1GameState.html" title="Main gameplay state using ECS for entities and systems." alt="" coords="213,5,341,45"/>
+<area shape="poly" id="edge34_Node000000_Node000001" title=" " alt="" coords="79,215,94,178,116,135,144,92,180,55,211,37,214,42,183,59,148,96,120,138,99,180,84,217"/>
+<area shape="rect" id="Node000002" href="$classrtype_1_1client_1_1gui_1_1HighscoresState.html" title="State implementation responsible for displaying highscores." alt="" coords="209,69,345,109"/>
+<area shape="poly" id="edge35_Node000000_Node000002" title=" " alt="" coords="88,216,127,167,152,141,180,119,207,105,210,109,183,124,156,145,131,170,93,220"/>
+<area shape="rect" id="Node000003" href="$classrtype_1_1client_1_1gui_1_1MainMenuState.html" title="The main menu state of the R&#45;TYPE game." alt="" coords="211,133,343,173"/>
+<area shape="poly" id="edge36_Node000000_Node000003" title=" " alt="" coords="112,220,180,183,210,171,212,176,182,188,115,224"/>
+<area shape="rect" id="Node000004" href="$classrtype_1_1client_1_1gui_1_1PrivateServerLobbyState.html" title="Manages the private server lobby interface." alt="" coords="181,197,372,237"/>
+<area shape="poly" id="edge37_Node000000_Node000004" title=" " alt="" coords="147,235,181,229,182,235,147,240"/>
+<area shape="rect" id="Node000005" href="$classrtype_1_1client_1_1gui_1_1PrivateServerState.html" title="Manages the private server connection interface." alt="" coords="201,261,353,301"/>
+<area shape="poly" id="edge38_Node000000_Node000005" title=" " alt="" coords="148,259,201,267,200,272,147,264"/>
+<area shape="rect" id="Node000006" href="$classrtype_1_1client_1_1gui_1_1PublicServerState.html" title="Manages the public server matchmaking lobby." alt="" coords="204,325,349,365"/>
+<area shape="poly" id="edge39_Node000000_Node000006" title=" " alt="" coords="115,274,182,311,212,323,210,328,180,316,112,279"/>
+<area shape="rect" id="Node000007" href="$classrtype_1_1client_1_1gui_1_1SettingsState.html" title="The settings menu state of the R&#45;TYPE game." alt="" coords="213,389,341,429"/>
+<area shape="poly" id="edge40_Node000000_Node000007" title=" " alt="" coords="93,279,131,328,156,353,183,375,214,391,211,396,180,380,152,357,127,332,88,282"/>
+<area shape="rect" id="Node000008" href="$classrtype_1_1client_1_1gui_1_1VesselSelectionState.html" title="Manages the vessel class selection interface before joining a game." alt="" coords="193,453,360,493"/>
+<area shape="poly" id="edge41_Node000000_Node000008" title=" " alt="" coords="84,282,99,318,120,361,148,403,183,439,201,451,198,456,180,443,144,406,116,363,94,321,79,284"/>
+</map>

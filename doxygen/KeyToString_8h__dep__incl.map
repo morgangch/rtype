@@ -1,0 +1,7 @@
+<map id="client/include/gui/KeyToString.h" name="client/include/gui/KeyToString.h">
+<area shape="rect" id="Node000001" title=" " alt="" coords="165,5,298,45"/>
+<area shape="rect" id="Node000002" href="$KeyToString_8cpp.html" title="Utility for converting SFML keyboard keys to string representations." alt="" coords="5,93,217,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="192,55,130,95,128,91,190,51"/>
+<area shape="rect" id="Node000003" href="$SettingsState_8cpp.html" title="Implementation of the settings menu state for the R&#45;TYPE client." alt="" coords="241,93,464,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="274,51,336,91,333,95,271,55"/>
+</map>

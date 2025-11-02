@@ -1,0 +1,21 @@
+<map id="server/include/controllers/RoomController.h" name="server/include/controllers/RoomController.h">
+<area shape="rect" id="Node000001" title="Room&#45;related packet handlers and helper functions for the server." alt="" coords="189,5,376,45"/>
+<area shape="rect" id="Node000002" href="$packet_8h.html" title="Core packet structures for network communication." alt="" coords="5,167,83,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="235,48,189,69,141,96,100,127,66,159,63,155,97,123,139,91,186,64,233,43"/>
+<area shape="rect" id="Node000004" href="$packethandler_8h.html" title="Packet Handler System for routing network packets to registered callbacks." alt="" coords="152,93,277,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="268,47,236,84,232,81,264,44"/>
+<area shape="rect" id="Node000008" href="$Types_8h.html" title="Core type definitions for the Entity Component System (ECS)" alt="" coords="302,93,402,119"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="301,44,334,81,330,84,297,47"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="425,93,484,119"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="325,43,418,85,416,90,323,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="229,240,296,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="80,189,217,234,215,239,78,195"/>
+<area shape="poly" id="edge7_Node000004_Node000002" title=" " alt="" coords="188,121,85,164,83,159,186,116"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="107,167,194,192"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="206,121,172,158,168,155,202,117"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="218,167,342,192"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="227,117,262,155,258,158,223,121"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="367,167,444,192"/>
+<area shape="poly" id="edge6_Node000004_Node000007" title=" " alt="" coords="246,116,362,159,360,164,244,121"/>
+<area shape="poly" id="edge9_Node000008_Node000003" title=" " alt="" coords="388,116,419,129,447,147,463,168,464,181,458,193,444,209,427,222,388,240,348,250,310,254,310,249,347,245,387,235,424,218,440,205,454,191,459,180,458,170,443,151,416,134,386,121"/>
+</map>

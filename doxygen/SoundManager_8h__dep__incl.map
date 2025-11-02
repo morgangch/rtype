@@ -1,0 +1,29 @@
+<map id="client/include/gui/SoundManager.h" name="client/include/gui/SoundManager.h">
+<area shape="rect" id="Node000001" title="Small helper that owns and plays short sound effects (SFX)." alt="" coords="1345,5,1479,45"/>
+<area shape="rect" id="Node000002" href="$GameState_8h.html" title="Space Invaders game state implementation for R&#45;TYPE using ECS." alt="" coords="1243,93,1376,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1380,56,1334,95,1330,91,1377,52"/>
+<area shape="rect" id="Node000014" href="$SoundManager_8cpp.html" title=" " alt="" coords="1400,101,1632,126"/>
+<area shape="poly" id="edge13_Node000001_Node000014" title=" " alt="" coords="1447,52,1503,98,1500,102,1444,56"/>
+<area shape="rect" id="Node000003" href="$EntityFactory_8cpp.html" title="Entity factory methods for creating game entities." alt="" coords="5,189,224,214"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="1229,120,804,139,522,158,236,184,182,191,181,186,236,179,522,153,804,134,1229,114"/>
+<area shape="rect" id="Node000004" href="$GameLogicSystems_8cpp.html" title="ECS systems implementation for game logic." alt="" coords="249,181,431,221"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="1229,121,886,141,666,159,443,184,432,185,431,180,442,179,665,154,886,136,1229,115"/>
+<area shape="rect" id="Node000005" href="$GameRenderer_8cpp.html" title="Rendering systems for game visualization." alt="" coords="455,189,689,214"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="1229,125,992,150,700,184,647,191,646,186,700,179,992,145,1229,120"/>
+<area shape="rect" id="Node000006" href="$GameState_8cpp.html" title="Core GameState implementation &#45; Orchestration and lifecycle." alt="" coords="713,189,922,214"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="1230,131,883,191,882,186,1229,126"/>
+<area shape="rect" id="Node000007" href="$InputHandler_8cpp.html" title="Input event processing for gameplay and menus." alt="" coords="947,189,1165,214"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="1242,140,1091,191,1089,186,1240,135"/>
+<area shape="rect" id="Node000008" href="$MainMenuState_8cpp.html" title="Implementation of the MainMenuState class." alt="" coords="1190,189,1429,214"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="1312,147,1312,188,1307,188,1307,147"/>
+<area shape="rect" id="Node000009" href="$PrivateServerLobbyState_8cpp.html" title="Implementation of the private server lobby state for the R&#45;Type client GUI." alt="" coords="1453,181,1651,221"/>
+<area shape="poly" id="edge8_Node000002_Node000009" title=" " alt="" coords="1376,135,1500,179,1498,184,1374,140"/>
+<area shape="rect" id="Node000010" href="$PrivateServerState_8cpp.html" title="Implementation of the private server connection state for the R&#45;Type client GUI." alt="" coords="1675,181,1872,221"/>
+<area shape="poly" id="edge9_Node000002_Node000010" title=" " alt="" coords="1390,131,1675,181,1674,186,1389,136"/>
+<area shape="rect" id="Node000011" href="$PublicServerState_8cpp.html" title="Implementation of the public server lobby state for the R&#45;Type client GUI." alt="" coords="1897,181,2087,221"/>
+<area shape="poly" id="edge10_Node000002_Node000011" title=" " alt="" coords="1390,131,1529,149,1638,157,1747,164,1884,179,1897,180,1896,186,1884,184,1747,169,1638,162,1529,154,1389,136"/>
+<area shape="rect" id="Node000012" href="$SettingsState_8cpp.html" title="Implementation of the settings menu state for the R&#45;TYPE client." alt="" coords="2111,189,2334,214"/>
+<area shape="poly" id="edge11_Node000002_Node000012" title=" " alt="" coords="1390,131,1498,145,1590,153,1746,159,1902,163,2100,179,2155,186,2154,191,2100,184,1902,169,1746,165,1589,158,1497,150,1389,136"/>
+<area shape="rect" id="Node000013" href="$game__controller_8cpp.html" title=" " alt="" coords="2358,181,2589,221"/>
+<area shape="poly" id="edge12_Node000002_Node000013" title=" " alt="" coords="1390,131,1535,148,1659,157,1869,161,2079,162,2202,167,2347,179,2358,180,2357,185,2346,184,2202,172,2079,167,1869,167,1658,163,1535,153,1389,136"/>
+</map>

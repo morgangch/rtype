@@ -1,0 +1,9 @@
+<map id="client/src/gui/Accessibility.cpp" name="client/src/gui/Accessibility.cpp">
+<area shape="rect" id="Node000001" title="Implementation of the global accessibility manager (daltonism filters)" alt="" coords="37,5,253,31"/>
+<area shape="rect" id="Node000002" href="$Accessibility_8h.html" title="Global accessibility manager for colorblindness (Daltonism) filters." alt="" coords="9,79,148,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="136,33,101,70,97,67,132,29"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="172,79,252,104"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="158,29,194,67,190,70,154,33"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,152,152,177"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="81,104,81,138,76,138,76,104"/>
+</map>

@@ -1,0 +1,9 @@
+<map id="rtype::server::Rtype" name="rtype::server::Rtype">
+<area shape="rect" id="Node000001" title="Main R&#45;Type server instance." alt="" coords="133,93,284,119"/>
+<area shape="rect" id="Node000002" href="$classPacketManager.html" title="Network packet management system with reliability features (Thread&#45;Safe)" alt="" coords="5,5,127,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="79,42,100,67,123,81,149,91,147,96,121,86,96,71,75,45"/>
+<area shape="rect" id="Node000003" href="$classPacketHandler.html" title="Packet Handler System for managing packet callbacks." alt="" coords="151,5,266,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="211,45,211,93,206,93,206,45"/>
+<area shape="rect" id="Node000004" href="$classECS_1_1World.html" title="Central manager for the ECS world." alt="" coords="292,5,384,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="330,45,310,71,288,86,264,96,262,91,285,81,307,67,326,42"/>
+</map>

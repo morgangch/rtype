@@ -1,0 +1,9 @@
+<map id="client/include/gui/VesselSelectionState.h" name="client/include/gui/VesselSelectionState.h">
+<area shape="rect" id="Node000001" title="Vessel selection state before joining a game room." alt="" coords="280,5,455,45"/>
+<area shape="rect" id="Node000002" href="$MainMenuState_8cpp.html" title="Implementation of the MainMenuState class." alt="" coords="5,101,244,126"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="302,52,158,103,156,98,300,47"/>
+<area shape="rect" id="Node000003" href="$PrivateServerState_8cpp.html" title="Implementation of the private server connection state for the R&#45;Type client GUI." alt="" coords="269,93,466,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="370,59,370,93,365,93,365,59"/>
+<area shape="rect" id="Node000004" href="$VesselSelectionState_8cpp.html" title="Implementation of the vessel selection interface." alt="" coords="490,93,701,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="431,48,546,91,544,96,429,53"/>
+</map>

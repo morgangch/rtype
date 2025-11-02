@@ -1,0 +1,13 @@
+<map id="server/include/services/RoomService.h" name="server/include/services/RoomService.h">
+<area shape="rect" id="Node000001" title="Service layer for room entity management." alt="" coords="341,5,513,45"/>
+<area shape="rect" id="Node000002" href="$RoomController_8cpp.html" title=" " alt="" coords="5,93,164,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="340,51,160,96,159,91,338,46"/>
+<area shape="rect" id="Node000003" href="$server_2src_2network_2senders_8cpp.html" title=" " alt="" coords="188,93,331,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="380,54,297,96,295,91,377,49"/>
+<area shape="rect" id="Node000004" href="$PlayerService_8cpp.html" title=" " alt="" coords="355,93,499,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="430,59,430,93,425,93,425,59"/>
+<area shape="rect" id="Node000005" href="$RoomService_8cpp.html" title=" " alt="" coords="523,93,667,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="477,49,560,91,557,96,475,54"/>
+<area shape="rect" id="Node000006" href="$ServerEnemySystem_8cpp.html" title=" " alt="" coords="691,93,881,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="520,46,708,91,707,96,519,51"/>
+</map>

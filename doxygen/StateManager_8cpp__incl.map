@@ -1,0 +1,14 @@
+<map id="client/src/gui/StateManager.cpp" name="client/src/gui/StateManager.cpp">
+<area shape="rect" id="Node000001" title="Implementation of the StateManager class." alt="" coords="39,5,265,31"/>
+<area shape="rect" id="Node000002" href="$StateManager_8h.html" title="State management system for the R&#45;TYPE client GUI." alt="" coords="78,79,226,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="155,31,155,65,149,65,149,31"/>
+<area shape="rect" id="Node000003" href="$State_8h.html" title="Abstract base class for the state pattern implementation in R&#45;TYPE GUI." alt="" coords="9,152,77,177"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="136,106,74,147,71,142,133,102"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="5,225,152,251"/>
+<area shape="poly" id="edge6_Node000002_Node000004" title=" " alt="" coords="148,106,93,214,88,212,144,103"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="152,152,229,177"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="161,103,180,139,176,141,156,106"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="254,152,311,177"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="174,102,251,143,248,148,172,106"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="51,176,69,212,64,214,46,179"/>
+</map>

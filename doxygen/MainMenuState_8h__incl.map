@@ -1,0 +1,36 @@
+<map id="client/include/gui/MainMenuState.h" name="client/include/gui/MainMenuState.h">
+<area shape="rect" id="Node000001" title="Main menu screen implementation for the R&#45;TYPE client." alt="" coords="415,5,555,45"/>
+<area shape="rect" id="Node000002" href="$State_8h.html" title="Abstract base class for the state pattern implementation in R&#45;TYPE GUI." alt="" coords="5,167,73,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="415,35,240,57,157,74,125,84,101,96,85,108,72,124,52,156,47,153,67,120,81,104,98,91,123,79,156,69,240,51,414,30"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="273,240,419,265"/>
+<area shape="poly" id="edge15_Node000001_Node000003" title=" " alt="" coords="490,45,491,76,489,115,480,156,461,194,434,220,402,237,399,233,431,215,457,190,475,154,484,114,486,76,484,46"/>
+<area shape="rect" id="Node000004" href="$StateManager_8h.html" title="State management system for the R&#45;TYPE client GUI." alt="" coords="112,93,236,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="415,47,233,93,232,87,414,42"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="231,167,309,192"/>
+<area shape="poly" id="edge21_Node000001_Node000005" title=" " alt="" coords="415,39,355,59,326,75,301,95,284,123,275,154,270,152,279,121,297,92,323,70,353,54,414,34"/>
+<area shape="rect" id="Node000007" href="$GUIHelper_8h.html" title="Centralized GUI utilities and constants for the R&#45;TYPE client." alt="" coords="573,93,673,119"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="519,43,592,84,590,89,517,48"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="685,167,743,192"/>
+<area shape="poly" id="edge16_Node000001_Node000008" title=" " alt="" coords="556,31,589,39,625,51,658,68,688,92,706,121,714,152,709,154,701,123,684,95,655,73,623,56,588,44,554,37"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="523,167,609,192"/>
+<area shape="poly" id="edge17_Node000001_Node000009" title=" " alt="" coords="497,45,556,153,551,155,493,47"/>
+<area shape="rect" id="Node000010" href="$ParallaxSystem_8h.html" title="Parallax background system for space&#45;themed games." alt="" coords="312,93,447,119"/>
+<area shape="poly" id="edge12_Node000001_Node000010" title=" " alt="" coords="461,48,408,87,404,83,458,43"/>
+<area shape="rect" id="Node000012" href="$MusicManager_8h.html" title="Lightweight wrapper around sf::Music for playing level background music." alt="" coords="749,93,877,119"/>
+<area shape="poly" id="edge18_Node000001_Node000012" title=" " alt="" coords="556,41,752,88,751,93,554,46"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="75,186,284,234,282,239,73,191"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="154,121,75,162,72,158,151,116"/>
+<area shape="poly" id="edge7_Node000004_Node000003" title=" " alt="" coords="163,121,150,136,139,154,134,173,139,190,156,204,186,216,260,235,258,240,184,221,154,209,134,194,128,173,134,152,146,133,159,117"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="191,117,245,156,242,160,188,121"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="149,167,207,192"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="177,119,179,153,174,153,172,119"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="630,118,636,154,633,175,624,194,611,204,594,214,546,229,490,239,433,247,433,242,489,234,545,223,592,209,609,200,620,190,628,173,630,154,625,119"/>
+<area shape="poly" id="edge10_Node000007_Node000008" title=" " alt="" coords="640,117,690,156,687,160,636,121"/>
+<area shape="poly" id="edge11_Node000007_Node000009" title=" " alt="" coords="616,121,586,158,582,154,612,117"/>
+<area shape="poly" id="edge13_Node000010_Node000003" title=" " alt="" coords="379,120,354,227,349,226,374,119"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="384,167,447,192"/>
+<area shape="poly" id="edge14_Node000010_Node000011" title=" " alt="" coords="388,118,406,153,401,156,383,120"/>
+<area shape="poly" id="edge20_Node000012_Node000008" title=" " alt="" coords="798,121,743,161,740,156,795,117"/>
+<area shape="rect" id="Node000013" title=" " alt="" coords="768,167,895,192"/>
+<area shape="poly" id="edge19_Node000012_Node000013" title=" " alt="" coords="818,118,827,153,822,154,813,120"/>
+</map>

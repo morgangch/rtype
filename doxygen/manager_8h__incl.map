@@ -1,0 +1,9 @@
+<map id="client/include/components/configs/manager.h" name="client/include/components/configs/manager.h">
+<area shape="rect" id="Node000001" title="Generic resource manager for client&#45;side asset loading." alt="" coords="87,5,280,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,129,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="157,48,97,88,94,83,154,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="154,93,213,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="186,46,186,79,181,79,181,46"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="237,93,314,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="207,44,253,82,249,86,204,48"/>
+</map>

@@ -1,0 +1,49 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="Node000000" href="$classECS_1_1IComponent.html" title="Abstract interface for all components." alt="" coords="5,358,140,383"/>
+<area shape="rect" id="Node000001" href="$classECS_1_1Component.html" title=" " alt="" coords="207,27,433,53"/>
+<area shape="poly" id="edge1_Node000000_Node000001" title=" " alt="" coords="74,344,83,289,103,217,117,179,136,142,159,107,186,77,208,61,233,50,235,55,211,66,190,81,163,110,140,144,122,181,108,218,88,290,79,345"/>
+<area shape="rect" id="Node000003" href="$classECS_1_1Component.html" title=" " alt="" coords="199,91,441,117"/>
+<area shape="poly" id="edge3_Node000000_Node000003" title=" " alt="" coords="77,343,90,299,112,244,143,188,163,162,186,139,209,125,234,114,236,119,212,129,190,143,167,165,148,191,116,246,95,300,82,345"/>
+<area shape="rect" id="Node000005" href="$classECS_1_1Component.html" title=" " alt="" coords="215,154,425,179"/>
+<area shape="poly" id="edge5_Node000000_Node000005" title=" " alt="" coords="82,344,98,311,121,273,151,235,186,202,212,187,240,177,242,182,215,192,190,206,155,238,126,276,103,314,87,346"/>
+<area shape="rect" id="Node000007" href="$classECS_1_1Component.html" title=" " alt="" coords="203,217,437,242"/>
+<area shape="poly" id="edge7_Node000000_Node000007" title=" " alt="" coords="91,345,132,302,158,280,187,262,215,249,245,240,246,245,217,254,189,266,161,285,136,306,95,349"/>
+<area shape="rect" id="Node000009" href="$classECS_1_1Component.html" title=" " alt="" coords="200,277,440,302"/>
+<area shape="poly" id="edge9_Node000000_Node000009" title=" " alt="" coords="110,349,187,317,253,299,255,305,189,323,112,354"/>
+<area shape="rect" id="Node000011" href="$classECS_1_1Component.html" title=" " alt="" coords="221,333,419,358"/>
+<area shape="poly" id="edge11_Node000000_Node000011" title=" " alt="" coords="154,360,220,353,221,358,154,365"/>
+<area shape="rect" id="Node000013" href="$classECS_1_1Component.html" title=" " alt="" coords="210,382,430,407"/>
+<area shape="poly" id="edge13_Node000000_Node000013" title=" " alt="" coords="154,376,210,381,210,387,153,381"/>
+<area shape="rect" id="Node000015" href="$classECS_1_1Component.html" title=" " alt="" coords="200,431,440,457"/>
+<area shape="poly" id="edge15_Node000000_Node000015" title=" " alt="" coords="114,387,189,416,240,429,239,434,187,421,112,392"/>
+<area shape="rect" id="Node000017" href="$classECS_1_1Component.html" title=" " alt="" coords="203,481,437,506"/>
+<area shape="poly" id="edge17_Node000000_Node000017" title=" " alt="" coords="96,392,136,430,162,450,189,466,224,478,222,483,187,470,159,454,133,434,92,395"/>
+<area shape="rect" id="Node000019" href="$classECS_1_1Component.html" title=" " alt="" coords="203,530,437,555"/>
+<area shape="poly" id="edge19_Node000000_Node000019" title=" " alt="" coords="88,394,128,456,156,488,189,515,216,528,214,532,187,520,152,492,123,459,84,397"/>
+<area shape="rect" id="Node000021" href="$classECS_1_1Component.html" title=" " alt="" coords="188,579,452,605"/>
+<area shape="poly" id="edge21_Node000000_Node000021" title=" " alt="" coords="84,396,98,435,120,481,150,527,169,547,189,564,213,577,210,582,187,569,165,551,146,530,115,483,93,437,79,398"/>
+<area shape="rect" id="Node000023" href="$classECS_1_1Component.html" title=" " alt="" coords="236,629,404,654"/>
+<area shape="poly" id="edge23_Node000000_Node000023" title=" " alt="" coords="81,396,92,444,112,504,144,564,165,591,190,614,212,627,237,635,235,640,210,632,186,618,161,594,140,567,107,506,87,446,76,398"/>
+<area shape="rect" id="Node000002" href="$classrtype_1_1client_1_1components_1_1Animation.html" title="Component for managing sprite frame animations." alt="" coords="503,5,691,45"/>
+<area shape="poly" id="edge2_Node000001_Node000002" title=" " alt="" coords="447,31,502,28,503,33,447,36"/>
+<area shape="rect" id="Node000004" href="$classrtype_1_1client_1_1components_1_1AudioSource.html" title="Component representing an audio source in the game world." alt="" coords="503,69,691,109"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="454,94,502,92,502,97,454,100"/>
+<area shape="rect" id="Node000006" href="$classrtype_1_1client_1_1components_1_1Camera.html" title="Component representing a camera/viewport in the game." alt="" coords="503,133,691,173"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="439,158,502,155,503,161,440,164"/>
+<area shape="rect" id="Node000008" href="$classrtype_1_1client_1_1components_1_1Renderable.html" title="Component that makes an entity visible on screen." alt="" coords="503,197,691,237"/>
+<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="451,221,503,219,503,224,451,226"/>
+<area shape="rect" id="Node000010" href="$classrtype_1_1client_1_1components_1_1ShieldVisual.html" title="Visual component to display a shield around an entity." alt="" coords="503,261,691,301"/>
+<area shape="poly" id="edge10_Node000009_Node000010" title=" " alt="" coords="454,283,502,281,503,287,454,288"/>
+<area shape="rect" id="Node000012" href="$classrtype_1_1client_1_1components_1_1Sprite.html" title="Component for visual representation of entities." alt="" coords="503,325,691,365"/>
+<area shape="poly" id="edge12_Node000011_Node000012" title=" " alt="" coords="433,343,502,343,502,348,433,348"/>
+<area shape="rect" id="Node000014" href="$classrtype_1_1server_1_1components_1_1Assistant.html" title=" " alt="" coords="500,389,693,429"/>
+<area shape="poly" id="edge14_Node000013_Node000014" title=" " alt="" coords="444,399,500,402,499,407,443,404"/>
+<area shape="rect" id="Node000016" href="$classrtype_1_1server_1_1components_1_1LinkedRoom.html" title=" " alt="" coords="500,453,693,493"/>
+<area shape="poly" id="edge16_Node000015_Node000016" title=" " alt="" coords="454,456,500,460,499,466,453,461"/>
+<area shape="rect" id="Node000018" href="$classrtype_1_1server_1_1components_1_1LobbyState.html" title="Simple POD component to store lobby&#45;related flags for a player." alt="" coords="500,517,693,557"/>
+<area shape="poly" id="edge18_Node000017_Node000018" title=" " alt="" coords="414,506,500,519,499,525,413,511"/>
+<area shape="rect" id="Node000020" href="$classrtype_1_1server_1_1components_1_1PlayerConn.html" title="Component storing per&#45;player networking state." alt="" coords="500,581,693,621"/>
+<area shape="poly" id="edge20_Node000019_Node000020" title=" " alt="" coords="408,555,453,564,517,579,515,584,451,569,407,560"/>
+<area shape="rect" id="Node000022" href="$classrtype_1_1server_1_1components_1_1RoomProperties.html" title="Server&#45;side room metadata component." alt="" coords="500,645,693,685"/>
+<area shape="poly" id="edge22_Node000021_Node000022" title=" " alt="" coords="416,605,453,613,501,631,536,643,534,648,499,636,451,619,415,610"/>
+</map>

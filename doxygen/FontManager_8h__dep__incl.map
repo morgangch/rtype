@@ -1,0 +1,9 @@
+<map id="client/include/gui/FontManager.h" name="client/include/gui/FontManager.h">
+<area shape="rect" id="Node000001" title="Centralized font management system for the R&#45;TYPE client GUI." alt="" coords="285,5,418,45"/>
+<area shape="rect" id="Node000002" href="$FontManager_8cpp.html" title="Implementation of the FontManager singleton class." alt="" coords="5,101,225,126"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="287,53,148,103,146,98,286,48"/>
+<area shape="rect" id="Node000003" href="$GUIHelper_8cpp.html" title="Implementation of GUI utility functions and constants." alt="" coords="250,101,453,126"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="354,59,354,100,349,100,349,59"/>
+<area shape="rect" id="Node000004" href="$VesselSelectionState_8cpp.html" title="Implementation of the vessel selection interface." alt="" coords="477,93,687,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="415,48,532,91,531,96,414,53"/>
+</map>

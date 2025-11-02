@@ -1,0 +1,5 @@
+<map id="AdminDetectorSystem" name="AdminDetectorSystem">
+<area shape="rect" id="Node000001" title="System that detects admin disconnection and promotes new admins." alt="" coords="5,79,175,104"/>
+<area shape="rect" id="Node000002" href="$classECS_1_1System.html" title="Base class for all ECS systems." alt="" coords="38,5,142,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="93,44,93,79,87,79,87,44"/>
+</map>

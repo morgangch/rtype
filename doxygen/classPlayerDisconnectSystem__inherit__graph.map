@@ -1,0 +1,5 @@
+<map id="PlayerDisconnectSystem" name="PlayerDisconnectSystem">
+<area shape="rect" id="Node000001" title="System that detects player timeouts and handles disconnections." alt="" coords="5,79,189,104"/>
+<area shape="rect" id="Node000002" href="$classECS_1_1System.html" title="Base class for all ECS systems." alt="" coords="45,5,149,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="100,44,100,79,95,79,95,44"/>
+</map>

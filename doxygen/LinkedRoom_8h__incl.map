@@ -1,0 +1,9 @@
+<map id="server/include/components/LinkedRoom.h" name="server/include/components/LinkedRoom.h">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,5,204,45"/>
+<area shape="rect" id="Node000002" href="$Component_8h.html" title="Base component classes and type registration system for the ECS." alt="" coords="35,93,174,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="107,46,107,79,102,79,102,46"/>
+<area shape="rect" id="Node000003" href="$Types_8h.html" title="Core type definitions for the Entity Component System (ECS)" alt="" coords="69,167,140,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="107,119,107,153,102,153,102,119"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="71,240,138,265"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="107,192,107,226,102,226,102,192"/>
+</map>
