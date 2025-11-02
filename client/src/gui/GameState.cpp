@@ -258,8 +258,6 @@ void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y,
     if (serverId == m_localPlayerServerId) {
         auto* health = m_world.GetComponent<rtype::common::components::Health>(m_playerEntity);
         if (health) {
-            std::cout << "[CLIENT] Updating local player HP from server: currentHp=" << hp 
-                      << " maxHp=" << maxHp << " (was " << health->maxHp << ")" << std::endl;
             health->currentHp = hp;
             health->maxHp = maxHp;
             health->invulnerable = invulnerable;
