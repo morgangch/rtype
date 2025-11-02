@@ -100,6 +100,12 @@ namespace rtype::client::gui {
         void onEnter() override;
 
         /**
+         * @brief Called when exiting this state
+         * Ensures global lobby pointer is cleared to avoid dangling references.
+         */
+        void onExit() override;
+
+        /**
          * @brief Destroy the PrivateServerLobbyState
          *
          * Destructor defined in the .cpp so unique_ptr<ParallaxSystem>
