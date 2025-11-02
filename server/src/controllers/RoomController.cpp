@@ -717,13 +717,15 @@ void room_controller::handleSpawnBossRequest(const packet_t &packet) {
 
     std::cout << "✓ Admin " << player << " authorized to spawn boss in room " << room << std::endl;
 
-    // Check if a boss already exists
+    // Check if a boss already exists (any boss type)
     bool bossExists = false;
     auto *enemyTypes = root.world.GetAllComponents<rtype::common::components::EnemyTypeComponent>();
     if (enemyTypes) {
         for (auto &etPair: *enemyTypes) {
             auto *et = etPair.second.get();
-            if (et && et->type == rtype::common::components::EnemyType::TankDestroyer) {
+            if (!et) continue;
+            using ET = rtype::common::components::EnemyType;
+            if (et->type == ET::TankDestroyer || et->type == ET::Serpent || et->type == ET::Fortress || et->type == ET::Core) {
                 auto *health = root.world.GetComponent<rtype::common::components::Health>(etPair.first);
                 if (health && health->isAlive && health->currentHp > 0) {
                     bossExists = true;
@@ -739,38 +741,14 @@ void room_controller::handleSpawnBossRequest(const packet_t &packet) {
         return;
     }
 
-    // Determine which boss to spawn based on the current level in the enemy system
-    if (auto* sys = root.world.GetSystem<ServerEnemySystem>()) {
-        // Pick the boss type for the current level
-        auto bossType = sys->getCurrentBossType();
-
-        // Prevent spawning a duplicate active boss of the same type in this room
-        bool bossExists = false;
-        auto *enemyTypes = root.world.GetAllComponents<rtype::common::components::EnemyTypeComponent>();
-        if (enemyTypes) {
-            for (auto &etPair: *enemyTypes) {
-                auto *et = etPair.second.get();
-                if (et && et->type == bossType) {
-                    auto *linked = root.world.GetComponent<rtype::server::components::LinkedRoom>(etPair.first);
-                    auto *health = root.world.GetComponent<rtype::common::components::Health>(etPair.first);
-                    if (linked && linked->room_id == room && health && health->isAlive && health->currentHp > 0) {
-                        bossExists = true;
-                        break;
-                    }
-                }
-            }
+        // Spawn the appropriate boss for the current level using the enemy system
+        if (auto* sys = root.world.GetSystem<ServerEnemySystem>()) {
+            auto type = sys->getCurrentBossType();
+            std::cout << "✓ Admin spawning level-appropriate boss type=" << static_cast<int>(type) << " in room " << room << std::endl;
+            sys->spawnBoss(root.world, room, type);
+        } else {
+            std::cerr << "ERROR: ServerEnemySystem not available; cannot spawn boss" << std::endl;
         }
-
-        if (bossExists) {
-            std::cout << "WARNING: Boss of current level already exists in room " << room << ", spawn request denied" << std::endl;
-            return;
-        }
-
-        // Use system helper to spawn correct boss for this room
-        sys->spawnBoss(root.world, room, bossType);
-    } else {
-        std::cerr << "ERROR: ServerEnemySystem not available; cannot spawn boss" << std::endl;
-    }
 }
 
 // Register all packet callbacks on a player's packet handler

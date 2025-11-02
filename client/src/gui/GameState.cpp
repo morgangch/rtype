@@ -527,9 +527,15 @@ bool GameState::isBossActive() {
     // Pure ECS approach: query the world for boss entities
     auto* enemyTypes = m_world.GetAllComponents<rtype::common::components::EnemyTypeComponent>();
     if (!enemyTypes) return false;
-    
+
     for (auto& [entity, enemyTypePtr] : *enemyTypes) {
-        if (enemyTypePtr->type == rtype::common::components::EnemyType::TankDestroyer) {
+        if (!enemyTypePtr) continue;
+        const auto t = enemyTypePtr->type;
+        // Consider all boss types across levels
+        if (t == rtype::common::components::EnemyType::TankDestroyer ||
+            t == rtype::common::components::EnemyType::Serpent ||
+            t == rtype::common::components::EnemyType::Fortress ||
+            t == rtype::common::components::EnemyType::Core) {
             // Check if the boss is still alive (has Health component with HP > 0)
             auto* health = m_world.GetComponent<rtype::common::components::Health>(entity);
             if (health && health->currentHp > 0) {
@@ -537,7 +543,7 @@ bool GameState::isBossActive() {
             }
         }
     }
-    
+
     return false;
 }
 
@@ -568,8 +574,13 @@ void GameState::update(float deltaTime) {
 void GameState::updateBossMusicState() {
     bool bossAlive = isBossActive();
     if (bossAlive && !m_bossMusicActive) {
-        // Start boss music
-        const std::string bossMusic = AudioFactory::getMusicPath(AudioFactory::MusicId::BossFight1);
+        // Choose boss track by current level index
+        AudioFactory::MusicId bossTrack = AudioFactory::MusicId::BossFight1; // level 0
+        if (m_levelIndex == 1)      bossTrack = AudioFactory::MusicId::BossFight2; // Serpent
+        else if (m_levelIndex == 2) bossTrack = AudioFactory::MusicId::BossFight3; // Fortress
+        else if (m_levelIndex >= 3) bossTrack = AudioFactory::MusicId::BossFight4; // Core
+
+        const std::string bossMusic = AudioFactory::getMusicPath(bossTrack);
         if (m_musicManager.loadFromFile(bossMusic)) {
             m_musicManager.setVolume(35.0f);
             m_musicManager.play(true);
@@ -578,7 +589,12 @@ void GameState::updateBossMusicState() {
             std::cerr << "GameState: could not load boss music: " << bossMusic << std::endl;
         }
     } else if (!bossAlive && m_bossMusicActive) {
-        // Boss died: advance level (plays test music and swaps background)
+        // Boss defeated: stop boss music and play boss death SFX
+        m_musicManager.stop();
+        if (m_soundManager.has(AudioFactory::SfxId::BossDeath)) {
+            m_soundManager.play(AudioFactory::SfxId::BossDeath);
+        }
+        // Advance level (swaps background and loads next level music)
         advanceLevel();
         m_bossMusicActive = false;
     }
