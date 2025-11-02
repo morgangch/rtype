@@ -27,6 +27,8 @@
 #include "gui/AssetPaths.h"
 #include "gui/TextureCache.h"
 #include <common/systems/MovementSystem.h>
+#include <common/systems/FortressShieldSystem.h>
+#include <common/components/Shield.h>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -79,8 +81,8 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
         case rtype::common::components::EnemyType::Flanker:
             e = createFlankerEnemy(x, y);
             break;
-        case rtype::common::components::EnemyType::Bomber:
-            e = createBomberEnemy(x, y);
+        case rtype::common::components::EnemyType::Turret:
+            e = createTurretEnemy(x, y);
             break;
         case rtype::common::components::EnemyType::Waver:
             e = createWaverEnemy(x, y);
@@ -550,6 +552,7 @@ void GameState::update(float deltaTime) {
     updateInvulnerabilitySystem(deltaTime);
     updateAnimationSystem(deltaTime);
     rtype::common::systems::MovementSystem::update(m_world, deltaTime); // shared movement system
+    rtype::common::systems::FortressShieldSystem::update(m_world, deltaTime); // shield sync system
     updateCollisionSystem();
     updateCleanupSystem(deltaTime);
 }

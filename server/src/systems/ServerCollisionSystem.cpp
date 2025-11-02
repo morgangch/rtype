@@ -13,10 +13,14 @@
 #include "rtype.h"
 #include "packetmanager.h"
 #include <common/systems/CollisionSystem.h>
+#include <common/systems/FortressShieldSystem.h>
 #include <common/components/Score.h>
+#include <common/components/Shield.h>
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "senders.h"
 #include "components/LinkedRoom.h"
@@ -41,7 +45,7 @@ static int getScoreForEnemyType(rtype::common::components::EnemyType type) {
             return 50;
         case rtype::common::components::EnemyType::Flanker:
             return 40;
-        case rtype::common::components::EnemyType::Bomber:
+        case rtype::common::components::EnemyType::Turret:
             return 45;
         case rtype::common::components::EnemyType::Waver:
             return 55;
@@ -65,6 +69,9 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
     rtype::common::systems::CollisionHandlers handlers;
     std::vector<ECS::EntityID> toDestroy;
 
+    // Track projectile-enemy pairs that have already collided this frame
+    std::unordered_map<ECS::EntityID, std::unordered_set<ECS::EntityID>> piercingCollisions;
+
     handlers.onPlayerVsEnemy = [this, &toDestroy](ECS::EntityID player, ECS::EntityID enemy, ECS::World& world) {
         auto* playerHealth = world.GetComponent<rtype::common::components::Health>(player);
         auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemy);
@@ -81,15 +88,82 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
         if (playerHealth->currentHp <= 0) {
             playerHealth->isAlive = false;
             std::cout << "[COLLISION] Player " << player << " DIED from enemy contact" << std::endl;
+            
+            // DEBUG: Check player components after death
+            auto* pconn = world.GetComponent<rtype::server::components::PlayerConn>(player);
+            auto* linkedRoom = world.GetComponent<rtype::server::components::LinkedRoom>(player);
+            auto* playerComp = world.GetComponent<rtype::common::components::Player>(player);
+            std::cout << "[DEBUG] Dead player " << player << " components: "
+                      << "PlayerConn=" << (pconn != nullptr)
+                      << " LinkedRoom=" << (linkedRoom != nullptr) 
+                      << " Player=" << (playerComp != nullptr) << std::endl;
+            if (linkedRoom) {
+                std::cout << "[DEBUG] Player's room_id: " << linkedRoom->room_id << std::endl;
+            }
         }
 
         broadcastPlayerStateImmediate(world, player);
     };
 
-    handlers.onPlayerProjectileVsEnemy = [this, &toDestroy](ECS::EntityID proj, ECS::EntityID enemy, ECS::World& world) {
+    handlers.onPlayerProjectileVsEnemy = [this, &toDestroy, &piercingCollisions](ECS::EntityID proj, ECS::EntityID enemy, ECS::World& world) {
         auto* projData = world.GetComponent<rtype::common::components::Projectile>(proj);
         auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemy);
         if (!projData || !enemyHealth) return;
+
+        // For piercing projectiles, check if we've already hit this enemy this frame
+        if (projData->piercing) {
+            if (piercingCollisions[proj].count(enemy) > 0) {
+                // Already hit this enemy this frame, skip
+                std::cout << "[COLLISION] ⚠️ Piercing projectile " << proj << " already hit enemy " << enemy << " this frame, SKIPPING" << std::endl;
+                return;
+            }
+            // Mark this collision as processed
+            piercingCollisions[proj].insert(enemy);
+            std::cout << "[COLLISION] 🎯 First hit: Piercing projectile " << proj << " hitting enemy " << enemy << std::endl;
+        }
+
+        // Check for active shields (Fortress boss or shielded enemies)
+        auto* shield = world.GetComponent<rtype::common::components::ShieldComponent>(enemy);
+        if (shield && shield->isActive) {
+            // Red shield (Fortress boss) - requires charged hits to break
+            if (shield->type == rtype::common::components::ShieldType::Red) {
+                if (!projData->piercing) {
+                    // Normal projectile - blocked completely
+                    std::cout << "[COLLISION] 🔴 Normal shot BLOCKED by RED SHIELD on boss " << enemy << "! (needs charged shot)" << std::endl;
+                    toDestroy.push_back(proj);
+                    return;
+                } else {
+                    // Charged shot - count the hit
+                    shield->currentHits++;
+                    std::cout << "[COLLISION] ⚡ CHARGED shot hit RED SHIELD on boss " << enemy << "! (" << shield->currentHits << "/" << shield->hitsToBreak << " hits)" << std::endl;
+                    
+                    if (shield->currentHits >= shield->hitsToBreak) {
+                        // Shield broken!
+                        shield->isActive = false;
+                        std::cout << "[COLLISION] 💥 RED SHIELD BROKEN on boss " << enemy << "! Boss is now vulnerable!" << std::endl;
+                    }
+                    toDestroy.push_back(proj);
+                    return; // No damage yet, just shield hit
+                }
+            }
+            
+            // Blue shield - visual effect only, takes damage normally
+            if (shield->type == rtype::common::components::ShieldType::Blue) {
+                std::cout << "[COLLISION] 🔵 Projectile " << proj << " hits BLUE SHIELD on enemy " << enemy << " - taking damage!" << std::endl;
+                // Blue shields take damage, just visual indicator
+            }
+            
+            // Cyclic shield (Shielded enemy & Turret normal) - only piercing shots work
+            if (shield->type == rtype::common::components::ShieldType::Cyclic) {
+                if (!projData->piercing) {
+                    std::cout << "[COLLISION] 🛡️ Projectile " << proj << " BLOCKED by shield on enemy " << enemy << "! (needs charged/piercing shot)" << std::endl;
+                    toDestroy.push_back(proj);
+                    return;
+                } else {
+                    std::cout << "[COLLISION] ⚡ PIERCING shot " << proj << " BREAKS through cyclic shield of enemy " << enemy << "!" << std::endl;
+                }
+            }
+        }
 
         std::cout << "[COLLISION] Projectile " << proj << " hit enemy " << enemy << " - Enemy HP: " << enemyHealth->currentHp << " -> " << (enemyHealth->currentHp - projData->damage) << std::endl;
 
@@ -187,8 +261,13 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
     std::sort(toDestroy.begin(), toDestroy.end());
     toDestroy.erase(std::unique(toDestroy.begin(), toDestroy.end()), toDestroy.end());
 
+    // Broadcast destruction before actually destroying entities
     for (auto entity : toDestroy) {
         broadcastEntityDestroyToAllRooms(world, entity);
+    }
+    
+    // Now destroy the entities
+    for (auto entity : toDestroy) {
         world.DestroyEntity(entity);
     }
 }
@@ -201,6 +280,7 @@ void ServerCollisionSystem::broadcastEntityDestroyToAllRooms(
     auto* linkedRoom = world.GetComponent<rtype::server::components::LinkedRoom>(entityId);
     if (linkedRoom) {
         // Entity belongs to a specific room - only broadcast to that room
+        std::cout << "[DEBUG] Broadcasting destroy for entity " << entityId << " to room " << linkedRoom->room_id << std::endl;
         rtype::server::network::senders::broadcast_entity_destroy(linkedRoom->room_id, static_cast<uint32_t>(entityId), 1);
         return;
     }
@@ -229,12 +309,20 @@ void ServerCollisionSystem::broadcastPlayerStateImmediate(ECS::World& world, ECS
     auto* health = world.GetComponent<rtype::common::components::Health>(playerId);
     auto* proom = world.GetComponent<rtype::server::components::LinkedRoom>(playerId);
 
-    if (!pos || !health || !proom) return;
+    if (!pos || !health || !proom) {
+        return;
+    }
 
     auto* allPlayers = world.GetAllComponents<rtype::common::components::Player>();
-    if (!allPlayers) return;
-
+    if (!allPlayers) {
+        return;
+    }
+    
     for (auto& [otherPid, playerPtr] : *allPlayers) {
+        if (!playerPtr) {
+            continue;
+        }
+        
         auto otherRoom = world.GetComponent<rtype::server::components::LinkedRoom>(otherPid);
         if (!otherRoom || otherRoom->room_id != proom->room_id) continue;
 
