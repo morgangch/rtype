@@ -25,6 +25,7 @@
 #include "gui/MainMenuState.h"
 #include "gui/ParallaxSystem.h"
 #include "gui/GameState.h"
+#include "gui/VesselSelectionState.h"
 #include <iostream>
 #include "network/network.h"
 #include "gui/AssetPaths.h"
@@ -368,8 +369,12 @@ namespace rtype::client::gui {
             std::string serverIp = config.getIP();
             int serverPort = getValidatedPort();
             
-            std::cout << "Connecting to " << serverIp << ":" << serverPort << std::endl;
-            rtype::client::network::start_room_connection(serverIp, serverPort, username, roomId);
+            std::cout << "Redirecting to vessel selection..." << std::endl;
+            
+            // Push vessel selection state
+            stateManager.pushState(std::make_unique<VesselSelectionState>(
+                stateManager, username, serverIp, serverPort, roomId
+            ));
 
         } else {
             std::cout << "Invalid server code. Please enter a 4-digit number between 1000-9999." << std::endl;
@@ -380,8 +385,12 @@ namespace rtype::client::gui {
         std::string serverIp = config.getIP();
         int serverPort = getValidatedPort();
         
-        std::cout << "Creating server, connecting to " << serverIp << ":" << serverPort << std::endl;
-        rtype::client::network::start_room_connection(serverIp, serverPort, username, 0);
+        std::cout << "Creating server, redirecting to vessel selection..." << std::endl;
+        
+        // Push vessel selection state (room code 0 = create new)
+        stateManager.pushState(std::make_unique<VesselSelectionState>(
+            stateManager, username, serverIp, serverPort, 0
+        ));
     }
     
     int PrivateServerState::getValidatedPort() {

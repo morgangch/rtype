@@ -11,6 +11,7 @@
 #include <common/packets/packets.h>
 #include "gui/GameState.h"
 #include "gui/PrivateServerLobbyState.h"
+#include <common/components/Shield.h>
 #include <cstring>
 
 #include "utils/endiane_converter.h"
@@ -18,6 +19,11 @@
 // External references to global player info (defined in network.cpp)
 extern std::string g_username;
 extern uint32_t g_playerServerId;
+
+// External reference to selected vessel (defined in network.cpp)
+namespace rtype::client::gui {
+    extern uint8_t g_selectedVessel;
+}
 
 // Track if player is admin in current room
 static bool g_isPlayerAdmin = false;
@@ -37,12 +43,14 @@ namespace rtype::client::controllers::game_controller {
         from_network_endian(p->playerServerId);
 
         std::cout << "Successfully connected on room " << p->roomCode << " as " << (
-            p->admin ? "admin" : "classic player") << " with server player ID: " << p->playerServerId << std::endl;
+            p->admin ? "admin" : "classic player") << " with server player ID: " << p->playerServerId 
+            << " with vessel type: " << static_cast<int>(p->vesselType) << std::endl;
 
 
-        // Store player server ID and admin status for use when GameState is created
+        // Store player server ID, admin status, and vessel type for use when GameState is created
         g_playerServerId = p->playerServerId;
         g_isPlayerAdmin = p->admin;
+        rtype::client::gui::g_selectedVessel = p->vesselType;
 
         // Transition to PrivateServerLobbyState (the lobby where admin can click "Start Game")
         using rtype::client::gui::g_stateManager;
@@ -126,7 +134,12 @@ namespace rtype::client::controllers::game_controller {
         from_network_endian(p->newPlayerId);
 
         using rtype::client::gui::g_gameState;
-        if (g_gameState) g_gameState->createRemotePlayer(std::string(p->name), p->newPlayerId);
+        if (g_gameState) {
+            // Convert uint8_t to VesselType enum
+            rtype::common::components::VesselType vesselType = 
+                static_cast<rtype::common::components::VesselType>(p->vesselType);
+            g_gameState->createRemotePlayer(std::string(p->name), p->newPlayerId, vesselType);
+        }
     }
 
     void handle_player_state(const packet_t &packet) {
@@ -137,9 +150,10 @@ namespace rtype::client::controllers::game_controller {
         from_network_endian(p->x);
         from_network_endian(p->y);
         from_network_endian(p->hp);
+        from_network_endian(p->maxHp);
 
         using rtype::client::gui::g_gameState;
-        if (g_gameState) g_gameState->updateEntityStateFromServer(p->playerId, p->x, p->y, p->hp, p->invulnerable, p->isAlive);
+        if (g_gameState) g_gameState->updateEntityStateFromServer(p->playerId, p->x, p->y, p->hp, p->invulnerable, p->maxHp, p->isAlive);
     }
 
     void handle_all_players_state(const packet_t &packet) {
@@ -158,6 +172,7 @@ namespace rtype::client::controllers::game_controller {
             from_network_endian(playerData.y);
             from_network_endian(playerData.dir);
             from_network_endian(playerData.hp);
+            from_network_endian(playerData.maxHp);
             // Booleans don't need endian conversion
 
             // Update client game state with this player's data
@@ -167,6 +182,7 @@ namespace rtype::client::controllers::game_controller {
                 playerData.y, 
                 playerData.hp, 
                 playerData.invulnerable,
+                playerData.maxHp,  // Now includes maxHp for vessel-specific health
                 playerData.isAlive  // Now includes isAlive for proper death sync
             );
         }
@@ -204,12 +220,13 @@ namespace rtype::client::controllers::game_controller {
         // Clear lobby state pointer
         g_lobbyState = nullptr;
 
-    // Create and transition to GameState with the local player server ID and admin status
+        // Create and transition to GameState with the local player server ID, admin status, vessel type, and starting level
         auto gameState = std::make_unique<GameState>(*g_stateManager);
-    // Apply starting level from server before onEnter() so music/theme match immediately
-    gameState->setLevelIndex(static_cast<int>(p->startLevel));
+        // Apply starting level from server before onEnter() so music/theme match immediately
+        gameState->setLevelIndex(static_cast<int>(p->startLevel));
         gameState->setLocalPlayerServerId(g_playerServerId);
         gameState->setIsAdmin(g_isPlayerAdmin);
+        gameState->setLocalVesselType(static_cast<rtype::common::components::VesselType>(rtype::client::gui::g_selectedVessel));
         g_stateManager->changeState(std::move(gameState));
 
         std::cout << "✓ CLIENT: Successfully transitioned to GameState (admin=" << (g_isPlayerAdmin ? "YES" : "NO") <<
@@ -259,4 +276,18 @@ namespace rtype::client::controllers::game_controller {
         // For simplicity, accept and set regardless; multi-player HUD can filter by playerId later.
         g_gameState->setScoreFromServer(static_cast<int>(p->score));
     }
+
+    void handle_shield_state(const packet_t &packet) {
+        using namespace rtype::client::gui;
+        
+        if (!g_gameState) return;
+
+        ShieldStatePacket *p = (ShieldStatePacket*) packet.data;
+        from_network_endian(p->playerId);
+        from_network_endian(p->duration);
+
+        // Update shield state via GameState method
+        g_gameState->updateShieldStateFromServer(p->playerId, p->isActive, p->duration);
+    }
+
 }

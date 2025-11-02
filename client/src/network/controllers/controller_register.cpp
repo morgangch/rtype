@@ -25,5 +25,6 @@ namespace rtype::client::network {
         ph.registerCallback(Packets::ENTITY_DESTROY, handle_entity_destroy);
         ph.registerCallback(Packets::SPAWN_PROJECTILE, handle_spawn_projectile);
         ph.registerCallback(Packets::PLAYER_SCORE_UPDATE, handle_player_score_update);
+        ph.registerCallback(Packets::SHIELD_STATE, handle_shield_state);
     }
 }

@@ -149,7 +149,7 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
     return e;
 }
 
-ECS::EntityID GameState::createRemotePlayer(const std::string &name, uint32_t serverId) {
+ECS::EntityID GameState::createRemotePlayer(const std::string &name, uint32_t serverId, rtype::common::components::VesselType vesselType) {
     std::cout << "[GameState] Creating remote player: name=" << name << " serverId=" << serverId << std::endl;
     
     // Check if we already have this player (shouldn't happen, but be safe)
@@ -162,9 +162,40 @@ ECS::EntityID GameState::createRemotePlayer(const std::string &name, uint32_t se
     // Create a player-like entity (non-controllable)
     ECS::EntityID e = m_world.CreateEntity();
     m_world.AddComponent<rtype::common::components::Position>(e, 100.0f, 360.0f, 0.0f);
-    m_world.AddComponent<rtype::client::components::Sprite>(e, rtype::client::assets::player::PLAYER_SPRITE, sf::Vector2f(33.0f, 17.0f), true, sf::IntRect(0,0,33,17), 3.0f);
+    
+    // Sprite - Use correct row for vessel type
+    const int frameWidth = 33;
+    const int frameHeight = 17;
+    int vesselRow = static_cast<int>(vesselType);  // 0=Crimson, 1=Azure, 2=Emerald, 3=Solar
+    int startY = vesselRow * frameHeight;
+    m_world.AddComponent<rtype::client::components::Sprite>(
+        e, 
+        rtype::client::assets::player::PLAYER_SPRITE, 
+        sf::Vector2f(static_cast<float>(frameWidth), static_cast<float>(frameHeight)), 
+        true, 
+        sf::IntRect(0, startY, frameWidth, frameHeight), 
+        3.0f);
+    
     m_world.AddComponent<rtype::common::components::Player>(e, name, serverId);
-    m_world.AddComponent<rtype::common::components::Health>(e, 3);
+    
+    // Health - HP based on vessel type
+    int baseHp = 3; // Default
+    switch (vesselType) {
+        case rtype::common::components::VesselType::CrimsonStriker:
+            baseHp = 3;
+            break;
+        case rtype::common::components::VesselType::AzurePhantom:
+            baseHp = 3;
+            break;
+        case rtype::common::components::VesselType::EmeraldTitan:
+            baseHp = 4;
+            break;
+        case rtype::common::components::VesselType::SolarGuardian:
+            baseHp = 5;
+            break;
+    }
+    m_world.AddComponent<rtype::common::components::Health>(e, baseHp);
+    m_world.AddComponent<rtype::common::components::VesselClass>(e, vesselType);
     m_world.AddComponent<rtype::common::components::Team>(e, rtype::common::components::TeamType::Player);
 
     m_serverEntityMap[serverId] = e;
@@ -228,12 +259,22 @@ ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t 
     return entity;
 }
 
-void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable, bool isAlive) {
-    // Skip updates for local player (controlled by client input)
+void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable, uint16_t maxHp, bool isAlive) {
+    // For local player: only update HP/maxHp/invulnerability (position is client-controlled)
     if (serverId == m_localPlayerServerId) {
+        auto* health = m_world.GetComponent<rtype::common::components::Health>(m_playerEntity);
+        if (health) {
+            std::cout << "[CLIENT] Updating local player HP from server: currentHp=" << hp 
+                      << " maxHp=" << maxHp << " (was " << health->maxHp << ")" << std::endl;
+            health->currentHp = hp;
+            health->maxHp = maxHp;
+            health->invulnerable = invulnerable;
+            health->isAlive = isAlive; // Server-authoritative death state
+        }
         return;
     }
 
+    // For remote players: update everything
     auto it = m_serverEntityMap.find(serverId);
     if (it == m_serverEntityMap.end()) {
         std::cout << "[GameState] Cannot update entity with serverId=" << serverId << " - not found in map" << std::endl;
@@ -246,8 +287,34 @@ void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y,
     auto* health = m_world.GetComponent<rtype::common::components::Health>(e);
     if (health) {
         health->currentHp = hp;
+        health->maxHp = maxHp;
         health->invulnerable = invulnerable;
         health->isAlive = isAlive; // Server-authoritative death state
+    }
+}
+
+void GameState::updateShieldStateFromServer(uint32_t serverId, bool isActive, float duration) {
+    // Find the entity by server ID
+    auto it = m_serverEntityMap.find(serverId);
+    if (it == m_serverEntityMap.end()) {
+        return; // Entity not found
+    }
+    
+    ECS::EntityID e = it->second;
+    
+    // Update or add ShieldComponent
+    auto* shield = m_world.GetComponent<rtype::common::components::ShieldComponent>(e);
+    if (shield) {
+        shield->isActive = isActive;
+        // The new ShieldComponent doesn't have a duration field, but we keep the function signature
+        // for network compatibility. The shield type should be managed server-side.
+    } else if (isActive) {
+        // Add ShieldComponent if it doesn't exist and shield is active
+        m_world.AddComponent<rtype::common::components::ShieldComponent>(
+            e, 
+            rtype::common::components::ShieldType::Blue, // Default type
+            isActive
+        );
     }
 }
 
@@ -259,6 +326,11 @@ void GameState::setLocalPlayerServerId(uint32_t serverId) {
 void GameState::setIsAdmin(bool isAdmin) {
     m_isAdmin = isAdmin;
     std::cout << "[GameState] Player admin status set to: " << (isAdmin ? "ADMIN" : "PLAYER") << std::endl;
+}
+
+void GameState::setLocalVesselType(rtype::common::components::VesselType vesselType) {
+    m_localVesselType = vesselType;
+    std::cout << "[GameState] Local vessel type set to: " << static_cast<int>(vesselType) << std::endl;
 }
 
 void GameState::destroyEntityByServerId(uint32_t serverId) {
@@ -513,8 +585,8 @@ void GameState::resetGame() {
     // Clear ECS world
     m_world.Clear();
     
-    // Create player entity
-    m_playerEntity = createPlayer();
+    // Create player entity with selected vessel type
+    m_playerEntity = createPlayer(m_localVesselType);
     
     // Reset flags
     m_isGameOver = false;
@@ -537,6 +609,16 @@ int GameState::getPlayerLives() const {
     if (!health) return 0;
     
     return health->currentHp;
+}
+
+int GameState::getPlayerMaxLives() const {
+    if (m_playerEntity == 0) return 3;  // Default to 3 if no player
+    
+    // Cast away const to access component (ECS::World doesn't have const GetComponent)
+    auto* health = const_cast<ECS::World&>(m_world).GetComponent<rtype::common::components::Health>(m_playerEntity);
+    if (!health) return 3;  // Default to 3 if no health component
+    
+    return health->maxHp;
 }
 
 void GameState::damagePlayer(int damage) {

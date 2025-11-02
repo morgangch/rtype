@@ -22,7 +22,7 @@
 
 namespace rtype::client::gui {
 
-ECS::EntityID GameState::createPlayer() {
+ECS::EntityID GameState::createPlayer(rtype::common::components::VesselType vesselType) {
     auto entity = m_world.CreateEntity();
     
     // Position - Center-left of screen
@@ -33,19 +33,43 @@ ECS::EntityID GameState::createPlayer() {
     m_world.AddComponent<rtype::common::components::Velocity>(
         entity, 0.0f, 0.0f, 300.0f);
     
-    // Health - 3 HP (invulnerability built-in)
-    m_world.AddComponent<rtype::common::components::Health>(entity, 3);
+    // Health - HP based on vessel type
+    int baseHp = 3; // Default
+    switch (vesselType) {
+        case rtype::common::components::VesselType::CrimsonStriker:
+            baseHp = 3; // Balanced
+            break;
+        case rtype::common::components::VesselType::AzurePhantom:
+            baseHp = 3; // Agile (low defense)
+            break;
+        case rtype::common::components::VesselType::EmeraldTitan:
+            baseHp = 4; // Tank (4 HP, 4 hearts)
+            break;
+        case rtype::common::components::VesselType::SolarGuardian:
+            baseHp = 5; // Defense (5 HP, 5 hearts)
+            break;
+    }
+    std::cout << "[CLIENT] Creating player with vesselType=" << static_cast<int>(vesselType) 
+              << " baseHp=" << baseHp << " (maxHp will be " << baseHp << ")" << std::endl;
+    m_world.AddComponent<rtype::common::components::Health>(entity, baseHp);
     
-    // Sprite - Player ship with texture (first frame: 33x17 from 166x86 spritesheet)
-    // Player spritesheet has 5 frames horizontally: 166/5 = ~33 pixels per frame
+    // Sprite - Player ship with texture
+    // PLAYER.gif is 166x86 (5 frames x 4-5 rows)
+    // Each frame: 33x17 pixels (166/5 = 33 width)
+    // Each vessel type occupies one row (17 pixels height)
+    const int frameWidth = 33;
+    const int frameHeight = 17;
+    int vesselRow = static_cast<int>(vesselType);  // 0=Crimson, 1=Azure, 2=Emerald, 3=Solar
+    int startY = vesselRow * frameHeight;  // Y offset for this vessel type
+    
     // Preload texture to avoid first-frame hitch
     rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::player::PLAYER_SPRITE);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity, 
         rtype::client::assets::player::PLAYER_SPRITE,
-        sf::Vector2f(33.0f, 17.0f),
+        sf::Vector2f(static_cast<float>(frameWidth), static_cast<float>(frameHeight)),
         true,
-        sf::IntRect(0, 0, 33, 17),  // First frame of spritesheet
+        sf::IntRect(0, startY, frameWidth, frameHeight),  // Use correct row for vessel type
         3.0f);  // Scale 3x for better visibility (33*3 = 99 pixels)
     
     // Animation - 5 frames, 0.08s per frame (smooth animation when moving up)
@@ -58,6 +82,9 @@ ECS::EntityID GameState::createPlayer() {
     
     // Player - Marks as player-controlled
     m_world.AddComponent<rtype::common::components::Player>(entity, "Player1", 0);
+    
+    // VesselClass - Store vessel type for gameplay mechanics
+    m_world.AddComponent<rtype::common::components::VesselClass>(entity, vesselType);
     
     // Team - Player team
     m_world.AddComponent<rtype::common::components::Team>(

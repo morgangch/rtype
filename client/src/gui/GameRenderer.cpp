@@ -152,7 +152,7 @@ void GameState::renderEntities(sf::RenderWindow& window) {
 void GameState::renderHUD(sf::RenderWindow& window) {
     // Get player lives
     int lives = getPlayerLives();
-    int maxLives = 3;  // Maximum player lives
+    int maxLives = getPlayerMaxLives();  // Get max lives from player's health component
     
     // Draw hearts for lives (full hearts + empty hearts)
     // Both hearts are 992x432px (4 cols x 2 rows)

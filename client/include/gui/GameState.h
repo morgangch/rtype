@@ -29,6 +29,8 @@
 #include <common/components/Player.h>
 #include <common/components/FireRate.h>
 #include <common/components/EnemyType.h>
+#include <common/components/Shield.h>
+#include <common/components/VesselClass.h>
 #include <common/systems/ChargedShotSystem.h>
 #include <client/components/Components.h>
 #include <vector>
@@ -231,9 +233,11 @@ namespace rtype::client::gui {
          * @brief Create a remote player representation for another client
          * @param name Player display name
          * @param serverId Server entity id
+         * @param vesselType Vessel class of the remote player
          * @return Local ECS::EntityID for the remote player entity
          */
-        ECS::EntityID createRemotePlayer(const std::string &name, uint32_t serverId);
+        ECS::EntityID createRemotePlayer(const std::string &name, uint32_t serverId, 
+                                         rtype::common::components::VesselType vesselType = rtype::common::components::VesselType::CrimsonStriker);
 
         /**
          * @brief Create a projectile spawned by the server
@@ -256,9 +260,20 @@ namespace rtype::client::gui {
          * @param y Y position
          * @param hp Health value
          * @param invulnerable Invulnerability state from server
+         * @param maxHp Maximum health (varies by vessel type)
          * @param isAlive Whether the entity is alive (server-authoritative)
          */
-        void updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable, bool isAlive);        /**
+        void updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable, uint16_t maxHp, bool isAlive);
+
+        /**
+         * @brief Update shield state for an entity from server
+         * @param serverId Server entity id
+         * @param isActive Whether the shield is active
+         * @param duration Remaining duration of the shield
+         */
+        void updateShieldStateFromServer(uint32_t serverId, bool isActive, float duration);
+
+        /**
          * @brief Destroy a local entity corresponding to a server entity id
          * @param serverId Server entity id to destroy
          */
@@ -275,6 +290,12 @@ namespace rtype::client::gui {
          * @param isAdmin True to mark as admin
          */
         void setIsAdmin(bool isAdmin); // Set whether the local player is room admin
+
+        /**
+         * @brief Set the vessel type of the local player
+         * @param vesselType The vessel type selected by the player
+         */
+        void setLocalVesselType(rtype::common::components::VesselType vesselType);
 
         /**
          * @brief Set in-game score from server and update HUD text
@@ -305,16 +326,20 @@ namespace rtype::client::gui {
         uint32_t m_localPlayerServerId{0};
         /// Track if local player is room admin (for boss spawning)
         bool m_isAdmin{false};
+        /// Track local player's vessel type (received from server)
+        rtype::common::components::VesselType m_localVesselType{rtype::common::components::VesselType::CrimsonStriker};
 
         /* === Entity Factory Methods === */
         /**
          * @brief Create the local player entity
+         * @param vesselType The vessel class to create (default: CrimsonStriker)
          * @return Entity ID of the created player
          *
          * Creates the main player entity with Position, Velocity, Sprite, Health,
-         * Team, Player, FireRate, and ChargedShot components.
+         * Team, Player, FireRate, ChargedShot, and VesselClass components.
+         * Stats are modified based on the vessel type selected.
          */
-        ECS::EntityID createPlayer();
+        ECS::EntityID createPlayer(rtype::common::components::VesselType vesselType = rtype::common::components::VesselType::CrimsonStriker);
 
         /**
          * @brief Create a basic enemy entity
@@ -524,6 +549,49 @@ namespace rtype::client::gui {
         ECS::EntityID createChargedProjectile(float x, float y);
 
         /**
+         * @brief Create dual projectiles (Azure Phantom normal shot)
+         * @param x X position
+         * @param y Y position
+         * @return Number of projectiles created (2)
+         *
+         * Creates two projectiles with vertical offset (±5 pixels).
+         */
+        int createDualProjectiles(float x, float y);
+
+        /**
+         * @brief Create burst of homing projectiles (Azure Phantom charged shot)
+         * @param x X position
+         * @param y Y position
+         * @param count Number of projectiles in burst (default: 3)
+         * @return Number of projectiles created
+         *
+         * Creates multiple homing projectiles that track nearest enemy.
+         */
+        int createHomingBurst(float x, float y, int count = 3);
+
+        /**
+         * @brief Create spread shot projectiles (Solar Guardian normal shot)
+         * @param x X position
+         * @param y Y position
+         * @param count Number of projectiles (default: 4)
+         * @return Number of projectiles created
+         *
+         * Creates shotgun-like spread of projectiles with vertical spread.
+         */
+        int createSpreadShot(float x, float y, int count = 4);
+
+        /**
+         * @brief Create explosive projectile (Emerald Titan normal shot)
+         * @param x X position
+         * @param y Y position
+         * @param isCharged Whether this is a charged shot (bigger AoE)
+         * @return Entity ID of the created projectile
+         *
+         * Creates a projectile that explodes on impact with AoE damage.
+         */
+        ECS::EntityID createExplosiveProjectile(float x, float y, bool isCharged = false);
+
+        /**
          * @brief Create an enemy projectile entity
          * @param x X position
          * @param y Y position
@@ -567,6 +635,22 @@ namespace rtype::client::gui {
          * Manages charged shot accumulation and release for the local player.
          */
         void updateChargedShotSystem(float deltaTime);
+
+        /**
+         * @brief Update homing projectile system
+         * @param deltaTime Time elapsed since last frame
+         *
+         * Updates homing projectiles to track and follow targets.
+         */
+        void updateHomingSystem(float deltaTime);
+
+        /**
+         * @brief Update shield system
+         * @param deltaTime Time elapsed since last frame
+         *
+         * Updates active shields and cooldowns for Solar Guardian.
+         */
+        void updateShieldSystem(float deltaTime);
 
         /**
          * @brief Update invulnerability timers for entities
@@ -639,6 +723,12 @@ namespace rtype::client::gui {
          * @return Current HP of the player entity
          */
         int getPlayerLives() const;
+
+        /**
+         * @brief Get maximum player lives/health
+         * @return Maximum HP of the player entity
+         */
+        int getPlayerMaxLives() const;
 
         /**
          * @brief Check if a boss entity is currently active
@@ -796,6 +886,10 @@ namespace rtype::client::gui {
         sf::Sprite m_fullHeartSprite;
         /// Sprite for empty/lost health heart
         sf::Sprite m_emptyHeartSprite;
+        /// Texture for shield effect
+        sf::Texture m_shieldTexture;
+        /// Sprite for shield effect
+        sf::Sprite m_shieldSprite;
         /// Player score value
         int m_score{0};
         /// HUD text for score rendering

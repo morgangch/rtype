@@ -32,6 +32,12 @@ void GameState::startChargedShot() {
             auto* chargedShot = m_world.GetComponent<rtype::common::components::ChargedShot>(entity);
             if (chargedShot) {
                 chargedShot->startCharge();
+                
+                // TODO: Re-implement Solar Guardian shield with new ShieldComponent system
+                // auto* vesselClass = m_world.GetComponent<rtype::common::components::VesselClass>(entity);
+                // if (vesselClass && vesselClass->type == rtype::common::components::VesselType::SolarGuardian) {
+                //     // Activate shield during charging
+                // }
             }
         }
     }
