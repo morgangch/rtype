@@ -22,7 +22,7 @@ Fast-paced co-op arcade shooter, ECS-powered, with boss fights, forge augments, 
 
 ## 🎮 Gameplay Gallery
 
-> Replace with real screenshots when available. For now, a peek at key in-game visuals and items.
+> A peek at key in-game visuals and items.
 
 <p>
 	<img alt="Projectiles" src="assets/sprites/Projectile/PROJECTILE_4.gif" height="80"/>
@@ -31,22 +31,13 @@ Fast-paced co-op arcade shooter, ECS-powered, with boss fights, forge augments, 
 	<img alt="Debris" src="assets/sprites/Asteroids/debri.png" height="80"/>
 </p>
 
-Power-up items you’ll find while playing:
-
-<p>
-	<img alt="Shield" src="assets/sprites/Items/Shield.png" height="64"/>
-	<img alt="Overdrive Core" src="assets/sprites/Items/Core.png" height="64"/>
-	<img alt="DMG Amplifier" src="assets/sprites/Items/Amp.png" height="64"/>
-	<img alt="Repair Kit" src="assets/sprites/Items/Repair.png" height="64"/>
-</p>
-
-## 🛠️ Features (in a nutshell)
+## 🛠️ Features
 
 ### Vessels and Weapons
 - Crimson Striker — balanced blaster; charged shot pierces
 - Azure Phantom — agile; charged shot fires homing darts
 - Emerald Titan — heavy; explosive shots, shotgun-style augment
-- Solar Guardian — defensive; Solar Pulse charged burst + tri-beam augment
+- Solar Guardian — defensive; Solar Pulse charged burst
 
 All vessels support charged-fire. Cooldowns and damage scale per class.
 
@@ -60,14 +51,8 @@ Defeat a boss to unlock a temporary augment that adds a second firing pattern on
 
 ### Bosses and Hazards
 - Multi-phase bosses with unique shields and attacks (e.g., RED shield mechanics)
-- Meteorite obstacle (5 HP) — spawns on a timer, drifts and spins
-- Debri obstacle (1000 HP) — spawns in 2–4 wide rows, slow push across screen
-
-### Power-ups (100% drop rate per enemy, random pick)
-- Shield — 3s invulnerability window
-- Overdrive Core — +25% movement speed for 7s
-- DMG Amplifier — +1 projectile damage for 8s
-- Repair Kit — +1 HP (up to vessel max)
+- Meteorite obstacle — spawns on a timer, drifts and spins
+- Debri obstacle — spawns in 2–4 wide rows, slow push across screen
 
 ### Accessibility & Polish
 - Parallax backgrounds and stage music per level
