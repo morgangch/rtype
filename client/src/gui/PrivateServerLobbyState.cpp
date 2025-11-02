@@ -324,7 +324,7 @@ namespace rtype::client::gui {
             if (isAdmin && m_showSettings) {
                 // Start Level toggle (debug)
                 if (GUIHelper::isPointInRect(mousePos, m_rectStartLevel)) {
-                    m_startLevelIndex = (m_startLevelIndex + 1) % 2; // Lvl1 <-> Lvl2
+                    m_startLevelIndex = (m_startLevelIndex + 1) % 3; // Lvl1 -> Lvl2 -> Lvl3
                     updateSettingsTexts();
                     rtype::client::network::senders::send_lobby_settings_update(static_cast<uint8_t>(m_difficultyIndex), m_friendlyFire, m_aiAssist, m_megaDamage, m_startLevelIndex);
                     return;
@@ -519,7 +519,11 @@ namespace rtype::client::gui {
 
         // Debug: Start Level selector label and value
         m_startLevelLabel.setString("Start level");
-        m_startLevelValue.setString(m_startLevelIndex == 0 ? "Lvl1" : "Lvl2");
+        {
+            const char* LEVELS[] = {"Lvl1", "Lvl2", "Lvl3"};
+            uint8_t idx = static_cast<uint8_t>(std::min<int>(m_startLevelIndex, 2));
+            m_startLevelValue.setString(LEVELS[idx]);
+        }
 
         // Update square colors
         auto setSquare = [](sf::RectangleShape& sq, bool on) {

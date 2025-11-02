@@ -83,7 +83,8 @@ namespace rtype::client::gui {
          */
         enum class Theme {
             SpaceDefault,
-            HallwayLevel2
+            HallwayLevel2,
+            ReactorLevel3
         };
 
         /**
@@ -255,6 +256,23 @@ namespace rtype::client::gui {
          */
         std::vector<SpaceDebris> m_debris;
 
+        // Reactor (Level 3) overlays
+        struct EnergyArc {
+            std::vector<sf::Vector2f> points;
+            float phase{0.f};
+            float speed{2.0f};
+        };
+        struct SmokePlume {
+            sf::Vector2f pos;
+            sf::Vector2f vel;
+            float size{30.f};
+            float alpha{60.f};
+        };
+        std::vector<sf::CircleShape> m_reactorCores; // glowing cores
+        std::vector<SmokePlume> m_reactorSmoke;
+        std::vector<EnergyArc> m_energyArcs;
+        float m_reactorBlend{0.0f}; // interpolation [0..1] for reactor overlays
+
         /**
          * @name Theme and hallway visual state
          *
@@ -304,6 +322,7 @@ namespace rtype::client::gui {
          * match the hallway aesthetic.
          */
         void initializeHallwayTheme();
+    void initializeReactorTheme();
 
         /**
          * @brief Optional per-parameter blend hook
@@ -315,6 +334,8 @@ namespace rtype::client::gui {
          * rendering, but this hook can be extended to lerp individual values.
          */
         void blendThemes(float t);
+        void updateReactor(float dt);
+        void renderReactor(sf::RenderWindow& window);
 
         /**
          * @name Corridor scrolling and panel layer

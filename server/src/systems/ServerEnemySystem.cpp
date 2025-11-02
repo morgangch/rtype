@@ -512,9 +512,9 @@ void ServerEnemySystem::checkBossDeathAndAdvanceLevel(ECS::World& world) {
         // Increment level counter
         _currentLevel++;
 
-        // Finish game after second boss (level index 1). After increment, currentLevel >= 2 means victory.
-        if (_currentLevel >= 2) {
-            std::cout << "[ServerEnemySystem] GAME FINISHED after Level 2 boss. Stopping spawns." << std::endl;
+        // Finish game after third boss (level index 2). After increment, currentLevel >= 3 means victory.
+        if (_currentLevel >= 3) {
+            std::cout << "[ServerEnemySystem] GAME FINISHED after Level 3 boss. Stopping spawns." << std::endl;
             _gameFinished = true;
             return;
         }

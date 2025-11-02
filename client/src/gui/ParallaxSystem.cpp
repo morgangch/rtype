@@ -60,9 +60,16 @@ void ParallaxSystem::setTheme(Theme theme, bool immediate) {
         m_targetTheme = theme;
         m_themeTransitionTimer = 0.0f;
         m_themeTransitionDuration = 0.0f;
-        m_themeBlend = (theme == Theme::HallwayLevel2) ? 1.0f : 0.0f;
-        if (theme == Theme::HallwayLevel2) initializeHallwayTheme();
-        else reset();
+        // Level 3 should visually reuse the hallway with a red variant
+        if (theme == Theme::HallwayLevel2 || theme == Theme::ReactorLevel3) {
+            m_themeBlend = 1.0f;
+            m_reactorBlend = 0.0f; // disable reactor overlays for L3 per spec
+            initializeHallwayTheme();
+        } else {
+            m_themeBlend = 0.0f;
+            m_reactorBlend = 0.0f;
+            reset();
+        }
     } else {
         transitionToTheme(theme, 1.0f);
     }
@@ -72,8 +79,10 @@ void ParallaxSystem::transitionToTheme(Theme theme, float duration) {
     m_targetTheme = theme;
     m_themeTransitionDuration = std::max(0.0001f, duration);
     m_themeTransitionTimer = 0.0f;
-    // If target is hallway, prepare its final parameters
-    if (theme == Theme::HallwayLevel2) initializeHallwayTheme();
+    // Prepare target theme parameters early. L3 reuses hallway visuals.
+    if (theme == Theme::HallwayLevel2 || theme == Theme::ReactorLevel3) {
+        initializeHallwayTheme();
+    }
 }
 
 void ParallaxSystem::update(float deltaTime) {
@@ -114,6 +123,8 @@ void ParallaxSystem::update(float deltaTime) {
         m_themeTransitionTimer += deltaTime;
         float t = std::min(1.0f, m_themeTransitionTimer / m_themeTransitionDuration);
         m_themeBlend = t;
+        // Reactor overlays disabled for L3 red hallway variant
+        m_reactorBlend = 0.0f;
         blendThemes(t);
         if (t >= 1.0f) {
             m_currentTheme = m_targetTheme;
@@ -125,6 +136,7 @@ void ParallaxSystem::update(float deltaTime) {
 ParallaxSystem::Theme ParallaxSystem::themeFromLevel(int levelIndex) {
     if (levelIndex <= 0) return Theme::SpaceDefault;
     if (levelIndex == 1) return Theme::HallwayLevel2;
+    if (levelIndex == 2) return Theme::ReactorLevel3;
     return Theme::SpaceDefault;
 }
 
@@ -172,9 +184,10 @@ void ParallaxSystem::initializeHallwayPanels() {
 }
 
 void ParallaxSystem::renderPanelLayer(sf::RenderWindow& window, float blend) {
-    // Corridor panel base color (metallic grey)
-    sf::Color panelColor(55, 55, 60);
-    sf::Color panelEdge(35, 35, 38);
+    // Corridor panel base color (metallic grey) or red variant for L3
+    bool redVariant = (m_currentTheme == Theme::ReactorLevel3) || (m_targetTheme == Theme::ReactorLevel3);
+    sf::Color panelColor = redVariant ? sf::Color(100, 20, 20) : sf::Color(55, 55, 60);
+    sf::Color panelEdge  = redVariant ? sf::Color(70, 10, 10)  : sf::Color(35, 35, 38);
 
     for (size_t i = 0; i < m_panelPositions.size(); i++) {
         const auto& pos = m_panelPositions[i];
@@ -201,8 +214,8 @@ void ParallaxSystem::renderPanelLayer(sf::RenderWindow& window, float blend) {
         border.setPosition(panel.getPosition());
         border.setFillColor(sf::Color::Transparent);
         border.setOutlineThickness(2.0f);
-    // Solid border for the panel grid
-    border.setOutlineColor(sf::Color(panelEdge.r, panelEdge.g, panelEdge.b, static_cast<sf::Uint8>(255)));
+        // Solid border for the panel grid
+        border.setOutlineColor(sf::Color(panelEdge.r, panelEdge.g, panelEdge.b, static_cast<sf::Uint8>(255)));
         window.draw(border);
 
         // if panel is marked damaged, draw small dents / holes
@@ -231,13 +244,13 @@ void ParallaxSystem::renderPanelLayer(sf::RenderWindow& window, float blend) {
     for (const auto& p : m_pipePositions) {
         sf::RectangleShape pipe(sf::Vector2f(m_screenWidth * 1.2f, 8.0f));
         pipe.setPosition(p.x - m_screenWidth * 0.1f, p.y);
-    // Solid pipes
-    pipe.setFillColor(sf::Color(80, 80, 85, static_cast<sf::Uint8>(255)));
+        // Solid pipes
+        pipe.setFillColor(sf::Color(80, 80, 85, static_cast<sf::Uint8>(255)));
         window.draw(pipe);
         // small highlights
         sf::RectangleShape h(sf::Vector2f(m_screenWidth * 1.2f, 2.0f));
         h.setPosition(pipe.getPosition().x, pipe.getPosition().y + 1.5f);
-    h.setFillColor(sf::Color(120, 120, 130, static_cast<sf::Uint8>(120)));
+        h.setFillColor(sf::Color(120, 120, 130, static_cast<sf::Uint8>(120)));
         window.draw(h);
     }
 }
@@ -255,43 +268,88 @@ void ParallaxSystem::render(sf::RenderWindow& window) {
     renderStarLayer(window, m_mediumStars);
     renderStarLayer(window, m_nearStars);
     
-    // If hallway is active (blend > 0) draw center stripe and fixed red lights
+    // If hallway is active (blend > 0) draw corridor accents
     if (m_themeBlend > 0.001f) {
-        // stripe with opacity based on blend
-        sf::RectangleShape stripe(sf::Vector2f(m_screenWidth, m_hallwayStripeHeight));
-        stripe.setPosition(0.0f, (m_screenHeight - m_hallwayStripeHeight) * 0.5f);
-        stripe.setFillColor(sf::Color(10, 10, 10, static_cast<sf::Uint8>(200.0f * m_themeBlend)));
-        window.draw(stripe);
+        // For ReactorLevel3 we replace the central horizontal stripe and
+        // fixed red lights with vertical glowing orange lines and a top
+        // smoke overlay. For other hallway themes draw the original stripe
+        // and red lights.
+        bool isL3 = (m_currentTheme == Theme::ReactorLevel3) || (m_targetTheme == Theme::ReactorLevel3);
 
-        // fixed red lights: size and alpha modulated by blend and a sin to flash
-        for (size_t i = 0; i < m_fixedRedLights.size(); i++) {
-        // Apply horizontal offset to lights so they move left; wrap across screen
-        auto base = m_fixedRedLights[i];
-        float lx = base.x + m_lightOffsetX;
-        if (lx < 0.0f) lx += m_screenWidth;
-        if (lx >= m_screenWidth) lx -= m_screenWidth;
-        auto p = sf::Vector2f(lx, base.y);
-            float baseRadius = 10.0f; // larger red light base radius
-            float phase = static_cast<float>(i) / static_cast<float>(m_fixedRedLights.size());
-            float alpha = 140.0f + 80.0f * std::sin(m_themeElapsed * 6.0f + phase * 6.28318f);
-            alpha = std::clamp(alpha, 0.0f, 255.0f);
-            sf::CircleShape light(baseRadius);
-            light.setOrigin(baseRadius, baseRadius);
-            light.setPosition(p);
-            light.setFillColor(sf::Color(220, 30, 30, static_cast<sf::Uint8>(alpha * m_themeBlend)));
-                // Draw soft glow behind the light to increase perceived size
+        if (!isL3) {
+            // original horizontal stripe for hallway
+            sf::RectangleShape stripe(sf::Vector2f(m_screenWidth, m_hallwayStripeHeight));
+            stripe.setPosition(0.0f, (m_screenHeight - m_hallwayStripeHeight) * 0.5f);
+            stripe.setFillColor(sf::Color(10, 10, 10, static_cast<sf::Uint8>(200.0f * m_themeBlend)));
+            window.draw(stripe);
+
+            // fixed red lights: size and alpha modulated by blend and a sin to flash
+            for (size_t i = 0; i < m_fixedRedLights.size(); i++) {
+                // Apply horizontal offset to lights so they move left; wrap across screen
+                auto base = m_fixedRedLights[i];
+                float lx = base.x + m_lightOffsetX;
+                if (lx < 0.0f) lx += m_screenWidth;
+                if (lx >= m_screenWidth) lx -= m_screenWidth;
+                auto p = sf::Vector2f(lx, base.y);
+                float baseRadius = 10.0f;
+                float phase = static_cast<float>(i) / static_cast<float>(m_fixedRedLights.size());
+                float alpha = 140.0f + 80.0f * std::sin(m_themeElapsed * 6.0f + phase * 6.28318f);
+                alpha = std::clamp(alpha, 0.0f, 255.0f);
+                sf::CircleShape light(baseRadius);
+                light.setOrigin(baseRadius, baseRadius);
+                light.setPosition(p);
+                light.setFillColor(sf::Color(220, 30, 30, static_cast<sf::Uint8>(alpha * m_themeBlend)));
+                // Draw soft glow behind the light
                 sf::CircleShape glow(baseRadius * 2.2f);
                 glow.setOrigin(glow.getRadius(), glow.getRadius());
                 glow.setPosition(p);
-                // glow alpha depends on theme blend and base alpha
                 float glowAlpha = std::clamp(alpha * 0.5f * m_themeBlend, 0.0f, 255.0f);
                 glow.setFillColor(sf::Color(220, 40, 40, static_cast<sf::Uint8>(glowAlpha)));
                 window.draw(glow);
                 window.draw(light);
+            }
+        } else {
+            // Reactor L3: draw vertical orange glowing lines instead of stripe
+            const float separation = std::max(96.0f, m_panelSize.x * 0.5f);
+            // start offset so lines move slightly with panel offset for motion
+            float startX = std::fmod(m_panelOffsetX, separation);
+            if (startX > 0.0f) startX -= separation;
+            sf::RenderStates add; add.blendMode = sf::BlendAdd;
+            for (float x = startX; x < m_screenWidth + separation; x += separation) {
+                // base solid column
+                sf::RectangleShape col(sf::Vector2f(6.0f, m_screenHeight));
+                col.setPosition(x, 0.0f);
+                col.setFillColor(sf::Color(200, 110, 10, static_cast<sf::Uint8>(200.0f * m_themeBlend)));
+                window.draw(col);
+
+                // soft additive glow wider and more transparent
+                sf::RectangleShape glowCol(sf::Vector2f(30.0f, m_screenHeight));
+                glowCol.setPosition(x - 12.0f, 0.0f);
+                glowCol.setFillColor(sf::Color(255, 160, 40, static_cast<sf::Uint8>(120.0f * m_themeBlend)));
+                window.draw(glowCol, add);
+            }
+
+            // Top smoke overlay (subtle drifting clouds at the top of the corridor)
+            // Use theme elapsed to animate horizontal drift
+            const int smokeCount = 10;
+            for (int i = 0; i < smokeCount; ++i) {
+                float phase = m_themeElapsed * 0.3f + static_cast<float>(i) * 0.7f;
+                float sx = std::fmod((i * (m_screenWidth / static_cast<float>(smokeCount)) + std::sin(phase) * 40.0f + m_panelOffsetX), m_screenWidth);
+                float width = 160.0f + 40.0f * std::sin(phase * 0.7f + i);
+                float height = 48.0f + 12.0f * std::cos(phase * 0.5f + i);
+                sf::RectangleShape puff(sf::Vector2f(width, height));
+                puff.setOrigin(width * 0.5f, 0.0f);
+                puff.setPosition(sx, 6.0f + std::sin(phase * 0.6f) * 10.0f);
+                puff.setFillColor(sf::Color(180, 180, 180, static_cast<sf::Uint8>(60.0f * m_themeBlend)));
+                window.draw(puff);
+            }
         }
     }
 
-    // 3. Render space debris (apply scale based on theme blend)
+    // 3. Reactor overlays disabled for L3 red hallway variant
+    (void)window; // suppress unused warning if overlays remain disabled
+
+    // 4. Render space debris (apply scale based on theme blend)
     if (m_themeBlend > 0.001f) {
         // when hallway active, debris are larger — interpolate size
         float scale = 1.0f + (m_hallwayDebrisScale - 1.0f) * m_themeBlend;
@@ -360,6 +418,7 @@ void ParallaxSystem::reset() {
     m_currentTheme = Theme::SpaceDefault;
     m_targetTheme = Theme::SpaceDefault;
     m_themeBlend = 0.0f;
+    m_reactorBlend = 0.0f;
     m_themeTransitionDuration = 0.0f;
     m_themeTransitionTimer = 0.0f;
     // Reset corridor scroll offsets
@@ -478,6 +537,127 @@ void ParallaxSystem::renderDebris(sf::RenderWindow& window) {
         debrisShape.setOrigin(debris.size.x * 0.5f, debris.size.y * 0.5f);
         debrisShape.setRotation(debris.rotation);
         window.draw(debrisShape);
+    }
+}
+
+void ParallaxSystem::initializeReactorTheme() {
+    // Teal-dark background
+    m_backgroundGradient[0].color = sf::Color(10, 22, 28);
+    m_backgroundGradient[1].color = sf::Color(10, 22, 28);
+    m_backgroundGradient[2].color = sf::Color(3, 8, 12);
+    m_backgroundGradient[3].color = sf::Color(3, 8, 12);
+
+    // Colder stars
+    initializeStarLayer(m_farStars,   40, 15.0f, 0.5f, 1.2f, sf::Color(160, 220, 255, 100));
+    initializeStarLayer(m_mediumStars,30, 45.0f, 0.8f, 2.5f, sf::Color(180, 240, 255, 160));
+    initializeStarLayer(m_nearStars,  18, 90.0f, 1.2f, 3.0f, sf::Color(210, 255, 255, 220));
+
+    // Reactor cores
+    m_reactorCores.clear();
+    const int coreCount = 3;
+    for (int i = 0; i < coreCount; ++i) {
+        float x = m_screenWidth * (0.25f + 0.25f * i);
+        float y = m_screenHeight * (0.32f + 0.1f * (i % 2));
+        sf::CircleShape core(40.f);
+        core.setOrigin(40.f, 40.f);
+        core.setPosition(x, y);
+        core.setFillColor(sf::Color(0, 0, 0, 0));
+        m_reactorCores.push_back(core);
+    }
+
+    // Smoke plumes
+    m_reactorSmoke.clear();
+    for (int i = 0; i < 14; ++i) {
+        SmokePlume s;
+        s.pos = { static_cast<float>(rand() % static_cast<int>(m_screenWidth)), m_screenHeight + static_cast<float>(rand() % 200) };
+        s.vel = { (rand() % 20 - 10) * 0.4f, -30.0f - static_cast<float>(rand() % 30) };
+        s.size = 30.0f + static_cast<float>(rand() % 40);
+        s.alpha = 40.0f + static_cast<float>(rand() % 60);
+        m_reactorSmoke.push_back(s);
+    }
+
+    // Energy arcs
+    m_energyArcs.clear();
+    for (int i = 0; i < 4; ++i) {
+        EnergyArc arc;
+        int segments = 8 + (rand() % 4);
+        float x0 = m_screenWidth * (0.15f + 0.2f * i);
+        float y0 = m_screenHeight * 0.18f;
+        float x1 = x0 + 180.0f;
+        float y1 = y0 + 60.0f;
+        arc.points.reserve(segments + 1);
+        for (int s = 0; s <= segments; ++s) {
+            float t = static_cast<float>(s) / static_cast<float>(segments);
+            float x = x0 + (x1 - x0) * t;
+            float y = y0 + (y1 - y0) * t + std::sin(t * 12.0f) * 10.0f;
+            arc.points.push_back({x, y});
+        }
+        arc.phase = static_cast<float>(rand() % 628) / 100.0f;
+        arc.speed = 2.0f + static_cast<float>(rand() % 200) / 100.0f;
+        m_energyArcs.push_back(arc);
+    }
+}
+
+void ParallaxSystem::updateReactor(float dt) {
+    for (auto &s : m_reactorSmoke) {
+        s.pos += s.vel * dt;
+        s.alpha = std::min(255.0f, s.alpha + 10.0f * dt);
+        if (s.pos.y + s.size < -20.0f) {
+            s.pos.y = m_screenHeight + 40.0f;
+            s.pos.x = static_cast<float>(rand() % static_cast<int>(m_screenWidth));
+            s.alpha = 40.0f;
+        }
+    }
+    for (auto &arc : m_energyArcs) {
+        arc.phase += arc.speed * dt;
+    }
+}
+
+void ParallaxSystem::renderReactor(sf::RenderWindow& window) {
+    sf::RenderStates add; add.blendMode = sf::BlendAdd;
+    // glows
+    for (const auto &core : m_reactorCores) {
+        sf::Vector2f p = core.getPosition();
+        auto drawGlow = [&](float r, sf::Color c) {
+            sf::CircleShape glow(r);
+            glow.setOrigin(r, r);
+            glow.setPosition(p);
+            c.a = static_cast<sf::Uint8>(std::clamp(180.0f * m_reactorBlend, 0.0f, 255.0f));
+            glow.setFillColor(c);
+            window.draw(glow, add);
+        };
+        drawGlow(80.f, sf::Color(20, 220, 255));
+        drawGlow(55.f, sf::Color(50, 255, 220));
+        drawGlow(35.f, sf::Color(180, 255, 240));
+    }
+    // smoke
+    for (const auto &s : m_reactorSmoke) {
+        sf::RectangleShape r({s.size * 2.0f, s.size});
+        r.setOrigin(r.getSize() * 0.5f);
+        r.setPosition(s.pos);
+        r.setRotation(12.0f);
+        r.setFillColor(sf::Color(180, 180, 180, static_cast<sf::Uint8>(s.alpha * m_reactorBlend)));
+        window.draw(r);
+    }
+    // arcs
+    for (const auto &arc : m_energyArcs) {
+        if (arc.points.size() < 2) continue;
+        sf::VertexArray line(sf::LineStrip, arc.points.size());
+        for (size_t i = 0; i < arc.points.size(); ++i) {
+            float wobble = std::sin(arc.phase + static_cast<float>(i) * 0.35f) * 3.0f;
+            sf::Vector2f p = arc.points[i] + sf::Vector2f(0.0f, wobble);
+            sf::Color c = sf::Color(100, 240, 255, static_cast<sf::Uint8>(180.0f * m_reactorBlend));
+            line[i].position = p; line[i].color = c;
+        }
+        window.draw(line, add);
+        sf::VertexArray glow(sf::LineStrip, arc.points.size());
+        for (size_t i = 0; i < arc.points.size(); ++i) {
+            float wobble = std::sin(arc.phase + static_cast<float>(i) * 0.35f + 1.57f) * 6.0f;
+            sf::Vector2f p = arc.points[i] + sf::Vector2f(0.0f, wobble);
+            sf::Color c = sf::Color(0, 255, 200, static_cast<sf::Uint8>(120.0f * m_reactorBlend));
+            glow[i].position = p; glow[i].color = c;
+        }
+        window.draw(glow, add);
     }
 }
 

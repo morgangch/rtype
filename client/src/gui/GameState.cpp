@@ -635,8 +635,8 @@ void GameState::updateBossMusicState() {
         }
         m_bossMusicActive = false;
 
-        // If this was the level 2 boss (index 1), end the game with victory
-        if (m_levelIndex >= 1) {
+        // If this was the level 3 boss (index 2), end the game with victory
+        if (m_levelIndex >= 2) {
             showVictoryScreen();
         } else {
             // Otherwise proceed to next level
@@ -649,7 +649,7 @@ void GameState::advanceLevel() {
     m_levelIndex += 1;
     std::cout << "[GameState] Advancing to level index: " << m_levelIndex << std::endl;
 
-    // If we've exceeded the final level (3), return to main menu
+    // If we've exceeded the final level index (2), return to main menu
     if (m_levelIndex >= 3) {
         std::cout << "[GameState] Final level cleared. Returning to main menu." << std::endl;
         m_musicManager.stop();
@@ -659,17 +659,9 @@ void GameState::advanceLevel() {
         return;
     }
 
-    // Use music from level 2 after defeating the boss of the level 1
-    const std::string level2Music = AudioFactory::getMusicPath(AudioFactory::MusicId::Level2);
-    if (m_musicManager.loadFromFile(level2Music)) {
-        m_musicManager.setVolume(40.0f);
-        m_musicManager.play(true);
-    } else {
-        std::cerr << "GameState: could not load level 2 music: " << level2Music << std::endl;
-    }
-
-    // Transition parallax to hallway theme for level 2
-    m_parallaxSystem.transitionToTheme(ParallaxSystem::Theme::HallwayLevel2, 1.0f);
+    // Load music for the new level and transition parallax accordingly
+    loadLevelMusic();
+    m_parallaxSystem.transitionToTheme(ParallaxSystem::themeFromLevel(m_levelIndex), 1.0f);
 }
 
 void GameState::loadLevelMusic() {
