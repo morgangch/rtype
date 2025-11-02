@@ -128,8 +128,8 @@ namespace rtype::common::systems {
             else if (enemyType->type == components::EnemyType::Flanker) {
                 handleFlankerMovement(world, entity, pos, vel);
             }
-            else if (enemyType->type == components::EnemyType::Bomber) {
-                handleBomberMovement(world, entity, pos, vel);
+            else if (enemyType->type == components::EnemyType::Turret) {
+                handleTurretMovement(world, entity, pos, vel);
             }
             else if (enemyType->type == components::EnemyType::Waver) {
                 handleWaverMovement(world, entity, pos, vel, *enemyType);
@@ -307,18 +307,18 @@ namespace rtype::common::systems {
         }
 
         /**
-         * @brief Handle Bomber enemy simple left movement (mines handled in AI system)
+         * @brief Handle Turret enemy erratic zigzag movement
          * @param world The ECS world
          * @param entity The entity to handle
          * @param pos Reference to position component
          * @param vel Pointer to velocity component
          */
-        static void handleBomberMovement(ECS::World& world, ECS::EntityID entity,
-                                        components::Position& pos, components::Velocity* vel) {
+        static void handleTurretMovement(ECS::World& world, ECS::EntityID entity,
+                                       components::Position& pos, components::Velocity* vel) {
             if (!vel) return;
 
-            // Bomber moves slowly left
-            vel->vx = -70.0f;
+            // Turret is stationary
+            vel->vx = 0.0f;
             vel->vy = 0.0f;
         }
 
@@ -361,17 +361,22 @@ namespace rtype::common::systems {
                                          components::EnemyTypeComponent& enemyType) {
             if (!vel) return;
 
-            // Serpent head moves in large wave pattern
-            const float HORIZONTAL_SPEED = -60.0f;
-            const float AMPLITUDE = 120.0f;
-            const float FREQUENCY = 1.5f;
-
-            vel->vx = HORIZONTAL_SPEED;
-            vel->vy = AMPLITUDE * FREQUENCY * std::cos(enemyType.lifeTime * FREQUENCY);
+            // SERPENT: Stays in center, only vertical wave movement!
+            const float WAVE_AMPLITUDE = 180.0f;   // HUGE vertical amplitude
+            const float WAVE_FREQUENCY = 0.8f;     // Slower, menacing waves
+            
+            vel->vx = 0.0f;
+            
+            // Calculate smooth sine wave for vertical movement only
+            vel->vy = WAVE_AMPLITUDE * WAVE_FREQUENCY * std::cos(enemyType.lifeTime * WAVE_FREQUENCY);
+            
+            // Keep serpent within screen bounds (100-620 for 720p screen)
+            if (pos.y < 150.0f && vel->vy < 0) vel->vy = std::abs(vel->vy);
+            if (pos.y > 570.0f && vel->vy > 0) vel->vy = -std::abs(vel->vy);
         }
 
         /**
-         * @brief Handle Fortress boss stationary with orbiting turrets
+         * @brief Handle Fortress boss stationary movement
          * @param world The ECS world
          * @param entity The entity to handle
          * @param pos Reference to position component
@@ -383,9 +388,9 @@ namespace rtype::common::systems {
                                           components::EnemyTypeComponent& enemyType) {
             if (!vel) return;
 
-            // Fortress stays relatively stationary, only slight vertical drift
-            vel->vx = -20.0f;  // Very slow drift left
-            vel->vy = 30.0f * std::sin(enemyType.lifeTime * 0.5f);  // Gentle bobbing
+            // Fortress is stationary - doesn't move
+            vel->vx = 0.0f;
+            vel->vy = 0.0f;
         }
 
         /**

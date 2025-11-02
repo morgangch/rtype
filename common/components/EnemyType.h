@@ -28,13 +28,13 @@ namespace rtype::common::components {
         // Advanced enemies (4 types)
         Shielded,   ///< Shielded enemy - cyclic invulnerability shield, vulnerable in intervals
         Flanker,    ///< Flanker enemy - diagonal movement, fires perpendicular shots to force vertical dodging
-        Bomber,     ///< Bomber enemy - drops floating mines that explode after delay
+        Turret,     ///< Turret enemy - stationary turret, fires 3-shot burst aimed at player
         Waver,      ///< Waver enemy - erratic zigzag movement, fires triple bursts
 
         // Boss enemies (4 types)
         TankDestroyer,  ///< Tank destroyer boss - vertical bounce, fires 3-projectile spread
         Serpent,        ///< Serpent boss - multi-segment body with wave movement, head shoots spread
-        Fortress,       ///< Fortress boss - central core with 3 orbiting turrets, rotating laser when turrets destroyed
+        Fortress,       ///< Fortress boss - stationary core with RED shield requiring 2 charged shots to break, fires 2 charged projectiles
         Core,           ///< Core boss (FINAL) - multi-phase evolution: circular->spiral+adds->chaotic pattern
     };
     

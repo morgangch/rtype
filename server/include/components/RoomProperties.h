@@ -22,6 +22,7 @@
 #include "rtype.h"
 #include "components/PlayerConn.h"
 #include "services/PlayerService.h"
+#include "common/components/Health.h"
 
 namespace rtype::server::components {
     /**
@@ -60,6 +61,12 @@ namespace rtype::server::components {
                 return;
             }
             for (auto player: players) {
+                // Skip dead players - their network connection may be invalid
+                auto *health = root.world.GetComponent<rtype::common::components::Health>(player);
+                if (health && (!health->isAlive || health->currentHp <= 0)) {
+                    continue;
+                }
+                
                 auto *pconn = root.world.GetComponent<rtype::server::components::PlayerConn>(player);
                 if (!pconn) {
                     continue;

@@ -84,9 +84,8 @@ namespace rtype::common::systems {
                 if (!fireRate || !pos) continue;
                 if (!fireRate->canFire()) continue;
 
-                // Enemies that don't shoot
-                if (enemyType && (enemyType->type == components::EnemyType::Suicide ||
-                                  enemyType->type == components::EnemyType::Snake)) {
+                // Enemies that don't shoot (only Suicide)
+                if (enemyType && enemyType->type == components::EnemyType::Suicide) {
                     continue;
                 }
 
@@ -111,6 +110,10 @@ namespace rtype::common::systems {
                 // Advanced enemy shooting patterns
                 else if (enemyType && enemyType->type == components::EnemyType::Flanker) {
                     handleFlankerShooting(entity, pos->x, pos->y, createProjectile);
+                    fireRate->shoot();
+                }
+                else if (enemyType && enemyType->type == components::EnemyType::Turret) {
+                    handleTurretShooting(entity, pos->x, pos->y, playerX, playerY, playerFound, createProjectile);
                     fireRate->shoot();
                 }
                 else if (enemyType && enemyType->type == components::EnemyType::Waver) {
@@ -228,6 +231,45 @@ namespace rtype::common::systems {
         }
 
         /**
+         * @brief Handle Turret enemy 3-shot burst aimed at player
+         * Turret is stationary and fires a tight 3-projectile burst toward player
+         */
+        static void handleTurretShooting(ECS::EntityID shooter, float x, float y, float targetX, float targetY,
+                                        bool hasTarget, ProjectileCallback createProjectile) {
+            if (!hasTarget) {
+                // Default shoot left if no target
+                createProjectile(shooter, x, y, -300.0f, 0.0f);
+                return;
+            }
+
+            // Calculate direction to player
+            float dx = targetX - x;
+            float dy = targetY - y;
+            float distance = std::sqrt(dx * dx + dy * dy);
+            if (distance <= 0.0f) return;
+
+            const float PROJECTILE_SPEED = 400.0f;
+            float vx = (dx / distance) * PROJECTILE_SPEED;
+            float vy = (dy / distance) * PROJECTILE_SPEED;
+
+            // Fire 3-shot burst with tight spread (±5 degrees)
+            const float spreadAngle = 0.087f; // ~5 degrees in radians
+
+            // Center shot aimed directly at player
+            createProjectile(shooter, x, y, vx, vy);
+
+            // Upper shot (+5 degrees)
+            float upperVx = vx * std::cos(spreadAngle) - vy * std::sin(spreadAngle);
+            float upperVy = vx * std::sin(spreadAngle) + vy * std::cos(spreadAngle);
+            createProjectile(shooter, x, y, upperVx, upperVy);
+
+            // Lower shot (-5 degrees)
+            float lowerVx = vx * std::cos(-spreadAngle) - vy * std::sin(-spreadAngle);
+            float lowerVy = vx * std::sin(-spreadAngle) + vy * std::cos(-spreadAngle);
+            createProjectile(shooter, x, y, lowerVx, lowerVy);
+        }
+
+        /**
          * @brief Handle Waver enemy triple burst
          */
         static void handleWaverShooting(ECS::EntityID shooter, float x, float y, float targetX, float targetY,
@@ -263,27 +305,29 @@ namespace rtype::common::systems {
         }
 
         /**
-         * @brief Handle Serpent boss shooting (similar to TankDestroyer but 5-spread)
+         * @brief Handle Serpent boss shooting (5-spread pattern aimed at player)
+         * Serpent shoots a WIDE 5-projectile spread toward the player
+         * Unlike TankDestroyer (3-spread straight left), this actively tracks player!
          */
         static void handleSerpentShooting(ECS::EntityID shooter, float x, float y, float targetX, float targetY,
                                          bool hasTarget, ProjectileCallback createProjectile) {
-            if (!hasTarget) return;
-
-            float dx = targetX - x;
-            float dy = targetY - y;
+            // If no target, shoot spread to the left
+            float dx = hasTarget ? (targetX - x) : -1.0f;
+            float dy = hasTarget ? (targetY - y) : 0.0f;
             float distance = std::sqrt(dx * dx + dy * dy);
-            if (distance <= 0.0f) return;
+            if (distance <= 0.0f) distance = 1.0f;
 
-            const float PROJECTILE_SPEED = 320.0f;
+            const float PROJECTILE_SPEED = 350.0f; // Faster projectiles than TankDestroyer (320)
             float baseVx = (dx / distance) * PROJECTILE_SPEED;
             float baseVy = (dy / distance) * PROJECTILE_SPEED;
 
-            // 5-projectile spread: center, ±15deg, ±30deg
-            const float spread1 = 0.26f;  // 15 degrees
-            const float spread2 = 0.52f;  // 30 degrees
+            // WIDE 5-projectile spread: center, ±20deg, ±40deg (wider than TankDestroyer)
+            const float spread1 = 0.35f;  // ~20 degrees
+            const float spread2 = 0.70f;  // ~40 degrees
 
-            createProjectile(shooter, x, y, baseVx, baseVy);  // Center
+            createProjectile(shooter, x, y, baseVx, baseVy);  // Center shot
 
+            // Four additional shots in wide spread pattern
             for (float angle : {spread1, -spread1, spread2, -spread2}) {
                 float rotVx = baseVx * std::cos(angle) - baseVy * std::sin(angle);
                 float rotVy = baseVx * std::sin(angle) + baseVy * std::cos(angle);
@@ -292,20 +336,21 @@ namespace rtype::common::systems {
         }
 
         /**
-         * @brief Handle Fortress boss circular rotating pattern
+         * @brief Handle Fortress boss random non-targeted shooting pattern
+         * Shoots in random directions to avoid network saturation
+         * The boss stays stationary and fires projectiles randomly
          */
         static void handleFortressShooting(ECS::EntityID shooter, float x, float y, float targetX, float targetY,
                                           bool hasTarget, float lifeTime, ProjectileCallback createProjectile) {
-            const float PROJECTILE_SPEED = 300.0f;
-            const float rotationSpeed = 2.0f;  // Rotations per second
+            const float PROJECTILE_SPEED = 280.0f;
 
-            // Fire in 8 directions, rotating over time
-            float baseAngle = lifeTime * rotationSpeed;
-
-            for (int i = 0; i < 8; i++) {
-                float angle = baseAngle + (i * 3.14159f * 2.0f / 8.0f);  // 8 directions
-                float vx = std::cos(angle) * PROJECTILE_SPEED;
-                float vy = std::sin(angle) * PROJECTILE_SPEED;
+            // Fire 4 projectiles in random directions (not aimed at player)
+            // This reduces network traffic compared to 8-direction patterns
+            for (int i = 0; i < 4; i++) {
+                // Generate random angle for each projectile
+                float randomAngle = (std::rand() % 360) * 3.14159f / 180.0f;
+                float vx = std::cos(randomAngle) * PROJECTILE_SPEED;
+                float vy = std::sin(randomAngle) * PROJECTILE_SPEED;
                 createProjectile(shooter, x, y, vx, vy);
             }
         }
