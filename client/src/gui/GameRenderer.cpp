@@ -81,6 +81,8 @@ void GameState::renderEntities(sf::RenderWindow& window) {
                     sprite->sprite.setTextureRect(sprite->textureRect);
                 }
                 sprite->sprite.setPosition(pos.x, pos.y);
+                    // Apply rotation from Position component (used by obstacles like Meteorite)
+                    sprite->sprite.setRotation(pos.rotation);
                 window.draw(sprite->sprite);
             }
         }

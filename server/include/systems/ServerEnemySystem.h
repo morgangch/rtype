@@ -68,6 +68,13 @@ private:
     std::map<TileType, float> _spawnTimers; ///< Current timer for each tile type
     std::map<TileType, float> _spawnIntervals; ///< Spawn interval for each tile type
 
+    // Obstacle spawn timers (randomized per interval)
+    float _meteoriteTimer{0.0f};
+    float _meteoriteNext{3.0f};
+    float _debrisTimer{0.0f};
+    float _debrisNext{7.0f};
+
+    // Update helpers
     /**
      * @brief Update enemy spawning logic based on timers and loaded tiles
      * @param world Reference to the ECS world
@@ -76,6 +83,21 @@ private:
      * Cycles through loaded tiles and spawns enemies when timers elapse.
      */
     void updateEnemySpawning(ECS::World& world, float deltaTime);
+    
+    /**
+     * @brief Spawn obstacle entities (meteorites and debris)
+     * @param world Reference to the ECS world
+     * @param deltaTime Time elapsed since last update
+     */
+    void updateObstacleSpawning(ECS::World& world, float deltaTime);
+    
+    /**
+     * @brief Spawn a row of debris entities
+     * @param world Reference to the ECS world
+     * @param room Room entity ID
+     * @param count Number of debris entities to spawn
+     */
+    void spawnDebrisRow(ECS::World& world, ECS::EntityID room, int count);
     
     /**
      * @brief Broadcast player positions and health to all clients

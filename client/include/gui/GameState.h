@@ -461,6 +461,16 @@ namespace rtype::client::gui {
         ECS::EntityID createCoreBoss(float x, float y);
 
         /**
+         * @brief Create a Meteorite obstacle entity (5 HP, spins)
+         */
+        ECS::EntityID createMeteorite(float x, float y);
+
+        /**
+         * @brief Create a Debri obstacle entity (1000 HP, row spawn)
+         */
+        ECS::EntityID createDebri(float x, float y);
+
+        /**
          * @brief Create a player projectile entity
          * @param x X position
          * @param y Y position

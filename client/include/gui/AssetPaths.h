@@ -36,21 +36,33 @@ namespace rtype::client::assets {
      * @brief Enemy sprite paths
      */
     namespace enemies {
-        // Basic enemies
-        constexpr const char* BASIC_ENEMY_1 = "assets/sprites/BasicEnemy/BASIC_ENEMY_1.gif";  // Basic
-        constexpr const char* BASIC_ENEMY_2 = "assets/sprites/BasicEnemy/BASIC_ENEMY_2.gif";  // Snake, Suicide
-        constexpr const char* BASIC_ENEMY_3 = "assets/sprites/BasicEnemy/BASIC_ENEMY_1.gif";  // Pata (reuse BASIC_1)
+        // GIF enemies with underscores
+        constexpr const char* BASIC_ENEMY_1 = "assets/sprites/BasicEnemy/BASIC_ENEMY_1.gif";
+        constexpr const char* BASIC_ENEMY_2 = "assets/sprites/BasicEnemy/BASIC_ENEMY_2.gif";
+        constexpr const char* ADVANCED_ENEMY_1 = "assets/sprites/BasicEnemy/ADVANCED_ENEMY_1.gif";
+        constexpr const char* BOSS_ENEMY_1 = "assets/sprites/BasicEnemy/BOSS_ENEMY_1.gif";
+        
+        // GIF enemies without underscores (BASICENEMY_X)
+        constexpr const char* BASICENEMY_1 = "assets/sprites/BasicEnemy/BASICENEMY_1.gif";
+        constexpr const char* BASICENEMY_2 = "assets/sprites/BasicEnemy/BASICENEMY_2.gif";
+        constexpr const char* BASICENEMY_3 = "assets/sprites/BasicEnemy/BASICENEMY_3.gif";
+        constexpr const char* BASICENEMY_4 = "assets/sprites/BasicEnemy/BASICENEMY_4.gif";
 
-        // Advanced enemies
-        constexpr const char* ADVANCED_ENEMY_1 = "assets/sprites/BasicEnemy/ADVANCED_ENEMY_1.gif";  // Shielded, Waver
-        constexpr const char* ADVANCED_ENEMY_2 = "assets/sprites/BasicEnemy/BASIC_ENEMY_2.gif";     // Flanker (reuse BASIC_2)
-        constexpr const char* ADVANCED_ENEMY_3 = "assets/sprites/BasicEnemy/ADVANCED_ENEMY_1.gif";  // Bomber (reuse ADVANCED_1)
+        // PNG Ships - Alternative sprites for variety
+        constexpr const char* SHIP_1 = "assets/sprites/BasicEnemy/Ship1.png";
+        constexpr const char* SHIP_2 = "assets/sprites/BasicEnemy/Ship2.png";
+        constexpr const char* SHIP_3 = "assets/sprites/BasicEnemy/Ship3.png";
+        constexpr const char* SHIP_4 = "assets/sprites/BasicEnemy/Ship4.png";
+        constexpr const char* SHIP_5 = "assets/sprites/BasicEnemy/Ship5.png";
+        constexpr const char* SHIP_6 = "assets/sprites/BasicEnemy/Ship6.png";
+    }
 
-        // Boss enemies
-        constexpr const char* BOSS_ENEMY_1 = "assets/sprites/BasicEnemy/BOSS_ENEMY_1.gif";  // TankDestroyer
-        constexpr const char* BOSS_ENEMY_2 = "assets/sprites/BasicEnemy/BOSS_ENEMY_1.gif";  // Serpent (reuse BOSS_1)
-        constexpr const char* BOSS_ENEMY_3 = "assets/sprites/BasicEnemy/BOSS_ENEMY_1.gif";  // Fortress (reuse BOSS_1)
-        constexpr const char* BOSS_ENEMY_4 = "assets/sprites/BasicEnemy/BOSS_ENEMY_1.gif";  // Core (reuse BOSS_1)
+    /**
+     * @brief Obstacle sprite paths
+     */
+    namespace obstacles {
+        constexpr const char* METEORITE = "assets/sprites/Asteroids/asteroid.png";
+        constexpr const char* DEBRI = "assets/sprites/Asteroids/debri.png";
     }
 
     /**

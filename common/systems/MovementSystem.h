@@ -16,6 +16,8 @@
 #include <common/components/Velocity.h>
 #include <common/components/Collision.h>
 #include <common/components/EnemyType.h>
+#include <common/components/Bounce.h>
+#include <common/components/Team.h>
 #include <common/components/Projectile.h>
 #include <common/utils/Config.h>
 #include <cmath>
@@ -73,6 +75,45 @@ namespace rtype::common::systems {
                     float dy = vel->vy * deltaTime;
                     float distance = std::sqrt(dx * dx + dy * dy);
                     proj->distanceTraveled += distance;
+                }
+
+                // Simple border bounce for projectiles with Bounce component (forge augment)
+                if (proj) {
+                    auto* bounce = world.GetComponent<components::Bounce>(entity);
+                    auto* team = world.GetComponent<components::Team>(entity);
+                    if (bounce && team && team->team == components::TeamType::Player) {
+                        bool reflected = false;
+                        // Top/bottom
+                        if (bounce->bounceY) {
+                            if (pos.y <= 0.0f) {
+                                pos.y = 1.0f;
+                                vel->vy = std::abs(vel->vy);
+                                reflected = true;
+                            } else if (pos.y >= Config::SCREEN_HEIGHT) {
+                                pos.y = static_cast<float>(Config::SCREEN_HEIGHT - 1);
+                                vel->vy = -std::abs(vel->vy);
+                                reflected = true;
+                            }
+                        }
+                        // Left/right
+                        if (bounce->bounceX) {
+                            if (pos.x <= 0.0f) {
+                                pos.x = 1.0f;
+                                vel->vx = std::abs(vel->vx);
+                                reflected = true;
+                            } else if (pos.x >= Config::SCREEN_WIDTH) {
+                                pos.x = static_cast<float>(Config::SCREEN_WIDTH - 1);
+                                vel->vx = -std::abs(vel->vx);
+                                reflected = true;
+                            }
+                        }
+                        if (reflected && bounce->remaining >= 0) {
+                            bounce->remaining -= 1;
+                            if (bounce->remaining < 0) {
+                                world.RemoveComponent<components::Bounce>(entity);
+                            }
+                        }
+                    }
                 }
 
                 // Clamp velocity to max speed

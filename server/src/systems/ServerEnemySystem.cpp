@@ -133,6 +133,7 @@ void ServerEnemySystem::Update(ECS::World &world, float deltaTime) {
     // Only run enemy spawning logic if game is active and map is loaded
     if (hasActiveGame && _mapLoaded) {
         updateEnemySpawning(world, deltaTime);
+        updateObstacleSpawning(world, deltaTime);
     } else if (hasActiveGame && !_mapLoaded) {
         static bool warnedOnce = false;
         if (!warnedOnce) {
@@ -145,6 +146,7 @@ void ServerEnemySystem::Update(ECS::World &world, float deltaTime) {
     updatePlayerStateBroadcast(world, deltaTime);
     cleanupDeadEntities(world);
 }
+
 
 // ============================================================================
 // TILE-DRIVEN ENEMY SPAWNING
@@ -357,6 +359,90 @@ void ServerEnemySystem::readTileStats(const Tile& tile, int& outHp, float& outVx
         } catch (...) {
             std::cerr << "[ServerEnemySystem] Invalid fire_rate value: " << fireRateIt->second << std::endl;
         }
+    }
+}
+
+// ============================================================================
+// OBSTACLE SPAWNING
+// ============================================================================
+
+void ServerEnemySystem::updateObstacleSpawning(ECS::World& world, float deltaTime) {
+    _meteoriteTimer += deltaTime;
+    _debrisTimer += deltaTime;
+
+    auto *rooms = world.GetAllComponents<rtype::server::components::RoomProperties>();
+    if (!rooms) return;
+
+    // Spawn meteorites individually at random Y positions
+    if (_meteoriteTimer >= _meteoriteNext) {
+        _meteoriteTimer = 0.0f;
+        _meteoriteNext = 2.0f + static_cast<float>(rand() % 3000) / 1000.0f; // 2..5s
+
+        for (auto &pair : *rooms) {
+            ECS::EntityID room = pair.first;
+            if (!pair.second) continue;
+            auto *rp = pair.second.get();
+            if (!rp || !rp->isGameStarted) continue;
+
+            float spawnX = 1280.0f + 40.0f;
+            float spawnY = 60.0f + (rand() % 600); // keep within screen
+            int hp = 5;
+            float speed = 180.0f + static_cast<float>(rand() % 80); // 180..260
+
+            auto e = world.CreateEntity();
+            world.AddComponent<rtype::common::components::Position>(e, spawnX, spawnY, 0.0f);
+            world.AddComponent<rtype::common::components::Velocity>(e, -speed, 0.0f, speed);
+            world.AddComponent<rtype::common::components::Health>(e, hp);
+            world.AddComponent<rtype::common::components::Team>(e, rtype::common::components::TeamType::Enemy);
+            world.AddComponent<rtype::common::components::EnemyTypeComponent>(e, rtype::common::components::EnemyType::Meteorite);
+            world.AddComponent<rtype::server::components::LinkedRoom>(e, room);
+
+            rtype::server::network::senders::broadcast_enemy_spawn(room, e, rtype::common::components::EnemyType::Meteorite, spawnX, spawnY, hp);
+        }
+    }
+
+    // Spawn debris rows occasionally (2..6 count)
+    if (_debrisTimer >= _debrisNext) {
+        _debrisTimer = 0.0f;
+        _debrisNext = 6.0f + static_cast<float>(rand() % 6000) / 1000.0f; // 6..12s
+
+        for (auto &pair : *rooms) {
+            ECS::EntityID room = pair.first;
+            if (!pair.second) continue;
+            auto *rp = pair.second.get();
+            if (!rp || !rp->isGameStarted) continue;
+
+            int count = 2 + (rand() % 3); // 2..4
+            spawnDebrisRow(world, room, count);
+        }
+    }
+}
+
+void ServerEnemySystem::spawnDebrisRow(ECS::World& world, ECS::EntityID room, int count) {
+    // Clamp
+    if (count < 2) count = 2; 
+    if (count > 4) count = 4;
+    
+    // Vertical spacing across safe band (keep some margins)
+    float top = 80.0f;
+    float bottom = 640.0f;
+    float step = (bottom - top) / (count - 1);
+
+    for (int i = 0; i < count; ++i) {
+        float spawnX = 1280.0f + 60.0f;
+        float spawnY = top + step * i;
+        int hp = 1000;
+        float speed = 80.0f + static_cast<float>(rand() % 40); // 80..120
+
+        auto e = world.CreateEntity();
+        world.AddComponent<rtype::common::components::Position>(e, spawnX, spawnY, 0.0f);
+        world.AddComponent<rtype::common::components::Velocity>(e, -speed, 0.0f, speed);
+        world.AddComponent<rtype::common::components::Health>(e, hp);
+        world.AddComponent<rtype::common::components::Team>(e, rtype::common::components::TeamType::Enemy);
+        world.AddComponent<rtype::common::components::EnemyTypeComponent>(e, rtype::common::components::EnemyType::Debri);
+        world.AddComponent<rtype::server::components::LinkedRoom>(e, room);
+
+        rtype::server::network::senders::broadcast_enemy_spawn(room, e, rtype::common::components::EnemyType::Debri, spawnX, spawnY, hp);
     }
 }
 
