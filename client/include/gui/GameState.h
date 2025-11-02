@@ -206,6 +206,12 @@ namespace rtype::client::gui {
      */
     int getLevelIndex() const;
 
+        /**
+         * @brief Set current level index (0 = level1, 1 = level2, ...)
+         * @param index New level index to apply before entering the state
+         */
+        void setLevelIndex(int index);
+
         /* === Network-aware helpers (used by packet handlers) === */
         /**
          * @brief Create or update an enemy entity based on server spawn packet

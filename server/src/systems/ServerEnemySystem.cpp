@@ -533,3 +533,28 @@ void ServerEnemySystem::checkBossDeathAndAdvanceLevel(ECS::World& world) {
         std::cout << "[ServerEnemySystem] - Boss: " << (int)_levelDefinitions[_currentLevel].bossEnemy << std::endl;
     }
 }
+
+void ServerEnemySystem::setStartLevel(int index) {
+    if (_levelDefinitions.empty()) return;
+    if (index < 0) index = 0;
+    if (index >= static_cast<int>(_levelDefinitions.size())) index = static_cast<int>(_levelDefinitions.size()) - 1;
+    _currentLevel = index;
+    _levelTimer = 0.0f;
+    _phase = EnemySpawnPhase::OnlyBasic;
+    _bossSpawned = false;
+    // Reset spawn timers for regular enemies so spawns begin fresh
+    for (auto &entry : _enemyConfigs) {
+        entry.second.timer = 0.0f;
+    }
+    std::cout << "[ServerEnemySystem] Forced start level to " << (_currentLevel + 1) << std::endl;
+}
+
+rtype::common::components::EnemyType ServerEnemySystem::getCurrentBossType() const {
+    if (_levelDefinitions.empty()) {
+        return rtype::common::components::EnemyType::TankDestroyer;
+    }
+    int idx = _currentLevel;
+    if (idx < 0) idx = 0;
+    if (idx >= static_cast<int>(_levelDefinitions.size())) idx = static_cast<int>(_levelDefinitions.size()) - 1;
+    return _levelDefinitions[idx].bossEnemy;
+}

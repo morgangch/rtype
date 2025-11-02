@@ -288,6 +288,11 @@ int GameState::getLevelIndex() const {
     return m_levelIndex;
 }
 
+void GameState::setLevelIndex(int index) {
+    m_levelIndex = std::max(0, index);
+    std::cout << "[GameState] Level index set to: " << m_levelIndex << std::endl;
+}
+
 void GameState::loadHUDTextures() {
     if (m_texturesLoaded) return;
 
@@ -354,6 +359,9 @@ void GameState::onEnter() {
 
     resetGame();
     m_gameStatus = GameStatus::Playing;
+
+    // Ensure parallax theme matches the starting level immediately
+    m_parallaxSystem.setTheme(ParallaxSystem::themeFromLevel(m_levelIndex), true);
 
     // Start level music
     loadLevelMusic();

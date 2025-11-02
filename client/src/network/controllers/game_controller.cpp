@@ -157,12 +157,14 @@ namespace rtype::client::controllers::game_controller {
     }
 
     void handle_game_start(const packet_t &packet) {
+        const GameStartPacket *p = (const GameStartPacket*)packet.data;
         using rtype::client::gui::g_stateManager;
         using rtype::client::gui::GameState;
         using rtype::client::gui::g_lobbyState;
 
         std::cout << "=== CLIENT: GAME_START packet received from server ===" << std::endl;
-        std::cout << "CLIENT: Transitioning to GameState with playerServerId=" << g_playerServerId << std::endl;
+        std::cout << "CLIENT: Transitioning to GameState with playerServerId=" << g_playerServerId
+                  << ", startLevel=" << static_cast<int>(p->startLevel) << std::endl;
 
         if (!g_stateManager) {
             std::cerr << "ERROR: g_stateManager is null, cannot transition to GameState" << std::endl;
@@ -172,8 +174,10 @@ namespace rtype::client::controllers::game_controller {
         // Clear lobby state pointer
         g_lobbyState = nullptr;
 
-        // Create and transition to GameState with the local player server ID and admin status
+    // Create and transition to GameState with the local player server ID and admin status
         auto gameState = std::make_unique<GameState>(*g_stateManager);
+    // Apply starting level from server before onEnter() so music/theme match immediately
+    gameState->setLevelIndex(static_cast<int>(p->startLevel));
         gameState->setLocalPlayerServerId(g_playerServerId);
         gameState->setIsAdmin(g_isPlayerAdmin);
         g_stateManager->changeState(std::move(gameState));

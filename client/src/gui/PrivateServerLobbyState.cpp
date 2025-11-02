@@ -148,6 +148,15 @@ namespace rtype::client::gui {
             m_megaDamageLabel.setFillColor(GUIHelper::Colors::TEXT);
             setupSquare(m_sqMegaDamage);
 
+            // Debug: Start Level selector (Lvl1/Lvl2)
+            m_startLevelLabel.setFont(font);
+            m_startLevelLabel.setCharacterSize(GUIHelper::Sizes::INPUT_FONT_SIZE);
+            m_startLevelLabel.setFillColor(GUIHelper::Colors::TEXT);
+
+            m_startLevelValue.setFont(font);
+            m_startLevelValue.setCharacterSize(GUIHelper::Sizes::INPUT_FONT_SIZE);
+            m_startLevelValue.setFillColor(sf::Color(200, 220, 255));
+
             // Panel background
             m_settingsPanelRect.setFillColor(sf::Color(20, 20, 20, 210));
             m_settingsPanelRect.setOutlineColor(sf::Color(255, 255, 255, 180));
@@ -313,30 +322,37 @@ namespace rtype::client::gui {
 
             // Settings panel interactions (admin only)
             if (isAdmin && m_showSettings) {
+                // Start Level toggle (debug)
+                if (GUIHelper::isPointInRect(mousePos, m_rectStartLevel)) {
+                    m_startLevelIndex = (m_startLevelIndex + 1) % 2; // Lvl1 <-> Lvl2
+                    updateSettingsTexts();
+                    rtype::client::network::senders::send_lobby_settings_update(static_cast<uint8_t>(m_difficultyIndex), m_friendlyFire, m_aiAssist, m_megaDamage, m_startLevelIndex);
+                    return;
+                }
                 if (GUIHelper::isPointInRect(mousePos, m_rectDifficulty)) {
                     m_difficultyIndex = (m_difficultyIndex + 1) % 3; // cycle Easy/Normal/Hard
                     updateSettingsTexts();
                     // Notify server of settings change (admin only)
-                    rtype::client::network::senders::send_lobby_settings_update(static_cast<uint8_t>(m_difficultyIndex), m_friendlyFire, m_aiAssist, m_megaDamage);
+                    rtype::client::network::senders::send_lobby_settings_update(static_cast<uint8_t>(m_difficultyIndex), m_friendlyFire, m_aiAssist, m_megaDamage, m_startLevelIndex);
                     return;
                 }
                 if (GUIHelper::isPointInRect(mousePos, m_rectFriendlyFire)) {
                     m_friendlyFire = !m_friendlyFire;
                     updateSettingsTexts();
-                    rtype::client::network::senders::send_lobby_settings_update(static_cast<uint8_t>(m_difficultyIndex), m_friendlyFire, m_aiAssist, m_megaDamage);
+                    rtype::client::network::senders::send_lobby_settings_update(static_cast<uint8_t>(m_difficultyIndex), m_friendlyFire, m_aiAssist, m_megaDamage, m_startLevelIndex);
                     return;
                 }
                 // AI assist only when exactly 1 player in lobby
                 if (m_totalPlayersInLobby == 1 && GUIHelper::isPointInRect(mousePos, m_rectAIAssist)) {
                     m_aiAssist = !m_aiAssist;
                     updateSettingsTexts();
-                    rtype::client::network::senders::send_lobby_settings_update(static_cast<uint8_t>(m_difficultyIndex), m_friendlyFire, m_aiAssist, m_megaDamage);
+                    rtype::client::network::senders::send_lobby_settings_update(static_cast<uint8_t>(m_difficultyIndex), m_friendlyFire, m_aiAssist, m_megaDamage, m_startLevelIndex);
                     return;
                 }
                 if (GUIHelper::isPointInRect(mousePos, m_rectMegaDamage)) {
                     m_megaDamage = !m_megaDamage;
                     updateSettingsTexts();
-                    rtype::client::network::senders::send_lobby_settings_update(static_cast<uint8_t>(m_difficultyIndex), m_friendlyFire, m_aiAssist, m_megaDamage);
+                    rtype::client::network::senders::send_lobby_settings_update(static_cast<uint8_t>(m_difficultyIndex), m_friendlyFire, m_aiAssist, m_megaDamage, m_startLevelIndex);
                     return;
                 }
             }
@@ -501,6 +517,10 @@ namespace rtype::client::gui {
         m_aiAssistLabel.setString("AI assist");
         m_megaDamageLabel.setString("Mega dmg");
 
+        // Debug: Start Level selector label and value
+        m_startLevelLabel.setString("Start level");
+        m_startLevelValue.setString(m_startLevelIndex == 0 ? "Lvl1" : "Lvl2");
+
         // Update square colors
         auto setSquare = [](sf::RectangleShape& sq, bool on) {
             if (on) {
@@ -564,12 +584,23 @@ namespace rtype::client::gui {
         m_rectAIAssist.setPosition(col2X, rowStartY - 6.f);
         m_rectAIAssist.setFillColor(sf::Color(0, 0, 0, 0));
 
-        // Cheats rows (only Mega damage)
+    // Cheats rows (Mega damage + Start level debug selector)
         m_sqMegaDamage.setPosition(col3X, rowStartY);
         m_megaDamageLabel.setPosition(col3X + labelIndent, rowStartY - 2.f);
         m_rectMegaDamage.setSize(sf::Vector2f(colW, 36.f));
         m_rectMegaDamage.setPosition(col3X, rowStartY - 6.f);
         m_rectMegaDamage.setFillColor(sf::Color(0, 0, 0, 0));
+
+    // Start level row just under mega damage
+    float levelRowY = rowStartY + rowSpacing;
+    // Label on first row
+    m_startLevelLabel.setPosition(col3X, levelRowY);
+    // Value on the next line, aligned on the same X (like Difficulty)
+    m_startLevelValue.setPosition(col3X, levelRowY + rowSpacing);
+    // Click zone covers label + value rows
+    m_rectStartLevel.setSize(sf::Vector2f(colW, rowSpacing + 36.f));
+    m_rectStartLevel.setPosition(col3X, levelRowY - 6.f);
+    m_rectStartLevel.setFillColor(sf::Color(0, 0, 0, 0));
     }
 
     void PrivateServerLobbyState::renderSettingsPanel(sf::RenderWindow& window) {
@@ -593,5 +624,7 @@ namespace rtype::client::gui {
         // Cheats
         window.draw(m_sqMegaDamage);
         window.draw(m_megaDamageLabel);
+        window.draw(m_startLevelLabel);
+        window.draw(m_startLevelValue);
     }
 }

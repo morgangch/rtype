@@ -42,6 +42,7 @@
 #include "common/utils/endiane_converter.h"
 #include "components/LinkedRoom.h"
 #include "components/Assistant.h"
+#include "systems/ServerEnemySystem.h"
 
 using namespace rtype::server::controllers;
 using namespace rtype::server::services;
@@ -365,6 +366,14 @@ void room_controller::handleGameStartRequest(const packet_t &packet) {
     broadcastGameStart(room);
     broadcastPlayerRoster(room);
 
+    // Apply lobby debug start level to the enemy spawner
+    if (rp) {
+        if (auto* sys = root.world.GetSystem<ServerEnemySystem>()) {
+            int forcedLevel = static_cast<int>(rp->startLevelIndex); // 0=Lvl1,1=Lvl2
+            sys->setStartLevel(forcedLevel);
+        }
+    }
+
     // Spawn an AI assistant only if there is exactly 1 human player in the room and AI assist is enabled
     {
         auto players_in_room = player_service::findPlayersByRoom(room);
@@ -494,12 +503,14 @@ void room_controller::handleLobbySettingsUpdate(const packet_t &packet) {
     rp->friendlyFire = p->friendlyFire;
     rp->aiAssistEnabled = p->aiAssist;
     rp->megaDamageEnabled = p->megaDamage;
+    rp->startLevelIndex = p->startLevel;
 
     std::cout << "✓ Updated lobby settings for room " << room
               << " [diff=" << static_cast<int>(rp->difficultyIndex)
               << ", FF=" << (rp->friendlyFire ? "on" : "off")
               << ", AI=" << (rp->aiAssistEnabled ? "on" : "off")
               << ", MEGA=" << (rp->megaDamageEnabled ? "on" : "off")
+              << ", START_LVL=L" << static_cast<int>(rp->startLevelIndex + 1)
               << "]" << std::endl;
 }
 
@@ -728,23 +739,38 @@ void room_controller::handleSpawnBossRequest(const packet_t &packet) {
         return;
     }
 
-    // Spawn the boss
-    float spawnX = 1280.0f - 100.0f;
-    float spawnY = 360.0f;
+    // Determine which boss to spawn based on the current level in the enemy system
+    if (auto* sys = root.world.GetSystem<ServerEnemySystem>()) {
+        // Pick the boss type for the current level
+        auto bossType = sys->getCurrentBossType();
 
-    auto boss = root.world.CreateEntity();
-    root.world.AddComponent<rtype::common::components::Position>(boss, spawnX, spawnY, 0.0f);
-    root.world.AddComponent<rtype::common::components::Velocity>(boss, -50.0f, 0.0f, 50.0f);
-    root.world.AddComponent<rtype::common::components::Health>(boss, 50);
-    root.world.AddComponent<rtype::common::components::Team>(boss, rtype::common::components::TeamType::Enemy);
-    root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(
-        boss, rtype::common::components::EnemyType::TankDestroyer);
-    root.world.AddComponent<rtype::server::components::LinkedRoom>(boss, room);
-    std::cout << "SERVER: Admin spawned boss (id=" << boss << ") in room " << room << std::endl;
+        // Prevent spawning a duplicate active boss of the same type in this room
+        bool bossExists = false;
+        auto *enemyTypes = root.world.GetAllComponents<rtype::common::components::EnemyTypeComponent>();
+        if (enemyTypes) {
+            for (auto &etPair: *enemyTypes) {
+                auto *et = etPair.second.get();
+                if (et && et->type == bossType) {
+                    auto *linked = root.world.GetComponent<rtype::server::components::LinkedRoom>(etPair.first);
+                    auto *health = root.world.GetComponent<rtype::common::components::Health>(etPair.first);
+                    if (linked && linked->room_id == room && health && health->isAlive && health->currentHp > 0) {
+                        bossExists = true;
+                        break;
+                    }
+                }
+            }
+        }
 
-    network::senders::broadcast_enemy_spawn(room, static_cast<uint32_t>(boss),
-                                            rtype::common::components::EnemyType::TankDestroyer,
-                                            spawnX, spawnY, 50);
+        if (bossExists) {
+            std::cout << "WARNING: Boss of current level already exists in room " << room << ", spawn request denied" << std::endl;
+            return;
+        }
+
+        // Use system helper to spawn correct boss for this room
+        sys->spawnBoss(root.world, room, bossType);
+    } else {
+        std::cerr << "ERROR: ServerEnemySystem not available; cannot spawn boss" << std::endl;
+    }
 }
 
 // Register all packet callbacks on a player's packet handler

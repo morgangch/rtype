@@ -85,6 +85,25 @@ public:
      */
     void spawnBoss(ECS::World& world, ECS::EntityID room, rtype::common::components::EnemyType bossType);
 
+    /**
+     * @brief Force the starting level for the enemy spawner.
+     * @param index Level index (0..3). Values out of range will be clamped.
+     * Resets timers and phase so the level begins from OnlyBasic phase.
+     */
+    void setStartLevel(int index);
+
+    /**
+     * @brief Get the current level index used by the spawner
+     * @return Current level index (0..3)
+     */
+    int getCurrentLevel() const { return _currentLevel; }
+
+    /**
+     * @brief Get the boss type corresponding to the current level
+     * @return EnemyType of the current level's boss
+     */
+    rtype::common::components::EnemyType getCurrentBossType() const;
+
 private:
     float _levelTimer; ///< Timer for current level (resets each level)
     int _currentLevel; ///< Current level index (0-3 for 4 sub-levels)
