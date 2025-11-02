@@ -27,6 +27,7 @@
 #include "gui/AssetPaths.h"
 #include "gui/TextureCache.h"
 #include <common/systems/MovementSystem.h>
+#include <common/systems/FortressShieldSystem.h>
 #include <common/components/Shield.h>
 #include <algorithm>
 #include <cmath>
@@ -80,8 +81,8 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
         case rtype::common::components::EnemyType::Flanker:
             e = createFlankerEnemy(x, y);
             break;
-        case rtype::common::components::EnemyType::Bomber:
-            e = createBomberEnemy(x, y);
+        case rtype::common::components::EnemyType::Turret:
+            e = createTurretEnemy(x, y);
             break;
         case rtype::common::components::EnemyType::Waver:
             e = createWaverEnemy(x, y);
@@ -125,10 +126,8 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
     return e;
 }
 
-ECS::EntityID GameState::createRemotePlayer(const std::string &name, uint32_t serverId, 
-                                            rtype::common::components::VesselType vesselType) {
-    std::cout << "[GameState] Creating remote player: name=" << name << " serverId=" << serverId 
-              << " vesselType=" << static_cast<int>(vesselType) << std::endl;
+ECS::EntityID GameState::createRemotePlayer(const std::string &name, uint32_t serverId) {
+    std::cout << "[GameState] Creating remote player: name=" << name << " serverId=" << serverId << std::endl;
     
     // Check if we already have this player (shouldn't happen, but be safe)
     auto it = m_serverEntityMap.find(serverId);
@@ -137,32 +136,22 @@ ECS::EntityID GameState::createRemotePlayer(const std::string &name, uint32_t se
         return it->second;
     }
     
-    // Create VesselClass to get sprite sheet row
-    auto vesselClass = rtype::common::components::VesselClass(vesselType);
-    int spriteRow = vesselClass.getSpriteSheetRow();
-    
     // Create a player-like entity (non-controllable)
     ECS::EntityID e = m_world.CreateEntity();
     m_world.AddComponent<rtype::common::components::Position>(e, 100.0f, 360.0f, 0.0f);
-    m_world.AddComponent<rtype::client::components::Sprite>(
-        e, 
-        rtype::client::assets::player::PLAYER_SPRITE, 
-        sf::Vector2f(33.0f, 17.0f), 
-        true, 
-        sf::IntRect(0, spriteRow, 33, 17),  // Use correct sprite sheet row for vessel type
-        3.0f);
-    m_world.AddComponent<rtype::common::components::Player>(e, name, serverId, vesselType);
-    m_world.AddComponent<rtype::common::components::VesselClass>(e, vesselClass);
+    m_world.AddComponent<rtype::client::components::Sprite>(e, rtype::client::assets::player::PLAYER_SPRITE, sf::Vector2f(33.0f, 17.0f), true, sf::IntRect(0,0,33,17), 3.0f);
+    m_world.AddComponent<rtype::common::components::Player>(e, name, serverId);
     m_world.AddComponent<rtype::common::components::Health>(e, 3);
     m_world.AddComponent<rtype::common::components::Team>(e, rtype::common::components::TeamType::Player);
 
     m_serverEntityMap[serverId] = e;
-    std::cout << "[GameState] ✓ Created remote player entity: clientId=" << e << " serverId=" << serverId 
-              << " vessel=" << vesselClass.name << " spriteRow=" << spriteRow << std::endl;
+    std::cout << "[GameState] ✓ Created remote player entity: clientId=" << e << " serverId=" << serverId << std::endl;
     return e;
 }
 
 ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t ownerId, float x, float y, float vx, float vy, uint16_t damage, bool piercing, bool isCharged) {
+    std::cout << "[GameState] Creating projectile from server: serverId=" << serverId << " owner=" << ownerId << " pos=(" << x << "," << y << ") vel=(" << vx << "," << vy << ") charged=" << isCharged << std::endl;
+    
     // Check if we already have this projectile (shouldn't happen)
     auto it = m_serverEntityMap.find(serverId);
     if (it != m_serverEntityMap.end()) {
@@ -216,19 +205,9 @@ ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t 
     return entity;
 }
 
-void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable, uint16_t maxHp) {
-    ECS::EntityID e = 0;
-    
-    // Handle local player specially
+void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable) {
+    // Skip updates for local player (controlled by client input)
     if (serverId == m_localPlayerServerId) {
-        e = m_playerEntity;
-        // Update only health/maxHp for local player (position controlled by client input)
-        auto* health = m_world.GetComponent<rtype::common::components::Health>(e);
-        if (health) {
-            health->currentHp = hp;
-            health->maxHp = maxHp; // Update maxHp from server
-            health->invulnerable = invulnerable;
-        }
         return;
     }
 
@@ -238,46 +217,13 @@ void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y,
         return;
     }
     
-    e = it->second;
+    ECS::EntityID e = it->second;
     auto* pos = m_world.GetComponent<rtype::common::components::Position>(e);
     if (pos) { pos->x = x; pos->y = y; }
     auto* health = m_world.GetComponent<rtype::common::components::Health>(e);
     if (health) {
         health->currentHp = hp;
-        health->maxHp = maxHp; // Update maxHp from server
         health->invulnerable = invulnerable;
-    }
-}
-
-void GameState::updateShieldStateFromServer(uint32_t serverId, bool isActive, float duration) {
-    // Handle local player specially (not in serverEntityMap)
-    ECS::EntityID e = 0;
-    if (serverId == m_localPlayerServerId) {
-        e = m_playerEntity;
-    } else {
-        auto it = m_serverEntityMap.find(serverId);
-        if (it == m_serverEntityMap.end()) {
-            return;
-        }
-        e = it->second;
-    }
-    
-    if (!e) {
-        return;
-    }
-    auto* shield = m_world.GetComponent<rtype::common::components::Shield>(e);
-    if (!shield) {
-        // Add shield if it doesn't exist (3s duration, 50% reduction, 6s cooldown)
-        m_world.AddComponent<rtype::common::components::Shield>(e, 3.0f, 0.5f, 6.0f);
-        shield = m_world.GetComponent<rtype::common::components::Shield>(e);
-    }
-
-    if (shield) {
-        if (isActive) {
-            shield->activate();
-        } else {
-            shield->deactivate();
-        }
     }
 }
 
@@ -315,7 +261,6 @@ void GameState::destroyEntityByServerId(uint32_t serverId) {
     m_serverEntityMap.erase(it);
 }
 
-extern uint8_t g_selectedVessel;
 
 GameState::GameState(StateManager& stateManager)
     : m_stateManager(stateManager), m_parallaxSystem(SCREEN_WIDTH, SCREEN_HEIGHT) {
@@ -369,17 +314,6 @@ void GameState::loadHUDTextures() {
     m_emptyHeartSprite.setTexture(m_heartTexture);
     m_emptyHeartSprite.setTextureRect(sf::IntRect(startX + frameWidth * 8, startY, frameWidth * 4, frameHeight * 2));
     m_emptyHeartSprite.setScale(0.08f, 0.08f);  // Scale down (992*0.08 = 79px, 432*0.08 = 35px)
-
-    // Load shield texture
-    if (!m_shieldTexture.loadFromFile("assets/sprites/Shield/shield_spritesheet_64.png")) {
-        std::cerr << "Failed to load shield texture!" << std::endl;
-    } else {
-        // Shield spritesheet: 1024x64, 16 frames of 64x64
-        m_shieldSprite.setTexture(m_shieldTexture);
-        m_shieldSprite.setTextureRect(sf::IntRect(0, 0, 64, 64)); // First frame
-        m_shieldSprite.setOrigin(32.0f, 32.0f); // Center origin
-        m_shieldSprite.setScale(2.0f, 2.0f); // Scale to ~128x128
-    }
 
     // Pre-load projectile textures to avoid loading in hot path (entity creation)
     rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_1);
@@ -511,9 +445,9 @@ void GameState::resumeGame() {
 void GameState::resetGame() {
     // Clear ECS world
     m_world.Clear();
-
-    // Create player entity and use the vessel selected during connection (defaults to Crimson if not set)
-    m_playerEntity = createPlayer(static_cast<rtype::common::components::VesselType>(g_selectedVessel));
+    
+    // Create player entity
+    m_playerEntity = createPlayer();
     
     // Reset flags
     m_isGameOver = false;
@@ -538,16 +472,6 @@ int GameState::getPlayerLives() const {
     return health->currentHp;
 }
 
-int GameState::getPlayerMaxLives() const {
-    if (m_playerEntity == 0) return 3; // Default
-    
-    // Cast away const to access component (ECS::World doesn't have const GetComponent)
-    auto* health = const_cast<ECS::World&>(m_world).GetComponent<rtype::common::components::Health>(m_playerEntity);
-    if (!health) return 3; // Default
-    
-    return health->maxHp;
-}
-
 void GameState::damagePlayer(int damage) {
     if (m_playerEntity == 0) return;
     
@@ -558,18 +482,6 @@ void GameState::damagePlayer(int damage) {
     // Check invulnerability (built into Health component)
     if (health->invulnerable) {
         return; // Player is invulnerable
-    }
-    
-    // Check shield (Solar Guardian ability)
-    auto* shield = m_world.GetComponent<rtype::common::components::Shield>(m_playerEntity);
-    if (shield && shield->isActive) {
-        // Apply shield damage reduction
-        damage = shield->applyDamageReduction(damage);
-        if (damage == 0) {
-            std::cout << "[GameState] Shield blocked all damage!" << std::endl;
-            return; // Damage fully blocked
-        }
-        std::cout << "[GameState] Shield reduced damage to " << damage << std::endl;
     }
     
     // Apply damage
@@ -637,11 +549,10 @@ void GameState::update(float deltaTime) {
     updateFireRateSystem(deltaTime);
     updateEnemyAISystem(deltaTime);
     updateChargedShotSystem(deltaTime);
-    updateHomingSystem(deltaTime);  // Update homing projectiles
-    updateShieldSystem(deltaTime);  // Update shields
     updateInvulnerabilitySystem(deltaTime);
     updateAnimationSystem(deltaTime);
     rtype::common::systems::MovementSystem::update(m_world, deltaTime); // shared movement system
+    rtype::common::systems::FortressShieldSystem::update(m_world, deltaTime); // shield sync system
     updateCollisionSystem();
     updateCleanupSystem(deltaTime);
 }

@@ -33,7 +33,12 @@ extern uint32_t g_playerServerId;
 namespace rtype::client::gui {
     // Global pointer to current lobby state (for network callbacks)
     PrivateServerLobbyState* g_lobbyState = nullptr;
-    PrivateServerLobbyState::~PrivateServerLobbyState() = default;
+    PrivateServerLobbyState::~PrivateServerLobbyState() {
+        // Clear global pointer if this instance is being destroyed
+        if (g_lobbyState == this) {
+            g_lobbyState = nullptr;
+        }
+    }
 
     PrivateServerLobbyState::PrivateServerLobbyState(StateManager& stateManager, const std::string& username, 
                                                      const std::string& serverCode, bool isAdmin)
@@ -162,6 +167,13 @@ namespace rtype::client::gui {
         std::cout << "Username: " << username << std::endl;
         std::cout << "Server Code " << serverCode << std::endl;
         std::cout << "Is Admin: " << (isAdmin ? "Yes" : "No") << std::endl;
+    }
+
+    void PrivateServerLobbyState::onExit() {
+        // Ensure global pointer does not dangle after exiting the lobby
+        if (g_lobbyState == this) {
+            g_lobbyState = nullptr;
+        }
     }
     
     void PrivateServerLobbyState::updateLayout(const sf::Vector2u& windowSize) {

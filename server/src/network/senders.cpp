@@ -180,6 +180,12 @@ namespace rtype::server::network::senders {
     }
 
     void send_player_state(ECS::EntityID to_player, ECS::EntityID playerId, float x, float y, float dir, uint16_t hp, bool isAlive) {
+        // Don't send to dead players - their connection may be invalid
+        auto *toHealth = root.world.GetComponent<rtype::common::components::Health>(to_player);
+        if (toHealth && (!toHealth->isAlive || toHealth->currentHp <= 0)) {
+            return;
+        }
+        
         PlayerStatePacket pkt{};
         pkt.playerId = playerId;
         pkt.x = x;

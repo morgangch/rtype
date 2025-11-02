@@ -6,13 +6,14 @@
 #include "systems/ServerEnemySystem.h"
 #include "systems/ServerCollisionSystem.h"
 #include "systems/EnemyAISystem.h"
+#include "systems/RoomCleanSystem.h"
 #include "systems/AssistantSystem.h"
 #include <common/components/Position.h>
 #include <common/components/Velocity.h>
 #include <common/components/Projectile.h>
 #include <common/components/Player.h>
 #include <common/systems/MovementSystem.h>
-#include <common/systems/HomingSystem.h>
+#include <common/systems/FortressShieldSystem.h>
 #include "components/LobbyState.h"
 #include "components/PlayerConn.h"
 #include "components/LinkedRoom.h"
@@ -59,7 +60,6 @@ void rtype::server::Rtype::loop(float deltaTime) {
     packetHandler.processPackets(packetManager.fetchReceivedPackets());
 
     rtype::common::systems::MovementSystem::update(world, deltaTime);
-    rtype::common::systems::HomingSystem::update(world, deltaTime);
 
     // Server-specific post-movement processing
     auto* positions = world.GetAllComponents<rtype::common::components::Position>();
@@ -86,6 +86,9 @@ void rtype::server::Rtype::loop(float deltaTime) {
     }
 
     world.UpdateSystems(deltaTime);
+    
+    // Update Fortress shield system (manages RED shield requiring 2 charged shots)
+    rtype::common::systems::FortressShieldSystem::update(world, deltaTime);
 }
 
 
@@ -109,6 +112,7 @@ int main() {
     root.world.RegisterSystem<ServerEnemySystem>();
     root.world.RegisterSystem<rtype::server::systems::ServerCollisionSystem>();
     root.world.RegisterSystem<rtype::server::systems::AssistantSystem>();
+    root.world.RegisterSystem<RoomCleanSystem>();
     std::cout << "✓ Registered AssistantSystem" << std::endl;
     std::cout << "✓ Registered ServerCollisionSystem" << std::endl;
 

@@ -16,7 +16,7 @@ namespace rtype::common::components {
         float distanceTraveled;
         ProjectileType type;
         ECS::EntityID ownerId;
-        bool piercing;     ///< If true, projectile passes through enemies
+        bool piercing;     ///< If true, projectile passes through enemies (charged shot)
         bool serverOwned;  ///< If true, projectile is server-authoritative (client-side collision is prediction only)
 
         Projectile(int damage = 10,

@@ -14,9 +14,7 @@
 #include "gui/GameState.h"
 #include "gui/AssetPaths.h"
 #include "gui/TextureCache.h"
-#include <common/components/VesselClass.h>
-#include <common/components/Explosion.h>
-#include <common/components/Homing.h>
+#include "components/ShieldVisual.h"
 #include <common/components/Shield.h>
 #include <cstdlib>
 #include <cmath>
@@ -24,41 +22,30 @@
 
 namespace rtype::client::gui {
 
-ECS::EntityID GameState::createPlayer(rtype::common::components::VesselType vesselType) {
+ECS::EntityID GameState::createPlayer() {
     auto entity = m_world.CreateEntity();
-    
-    // Create VesselClass component with selected type
-    auto vesselClass = rtype::common::components::VesselClass(vesselType);
-    m_world.AddComponent<rtype::common::components::VesselClass>(entity, vesselClass);
     
     // Position - Center-left of screen
     m_world.AddComponent<rtype::common::components::Position>(
         entity, 100.0f, SCREEN_HEIGHT * 0.5f, 0.0f);
     
-    // Velocity - Modified by vessel stats (base 300 px/s)
-    float baseSpeed = 300.0f;
-    float effectiveSpeed = vesselClass.getEffectiveSpeed(baseSpeed);
+    // Velocity - Start stationary, max speed 300 px/s
     m_world.AddComponent<rtype::common::components::Velocity>(
-        entity, 0.0f, 0.0f, effectiveSpeed);
+        entity, 0.0f, 0.0f, 300.0f);
     
-    // Health - Modified by vessel stats (base 3 HP)
-    int baseHealth = 3;
-    int effectiveHealth = vesselClass.getEffectiveMaxHealth(baseHealth);
-    m_world.AddComponent<rtype::common::components::Health>(entity, effectiveHealth);
+    // Health - 3 HP (invulnerability built-in)
+    m_world.AddComponent<rtype::common::components::Health>(entity, 3);
     
-    // Sprite - Player ship using PLAYER.gif sprite sheet with correct row
-    // PLAYER.gif is 166x86 pixels: 5 frames × 5 rows (each frame is 33x17)
-    // Different vessels are on different rows of the sprite sheet
-    int spriteRow = vesselClass.getSpriteSheetRow();  // Y offset (0, 17, 34, or 51)
-    
+    // Sprite - Player ship with texture (first frame: 33x17 from 166x86 spritesheet)
+    // Player spritesheet has 5 frames horizontally: 166/5 = ~33 pixels per frame
     // Preload texture to avoid first-frame hitch
     rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::player::PLAYER_SPRITE);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity, 
-        rtype::client::assets::player::PLAYER_SPRITE,  // Always use PLAYER.gif
+        rtype::client::assets::player::PLAYER_SPRITE,
         sf::Vector2f(33.0f, 17.0f),
         true,
-        sf::IntRect(0, spriteRow, 33, 17),  // Select correct row for vessel type
+        sf::IntRect(0, 0, 33, 17),  // First frame of spritesheet
         3.0f);  // Scale 3x for better visibility (33*3 = 99 pixels)
     
     // Animation - 5 frames, 0.08s per frame (smooth animation when moving up)
@@ -69,26 +56,18 @@ ECS::EntityID GameState::createPlayer(rtype::common::components::VesselType vess
         33,     // Frame width
         17);    // Frame height
     
-    // Player - Marks as player-controlled with vessel type
-    m_world.AddComponent<rtype::common::components::Player>(entity, "Player1", 0, vesselType);
+    // Player - Marks as player-controlled
+    m_world.AddComponent<rtype::common::components::Player>(entity, "Player1", 0);
     
     // Team - Player team
     m_world.AddComponent<rtype::common::components::Team>(
         entity, rtype::common::components::TeamType::Player);
     
-    // FireRate - Modified by vessel stats (base 0.2s cooldown)
-    float baseCooldown = FIRE_COOLDOWN;
-    float effectiveCooldown = vesselClass.getEffectiveFireCooldown(baseCooldown);
-    m_world.AddComponent<rtype::common::components::FireRate>(entity, effectiveCooldown);
+    // FireRate - 0.2s cooldown between shots
+    m_world.AddComponent<rtype::common::components::FireRate>(entity, FIRE_COOLDOWN);
     
-    // ChargedShot - Enable charged shooting mechanic with vessel-specific charge time
-    auto chargedShot = rtype::common::components::ChargedShot(vesselClass.chargeTime);
-    m_world.AddComponent<rtype::common::components::ChargedShot>(entity, chargedShot);
-    
-    // Shield - Add shield component for Solar Guardian
-    if (vesselType == rtype::common::components::VesselType::SolarGuardian) {
-        m_world.AddComponent<rtype::common::components::Shield>(entity, 3.0f, 1.0f, 6.0f);
-    }
+    // ChargedShot - Enable charged shooting mechanic
+    m_world.AddComponent<rtype::common::components::ChargedShot>(entity);
     
     return entity;
 }
@@ -168,6 +147,12 @@ ECS::EntityID GameState::createSnakeEnemy(float x, float y) {
     // EnemyType - Snake enemy (moves in sine wave)
     m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
         entity, rtype::common::components::EnemyType::Snake);
+    
+    // FireRate - Snake enemy shoots every 3.0 seconds
+    // Random initial cooldown to stagger shots
+    float randomCooldown = static_cast<float>(rand() % 1000) / 1000.0f * 3.0f;
+    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 3.0f);
+    fireRate->cooldown = randomCooldown;
     
     return entity;
 }
@@ -386,6 +371,18 @@ ECS::EntityID GameState::createShieldedEnemy(float x, float y) {
     m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
         entity, rtype::common::components::EnemyType::Shielded);
 
+    // Add cyclic shield component (alternates on/off)
+    m_world.AddComponent<rtype::common::components::ShieldComponent>(
+        entity, rtype::common::components::ShieldType::Cyclic, true);
+
+    // Add visual shield effect (blue pulsing circle)
+    m_world.AddComponent<rtype::client::components::ShieldVisual>(
+        entity,
+        50.0f,                                      // radius
+        sf::Color(100, 200, 255, 120),              // light blue, semi-transparent
+        3.0f,                                       // pulse speed
+        3.0f);                                      // border thickness
+
     // Shielded fires every 5.0s
     auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 5.0f);
     fireRate->cooldown = static_cast<float>(rand() % 1000) / 1000.0f * 5.0f;
@@ -422,12 +419,12 @@ ECS::EntityID GameState::createFlankerEnemy(float x, float y) {
     return entity;
 }
 
-ECS::EntityID GameState::createBomberEnemy(float x, float y) {
+ECS::EntityID GameState::createTurretEnemy(float x, float y) {
     auto entity = m_world.CreateEntity();
 
     m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
-    m_world.AddComponent<rtype::common::components::Velocity>(entity, -70.0f, 0.0f, 70.0f);
-    m_world.AddComponent<rtype::common::components::Health>(entity, 3);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, 0.0f, 0.0f, 0.0f);  // Stationary
+    m_world.AddComponent<rtype::common::components::Health>(entity, 1);  // 1 HP but shielded
 
     rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::ADVANCED_ENEMY_3);
     m_world.AddComponent<rtype::client::components::Sprite>(
@@ -442,11 +439,23 @@ ECS::EntityID GameState::createBomberEnemy(float x, float y) {
         entity, rtype::common::components::TeamType::Enemy);
 
     m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
-        entity, rtype::common::components::EnemyType::Bomber);
+        entity, rtype::common::components::EnemyType::Turret);
 
-    // Bomber drops mines every 6.0s (handled by AI system - mines to be implemented)
-    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 6.0f);
-    fireRate->cooldown = static_cast<float>(rand() % 1000) / 1000.0f * 6.0f;
+    // Add cyclic shield (requires charged shot like Shielded enemy)
+    m_world.AddComponent<rtype::common::components::ShieldComponent>(
+        entity, rtype::common::components::ShieldType::Cyclic, true);
+
+    // Add shield visual effect
+    m_world.AddComponent<rtype::client::components::ShieldVisual>(
+        entity,
+        50.0f,                                      // radius
+        sf::Color(150, 150, 255, 120),              // purple-ish blue
+        2.5f,                                       // pulse speed
+        3.0f);                                      // border thickness
+
+    // Turret fires 3-shot burst aimed at player every 2.5s
+    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 2.5f);
+    fireRate->cooldown = static_cast<float>(rand() % 1000) / 1000.0f * 2.5f;
 
     return entity;
 }
@@ -484,8 +493,8 @@ ECS::EntityID GameState::createSerpentBoss(float x, float y) {
     auto entity = m_world.CreateEntity();
 
     m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
-    m_world.AddComponent<rtype::common::components::Velocity>(entity, -60.0f, 0.0f, 60.0f);
-    m_world.AddComponent<rtype::common::components::Health>(entity, 60);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, 0.0f, 0.0f, 0.0f);
+    m_world.AddComponent<rtype::common::components::Health>(entity, 80);
 
     rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BOSS_ENEMY_2);
     m_world.AddComponent<rtype::client::components::Sprite>(
@@ -494,7 +503,7 @@ ECS::EntityID GameState::createSerpentBoss(float x, float y) {
         sf::Vector2f(33.0f, 36.0f),
         true,
         sf::IntRect(0, 0, 33, 36),
-        5.0f);  // Boss size
+        6.5f);
 
     m_world.AddComponent<rtype::common::components::Team>(
         entity, rtype::common::components::TeamType::Enemy);
@@ -502,8 +511,7 @@ ECS::EntityID GameState::createSerpentBoss(float x, float y) {
     m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
         entity, rtype::common::components::EnemyType::Serpent);
 
-    // Serpent fires 5-spread every 1.0s
-    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 1.0f);
+    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 0.7f);
     fireRate->cooldown = 0.0f;
 
     return entity;
@@ -513,8 +521,8 @@ ECS::EntityID GameState::createFortressBoss(float x, float y) {
     auto entity = m_world.CreateEntity();
 
     m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
-    m_world.AddComponent<rtype::common::components::Velocity>(entity, -20.0f, 0.0f, 30.0f);
-    m_world.AddComponent<rtype::common::components::Health>(entity, 80);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, 0.0f, 0.0f, 0.0f);
+    m_world.AddComponent<rtype::common::components::Health>(entity, 100);
 
     rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BOSS_ENEMY_3);
     m_world.AddComponent<rtype::client::components::Sprite>(
@@ -531,8 +539,20 @@ ECS::EntityID GameState::createFortressBoss(float x, float y) {
     m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
         entity, rtype::common::components::EnemyType::Fortress);
 
-    // Fortress fires 8-directional rotating every 0.7s
-    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 0.7f);
+    // Add RED shield component (server-authoritative, client will sync)
+    m_world.AddComponent<rtype::common::components::ShieldComponent>(
+        entity, rtype::common::components::ShieldType::Red, true);
+
+    // Add RED shield visual effect (invincible boss shield)
+    m_world.AddComponent<rtype::client::components::ShieldVisual>(
+        entity,
+        120.0f,                                     // large radius for boss
+        sf::Color(255, 50, 50, 150),                // RED, semi-transparent
+        1.5f,                                       // slow pulse
+        4.0f);                                      // thick border
+
+    // Fortress fires randomly every 0.5s
+    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 0.5f);
     fireRate->cooldown = 0.0f;
 
     return entity;
@@ -542,8 +562,8 @@ ECS::EntityID GameState::createCoreBoss(float x, float y) {
     auto entity = m_world.CreateEntity();
 
     m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
-    m_world.AddComponent<rtype::common::components::Velocity>(entity, -40.0f, 0.0f, 80.0f);
-    m_world.AddComponent<rtype::common::components::Health>(entity, 100);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, 0.0f, 0.0f, 0.0f);
+    m_world.AddComponent<rtype::common::components::Health>(entity, 150);
 
     rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BOSS_ENEMY_4);
     m_world.AddComponent<rtype::client::components::Sprite>(
@@ -564,165 +584,6 @@ ECS::EntityID GameState::createCoreBoss(float x, float y) {
     auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 0.6f);
     fireRate->cooldown = 0.0f;
 
-    return entity;
-}
-
-// ===== Weapon Mode Implementations =====
-
-int GameState::createDualProjectiles(float x, float y) {
-    // Azure Phantom - Dual rapid projectiles with vertical offset
-    const float verticalOffset = 5.0f;
-    
-    // Upper projectile
-    auto proj1 = m_world.CreateEntity();
-    m_world.AddComponent<rtype::common::components::Position>(proj1, x + 16.0f, y - verticalOffset, 0.0f);
-    m_world.AddComponent<rtype::common::components::Velocity>(proj1, 500.0f, 0.0f, 500.0f);
-    m_world.AddComponent<rtype::common::components::Team>(proj1, rtype::common::components::TeamType::Player);
-    m_world.AddComponent<rtype::common::components::Projectile>(proj1, 1, false, false, 500.0f, 
-                                                                 rtype::common::components::ProjectileType::Basic);
-    
-    // Sprite for projectile
-    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_1);
-    m_world.AddComponent<rtype::client::components::Sprite>(
-        proj1,
-        rtype::client::assets::projectiles::PROJECTILE_1,
-        sf::Vector2f(81.0f, 17.0f),
-        true,
-        sf::IntRect(185, 0, 81, 17),
-        0.4f); // Slightly smaller than normal
-    
-    // Lower projectile
-    auto proj2 = m_world.CreateEntity();
-    m_world.AddComponent<rtype::common::components::Position>(proj2, x + 16.0f, y + verticalOffset, 0.0f);
-    m_world.AddComponent<rtype::common::components::Velocity>(proj2, 500.0f, 0.0f, 500.0f);
-    m_world.AddComponent<rtype::common::components::Team>(proj2, rtype::common::components::TeamType::Player);
-    m_world.AddComponent<rtype::common::components::Projectile>(proj2, 1, false, false, 500.0f, 
-                                                                 rtype::common::components::ProjectileType::Basic);
-    
-    m_world.AddComponent<rtype::client::components::Sprite>(
-        proj2,
-        rtype::client::assets::projectiles::PROJECTILE_1,
-        sf::Vector2f(81.0f, 17.0f),
-        true,
-        sf::IntRect(185, 0, 81, 17),
-        0.4f);
-    
-    return 2; // Created 2 projectiles
-}
-
-int GameState::createHomingBurst(float x, float y, int count) {
-    // Azure Phantom - Burst of homing projectiles
-    // TODO: Implement homing behavior in a future system
-    // For now, create projectiles with slight angle variation
-    
-    for (int i = 0; i < count; ++i) {
-        auto proj = m_world.CreateEntity();
-        
-        // Stagger spawn positions slightly
-        float offsetY = (i - count / 2) * 8.0f;
-        float offsetX = i * 5.0f; // Slight forward offset
-        
-        m_world.AddComponent<rtype::common::components::Position>(proj, x + 16.0f + offsetX, y + offsetY, 0.0f);
-        
-        // Slightly different velocities for spread
-        float vx = 450.0f + (i * 10.0f);
-        m_world.AddComponent<rtype::common::components::Velocity>(proj, vx, 0.0f, vx);
-        
-        m_world.AddComponent<rtype::common::components::Team>(proj, rtype::common::components::TeamType::Player);
-        m_world.AddComponent<rtype::common::components::Projectile>(proj, 1, false, false, vx, 
-                                                                     rtype::common::components::ProjectileType::Missile);
-        
-        // Add homing component
-        m_world.AddComponent<rtype::common::components::Homing>(proj, 400.0f, 3.0f, vx, 0.5f);
-        
-        // Use different sprite (purple/homing visual)
-        rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_3);
-        m_world.AddComponent<rtype::client::components::Sprite>(
-            proj,
-            rtype::client::assets::projectiles::PROJECTILE_3,
-            sf::Vector2f(81.0f, 17.0f),
-            true,
-            sf::IntRect(185, 0, 81, 17),
-            0.35f); // Small projectiles
-    }
-    
-    return count;
-}
-
-int GameState::createSpreadShot(float x, float y, int count) {
-    // Solar Guardian - Shotgun spread pattern
-    const float spreadAngle = 15.0f; // degrees
-    const float angleStep = (spreadAngle * 2.0f) / (count - 1);
-    
-    for (int i = 0; i < count; ++i) {
-        auto proj = m_world.CreateEntity();
-        
-        // Calculate angle for this pellet (-15° to +15°)
-        float angle = -spreadAngle + (angleStep * i);
-        float angleRad = angle * 3.14159f / 180.0f;
-        
-        // Calculate velocity components
-        float speed = 600.0f; // Fast, short-range
-        float vx = speed * std::cos(angleRad);
-        float vy = speed * std::sin(angleRad);
-        
-        m_world.AddComponent<rtype::common::components::Position>(proj, x + 16.0f, y, 0.0f);
-        m_world.AddComponent<rtype::common::components::Velocity>(proj, vx, vy, speed);
-        
-        m_world.AddComponent<rtype::common::components::Team>(proj, rtype::common::components::TeamType::Player);
-        
-        // Each pellet does less damage, shorter range
-        auto* projectile = m_world.AddComponent<rtype::common::components::Projectile>(
-            proj, 1, false, false, speed, rtype::common::components::ProjectileType::Spread);
-        projectile->maxDistance = 300.0f; // Short range
-        
-        // Small yellow pellets
-        rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_1);
-        m_world.AddComponent<rtype::client::components::Sprite>(
-            proj,
-            rtype::client::assets::projectiles::PROJECTILE_1,
-            sf::Vector2f(81.0f, 17.0f),
-            true,
-            sf::IntRect(185, 0, 81, 17),
-            0.3f); // Very small
-    }
-    
-    return count;
-}
-
-ECS::EntityID GameState::createExplosiveProjectile(float x, float y, bool isCharged) {
-    // Emerald Titan - Explosive projectile with AoE
-    auto entity = m_world.CreateEntity();
-    
-    // Slower, heavier projectile
-    float speed = isCharged ? 350.0f : 400.0f;
-    int damage = isCharged ? 4 : 2;
-    
-    m_world.AddComponent<rtype::common::components::Position>(entity, x + 16.0f, y, 0.0f);
-    m_world.AddComponent<rtype::common::components::Velocity>(entity, speed, 0.0f, speed);
-    
-    m_world.AddComponent<rtype::common::components::Team>(entity, rtype::common::components::TeamType::Player);
-    m_world.AddComponent<rtype::common::components::Projectile>(entity, damage, false, false, speed, 
-                                                                 rtype::common::components::ProjectileType::Missile);
-    
-    // Add explosion component with AoE damage
-    float explosionRadius = isCharged ? 80.0f : 50.0f;
-    int centerDmg = isCharged ? 4 : 2;
-    int edgeDmg = isCharged ? 2 : 1;
-    m_world.AddComponent<rtype::common::components::Explosion>(entity, explosionRadius, centerDmg, edgeDmg, 0.3f);
-    
-    // Large explosive sprite (red/orange)
-    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_2);
-    m_world.AddComponent<rtype::client::components::Sprite>(
-        entity,
-        rtype::client::assets::projectiles::PROJECTILE_2,
-        sf::Vector2f(81.0f, 17.0f),
-        true,
-        sf::IntRect(185, 0, 81, 17),
-        isCharged ? 0.8f : 0.6f); // Bigger if charged
-    
-    // TODO: Add explosion component for AoE damage on impact
-    
     return entity;
 }
 

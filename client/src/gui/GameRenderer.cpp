@@ -16,12 +16,9 @@
 #include "gui/GameState.h"
 #include "gui/GUIHelper.h"
 #include "gui/TextureCache.h"
-#include <common/components/Shield.h>
-#include <common/components/ChargedShot.h>
-#include <common/components/VesselClass.h>
+#include "components/ShieldVisual.h"
 #include <sstream>
 #include <cmath>
-#include <iostream>
 
 namespace rtype::client::gui {
 
@@ -96,34 +93,31 @@ void GameState::renderEntities(sf::RenderWindow& window) {
             shape.setFillColor(sprite->color);
             window.draw(shape);
         }
-        
-        // Draw shield effect while charging (for Solar Guardian)
-        auto* chargedShot = m_world.GetComponent<rtype::common::components::ChargedShot>(entity);
-        auto* vesselClass = m_world.GetComponent<rtype::common::components::VesselClass>(entity);
-        
-        if (chargedShot && chargedShot->isCharging && vesselClass && 
-            vesselClass->type == rtype::common::components::VesselType::SolarGuardian) {
+
+        // Draw shield visual effect if entity has ShieldVisual component
+        auto* shield = m_world.GetComponent<rtype::client::components::ShieldVisual>(entity);
+        if (shield && shield->enabled) {
+            // Update pulse animation
+            shield->pulseTimer += 0.016f; // Assume ~60 FPS
+            float pulseScale = 1.0f + 0.1f * std::sin(shield->pulseTimer * shield->pulseSpeed);
             
-            // Pulse opacity based on charge progress
-            float chargeRatio = chargedShot->chargeTime / chargedShot->maxChargeTime;
-            float alpha = 100 + 155 * chargeRatio; // Fade in from 100 to 255 as charging
+            // Draw outer circle (border)
+            sf::CircleShape outerCircle(shield->radius * pulseScale);
+            outerCircle.setPosition(pos.x - shield->radius * pulseScale, 
+                                   pos.y - shield->radius * pulseScale);
+            outerCircle.setFillColor(sf::Color::Transparent);
+            outerCircle.setOutlineColor(shield->color);
+            outerCircle.setOutlineThickness(shield->thickness);
+            window.draw(outerCircle);
             
-            // Draw frame 4 (index 3) - 64x64 texture
-            m_shieldSprite.setTextureRect(sf::IntRect(3 * 64, 0, 64, 64));
-            
-            // Center origin of shield sprite (like other sprites)
-            m_shieldSprite.setOrigin(32.0f, 32.0f); // Half of 64x64
-            
-            // Scale shield to surround the vessel (2x size = 128x128)
-            m_shieldSprite.setScale(2.0f, 2.0f);
-            
-            // Position on vessel center (pos.x, pos.y is already centered due to origin)
-            m_shieldSprite.setPosition(pos.x, pos.y);
-            m_shieldSprite.setColor(sf::Color(255, 255, 255, static_cast<sf::Uint8>(alpha)));
-            window.draw(m_shieldSprite);
-            
-            // Reset scale for other sprites
-            m_shieldSprite.setScale(1.0f, 1.0f);
+            // Draw inner fill (more transparent)
+            sf::CircleShape innerCircle(shield->radius * pulseScale * 0.9f);
+            innerCircle.setPosition(pos.x - shield->radius * pulseScale * 0.9f, 
+                                   pos.y - shield->radius * pulseScale * 0.9f);
+            sf::Color fillColor = shield->color;
+            fillColor.a = static_cast<sf::Uint8>(fillColor.a * 0.3f); // 30% opacity for fill
+            innerCircle.setFillColor(fillColor);
+            window.draw(innerCircle);
         }
     }
 }
@@ -131,7 +125,7 @@ void GameState::renderEntities(sf::RenderWindow& window) {
 void GameState::renderHUD(sf::RenderWindow& window) {
     // Get player lives
     int lives = getPlayerLives();
-    int maxLives = getPlayerMaxLives();  // Get actual maximum player lives from vessel
+    int maxLives = 3;  // Maximum player lives
     
     // Draw hearts for lives (full hearts + empty hearts)
     // Both hearts are 992x432px (4 cols x 2 rows)
