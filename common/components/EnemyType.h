@@ -31,6 +31,10 @@ namespace rtype::common::components {
         Turret,     ///< Turret enemy - stationary turret, fires 3-shot burst aimed at player
         Waver,      ///< Waver enemy - erratic zigzag movement, fires triple bursts
 
+        // Obstacles (environment hazards)
+        Meteorite,  ///< Meteorite obstacle - 5 HP, spins and drifts left
+        Debri,      ///< Space debris obstacle - 1000 HP, spawns in rows and drifts left
+
         // Boss enemies (4 types)
         TankDestroyer,  ///< Tank destroyer boss - vertical bounce, fires 3-projectile spread
         Serpent,        ///< Serpent boss - multi-segment body with wave movement, head shoots spread

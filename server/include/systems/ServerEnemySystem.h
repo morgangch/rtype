@@ -117,10 +117,18 @@ private:
     float _stateTick; ///< Timer for player state broadcast
     static constexpr float STATE_TICK_INTERVAL = 0.03f; // 30ms for better responsiveness
 
+    // Obstacle spawn timers (randomized per interval)
+    float _meteoriteTimer{0.0f};
+    float _meteoriteNext{3.0f};
+    float _debrisTimer{0.0f};
+    float _debrisNext{7.0f};
+
     // Update helpers
     void updatePhase(float deltaTime);
     void updateEnemySpawning(ECS::World& world, float deltaTime);
     void updateBossSpawning(ECS::World& world, float deltaTime);
+    void updateObstacleSpawning(ECS::World& world, float deltaTime);
+    void spawnDebrisRow(ECS::World& world, ECS::EntityID room, int count);
     void updatePlayerStateBroadcast(ECS::World& world, float deltaTime);
     void cleanupDeadEntities(ECS::World& world);
     void checkBossDeathAndAdvanceLevel(ECS::World& world);

@@ -167,6 +167,18 @@ void GameState::updateEnemyAISystem(float deltaTime) {
 
     // Use shared EnemyAI logic for local prediction (server will confirm via SPAWN_PROJECTILE)
     rtype::common::systems::EnemyAISystem::update(m_world, deltaTime, createProjectile);
+
+    // Client-only cosmetic: spin meteorites slowly
+    auto* types = m_world.GetAllComponents<rtype::common::components::EnemyTypeComponent>();
+    if (types) {
+        for (auto& [entity, typePtr] : *types) {
+            if (!typePtr) continue;
+            if (typePtr->type == rtype::common::components::EnemyType::Meteorite) {
+                auto* pos = m_world.GetComponent<rtype::common::components::Position>(entity);
+                if (pos) pos->rotation += 90.0f * deltaTime; // 90 deg per second
+            }
+        }
+    }
 }
 
 void GameState::updateChargedShotSystem(float deltaTime) {

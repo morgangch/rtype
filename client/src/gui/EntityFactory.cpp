@@ -616,4 +616,60 @@ ECS::EntityID GameState::createCoreBoss(float x, float y) {
     return entity;
 }
 
+ECS::EntityID GameState::createMeteorite(float x, float y) {
+    auto entity = m_world.CreateEntity();
+
+    // Position and slow left drift
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    float speed = 200.0f; // server sets actual speed; client prediction only
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, -speed, 0.0f, speed);
+
+    // Health per server; default 5
+    m_world.AddComponent<rtype::common::components::Health>(entity, 5);
+
+    // Load texture and sprite
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::obstacles::METEORITE);
+    m_world.AddComponent<rtype::client::components::Sprite>(
+        entity,
+        rtype::client::assets::obstacles::METEORITE,
+        sf::Vector2f(64.0f, 64.0f),
+        true,
+        sf::IntRect(0, 0, 0, 0), // use full texture
+        0.7f);
+
+    // Team and type
+    m_world.AddComponent<rtype::common::components::Team>(entity, rtype::common::components::TeamType::Enemy);
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(entity, rtype::common::components::EnemyType::Meteorite);
+
+    return entity;
+}
+
+ECS::EntityID GameState::createDebri(float x, float y) {
+    auto entity = m_world.CreateEntity();
+
+    // Position and slow left drift
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    float speed = 100.0f;
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, -speed, 0.0f, speed);
+
+    // Health per server; default 1000
+    m_world.AddComponent<rtype::common::components::Health>(entity, 1000);
+
+    // Texture and sprite
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::obstacles::DEBRI);
+    m_world.AddComponent<rtype::client::components::Sprite>(
+        entity,
+        rtype::client::assets::obstacles::DEBRI,
+        sf::Vector2f(64.0f, 64.0f),
+        true,
+        sf::IntRect(0, 0, 0, 0), // full texture
+        0.11f);
+
+    // Team and type
+    m_world.AddComponent<rtype::common::components::Team>(entity, rtype::common::components::TeamType::Enemy);
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(entity, rtype::common::components::EnemyType::Debri);
+
+    return entity;
+}
+
 } // namespace rtype::client::gui

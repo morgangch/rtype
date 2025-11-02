@@ -58,6 +58,14 @@ namespace rtype::client::assets {
     }
 
     /**
+     * @brief Obstacle sprite paths
+     */
+    namespace obstacles {
+        constexpr const char* METEORITE = "assets/sprites/Asteroids/asteroid.png";
+        constexpr const char* DEBRI = "assets/sprites/Asteroids/debri.png";
+    }
+
+    /**
      * @brief Projectile sprite paths
      */
     namespace projectiles {
