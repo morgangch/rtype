@@ -32,6 +32,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <random>
 #include "gui/Accessibility.h"
 
 // Global username defined in client/src/network/network.cpp
@@ -379,6 +380,8 @@ void GameState::onExit() {
 
     // Stop music when leaving the game state
     m_musicManager.stop();
+    // Clear any victory effects
+    clearVictoryEffects();
 }
 
 void GameState::setMusicMuted(bool muted) {
@@ -464,6 +467,9 @@ void GameState::showVictoryScreen() {
 
     // Reset input states to prevent stuck keys
     m_keyUp = m_keyDown = m_keyLeft = m_keyRight = m_keyFire = false;
+
+    // Spawn a burst of confetti for celebration
+    spawnVictoryConfetti(180);
 }
 
 void GameState::resumeGame() {
@@ -580,6 +586,9 @@ bool GameState::isBossActive() {
 void GameState::update(float deltaTime) {
     // Ensure boss music follows boss alive state (covers debug spawn)
     updateBossMusicState();
+
+    // Always update victory visuals (confetti) even while in menu
+    updateVictoryEffects(deltaTime);
 
     if (m_gameStatus == GameStatus::InGameMenu) {
         return; // Don't update game logic when in menu
@@ -720,6 +729,140 @@ void GameState::setScoreFromServer(int newScore) {
     m_score = newScore;
     // m_scoreText string is updated during renderHUD, but we can pre-update for immediate reads
     m_scoreText.setString("score " + std::to_string(m_score));
+}
+
+// === Victory Confetti Implementation ===
+void GameState::spawnVictoryConfetti(std::size_t initialBurst) {
+    m_confetti.clear();
+    m_confetti.reserve(std::min<std::size_t>(m_confettiMax, initialBurst + 64));
+    m_confettiActive = true;
+    m_confettiSpawnAccum = 0.f;
+
+    static std::mt19937 rng{std::random_device{}()};
+    std::uniform_real_distribution<float> distX(0.f, SCREEN_WIDTH);
+    std::uniform_real_distribution<float> distVX(-60.f, 60.f);
+    std::uniform_real_distribution<float> distVY(80.f, 180.f);
+    std::uniform_real_distribution<float> distSize(4.f, 10.f);
+    std::uniform_real_distribution<float> distAngle(-180.f, 180.f);
+    std::uniform_real_distribution<float> distSpin(-180.f, 180.f);
+    std::uniform_real_distribution<float> distLife(3.2f, 5.0f);
+
+    auto randColor = [&]() -> sf::Color {
+        static const sf::Color palette[] = {
+            sf::Color(255, 99, 132),
+            sf::Color(54, 162, 235),
+            sf::Color(255, 206, 86),
+            sf::Color(75, 192, 192),
+            sf::Color(153, 102, 255),
+            sf::Color(255, 159, 64)
+        };
+        std::uniform_int_distribution<int> pick(0, (int)(sizeof(palette)/sizeof(palette[0])) - 1);
+        sf::Color c = palette[pick(rng)];
+        c.a = 230;
+        return c;
+    };
+
+    auto spawnOne = [&](float x) {
+        ConfettiParticle p;
+        p.pos = {x, -10.f};
+        p.vel = {distVX(rng), distVY(rng)};
+        p.rotation = distAngle(rng);
+        p.angular = distSpin(rng);
+        p.color = randColor();
+        p.size = distSize(rng);
+        p.life = distLife(rng);
+        p.age = 0.f;
+        m_confetti.push_back(p);
+    };
+
+    for (std::size_t i = 0; i < initialBurst && m_confetti.size() < m_confettiMax; ++i) {
+        spawnOne(distX(rng));
+    }
+}
+
+void GameState::updateVictoryEffects(float deltaTime) {
+    if (!m_confettiActive || !m_isVictory) return;
+
+    // Continuous spawn while in victory screen
+    if (m_confetti.size() < m_confettiMax) {
+        m_confettiSpawnAccum += deltaTime * m_confettiSpawnRate;
+        std::size_t toSpawn = static_cast<std::size_t>(m_confettiSpawnAccum);
+        if (toSpawn > 0) {
+            m_confettiSpawnAccum -= static_cast<float>(toSpawn);
+            // We reuse spawnVictoryConfetti to append by temporarily storing current and merging
+            // Simpler: spawn directly in place
+            static std::mt19937 rng{std::random_device{}()};
+            std::uniform_real_distribution<float> distX(0.f, SCREEN_WIDTH);
+            std::uniform_real_distribution<float> distVX(-60.f, 60.f);
+            std::uniform_real_distribution<float> distVY(80.f, 180.f);
+            std::uniform_real_distribution<float> distSize(4.f, 10.f);
+            std::uniform_real_distribution<float> distAngle(-180.f, 180.f);
+            std::uniform_real_distribution<float> distSpin(-180.f, 180.f);
+            std::uniform_real_distribution<float> distLife(3.2f, 5.0f);
+            auto randColor = [&]() -> sf::Color {
+                static const sf::Color palette[] = {
+                    sf::Color(255, 99, 132), sf::Color(54, 162, 235),
+                    sf::Color(255, 206, 86), sf::Color(75, 192, 192),
+                    sf::Color(153, 102, 255), sf::Color(255, 159, 64)
+                };
+                std::uniform_int_distribution<int> pick(0, (int)(sizeof(palette)/sizeof(palette[0])) - 1);
+                sf::Color c = palette[pick(rng)];
+                c.a = 230; return c;
+            };
+            std::size_t canSpawn = std::min<std::size_t>(toSpawn, m_confettiMax - m_confetti.size());
+            for (std::size_t i = 0; i < canSpawn; ++i) {
+                ConfettiParticle p;
+                p.pos = {distX(rng), -10.f};
+                p.vel = {distVX(rng), distVY(rng)};
+                p.rotation = distAngle(rng);
+                p.angular = distSpin(rng);
+                p.color = randColor();
+                p.size = distSize(rng);
+                p.life = distLife(rng);
+                p.age = 0.f;
+                m_confetti.push_back(p);
+            }
+        }
+    }
+
+    const sf::Vector2f gravity(0.f, 220.f);
+    const float angularDrag = 0.98f;
+    const float velDrag = 0.995f;
+
+    for (auto &p : m_confetti) {
+        p.vel += gravity * deltaTime;
+        p.vel.x *= velDrag;
+        p.pos += p.vel * deltaTime;
+        p.rotation += p.angular * deltaTime;
+        p.angular *= angularDrag;
+        p.age += deltaTime;
+    }
+
+    m_confetti.erase(
+        std::remove_if(m_confetti.begin(), m_confetti.end(), [&](const ConfettiParticle& p){
+            return p.age > p.life || p.pos.y > SCREEN_HEIGHT + 20.f;
+        }),
+        m_confetti.end()
+    );
+}
+
+void GameState::renderVictoryEffects(sf::RenderWindow& window) {
+    if (!m_confettiActive || !m_isVictory) return;
+    sf::RectangleShape rect;
+    for (const auto &p : m_confetti) {
+        rect.setSize(sf::Vector2f(p.size, p.size * 0.6f));
+        rect.setOrigin(rect.getSize().x * 0.5f, rect.getSize().y * 0.5f);
+        rect.setPosition(p.pos);
+        rect.setRotation(p.rotation);
+        rect.setFillColor(p.color);
+        window.draw(rect);
+    }
+}
+
+void GameState::clearVictoryEffects() {
+    m_confetti.clear();
+    m_confettiActive = false;
+    m_confettiSpawnAccum = 0.f;
 }
 
 } // namespace rtype::client::gui

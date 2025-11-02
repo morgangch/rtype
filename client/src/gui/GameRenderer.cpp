@@ -163,6 +163,11 @@ void GameState::renderGameOverMenu(sf::RenderWindow& window) {
     overlay.setFillColor(sf::Color(0, 0, 0, 180)); // Dark overlay
     window.draw(overlay);
     
+    // Draw celebratory effects under UI when in victory mode
+    if (m_isVictory) {
+        renderVictoryEffects(window);
+    }
+    
     // Title positioning
     sf::FloatRect titleBounds = m_gameOverTitleText.getLocalBounds();
     m_gameOverTitleText.setPosition(
