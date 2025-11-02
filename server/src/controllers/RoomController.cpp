@@ -524,15 +524,6 @@ void room_controller::handleGameStartRequest(const packet_t &packet) {
     broadcastGameStart(room);
     broadcastPlayerRoster(room);
 
-    // TODO: Tile-driven system - Level selection removed
-    // Apply lobby debug start level to the enemy spawner
-    // if (rp) {
-    //     if (auto* sys = root.world.GetSystem<ServerEnemySystem>()) {
-    //         int forcedLevel = static_cast<int>(rp->startLevelIndex); // 0=Lvl1,1=Lvl2
-    //         sys->setStartLevel(forcedLevel);
-    //     }
-    // }
-
     // Spawn an AI assistant only if there is exactly 1 human player in the room and AI assist is enabled
     {
         auto players_in_room = player_service::findPlayersByRoom(room);
@@ -902,15 +893,6 @@ void room_controller::handleSpawnBossRequest(const packet_t &packet) {
 
     // TODO: Tile-driven system - Boss spawning needs to be implemented from tiles
     std::cout << "INFO: Boss spawning currently disabled - will be tile-driven in future" << std::endl;
-    
-    // // Spawn the appropriate boss for the current level using the enemy system
-    // if (auto* sys = root.world.GetSystem<ServerEnemySystem>()) {
-    //     auto type = sys->getCurrentBossType();
-    //     std::cout << "✓ Admin spawning level-appropriate boss type=" << static_cast<int>(type) << " in room " << room << std::endl;
-    //     sys->spawnBoss(root.world, room, type);
-    // } else {
-    //     std::cerr << "ERROR: ServerEnemySystem not available; cannot spawn boss" << std::endl;
-    // }
 }
 
 // Register all packet callbacks on a player's packet handler

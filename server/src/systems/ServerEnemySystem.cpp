@@ -218,7 +218,6 @@ void ServerEnemySystem::spawnEnemyFromTile(ECS::World& world, ECS::EntityID room
     
     // Calculate spawn position
     // Tile coordinates are used as base, but we add some randomization
-    constexpr float TILE_SIZE = 32.0f;
     constexpr float SPAWN_X_BASE = 1280.0f + 24.0f; // Right edge + padding
     constexpr float SCREEN_MIN_Y = 50.0f;
     constexpr float SCREEN_MAX_Y = 670.0f;
