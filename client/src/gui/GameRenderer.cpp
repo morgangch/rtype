@@ -119,6 +119,14 @@ void GameState::renderEntities(sf::RenderWindow& window) {
             innerCircle.setFillColor(fillColor);
             window.draw(innerCircle);
         }
+
+        // Draw shield sprite for Solar Guardian charged shot (ShieldComponent)
+        auto* shieldComp = m_world.GetComponent<rtype::common::components::ShieldComponent>(entity);
+        if (shieldComp && shieldComp->isActive) {
+            // Position shield sprite at entity position (centered due to setOrigin)
+            m_shieldSprite.setPosition(pos.x, pos.y);
+            window.draw(m_shieldSprite);
+        }
     }
 }
 

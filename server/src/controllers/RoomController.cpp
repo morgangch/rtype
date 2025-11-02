@@ -79,7 +79,7 @@ void room_controller::markPlayersAsInGame(ECS::EntityID room) {
                     baseHp = 3; // Balanced
                     break;
                 case rtype::common::components::VesselType::AzurePhantom:
-                    baseHp = 3; // Agile (low defense)
+                    baseHp = 2; // Agile (low defense, only 2 hearts)
                     break;
                 case rtype::common::components::VesselType::EmeraldTitan:
                     baseHp = 4; // Tank (4 HP, 4 hearts)

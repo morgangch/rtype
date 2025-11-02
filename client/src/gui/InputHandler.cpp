@@ -33,11 +33,28 @@ void GameState::startChargedShot() {
             if (chargedShot) {
                 chargedShot->startCharge();
                 
-                // TODO: Re-implement Solar Guardian shield with new ShieldComponent system
-                // auto* vesselClass = m_world.GetComponent<rtype::common::components::VesselClass>(entity);
-                // if (vesselClass && vesselClass->type == rtype::common::components::VesselType::SolarGuardian) {
-                //     // Activate shield during charging
-                // }
+                // Solar Guardian: Activate shield during charging
+                auto* vesselClass = m_world.GetComponent<rtype::common::components::VesselClass>(entity);
+                if (vesselClass && vesselClass->type == rtype::common::components::VesselType::SolarGuardian) {
+                    // Add or activate shield component
+                    auto* shield = m_world.GetComponent<rtype::common::components::ShieldComponent>(entity);
+                    if (!shield) {
+                        m_world.AddComponent<rtype::common::components::ShieldComponent>(
+                            entity, 
+                            rtype::common::components::ShieldType::Blue,  // Blue shield for player
+                            true  // Active immediately
+                        );
+                    } else {
+                        shield->isActive = true;
+                        shield->type = rtype::common::components::ShieldType::Blue;
+                    }
+                    
+                    // Make invulnerable during charging
+                    auto* health = m_world.GetComponent<rtype::common::components::Health>(entity);
+                    if (health) {
+                        health->invulnerable = true;
+                    }
+                }
             }
         }
     }
@@ -57,6 +74,22 @@ void GameState::releaseChargedShot() {
         }
 
         bool wasFullyCharged = chargedShot->release();
+        
+        // Solar Guardian: Deactivate shield when releasing shot
+        auto* vesselClass = m_world.GetComponent<rtype::common::components::VesselClass>(entity);
+        if (vesselClass && vesselClass->type == rtype::common::components::VesselType::SolarGuardian) {
+            auto* shield = m_world.GetComponent<rtype::common::components::ShieldComponent>(entity);
+            if (shield) {
+                shield->isActive = false;
+            }
+            
+            // Remove invulnerability
+            auto* health = m_world.GetComponent<rtype::common::components::Health>(entity);
+            if (health) {
+                health->invulnerable = false;
+            }
+        }
+        
         if (!fireRate->canFire()) {
             continue;
         }

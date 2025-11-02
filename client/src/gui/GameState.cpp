@@ -392,6 +392,20 @@ void GameState::loadHUDTextures() {
     m_emptyHeartSprite.setTextureRect(sf::IntRect(startX + frameWidth * 8, startY, frameWidth * 4, frameHeight * 2));
     m_emptyHeartSprite.setScale(0.08f, 0.08f);  // Scale down (992*0.08 = 79px, 432*0.08 = 35px)
 
+    // Load shield texture for Solar Guardian
+    if (!m_shieldTexture.loadFromFile("assets/sprites/Shield/shield_spritesheet_64.png")) {
+        std::cerr << "Failed to load shield texture!" << std::endl;
+        m_texturesLoaded = false;
+        return;
+    }
+
+    // Shield spritesheet: 1024x64, frames are 64x64
+    // Frame 4 is at position (3 * 64, 0) = (192, 0)
+    m_shieldSprite.setTexture(m_shieldTexture);
+    m_shieldSprite.setTextureRect(sf::IntRect(192, 0, 64, 64));  // Frame 4 (blue shield)
+    m_shieldSprite.setScale(2.0f, 2.0f);  // Scale up to 128x128
+    m_shieldSprite.setOrigin(32, 32);  // Center the sprite
+
     // Pre-load projectile textures to avoid loading in hot path (entity creation)
     rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_1);
     rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_4);
