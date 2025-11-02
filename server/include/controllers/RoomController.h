@@ -123,12 +123,47 @@ namespace rtype::server::controllers::room_controller {
     /**
      * @brief Create a projectile entity on the server
      * @param room The room entity ID
+     * @param owner The owner player entity ID
      * @param x Starting X position
      * @param y Starting Y position
      * @param isCharged Whether this is a charged shot
      * @return The created projectile entity ID
      */
     ECS::EntityID createServerProjectile(ECS::EntityID room, ECS::EntityID owner, float x, float y, bool isCharged);
+    
+    /**
+     * @brief Helper to create a single projectile with default horizontal velocity
+     * @param room The room entity ID
+     * @param owner The owner player entity ID
+     * @param x Starting X position
+     * @param y Starting Y position
+     * @param speed Projectile speed
+     * @param damage Damage value
+     * @param piercing Whether projectile pierces
+     * @param isCharged Whether this is a charged shot
+     * @return The created projectile entity ID
+     */
+    ECS::EntityID createSingleProjectile(ECS::EntityID room, ECS::EntityID owner, 
+                                         float x, float y, float speed, 
+                                         uint16_t damage, bool piercing, bool isCharged);
+    
+    /**
+     * @brief Helper to create a single projectile with custom velocity
+     * @param room The room entity ID
+     * @param owner The owner player entity ID
+     * @param x Starting X position
+     * @param y Starting Y position
+     * @param vx Velocity X
+     * @param vy Velocity Y
+     * @param speed Total speed
+     * @param damage Damage value
+     * @param piercing Whether projectile pierces
+     * @param isCharged Whether this is a charged shot
+     * @return The created projectile entity ID
+     */
+    ECS::EntityID createSingleProjectile(ECS::EntityID room, ECS::EntityID owner, 
+                                         float x, float y, float vx, float vy, float speed,
+                                         uint16_t damage, bool piercing, bool isCharged);
     
     /**
      * @brief Create an enemy projectile with custom velocity
