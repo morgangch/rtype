@@ -59,9 +59,6 @@ void rtype::server::Rtype::loop(float deltaTime) {
     packetHandler.processPackets(packetManager.fetchReceivedPackets());
 
     rtype::common::systems::MovementSystem::update(world, deltaTime);
-    
-    // Update Fortress shield system (check turret status and disable boss shield if needed)
-    rtype::common::systems::FortressShieldSystem::update(world, deltaTime);
 
     // Server-specific post-movement processing
     auto* positions = world.GetAllComponents<rtype::common::components::Position>();
@@ -88,6 +85,9 @@ void rtype::server::Rtype::loop(float deltaTime) {
     }
 
     world.UpdateSystems(deltaTime);
+    
+    // Update Fortress shield system (manages RED shield requiring 2 charged shots)
+    rtype::common::systems::FortressShieldSystem::update(world, deltaTime);
 }
 
 

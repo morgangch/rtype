@@ -16,7 +16,6 @@
 #include <common/systems/FortressShieldSystem.h>
 #include <common/components/Score.h>
 #include <common/components/Shield.h>
-#include <common/components/TurretLink.h>
 #include <iostream>
 #include <cmath>
 #include <algorithm>
@@ -94,7 +93,7 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
         auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemy);
         if (!projData || !enemyHealth) return;
 
-        // 🛡️ Check for active shields (Fortress boss, turrets, or shielded enemies)
+        // Check for active shields (Fortress boss or shielded enemies)
         auto* shield = world.GetComponent<rtype::common::components::ShieldComponent>(enemy);
         if (shield && shield->isActive) {
             // Red shield (Fortress boss) - requires charged hits to break
@@ -119,9 +118,9 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
                 }
             }
             
-            // Blue shield (Fortress Turrets) - can be damaged but has shield visual
+            // Blue shield - visual effect only, takes damage normally
             if (shield->type == rtype::common::components::ShieldType::Blue) {
-                std::cout << "[COLLISION] 🔵 Projectile " << proj << " hits BLUE SHIELD on turret " << enemy << " - taking damage!" << std::endl;
+                std::cout << "[COLLISION] 🔵 Projectile " << proj << " hits BLUE SHIELD on enemy " << enemy << " - taking damage!" << std::endl;
                 // Blue shields take damage, just visual indicator
             }
             
@@ -275,12 +274,20 @@ void ServerCollisionSystem::broadcastPlayerStateImmediate(ECS::World& world, ECS
     auto* health = world.GetComponent<rtype::common::components::Health>(playerId);
     auto* proom = world.GetComponent<rtype::server::components::LinkedRoom>(playerId);
 
-    if (!pos || !health || !proom) return;
+    if (!pos || !health || !proom) {
+        return;
+    }
 
     auto* allPlayers = world.GetAllComponents<rtype::common::components::Player>();
-    if (!allPlayers) return;
-
+    if (!allPlayers) {
+        return;
+    }
+    
     for (auto& [otherPid, playerPtr] : *allPlayers) {
+        if (!playerPtr) {
+            continue;
+        }
+        
         auto otherRoom = world.GetComponent<rtype::server::components::LinkedRoom>(otherPid);
         if (!otherRoom || otherRoom->room_id != proom->room_id) continue;
 

@@ -25,6 +25,13 @@ public:
         auto *h = pair.second.get();
         if (!h) continue;
         if (!h->isAlive || h->currentHp <= 0) {
+            // CRITICAL: Never destroy player entities! They should respawn instead
+            auto* player = world.GetComponent<rtype::common::components::Player>(eid);
+            if (player) {
+                // Skip players - they will be handled by respawn system
+                continue;
+            }
+            
             auto *room = world.GetComponent<rtype::server::components::LinkedRoom>(eid);
             if (room) {
                 // Broadcast EntityDestroyPacket to players in the same room as the entity owner (if applicable)

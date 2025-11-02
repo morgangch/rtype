@@ -14,7 +14,6 @@
 #include <common/components/Team.h>
 #include <common/components/EnemyType.h>
 #include <common/components/Shield.h>
-#include <common/components/TurretLink.h>
 // Server components
 #include "components/RoomProperties.h"
 #include "components/PlayerConn.h"
@@ -56,9 +55,9 @@ ServerEnemySystem::ServerEnemySystem()
     // Define the 4 sub-levels
     // Level 0: Basic + Shielded + TankDestroyer
     _levelDefinitions.push_back({
-        rtype::common::components::EnemyType::Basic,
-        rtype::common::components::EnemyType::Shielded,
-        rtype::common::components::EnemyType::TankDestroyer
+        rtype::common::components::EnemyType::Suicide,
+        rtype::common::components::EnemyType::Turret,
+        rtype::common::components::EnemyType::Fortress
     });
 
     // Level 1: Snake + Flanker + Serpent
@@ -183,24 +182,12 @@ void ServerEnemySystem::spawnBoss(ECS::World& world, ECS::EntityID room, rtype::
 
     // Special handling for Fortress boss - spawn turrets and shields
     if (bossType == rtype::common::components::EnemyType::Fortress) {
+        std::cout << "[ServerEnemySystem] 🏰 Setting up Fortress boss " << boss << std::endl;
+        
         // Add red shield to boss - requires 2 charged shots to break
         world.AddComponent<rtype::common::components::ShieldComponent>(boss, rtype::common::components::ShieldType::Red, true, 2);
         
-        // Add TurretLink component to track turrets
-        world.AddComponent<rtype::common::components::TurretLinkComponent>(boss);
-        auto* turretLink = world.GetComponent<rtype::common::components::TurretLinkComponent>(boss);
-        
-        // Spawn 2 turrets (top and bottom) - more separated for better visibility
-        auto topTurret = spawnFortressTurret(world, room, boss, -150.0f);    // 150px above boss
-        auto bottomTurret = spawnFortressTurret(world, room, boss, 150.0f); // 150px below boss
-        
-        // Link turrets to boss
-        if (turretLink) {
-            turretLink->turrets.push_back(topTurret);
-            turretLink->turrets.push_back(bottomTurret);
-        }
-        
-        std::cout << "SERVER: 🛡️  Fortress boss spawned with turrets (top=" << topTurret << ", bottom=" << bottomTurret << ") - Shield requires 2 charged hits!" << std::endl;
+        std::cout << "SERVER: 🛡️  Fortress boss " << boss << " - Shield requires 2 charged hits!" << std::endl;
     }
 
     // Send to all players in the room with correct boss type
@@ -543,42 +530,4 @@ void ServerEnemySystem::checkBossDeathAndAdvanceLevel(ECS::World& world) {
         std::cout << "[ServerEnemySystem] - Advanced: " << (int)_levelDefinitions[_currentLevel].advancedEnemy << std::endl;
         std::cout << "[ServerEnemySystem] - Boss: " << (int)_levelDefinitions[_currentLevel].bossEnemy << std::endl;
     }
-}
-
-// ============================================================================
-// PRIVATE METHODS - Fortress Turret Spawning
-// ============================================================================
-
-ECS::EntityID ServerEnemySystem::spawnFortressTurret(ECS::World& world, ECS::EntityID room, ECS::EntityID bossEntity, float offsetY) {
-    // Get boss position
-    auto* bossPos = world.GetComponent<rtype::common::components::Position>(bossEntity);
-    if (!bossPos) {
-        std::cerr << "[ServerEnemySystem] ERROR: Cannot spawn turret - boss has no position!" << std::endl;
-        return 0;
-    }
-
-    float turretX = bossPos->x - 80.0f; // Place turrets 80px to the left of boss
-    float turretY = bossPos->y + offsetY;
-
-    // Create turret entity
-    auto turret = world.CreateEntity();
-    world.AddComponent<rtype::common::components::Position>(turret, turretX, turretY, 0.0f);
-    world.AddComponent<rtype::common::components::Velocity>(turret, 0.0f, 0.0f, 0.0f); // Stationary
-    world.AddComponent<rtype::common::components::Health>(turret, 5); // 5 HP turret
-    world.AddComponent<rtype::common::components::Team>(turret, rtype::common::components::TeamType::Enemy);
-    world.AddComponent<rtype::common::components::EnemyTypeComponent>(turret, rtype::common::components::EnemyType::Turret);
-    world.AddComponent<rtype::server::components::LinkedRoom>(turret, room);
-    
-    // Add blue shield to turret
-    world.AddComponent<rtype::common::components::ShieldComponent>(turret, rtype::common::components::ShieldType::Blue, true);
-    
-    // Link turret to boss
-    world.AddComponent<rtype::common::components::TurretLinkComponent>(turret, bossEntity);
-
-    // Broadcast turret spawn to clients
-    rtype::server::network::senders::broadcast_enemy_spawn(room, static_cast<uint32_t>(turret),
-                                                            rtype::common::components::EnemyType::Turret,
-                                                            turretX, turretY, 5);
-
-    return turret;
 }

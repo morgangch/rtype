@@ -376,7 +376,7 @@ namespace rtype::common::systems {
         }
 
         /**
-         * @brief Handle Fortress boss stationary with orbiting turrets
+         * @brief Handle Fortress boss stationary movement
          * @param world The ECS world
          * @param entity The entity to handle
          * @param pos Reference to position component
@@ -388,7 +388,7 @@ namespace rtype::common::systems {
                                           components::EnemyTypeComponent& enemyType) {
             if (!vel) return;
 
-            // Fortress is stationary
+            // Fortress is stationary - doesn't move
             vel->vx = 0.0f;
             vel->vy = 0.0f;
         }

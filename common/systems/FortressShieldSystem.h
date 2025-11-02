@@ -3,9 +3,8 @@
  * @brief System to manage Fortress boss shield mechanics
  * 
  * This system handles the Fortress boss shield logic:
- * - Checks if all turrets are destroyed
- * - Disables boss shield when turrets are gone
- * - Prevents damage to shielded entities
+ * - Manages RED shield that requires 2 charged shots to break
+ * - Provides shield status checks for damage prevention
  * 
  * @author R-TYPE Development Team
  * @date 2025
@@ -16,7 +15,6 @@
 
 #include <ECS/ECS.h>
 #include <common/components/Shield.h>
-#include <common/components/TurretLink.h>
 #include <common/components/Health.h>
 #include <common/components/EnemyType.h>
 #include <iostream>
@@ -26,41 +24,17 @@ namespace rtype::common::systems {
 class FortressShieldSystem {
 public:
     /**
-     * @brief Update fortress shields based on turret status
+     * @brief Update fortress shields (placeholder - shield is managed by collision system)
      * @param world ECS world reference
      * @param deltaTime Time elapsed since last update
+     * 
+     * The Fortress boss now has a RED shield that requires 2 charged shots to break.
+     * Shield hits are tracked in the ShieldComponent's chargedHitsRequired field.
      */
     static void update(ECS::World& world, float deltaTime) {
-        // Find all Fortress bosses
-        auto* enemyTypes = world.GetAllComponents<components::EnemyTypeComponent>();
-        if (!enemyTypes) return;
-
-        for (auto& [entity, typePtr] : *enemyTypes) {
-            if (!typePtr || typePtr->type != components::EnemyType::Fortress) continue;
-
-            auto* turretLink = world.GetComponent<components::TurretLinkComponent>(entity);
-            auto* shield = world.GetComponent<components::ShieldComponent>(entity);
-            
-            if (!turretLink || turretLink->isTurret) continue; // Only process boss entities
-            if (!shield) continue;
-
-            // Check if any turrets are still alive
-            bool anyTurretAlive = false;
-            for (auto turretId : turretLink->turrets) {
-                auto* turretHealth = world.GetComponent<components::Health>(turretId);
-                if (turretHealth && turretHealth->isAlive && turretHealth->currentHp > 0) {
-                    anyTurretAlive = true;
-                    break;
-                }
-            }
-
-            // Update boss shield based on turret status
-            if (!anyTurretAlive && shield->isActive) {
-                shield->isActive = false;
-                shield->type = components::ShieldType::None;
-                std::cout << "[FortressShieldSystem] 🛡️  All turrets destroyed! Boss shield disabled!" << std::endl;
-            }
-        }
+        // Fortress shield is now managed directly by the collision system
+        (void)world;
+        (void)deltaTime;
     }
 
     /**

@@ -34,7 +34,7 @@ namespace rtype::common::components {
         // Boss enemies (4 types)
         TankDestroyer,  ///< Tank destroyer boss - vertical bounce, fires 3-projectile spread
         Serpent,        ///< Serpent boss - multi-segment body with wave movement, head shoots spread
-        Fortress,       ///< Fortress boss - central core with 3 orbiting turrets, rotating laser when turrets destroyed
+        Fortress,       ///< Fortress boss - stationary core with RED shield requiring 2 charged shots to break, fires 2 charged projectiles
         Core,           ///< Core boss (FINAL) - multi-phase evolution: circular->spiral+adds->chaotic pattern
     };
     
