@@ -84,7 +84,8 @@ namespace rtype::client::gui {
         enum class Theme {
             SpaceDefault,
             HallwayLevel2,
-            ReactorLevel3
+            ReactorLevel3,
+            ReactorLevel4
         };
 
         /**
@@ -322,7 +323,8 @@ namespace rtype::client::gui {
          * match the hallway aesthetic.
          */
         void initializeHallwayTheme();
-    void initializeReactorTheme();
+        void initializeReactorTheme();
+        void initializeReactorBrokenTheme();
 
         /**
          * @brief Optional per-parameter blend hook
@@ -362,6 +364,11 @@ namespace rtype::client::gui {
         sf::Vector2f m_panelSize{160.0f, 120.0f};    //!< default panel tile size
         std::vector<int> m_panelDamaged;             //!< indices of panels that have damage marks
         std::vector<sf::Vector2f> m_pipePositions;   //!< positions of thin pipes running across the corridor
+        // Level 4: broken / vibrating variant
+        std::vector<int> m_brokenPanels;             //!< indices of panels missing for ReactorLevel4
+        float m_vibrateTimer{0.0f};                  //!< internal timer for vibration effect
+        float m_vibrateAmplitude{0.0f};              //!< vibration amplitude in pixels
+        std::vector<int> m_brokenColumns;            //!< indices of vertical bars that are broken/missing
 
         /**
          * @brief Build the tiled panel grid and precompute damage marks

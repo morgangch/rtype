@@ -81,6 +81,13 @@ ServerEnemySystem::ServerEnemySystem()
         rtype::common::components::EnemyType::Core
     });
 
+    // Level 4: Broken Reactor variant - reuse similar spawn cadence
+    _levelDefinitions.push_back({
+        rtype::common::components::EnemyType::Basic,
+        rtype::common::components::EnemyType::Waver,
+        rtype::common::components::EnemyType::Core
+    });
+
     // Configure spawn intervals for all enemy types
     // Basic enemies
     _enemyConfigs[rtype::common::components::EnemyType::Basic] = {rtype::common::components::EnemyType::Basic, 2.0f, 0.0f};
@@ -512,9 +519,9 @@ void ServerEnemySystem::checkBossDeathAndAdvanceLevel(ECS::World& world) {
         // Increment level counter
         _currentLevel++;
 
-        // Finish game after third boss (level index 2). After increment, currentLevel >= 3 means victory.
-        if (_currentLevel >= 3) {
-            std::cout << "[ServerEnemySystem] GAME FINISHED after Level 3 boss. Stopping spawns." << std::endl;
+        // Finish game after fourth boss (level index 3). After increment, currentLevel >= 4 means victory.
+        if (_currentLevel >= 4) {
+            std::cout << "[ServerEnemySystem] GAME FINISHED after Level 4 boss. Stopping spawns." << std::endl;
             _gameFinished = true;
             return;
         }

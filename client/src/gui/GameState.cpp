@@ -635,8 +635,8 @@ void GameState::updateBossMusicState() {
         }
         m_bossMusicActive = false;
 
-        // If this was the level 3 boss (index 2), end the game with victory
-        if (m_levelIndex >= 2) {
+        // If this was the level 4 boss (index 3), end the game with victory
+        if (m_levelIndex >= 3) {
             showVictoryScreen();
         } else {
             // Otherwise proceed to next level
@@ -649,8 +649,8 @@ void GameState::advanceLevel() {
     m_levelIndex += 1;
     std::cout << "[GameState] Advancing to level index: " << m_levelIndex << std::endl;
 
-    // If we've exceeded the final level index (2), return to main menu
-    if (m_levelIndex >= 3) {
+    // If we've exceeded the final level index (3), return to main menu
+    if (m_levelIndex >= 4) {
         std::cout << "[GameState] Final level cleared. Returning to main menu." << std::endl;
         m_musicManager.stop();
         // Persist last level index for menu parallax
@@ -669,6 +669,7 @@ void GameState::loadLevelMusic() {
     AudioFactory::MusicId id = AudioFactory::MusicId::Level1;
     if (m_levelIndex == 1) id = AudioFactory::MusicId::Level2;
     else if (m_levelIndex == 2) id = AudioFactory::MusicId::Level3;
+    else if (m_levelIndex == 3) id = AudioFactory::MusicId::Level4;
 
     const std::string levelMusic = AudioFactory::getMusicPath(id);
     if (m_musicManager.loadFromFile(levelMusic)) {

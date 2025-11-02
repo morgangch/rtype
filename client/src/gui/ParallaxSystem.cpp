@@ -61,10 +61,21 @@ void ParallaxSystem::setTheme(Theme theme, bool immediate) {
         m_themeTransitionTimer = 0.0f;
         m_themeTransitionDuration = 0.0f;
         // Level 3 should visually reuse the hallway with a red variant
-        if (theme == Theme::HallwayLevel2 || theme == Theme::ReactorLevel3) {
+        if (theme == Theme::HallwayLevel2) {
             m_themeBlend = 1.0f;
-            m_reactorBlend = 0.0f; // disable reactor overlays for L3 per spec
+            m_reactorBlend = 0.0f; // no reactor overlays for plain hallway
             initializeHallwayTheme();
+        } else if (theme == Theme::ReactorLevel3) {
+            // L3: hallway red variant, reactor overlays remain disabled
+            m_themeBlend = 1.0f;
+            m_reactorBlend = 0.0f;
+            initializeHallwayTheme();
+        } else if (theme == Theme::ReactorLevel4) {
+            // L4: broken reactor variant - hallway with broken vertical bars
+            m_themeBlend = 1.0f;
+            m_reactorBlend = 0.0f; // keep reactor overlay disabled (no blue glows)
+            initializeHallwayTheme();
+            initializeReactorBrokenTheme();
         } else {
             m_themeBlend = 0.0f;
             m_reactorBlend = 0.0f;
@@ -79,9 +90,10 @@ void ParallaxSystem::transitionToTheme(Theme theme, float duration) {
     m_targetTheme = theme;
     m_themeTransitionDuration = std::max(0.0001f, duration);
     m_themeTransitionTimer = 0.0f;
-    // Prepare target theme parameters early. L3 reuses hallway visuals.
-    if (theme == Theme::HallwayLevel2 || theme == Theme::ReactorLevel3) {
+    // Prepare target theme parameters early. L3/L4 reuse hallway visuals.
+    if (theme == Theme::HallwayLevel2 || theme == Theme::ReactorLevel3 || theme == Theme::ReactorLevel4) {
         initializeHallwayTheme();
+        if (theme == Theme::ReactorLevel4) initializeReactorBrokenTheme();
     }
 }
 
@@ -124,12 +136,18 @@ void ParallaxSystem::update(float deltaTime) {
         float t = std::min(1.0f, m_themeTransitionTimer / m_themeTransitionDuration);
         m_themeBlend = t;
         // Reactor overlays disabled for L3 red hallway variant
-        m_reactorBlend = 0.0f;
+    // Reactor overlays interpolated only when transitioning to ReactorLevel4
+    if (m_targetTheme == Theme::ReactorLevel4) m_reactorBlend = t;
+    else m_reactorBlend = 0.0f;
         blendThemes(t);
         if (t >= 1.0f) {
             m_currentTheme = m_targetTheme;
             m_themeTransitionDuration = 0.0f;
         }
+    }
+    // Vibration timer advance (for ReactorLevel4 subtle shake)
+    if (m_currentTheme == Theme::ReactorLevel4 || m_targetTheme == Theme::ReactorLevel4) {
+        m_vibrateTimer += deltaTime;
     }
 }
 
@@ -137,6 +155,7 @@ ParallaxSystem::Theme ParallaxSystem::themeFromLevel(int levelIndex) {
     if (levelIndex <= 0) return Theme::SpaceDefault;
     if (levelIndex == 1) return Theme::HallwayLevel2;
     if (levelIndex == 2) return Theme::ReactorLevel3;
+    if (levelIndex == 3) return Theme::ReactorLevel4;
     return Theme::SpaceDefault;
 }
 
@@ -189,12 +208,22 @@ void ParallaxSystem::renderPanelLayer(sf::RenderWindow& window, float blend) {
     sf::Color panelColor = redVariant ? sf::Color(100, 20, 20) : sf::Color(55, 55, 60);
     sf::Color panelEdge  = redVariant ? sf::Color(70, 10, 10)  : sf::Color(35, 35, 38);
 
+    bool isL4 = (m_currentTheme == Theme::ReactorLevel4) || (m_targetTheme == Theme::ReactorLevel4);
+    float vib = 0.0f;
+    if (isL4 && m_vibrateAmplitude > 0.0f) {
+        vib = std::sin(m_vibrateTimer * 30.0f) * m_vibrateAmplitude * m_themeBlend;
+    }
+
     for (size_t i = 0; i < m_panelPositions.size(); i++) {
         const auto& pos = m_panelPositions[i];
+        // If this panel is marked broken in L4, skip drawing it (missing piece)
+        if (isL4 && std::find(m_brokenPanels.begin(), m_brokenPanels.end(), static_cast<int>(i)) != m_brokenPanels.end()) {
+            continue;
+        }
         sf::RectangleShape panel(m_panelSize);
     // Parallax offset: combine static parallax with the animated panel scroll
     float staticParallax = -m_themeBlend * 40.0f; // slight shift into the scene
-    float x = pos.x + staticParallax + m_panelOffsetX;
+    float x = pos.x + staticParallax + m_panelOffsetX + vib;
     // Wrap horizontally so the grid tiles continuously
     while (x < -m_panelSize.x) x += m_panelSize.x;
     while (x > m_screenWidth + m_panelSize.x) x -= m_panelSize.x;
@@ -245,7 +274,12 @@ void ParallaxSystem::renderPanelLayer(sf::RenderWindow& window, float blend) {
         sf::RectangleShape pipe(sf::Vector2f(m_screenWidth * 1.2f, 8.0f));
         pipe.setPosition(p.x - m_screenWidth * 0.1f, p.y);
         // Solid pipes
-        pipe.setFillColor(sf::Color(80, 80, 85, static_cast<sf::Uint8>(255)));
+        if ((m_currentTheme == Theme::ReactorLevel3) || (m_targetTheme == Theme::ReactorLevel3) ||
+            (m_currentTheme == Theme::ReactorLevel4) || (m_targetTheme == Theme::ReactorLevel4)) {
+            pipe.setFillColor(sf::Color(90, 30, 30, static_cast<sf::Uint8>(255)));
+        } else {
+            pipe.setFillColor(sf::Color(80, 80, 85, static_cast<sf::Uint8>(255)));
+        }
         window.draw(pipe);
         // small highlights
         sf::RectangleShape h(sf::Vector2f(m_screenWidth * 1.2f, 2.0f));
@@ -309,24 +343,74 @@ void ParallaxSystem::render(sf::RenderWindow& window) {
                 window.draw(light);
             }
         } else {
-            // Reactor L3: draw vertical orange glowing lines instead of stripe
+            // Reactor L3/L4: draw vertical yellow glowing columns (split/broken for L4)
             const float separation = std::max(96.0f, m_panelSize.x * 0.5f);
             // start offset so lines move slightly with panel offset for motion
             float startX = std::fmod(m_panelOffsetX, separation);
             if (startX > 0.0f) startX -= separation;
             sf::RenderStates add; add.blendMode = sf::BlendAdd;
-            for (float x = startX; x < m_screenWidth + separation; x += separation) {
-                // base solid column
-                sf::RectangleShape col(sf::Vector2f(6.0f, m_screenHeight));
-                col.setPosition(x, 0.0f);
-                col.setFillColor(sf::Color(200, 110, 10, static_cast<sf::Uint8>(200.0f * m_themeBlend)));
-                window.draw(col);
 
-                // soft additive glow wider and more transparent
-                sf::RectangleShape glowCol(sf::Vector2f(30.0f, m_screenHeight));
-                glowCol.setPosition(x - 12.0f, 0.0f);
-                glowCol.setFillColor(sf::Color(255, 160, 40, static_cast<sf::Uint8>(120.0f * m_themeBlend)));
-                window.draw(glowCol, add);
+            bool isL4 = (m_currentTheme == Theme::ReactorLevel4) || (m_targetTheme == Theme::ReactorLevel4);
+            // vibration offset when in L4
+            float vib = 0.0f;
+            if (isL4 && m_vibrateAmplitude > 0.0f) {
+                vib = std::sin(m_vibrateTimer * 30.0f) * m_vibrateAmplitude * m_themeBlend;
+            }
+
+            int colIndex = 0;
+            for (float x = startX; x < m_screenWidth + separation; x += separation, ++colIndex) {
+                float xpos = x + vib;
+                // choose base colors (yellow/orange)
+                sf::Color baseColor(220, 180, 30, static_cast<sf::Uint8>(200.0f * m_themeBlend));
+                sf::Color glowColor(255, 200, 80, static_cast<sf::Uint8>(120.0f * m_themeBlend));
+
+                bool broken = (std::find(m_brokenColumns.begin(), m_brokenColumns.end(), colIndex) != m_brokenColumns.end());
+
+                if (!broken) {
+                    // Full column
+                    sf::RectangleShape col(sf::Vector2f(6.0f, m_screenHeight));
+                    col.setPosition(xpos, 0.0f);
+                    col.setFillColor(baseColor);
+                    window.draw(col);
+
+                    // soft additive glow wider and more transparent
+                    sf::RectangleShape glowCol(sf::Vector2f(30.0f, m_screenHeight));
+                    glowCol.setPosition(xpos - 12.0f, 0.0f);
+                    glowCol.setFillColor(glowColor);
+                    window.draw(glowCol, add);
+                } else {
+                    // Broken: render as two halves (top + bottom) with a center gap
+                    float gap = std::max(64.0f, m_panelSize.y * 0.5f);
+                    float halfH = (m_screenHeight - gap) * 0.5f;
+
+                    // Determine which halves to draw for a slightly varied broken look
+                    bool drawTop = (colIndex % 2 == 0) || isL4;
+                    bool drawBottom = (colIndex % 2 == 1) || isL4;
+
+                    if (drawTop) {
+                        sf::RectangleShape topCol(sf::Vector2f(6.0f, halfH));
+                        topCol.setPosition(xpos, 0.0f);
+                        topCol.setFillColor(baseColor);
+                        window.draw(topCol);
+
+                        sf::RectangleShape topGlow(sf::Vector2f(30.0f, halfH));
+                        topGlow.setPosition(xpos - 12.0f, 0.0f);
+                        topGlow.setFillColor(glowColor);
+                        window.draw(topGlow, add);
+                    }
+
+                    if (drawBottom) {
+                        sf::RectangleShape botCol(sf::Vector2f(6.0f, halfH));
+                        botCol.setPosition(xpos, halfH + gap);
+                        botCol.setFillColor(baseColor);
+                        window.draw(botCol);
+
+                        sf::RectangleShape botGlow(sf::Vector2f(30.0f, halfH));
+                        botGlow.setPosition(xpos - 12.0f, halfH + gap);
+                        botGlow.setFillColor(glowColor);
+                        window.draw(botGlow, add);
+                    }
+                }
             }
 
             // Top smoke overlay (subtle drifting clouds at the top of the corridor)
@@ -346,8 +430,10 @@ void ParallaxSystem::render(sf::RenderWindow& window) {
         }
     }
 
-    // 3. Reactor overlays disabled for L3 red hallway variant
-    (void)window; // suppress unused warning if overlays remain disabled
+    // 3. Reactor overlays (enabled for ReactorLevel4 via m_reactorBlend)
+    if (m_reactorBlend > 0.001f) {
+        renderReactor(window);
+    }
 
     // 4. Render space debris (apply scale based on theme blend)
     if (m_themeBlend > 0.001f) {
@@ -596,6 +682,45 @@ void ParallaxSystem::initializeReactorTheme() {
         arc.speed = 2.0f + static_cast<float>(rand() % 200) / 100.0f;
         m_energyArcs.push_back(arc);
     }
+}
+
+void ParallaxSystem::initializeReactorBrokenTheme() {
+    // Start from the standard reactor theme
+    initializeReactorTheme();
+
+    // Mark some panels as broken / missing for the broken-reactor L4 look
+    m_brokenPanels.clear();
+    int totalPanels = static_cast<int>(m_panelPositions.size());
+    int brokenCount = std::max(2, totalPanels / 8);
+    for (int i = 0; i < brokenCount; ++i) {
+        int idx = rand() % totalPanels;
+        m_brokenPanels.push_back(idx);
+    }
+
+    // Remove reactor cores/arcs (no blue glows for broken reactor variant)
+    m_reactorCores.clear();
+    m_energyArcs.clear();
+    m_reactorSmoke.clear();
+
+    // Mark vertical columns that should appear broken for L4
+    m_brokenColumns.clear();
+    const float separation = std::max(96.0f, m_panelSize.x * 0.5f);
+    int cols = static_cast<int>(std::ceil(m_screenWidth / separation)) + 2;
+    int brokenCols = std::max(1, cols / 6);
+    for (int i = 0; i < brokenCols; ++i) {
+        int c = rand() % cols;
+        m_brokenColumns.push_back(c);
+    }
+
+    // Enable a subtle vibration effect (amplitude in pixels)
+    m_vibrateAmplitude = 2.5f + static_cast<float>(rand() % 6); // 2.5..8.5 px
+    m_vibrateTimer = 0.0f;
+
+    // Slightly darker background tint for L4
+    m_backgroundGradient[0].color = sf::Color(8, 16, 18);
+    m_backgroundGradient[1].color = sf::Color(8, 16, 18);
+    m_backgroundGradient[2].color = sf::Color(2, 6, 8);
+    m_backgroundGradient[3].color = sf::Color(2, 6, 8);
 }
 
 void ParallaxSystem::updateReactor(float dt) {

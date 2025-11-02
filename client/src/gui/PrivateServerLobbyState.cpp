@@ -323,8 +323,9 @@ namespace rtype::client::gui {
             // Settings panel interactions (admin only)
             if (isAdmin && m_showSettings) {
                 // Start Level toggle (debug)
-                if (GUIHelper::isPointInRect(mousePos, m_rectStartLevel)) {
-                    m_startLevelIndex = (m_startLevelIndex + 1) % 3; // Lvl1 -> Lvl2 -> Lvl3
+                    if (GUIHelper::isPointInRect(mousePos, m_rectStartLevel)) {
+                        // Cycle through Level 1..4 (indices 0..3)
+                        m_startLevelIndex = (m_startLevelIndex + 1) % 4; // Lvl1 -> Lvl2 -> Lvl3 -> Lvl4
                     updateSettingsTexts();
                     rtype::client::network::senders::send_lobby_settings_update(static_cast<uint8_t>(m_difficultyIndex), m_friendlyFire, m_aiAssist, m_megaDamage, m_startLevelIndex);
                     return;
@@ -520,8 +521,8 @@ namespace rtype::client::gui {
         // Debug: Start Level selector label and value
         m_startLevelLabel.setString("Start level");
         {
-            const char* LEVELS[] = {"Lvl1", "Lvl2", "Lvl3"};
-            uint8_t idx = static_cast<uint8_t>(std::min<int>(m_startLevelIndex, 2));
+            const char* LEVELS[] = {"Lvl1", "Lvl2", "Lvl3", "Lvl4"};
+            uint8_t idx = static_cast<uint8_t>(std::min<int>(m_startLevelIndex, 3));
             m_startLevelValue.setString(LEVELS[idx]);
         }
 

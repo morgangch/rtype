@@ -46,6 +46,7 @@ public:
         Level1,     ///< Standard level background music
         Level2,     ///< Standard level background music
         Level3,     ///< Standard level background music
+        Level4,     ///< Standard level background music
         GameOver,  ///< Non-looping game over music
         BossFight1,  ///< Boss encounter music
         BossFight2,  ///< Boss encounter music
