@@ -221,7 +221,7 @@ namespace rtype::common::components {
         int getEffectiveDamage(int baseDamage) const {
             if (baseDamage == 0) return 0;
             int effectiveDamage = static_cast<int>(std::round(baseDamage * stats.damageMultiplier));
-            return std::max(1, effectiveDamage); // Ensure minimum 1 damage
+            return (std::max)(1, effectiveDamage); // Ensure minimum 1 damage
         }
 
         /**
