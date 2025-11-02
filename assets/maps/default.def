@@ -1,9 +1,9 @@
 80,40
 Default tile assets for letters and basic elements
 
-. BackgroundElement assets/sprites/default/empty.png
-# Obstacle assets/sprites/default/block.png
-* BackgroundElement assets/sprites/default/star.png
+. BackgroundElement assets/tiles/default/empty.tile
+# Obstacle assets/tiles/default/block.tile
+* BackgroundElement assets/tiles/default/star.tile
 W BackgroundElement assets/sprites/letters/W.png
 E BackgroundElement assets/sprites/letters/E.png
 L BackgroundElement assets/sprites/letters/L.png
