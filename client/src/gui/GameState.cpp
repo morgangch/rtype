@@ -102,6 +102,28 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
         case rtype::common::components::EnemyType::Core:
             e = createCoreBoss(x, y);
             break;
+            
+        // Debris (passive obstacles)
+        case rtype::common::components::EnemyType::DebrisSmall:
+            e = createSmallDebris(x, y);
+            break;
+        case rtype::common::components::EnemyType::DebrisLarge:
+            e = createLargeDebris(x, y);
+            break;
+            
+        // Power-ups (collectibles)
+        case rtype::common::components::EnemyType::PowerUpHealth:
+            e = createHealthPowerUp(x, y);
+            break;
+        case rtype::common::components::EnemyType::PowerUpWeapon:
+            e = createWeaponPowerUp(x, y);
+            break;
+        case rtype::common::components::EnemyType::PowerUpShield:
+            e = createShieldPowerUp(x, y);
+            break;
+        case rtype::common::components::EnemyType::PowerUpSpeed:
+            e = createSpeedPowerUp(x, y);
+            break;
 
         default:
             e = createEnemy(x, y);
@@ -206,7 +228,7 @@ ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t 
     return entity;
 }
 
-void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable) {
+void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable, bool isAlive) {
     // Skip updates for local player (controlled by client input)
     if (serverId == m_localPlayerServerId) {
         return;
@@ -225,6 +247,7 @@ void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y,
     if (health) {
         health->currentHp = hp;
         health->invulnerable = invulnerable;
+        health->isAlive = isAlive; // Server-authoritative death state
     }
 }
 
@@ -604,6 +627,7 @@ void GameState::update(float deltaTime) {
     updateChargedShotSystem(deltaTime);
     updateInvulnerabilitySystem(deltaTime);
     updateAnimationSystem(deltaTime);
+    updateDebrisRotation(deltaTime);  // Rotate debris for visual effect
     rtype::common::systems::MovementSystem::update(m_world, deltaTime); // shared movement system
     rtype::common::systems::FortressShieldSystem::update(m_world, deltaTime); // shield sync system
     updateCollisionSystem();

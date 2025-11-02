@@ -10,6 +10,7 @@
 
 #include "common/components/EnemyType.h"
 #include "components/RoomProperties.h"
+#include "packets.h"
 
 namespace rtype::server::network::senders {
     /**
@@ -33,6 +34,14 @@ namespace rtype::server::network::senders {
      */
     void send_player_state(ECS::EntityID to_player, ECS::EntityID playerId, float x, float y, float dir, uint16_t hp,
                                 bool isAlive);
+
+    /**
+     * Broadcasts ALL players' states in a single optimized packet to all players in the room
+     * This replaces individual PlayerStatePacket broadcasts (O(N²) → O(N) optimization)
+     * @param room_id The room entity ID to broadcast to
+     * @param allStates The AllPlayersStatePacket containing all player data
+     */
+    void broadcast_all_players_state(ECS::EntityID room_id, const AllPlayersStatePacket& allStates);
 
     /**
      * Broadcasts the game start packet to all players in the specified room

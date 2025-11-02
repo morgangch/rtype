@@ -36,6 +36,7 @@ enum Packets {
     SPAWN_BOSS_REQUEST = 16,
     PLAYER_SCORE_UPDATE = 17,
     LOBBY_SETTINGS_UPDATE = 18,
+    ALL_PLAYERS_STATE = 19, // Optimized: single packet for all players
 };
 
 
@@ -152,6 +153,21 @@ struct PlayerStatePacket {
     uint16_t hp;
     bool isAlive;
     bool invulnerable; // Server-authoritative invulnerability state
+};
+
+// Server → All: Update ALL players state in one packet (OPTIMIZED)
+// This replaces sending individual PlayerStatePacket for each player
+// Reduces network overhead from O(N²) to O(N) broadcasts
+struct AllPlayersStatePacket {
+    uint8_t playerCount; // Number of players in this packet (max 4)
+    struct PlayerData {
+        uint32_t playerId;
+        float x, y;
+        float dir;
+        uint16_t hp;
+        bool isAlive;
+        bool invulnerable;
+    } players[4]; // Support up to 4 players
 };
 
 // Server → All: Spawn a new enemy

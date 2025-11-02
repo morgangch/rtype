@@ -587,4 +587,200 @@ ECS::EntityID GameState::createCoreBoss(float x, float y) {
     return entity;
 }
 
+// ============================================================================
+// DEBRIS FACTORIES (Passive Obstacles)
+// ============================================================================
+
+ECS::EntityID GameState::createSmallDebris(float x, float y) {
+    auto entity = m_world.CreateEntity();
+    
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    
+    // Slow random drift
+    float vx = -50.0f - (rand() % 50);  // -50 to -100 px/s
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, vx, 0.0f, std::abs(vx));
+    
+    m_world.AddComponent<rtype::common::components::Health>(entity, 1);
+    
+    // Simple metal debris - small gray rectangle with darker border
+    sf::Color metalGray(120, 120, 130);      // Light gray metal
+    sf::Color darkGray(60, 60, 70);          // Dark border
+    sf::Vector2f debrisSize(15.0f + (rand() % 10), 15.0f + (rand() % 10));  // Random 15-25px
+    
+    m_world.AddComponent<rtype::client::components::SimpleShape>(
+        entity,
+        debrisSize,
+        metalGray,
+        darkGray,
+        2.0f  // Thick border
+    );
+    
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Enemy);
+    
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
+        entity, rtype::common::components::EnemyType::DebrisSmall);
+    
+    // No FireRate component - debris don't shoot
+    
+    return entity;
+}
+
+ECS::EntityID GameState::createLargeDebris(float x, float y) {
+    auto entity = m_world.CreateEntity();
+    
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    
+    // Medium drift
+    float vx = -70.0f - (rand() % 40);  // -70 to -110 px/s
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, vx, 0.0f, std::abs(vx));
+    
+    m_world.AddComponent<rtype::common::components::Health>(entity, 2);
+    
+    // Large metal debris - bigger gray rectangle with angular look
+    sf::Color metalGray(100, 100, 110);      // Darker gray metal
+    sf::Color darkGray(50, 50, 60);          // Very dark border
+    sf::Vector2f debrisSize(30.0f + (rand() % 15), 30.0f + (rand() % 15));  // Random 30-45px
+    
+    m_world.AddComponent<rtype::client::components::SimpleShape>(
+        entity,
+        debrisSize,
+        metalGray,
+        darkGray,
+        3.0f  // Thicker border for larger debris
+    );
+    
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Enemy);
+    
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
+        entity, rtype::common::components::EnemyType::DebrisLarge);
+    
+    return entity;
+}
+
+// ============================================================================
+// POWER-UP FACTORIES (Collectibles)
+// ============================================================================
+
+ECS::EntityID GameState::createHealthPowerUp(float x, float y) {
+    auto entity = m_world.CreateEntity();
+    
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, -60.0f, 0.0f, 60.0f);
+    
+    m_world.AddComponent<rtype::common::components::Health>(entity, 1);
+    
+    // Health power-up: Red cross/heart shape using rectangle
+    sf::Color healthRed(220, 20, 60);         // Crimson red
+    sf::Color healthBorder(255, 69, 0);       // Red-orange glow
+    
+    m_world.AddComponent<rtype::client::components::SimpleShape>(
+        entity,
+        sf::Vector2f(20.0f, 20.0f),  // Square-ish
+        healthRed,
+        healthBorder,
+        2.5f  // Glowing border
+    );
+    
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Enemy);
+    
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
+        entity, rtype::common::components::EnemyType::PowerUpHealth);
+    
+    return entity;
+}
+
+ECS::EntityID GameState::createWeaponPowerUp(float x, float y) {
+    auto entity = m_world.CreateEntity();
+    
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, -60.0f, 0.0f, 60.0f);
+    
+    m_world.AddComponent<rtype::common::components::Health>(entity, 1);
+    
+    // Weapon power-up: Orange/yellow diamond shape
+    sf::Color weaponOrange(255, 165, 0);      // Bright orange
+    sf::Color weaponBorder(255, 215, 0);      // Gold border
+    
+    m_world.AddComponent<rtype::client::components::SimpleShape>(
+        entity,
+        sf::Vector2f(18.0f, 18.0f),  // Diamond rotated 45°
+        weaponOrange,
+        weaponBorder,
+        2.0f
+    );
+    
+    // Set initial rotation to make it look like a diamond
+    auto* shape = m_world.GetComponent<rtype::client::components::SimpleShape>(entity);
+    if (shape) shape->rotation = 45.0f;
+    
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Enemy);
+    
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
+        entity, rtype::common::components::EnemyType::PowerUpWeapon);
+    
+    return entity;
+}
+
+ECS::EntityID GameState::createShieldPowerUp(float x, float y) {
+    auto entity = m_world.CreateEntity();
+    
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, -60.0f, 0.0f, 60.0f);
+    
+    m_world.AddComponent<rtype::common::components::Health>(entity, 1);
+    
+    // Shield power-up: Blue circle (shield shape)
+    sf::Color shieldBlue(30, 144, 255);       // Dodger blue
+    sf::Color shieldBorder(0, 191, 255);      // Deep sky blue glow
+    
+    m_world.AddComponent<rtype::client::components::SimpleShape>(
+        entity,
+        12.0f,  // Circle radius
+        shieldBlue,
+        shieldBorder,
+        3.0f  // Thick border for shield look
+    );
+    
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Enemy);
+    
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
+        entity, rtype::common::components::EnemyType::PowerUpShield);
+    
+    return entity;
+}
+
+ECS::EntityID GameState::createSpeedPowerUp(float x, float y) {
+    auto entity = m_world.CreateEntity();
+    
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, -60.0f, 0.0f, 60.0f);
+    
+    m_world.AddComponent<rtype::common::components::Health>(entity, 1);
+    
+    // Speed power-up: Green elongated rectangle (lightning bolt shape)
+    sf::Color speedGreen(0, 255, 127);        // Spring green
+    sf::Color speedBorder(50, 205, 50);       // Lime green glow
+    
+    m_world.AddComponent<rtype::client::components::SimpleShape>(
+        entity,
+        sf::Vector2f(25.0f, 15.0f),  // Elongated horizontal
+        speedGreen,
+        speedBorder,
+        2.0f
+    );
+    
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Enemy);
+    
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
+        entity, rtype::common::components::EnemyType::PowerUpSpeed);
+    
+    return entity;
+}
+
 } // namespace rtype::client::gui

@@ -154,6 +154,50 @@ void GameState::updateAnimationSystem(float deltaTime) {
     }
 }
 
+void GameState::updateDebrisRotation(float deltaTime) {
+    // Rotate debris slowly for visual effect
+    auto* shapes = m_world.GetAllComponents<rtype::client::components::SimpleShape>();
+    if (!shapes) return;
+    
+    for (auto& [entity, shapePtr] : *shapes) {
+        auto* enemyType = m_world.GetComponent<rtype::common::components::EnemyTypeComponent>(entity);
+        if (!enemyType) continue;
+        
+        // Rotate debris entities
+        if (enemyType->type == rtype::common::components::EnemyType::DebrisSmall) {
+            shapePtr->rotation += 30.0f * deltaTime;  // Rotate 30 deg/sec
+            if (shapePtr->rotation >= 360.0f) shapePtr->rotation -= 360.0f;
+        }
+        else if (enemyType->type == rtype::common::components::EnemyType::DebrisLarge) {
+            shapePtr->rotation += 15.0f * deltaTime;  // Slower rotation for larger debris
+            if (shapePtr->rotation >= 360.0f) shapePtr->rotation -= 360.0f;
+        }
+        // Rotate power-ups for visual effect
+        else if (enemyType->type == rtype::common::components::EnemyType::PowerUpWeapon) {
+            shapePtr->rotation += 60.0f * deltaTime;  // Fast spin for weapon upgrade
+            if (shapePtr->rotation >= 360.0f) shapePtr->rotation -= 360.0f;
+        }
+        else if (enemyType->type == rtype::common::components::EnemyType::PowerUpHealth ||
+                 enemyType->type == rtype::common::components::EnemyType::PowerUpShield ||
+                 enemyType->type == rtype::common::components::EnemyType::PowerUpSpeed) {
+            // Gentle pulse effect using sine wave for size
+            static float pulseTimer = 0.0f;
+            pulseTimer += deltaTime * 3.0f;  // Pulse speed
+            float pulseFactor = 1.0f + 0.15f * std::sin(pulseTimer);  // ±15% size change
+            
+            if (shapePtr->type == rtype::client::components::ShapeType::Circle) {
+                // Store original radius if not already stored
+                static float originalRadius = shapePtr->radius;
+                shapePtr->radius = originalRadius * pulseFactor;
+            } else {
+                // Rectangle pulse
+                static sf::Vector2f originalSize = shapePtr->size;
+                shapePtr->size = sf::Vector2f(originalSize.x * pulseFactor, originalSize.y * pulseFactor);
+            }
+        }
+    }
+}
+
 void GameState::updateFireRateSystem(float deltaTime) {
     // Use the common fire rate system
     rtype::common::systems::FireRateSystem::update(m_world, deltaTime);

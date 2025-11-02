@@ -100,6 +100,16 @@ ServerEnemySystem::ServerEnemySystem()
     _enemyConfigs[rtype::common::components::EnemyType::Flanker] = {rtype::common::components::EnemyType::Flanker, 4.5f, 0.0f};
     _enemyConfigs[rtype::common::components::EnemyType::Turret] = {rtype::common::components::EnemyType::Turret, 5.5f, 0.0f};
     _enemyConfigs[rtype::common::components::EnemyType::Waver] = {rtype::common::components::EnemyType::Waver, 4.0f, 0.0f};
+    
+    // Debris (passive obstacles - spawn more frequently)
+    _enemyConfigs[rtype::common::components::EnemyType::DebrisSmall] = {rtype::common::components::EnemyType::DebrisSmall, 3.0f, 0.0f};
+    _enemyConfigs[rtype::common::components::EnemyType::DebrisLarge] = {rtype::common::components::EnemyType::DebrisLarge, 5.0f, 0.0f};
+    
+    // Power-ups (spawn rarely)
+    _enemyConfigs[rtype::common::components::EnemyType::PowerUpHealth] = {rtype::common::components::EnemyType::PowerUpHealth, 15.0f, 0.0f};
+    _enemyConfigs[rtype::common::components::EnemyType::PowerUpWeapon] = {rtype::common::components::EnemyType::PowerUpWeapon, 20.0f, 0.0f};
+    _enemyConfigs[rtype::common::components::EnemyType::PowerUpShield] = {rtype::common::components::EnemyType::PowerUpShield, 25.0f, 0.0f};
+    _enemyConfigs[rtype::common::components::EnemyType::PowerUpSpeed] = {rtype::common::components::EnemyType::PowerUpSpeed, 18.0f, 0.0f};
 }
 
 void ServerEnemySystem::updatePhase(float deltaTime)
@@ -277,21 +287,33 @@ void ServerEnemySystem::updateEnemySpawning(ECS::World& world, float deltaTime) 
 
         // Determine if this enemy type should spawn based on current phase and level
         bool spawnAllowed = false;
-        switch (_phase) {
-            case EnemySpawnPhase::OnlyBasic:
-                // Only spawn basic enemy for current level
-                spawnAllowed = (type == basicType);
-                break;
+        
+        // Debris and power-ups spawn in ALL phases (always allowed)
+        if (type == rtype::common::components::EnemyType::DebrisSmall ||
+            type == rtype::common::components::EnemyType::DebrisLarge ||
+            type == rtype::common::components::EnemyType::PowerUpHealth ||
+            type == rtype::common::components::EnemyType::PowerUpWeapon ||
+            type == rtype::common::components::EnemyType::PowerUpShield ||
+            type == rtype::common::components::EnemyType::PowerUpSpeed) {
+            spawnAllowed = true;
+        } else {
+            // Regular enemies spawn based on phase
+            switch (_phase) {
+                case EnemySpawnPhase::OnlyBasic:
+                    // Only spawn basic enemy for current level
+                    spawnAllowed = (type == basicType);
+                    break;
 
-            case EnemySpawnPhase::BasicAndAdvanced:
-                // Spawn both basic and advanced for current level
-                spawnAllowed = (type == basicType || type == advancedType);
-                break;
+                case EnemySpawnPhase::BasicAndAdvanced:
+                    // Spawn both basic and advanced for current level
+                    spawnAllowed = (type == basicType || type == advancedType);
+                    break;
 
-            case EnemySpawnPhase::BossPhase:
-                // Continue spawning basic and advanced during boss fight
-                spawnAllowed = (type == basicType || type == advancedType);
-                break;
+                case EnemySpawnPhase::BossPhase:
+                    // Continue spawning basic and advanced during boss fight
+                    spawnAllowed = (type == basicType || type == advancedType);
+                    break;
+            }
         }
 
         if (!spawnAllowed) continue;
@@ -329,14 +351,18 @@ void ServerEnemySystem::updatePlayerStateBroadcast(ECS::World& world, float delt
         auto *rp = roomPair.second.get();
         if (!rp || !rp->isGameStarted) continue; // Skip rooms still in lobby
 
+        // Build ALL_PLAYERS_STATE packet for this room
+        AllPlayersStatePacket allStates{};
+        allStates.playerCount = 0;
+
         auto players = world.GetAllComponents<rtype::common::components::Player>();
         if (!players) continue;
         
+        // Collect all players in this room
         for (auto &pair : *players) {
             ECS::EntityID pid = pair.first;
 
-            // Determine the room for this player entity.
-            // Prefer the PlayerConn->room_code (network players), fall back to LinkedRoom for server-only entities
+            // Determine the room for this player entity
             ECS::EntityID playerRoom = 0;
             auto* pconn = world.GetComponent<rtype::server::components::PlayerConn>(pid);
             if (pconn) {
@@ -351,23 +377,29 @@ void ServerEnemySystem::updatePlayerStateBroadcast(ECS::World& world, float delt
             auto* health = world.GetComponent<rtype::common::components::Health>(pid);
             if (!pos || !health) continue;
 
-            // Send this player's state to every networked client in the same room
-            auto allPlayers = world.GetAllComponents<rtype::common::components::Player>();
-            if (!allPlayers) continue;
-            for (auto &pp : *allPlayers) {
-                ECS::EntityID other = pp.first;
-                auto* other_room = world.GetComponent<rtype::server::components::LinkedRoom>(other);
-                if (!other_room) continue;
-                // restrict to same room
-                if (other_room->room_id != room) continue;
-
-                // Only actually send to entities that have a PlayerConn (real network clients)
-                auto* otherConn = world.GetComponent<rtype::server::components::PlayerConn>(other);
-                if (!otherConn) continue;
-
-                rtype::server::network::senders::send_player_state(other, pid, pos->x, pos->y, pos->rotation, health->currentHp, health->isAlive);
+            // Add player to the packet (max 4 players)
+            if (allStates.playerCount >= 4) {
+                std::cerr << "[ServerEnemySystem] WARNING: More than 4 players in room " << room << std::endl;
+                break;
             }
+
+            auto& playerData = allStates.players[allStates.playerCount];
+            playerData.playerId = static_cast<uint32_t>(pid);
+            playerData.x = pos->x;
+            playerData.y = pos->y;
+            playerData.dir = pos->rotation;
+            playerData.hp = health->currentHp;
+            playerData.isAlive = health->isAlive;
+            playerData.invulnerable = health->invulnerable;
+
+            allStates.playerCount++;
         }
+
+        // Only send if there are players to update
+        if (allStates.playerCount == 0) continue;
+
+        // Broadcast to ALL networked clients in this room (single packet instead of N²)
+        rtype::server::network::senders::broadcast_all_players_state(room, allStates);
     }
 }
 
@@ -455,6 +487,40 @@ void ServerEnemySystem::spawnEnemy(ECS::World &world, ECS::EntityID room, rtype:
         case rtype::common::components::EnemyType::Core:
             hp = 100; vx = -40.0f;
             break;
+            
+        // Debris (passive obstacles - no shooting)
+        case rtype::common::components::EnemyType::DebrisSmall:
+            hp = 1; 
+            vx = -50.0f - (rand() % 50);  // Random slow drift -50 to -100
+            spawnY = 50.0f + (rand() % 620);  // Full screen height
+            break;
+        case rtype::common::components::EnemyType::DebrisLarge:
+            hp = 2; 
+            vx = -70.0f - (rand() % 40);  // Medium drift -70 to -110
+            spawnY = 50.0f + (rand() % 600);
+            break;
+            
+        // Power-ups (collectibles - drift slowly)
+        case rtype::common::components::EnemyType::PowerUpHealth:
+            hp = 1; 
+            vx = -60.0f;
+            spawnY = 200.0f + (rand() % 320);  // Middle area
+            break;
+        case rtype::common::components::EnemyType::PowerUpWeapon:
+            hp = 1; 
+            vx = -60.0f;
+            spawnY = 200.0f + (rand() % 320);
+            break;
+        case rtype::common::components::EnemyType::PowerUpShield:
+            hp = 1; 
+            vx = -60.0f;
+            spawnY = 200.0f + (rand() % 320);
+            break;
+        case rtype::common::components::EnemyType::PowerUpSpeed:
+            hp = 1; 
+            vx = -60.0f;
+            spawnY = 200.0f + (rand() % 320);
+            break;
 
         default:
             hp = 1; vx = -100.0f;
@@ -472,6 +538,21 @@ void ServerEnemySystem::spawnEnemy(ECS::World &world, ECS::EntityID room, rtype:
     // Add cyclic shield to Shielded enemy type and Turret type
     if (type == rtype::common::components::EnemyType::Shielded || type == rtype::common::components::EnemyType::Turret) {
         root.world.AddComponent<rtype::common::components::ShieldComponent>(enemy, rtype::common::components::ShieldType::Cyclic, true);
+    }
+    
+    // Debris and power-ups don't shoot - don't add FireRate component
+    bool isPassiveEntity = (
+        type == rtype::common::components::EnemyType::DebrisSmall ||
+        type == rtype::common::components::EnemyType::DebrisLarge ||
+        type == rtype::common::components::EnemyType::PowerUpHealth ||
+        type == rtype::common::components::EnemyType::PowerUpWeapon ||
+        type == rtype::common::components::EnemyType::PowerUpShield ||
+        type == rtype::common::components::EnemyType::PowerUpSpeed
+    );
+    
+    if (!isPassiveEntity) {
+        // Add FireRate component for shooting enemies only
+        // Note: FireRate is added by server collision/spawn systems for actual enemies
     }
 
     rtype::server::network::senders::broadcast_enemy_spawn(room, enemy, type, spawnX, spawnY, hp);

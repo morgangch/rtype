@@ -48,6 +48,11 @@ namespace rtype::client::controllers::game_controller {
     void handle_player_state(const packet_t& packet);
     
     /**
+     * @brief Handle ALL_PLAYERS_STATE packet from server (optimized batch update).
+     */
+    void handle_all_players_state(const packet_t& packet);
+    
+    /**
      * @brief Handle LOBBY_STATE packet from server.
      */
     void handle_lobby_state(const packet_t& packet);

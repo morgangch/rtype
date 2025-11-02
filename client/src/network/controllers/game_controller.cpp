@@ -139,7 +139,37 @@ namespace rtype::client::controllers::game_controller {
         from_network_endian(p->hp);
 
         using rtype::client::gui::g_gameState;
-        if (g_gameState) g_gameState->updateEntityStateFromServer(p->playerId, p->x, p->y, p->hp, p->invulnerable);
+        if (g_gameState) g_gameState->updateEntityStateFromServer(p->playerId, p->x, p->y, p->hp, p->invulnerable, p->isAlive);
+    }
+
+    void handle_all_players_state(const packet_t &packet) {
+        AllPlayersStatePacket *p = (AllPlayersStatePacket *) packet.data;
+
+        using rtype::client::gui::g_gameState;
+        if (!g_gameState) return;
+
+        // Process all players in the packet
+        for (uint8_t i = 0; i < p->playerCount; ++i) {
+            auto& playerData = p->players[i];
+            
+            // Convert from network endian
+            from_network_endian(playerData.playerId);
+            from_network_endian(playerData.x);
+            from_network_endian(playerData.y);
+            from_network_endian(playerData.dir);
+            from_network_endian(playerData.hp);
+            // Booleans don't need endian conversion
+
+            // Update client game state with this player's data
+            g_gameState->updateEntityStateFromServer(
+                playerData.playerId, 
+                playerData.x, 
+                playerData.y, 
+                playerData.hp, 
+                playerData.invulnerable,
+                playerData.isAlive  // Now includes isAlive for proper death sync
+            );
+        }
     }
 
     void handle_lobby_state(const packet_t &packet) {

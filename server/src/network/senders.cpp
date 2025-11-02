@@ -182,6 +182,31 @@ namespace rtype::server::network::senders {
         pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), PLAYER_STATE, nullptr, false);
     }
 
+    void broadcast_all_players_state(ECS::EntityID room_id, const AllPlayersStatePacket& allStates) {
+        auto room = root.world.GetComponent<rtype::server::components::RoomProperties>(room_id);
+        if (!room) {
+            std::cerr << "ERROR: Cannot broadcast AllPlayersStatePacket, room " << room_id << " not found" << std::endl;
+            return;
+        }
+
+        // Create a copy to convert to network endian
+        AllPlayersStatePacket pkt = allStates;
+
+        // Convert all player data to network endian
+        for (uint8_t i = 0; i < pkt.playerCount; ++i) {
+            to_network_endian(pkt.players[i].playerId);
+            to_network_endian(pkt.players[i].x);
+            to_network_endian(pkt.players[i].y);
+            to_network_endian(pkt.players[i].dir);
+            to_network_endian(pkt.players[i].hp);
+            // Note: booleans don't need endian conversion
+        }
+
+        // Broadcast to all players in the room
+        // Use important=false since states are sent frequently and can tolerate occasional loss
+        room->broadcastPacket(&pkt, sizeof(pkt), ALL_PLAYERS_STATE, false);
+    }
+
 
     void broadcast_player_disconnect(ECS::EntityID room_id, uint32_t playerId) {
         PlayerDisconnectPacket pkt{};

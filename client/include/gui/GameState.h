@@ -251,16 +251,14 @@ namespace rtype::client::gui {
         ECS::EntityID createProjectileFromServer(uint32_t serverId, uint32_t ownerId, float x, float y, float vx, float vy, uint16_t damage, bool piercing, bool isCharged);
 
         /**
-         * @brief Update an entity position and HP based on authoritative server snapshot
          * @param serverId Server entity id
          * @param x X position
          * @param y Y position
          * @param hp Health value
          * @param invulnerable Invulnerability state from server
+         * @param isAlive Whether the entity is alive (server-authoritative)
          */
-        void updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable);
-
-        /**
+        void updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable, bool isAlive);        /**
          * @brief Destroy a local entity corresponding to a server entity id
          * @param serverId Server entity id to destroy
          */
@@ -433,9 +431,77 @@ namespace rtype::client::gui {
          * @param y Y position
          * @return Entity ID of the created Core Boss
          *
-         * Creates the final Core boss with complex attack phases and maximum difficulty.
+         * Creates the final Core boss with multi-phase evolution and complex attack patterns.
          */
         ECS::EntityID createCoreBoss(float x, float y);
+
+        // ========================================================================
+        // DEBRIS FACTORIES (Passive Obstacles)
+        // ========================================================================
+
+        /**
+         * @brief Create a small debris entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created small debris
+         *
+         * Creates a small asteroid debris that drifts slowly without shooting.
+         */
+        ECS::EntityID createSmallDebris(float x, float y);
+
+        /**
+         * @brief Create a large debris entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created large debris
+         *
+         * Creates a large asteroid debris with medium drift and rotation.
+         */
+        ECS::EntityID createLargeDebris(float x, float y);
+
+        // ========================================================================
+        // POWER-UP FACTORIES (Collectibles)
+        // ========================================================================
+
+        /**
+         * @brief Create a health power-up entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created health power-up
+         *
+         * Creates a health restoration collectible.
+         */
+        ECS::EntityID createHealthPowerUp(float x, float y);
+
+        /**
+         * @brief Create a weapon upgrade power-up entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created weapon power-up
+         *
+         * Creates a weapon upgrade collectible.
+         */
+        ECS::EntityID createWeaponPowerUp(float x, float y);
+
+        /**
+         * @brief Create a shield power-up entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created shield power-up
+         *
+         * Creates a temporary shield collectible.
+         */
+        ECS::EntityID createShieldPowerUp(float x, float y);
+
+        /**
+         * @brief Create a speed boost power-up entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created speed power-up
+         *
+         * Creates a speed boost collectible.
+         */
+        ECS::EntityID createSpeedPowerUp(float x, float y);
 
         /**
          * @brief Create a player projectile entity
@@ -517,6 +583,14 @@ namespace rtype::client::gui {
          * Advances animation frames for entities with Animation component.
          */
         void updateAnimationSystem(float deltaTime);
+
+        /**
+         * @brief Update debris rotation for visual effect
+         * @param deltaTime Time elapsed since last frame
+         *
+         * Slowly rotates debris entities for a more natural floating effect.
+         */
+        void updateDebrisRotation(float deltaTime);
 
         /**
          * @brief Update player-specific animation state

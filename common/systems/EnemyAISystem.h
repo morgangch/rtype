@@ -84,8 +84,18 @@ namespace rtype::common::systems {
                 if (!fireRate || !pos) continue;
                 if (!fireRate->canFire()) continue;
 
-                // Enemies that don't shoot (only Suicide)
-                if (enemyType && enemyType->type == components::EnemyType::Suicide) {
+                // Entities that don't shoot
+                if (enemyType && (
+                    enemyType->type == components::EnemyType::Suicide ||
+                    // Debris don't shoot
+                    enemyType->type == components::EnemyType::DebrisSmall ||
+                    enemyType->type == components::EnemyType::DebrisLarge ||
+                    // Power-ups don't shoot
+                    enemyType->type == components::EnemyType::PowerUpHealth ||
+                    enemyType->type == components::EnemyType::PowerUpWeapon ||
+                    enemyType->type == components::EnemyType::PowerUpShield ||
+                    enemyType->type == components::EnemyType::PowerUpSpeed
+                )) {
                     continue;
                 }
 

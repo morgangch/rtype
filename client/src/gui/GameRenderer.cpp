@@ -28,6 +28,33 @@ void GameState::renderEntities(sf::RenderWindow& window) {
     
     for (auto& [entity, posPtr] : *positions) {
         auto& pos = *posPtr;
+        
+        // Check if entity has SimpleShape component (takes priority over Sprite)
+        auto* simpleShape = m_world.GetComponent<rtype::client::components::SimpleShape>(entity);
+        if (simpleShape) {
+            // Render SimpleShape instead of Sprite
+            if (simpleShape->type == rtype::client::components::ShapeType::Rectangle) {
+                sf::RectangleShape shape(simpleShape->size);
+                shape.setOrigin(simpleShape->size.x * 0.5f, simpleShape->size.y * 0.5f);
+                shape.setPosition(pos.x, pos.y);
+                shape.setRotation(simpleShape->rotation);
+                shape.setFillColor(simpleShape->fillColor);
+                shape.setOutlineColor(simpleShape->outlineColor);
+                shape.setOutlineThickness(simpleShape->outlineThickness);
+                window.draw(shape);
+            } 
+            else if (simpleShape->type == rtype::client::components::ShapeType::Circle) {
+                sf::CircleShape shape(simpleShape->radius);
+                shape.setOrigin(simpleShape->radius, simpleShape->radius);
+                shape.setPosition(pos.x, pos.y);
+                shape.setFillColor(simpleShape->fillColor);
+                shape.setOutlineColor(simpleShape->outlineColor);
+                shape.setOutlineThickness(simpleShape->outlineThickness);
+                window.draw(shape);
+            }
+            continue; // Skip sprite rendering for entities with SimpleShape
+        }
+        
         auto* sprite = m_world.GetComponent<rtype::client::components::Sprite>(entity);
         
         if (!sprite || !sprite->visible) continue;

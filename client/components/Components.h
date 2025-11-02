@@ -11,5 +11,6 @@
 
 #include "Sprite.h"
 #include "Animation.h"
+#include "SimpleShape.h"
 
 #endif // CLIENT_COMPONENTS_H

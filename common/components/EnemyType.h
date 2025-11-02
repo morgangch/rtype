@@ -36,6 +36,16 @@ namespace rtype::common::components {
         Serpent,        ///< Serpent boss - multi-segment body with wave movement, head shoots spread
         Fortress,       ///< Fortress boss - stationary core with RED shield requiring 2 charged shots to break, fires 2 charged projectiles
         Core,           ///< Core boss (FINAL) - multi-phase evolution: circular->spiral+adds->chaotic pattern
+        
+        // Debris (passive obstacles - no shooting)
+        DebrisSmall,    ///< Small asteroid debris - slow random drift
+        DebrisLarge,    ///< Large asteroid debris - medium drift with rotation
+        
+        // Power-ups (4 types - collectibles)
+        PowerUpHealth,      ///< Health restoration power-up
+        PowerUpWeapon,      ///< Weapon upgrade power-up
+        PowerUpShield,      ///< Temporary shield power-up
+        PowerUpSpeed,       ///< Speed boost power-up
     };
     
     /**
