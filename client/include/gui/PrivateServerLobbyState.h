@@ -265,11 +265,17 @@ namespace rtype::client::gui {
         sf::RectangleShape m_rectMegaDamage; // invisible clickable area
         sf::RectangleShape m_sqMegaDamage;   // visual toggle square
 
+        // Debug: Start Level selector (Lvl1/Lvl2/Lvl3/Lvl4), shown under Mega Damage
+        sf::Text m_startLevelLabel;
+        sf::Text m_startLevelValue;
+        sf::RectangleShape m_rectStartLevel; // invisible clickable area
+
         // Settings values (cosmetic except cheats to be applied to admin later)
         int  m_difficultyIndex{1}; // 0=Easy, 1=Normal, 2=Hard
         bool m_friendlyFire{false};
         bool m_aiAssist{true};
         bool m_megaDamage{false};
+        uint8_t m_startLevelIndex{0}; // 0=Lvl1, 1=Lvl2, 2=Lvl3, 3=Lvl4 (debug)
         // Visual squares for toggles
         sf::RectangleShape m_sqFriendlyFire;
 

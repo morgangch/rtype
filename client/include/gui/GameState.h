@@ -208,6 +208,12 @@ namespace rtype::client::gui {
      */
     int getLevelIndex() const;
 
+        /**
+         * @brief Set current level index (0 = level1, 1 = level2, ...)
+         * @param index New level index to apply before entering the state
+         */
+        void setLevelIndex(int index);
+
         /* === Network-aware helpers (used by packet handlers) === */
         /**
          * @brief Create or update an enemy entity based on server spawn packet
@@ -682,6 +688,25 @@ namespace rtype::client::gui {
          */
         void renderGameOverMenu(sf::RenderWindow& window);
 
+    /* === Victory Effects (Confetti) === */
+    /**
+     * @brief Spawn/initialize confetti effect for victory screen
+     * @param initialBurst Number of particles to spawn immediately
+     */
+    void spawnVictoryConfetti(std::size_t initialBurst = 150);
+    /**
+     * @brief Update victory effects (particles) each frame
+     */
+    void updateVictoryEffects(float deltaTime);
+    /**
+     * @brief Render victory effects below UI (after overlay)
+     */
+    void renderVictoryEffects(sf::RenderWindow& window);
+    /**
+     * @brief Clear and disable confetti effects
+     */
+    void clearVictoryEffects();
+
         /* === UI and Resource Management === */
         /**
          * @brief Set up game over UI text elements
@@ -704,6 +729,14 @@ namespace rtype::client::gui {
          * Pauses gameplay and displays menu options.
          */
         void showInGameMenu(bool isGameOver = false);
+
+        /**
+         * @brief Show the victory screen (YOU WON)
+         * 
+         * Displays a simplified end screen with a victory title, score,
+         * and a single Quit button. Plays victory music.
+         */
+        void showVictoryScreen();
 
         /**
          * @brief Resume gameplay from paused/menu state
@@ -757,6 +790,8 @@ namespace rtype::client::gui {
         GameStatus m_gameStatus{GameStatus::Playing};
         /// Flag indicating game over condition
         bool m_isGameOver{false};
+        // Flag indicating victory condition
+        bool m_isVictory{false};
         /// Currently selected menu option index
         int m_selectedMenuOption{0};
         /// SFML text element for game over title
@@ -798,6 +833,23 @@ namespace rtype::client::gui {
         int m_levelIndex{0};
         /// If true, render a plain white background instead of parallax (TEMP testing)
         bool m_forceWhiteBackground{false};
+
+        /* === Victory Confetti Data === */
+        struct ConfettiParticle {
+            sf::Vector2f pos;
+            sf::Vector2f vel;
+            float rotation{0.f};
+            float angular{0.f};
+            sf::Color color{255,255,255,255};
+            float size{6.f};
+            float age{0.f};
+            float life{4.f};
+        };
+        std::vector<ConfettiParticle> m_confetti;
+        bool m_confettiActive{false};
+        float m_confettiSpawnAccum{0.f};
+        float m_confettiSpawnRate{120.f}; // particles per second while on victory
+        std::size_t m_confettiMax{350};
 
         /* === Game Constants === */
         /// Interval in seconds between enemy projectile shots

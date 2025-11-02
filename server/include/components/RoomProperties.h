@@ -101,6 +101,7 @@ namespace rtype::server::components {
         bool friendlyFire = false;    // cosmetic for now
         bool aiAssistEnabled = false; // spawn AI assistant if exactly one human
         bool megaDamageEnabled = false; // admin projectile dmg=1000
+        uint8_t startLevelIndex = 0; // debug start level: 0=Lvl1, 1=Lvl2
     };
 }
 

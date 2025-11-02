@@ -245,30 +245,38 @@ void GameState::handleEvent(const sf::Event& event) {
 void GameState::handleMenuInput(const sf::Event& event) {
     // Keyboard navigation
     if (event.type == sf::Event::KeyPressed) {
-        if (event.key.code == sf::Keyboard::Up || event.key.code == sf::Keyboard::Z) {
-            m_selectedMenuOption = 0;
-        } else if (event.key.code == sf::Keyboard::Down || event.key.code == sf::Keyboard::S) {
-            m_selectedMenuOption = 1;
-        } else if (event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) {
-            if (m_selectedMenuOption == 0) {
-                // Resume/Restart game
-                if (m_isGameOver) {
-                    resetGame();
-                }
-                resumeGame();
-            } else {
-                // Return to main menu
+        if (m_isVictory) {
+            // In victory screen, Enter always quits to menu; Up/Down ignored
+            if (event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) {
                 m_stateManager.setLastLevelIndex(m_levelIndex);
                 m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
             }
-        } else if (event.key.code == sf::Keyboard::Escape && !m_isGameOver) {
-            // ESC to resume (only if paused, not game over)
-            resumeGame();
+        } else {
+            if (event.key.code == sf::Keyboard::Up || event.key.code == sf::Keyboard::Z) {
+                m_selectedMenuOption = 0;
+            } else if (event.key.code == sf::Keyboard::Down || event.key.code == sf::Keyboard::S) {
+                m_selectedMenuOption = 1;
+            } else if (event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) {
+                if (m_selectedMenuOption == 0) {
+                    // Resume/Restart game
+                    if (m_isGameOver) {
+                        resetGame();
+                    }
+                    resumeGame();
+                } else {
+                    // Return to main menu
+                    m_stateManager.setLastLevelIndex(m_levelIndex);
+                    m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
+                }
+            } else if (event.key.code == sf::Keyboard::Escape && !m_isGameOver) {
+                // ESC to resume (only if paused, not game over)
+                resumeGame();
+            }
         }
     }
     
     // Mouse hover detection
-    if (event.type == sf::Event::MouseMoved) {
+    if (!m_isVictory && event.type == sf::Event::MouseMoved) {
         sf::Vector2f mousePos(static_cast<float>(event.mouseMove.x),
                              static_cast<float>(event.mouseMove.y));
         
@@ -299,12 +307,12 @@ void GameState::handleMenuInput(const sf::Event& event) {
         const float buttonHeight = 60.0f;
         const float buttonX = (SCREEN_WIDTH - buttonWidth) * 0.5f;
         const float button1Y = 340.0f;
-        const float button2Y = 420.0f;
+        const float button2Y = m_isVictory ? 360.0f : 420.0f;
         
         sf::FloatRect restartButton(buttonX, button1Y, buttonWidth, buttonHeight);
         sf::FloatRect menuButton(buttonX, button2Y, buttonWidth, buttonHeight);
         
-        if (restartButton.contains(mousePos)) {
+        if (!m_isVictory && restartButton.contains(mousePos)) {
             if (m_isGameOver) {
                 resetGame();
             }

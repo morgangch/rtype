@@ -59,7 +59,7 @@ namespace rtype::client::network::senders {
      * @param aiAssist Spawn AI assistant when exactly one player
      * @param megaDamage Admin projectile damage becomes 1000
      */
-    void send_lobby_settings_update(uint8_t difficultyIndex, bool friendlyFire, bool aiAssist, bool megaDamage);
+    void send_lobby_settings_update(uint8_t difficultyIndex, bool friendlyFire, bool aiAssist, bool megaDamage, uint8_t startLevel);
 }
 
 #endif //SENDERS_H

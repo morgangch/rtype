@@ -18,6 +18,7 @@
 #include "packet.h"
 #include "packethandler.h"
 #include "ECS/Types.h"
+#include <string>
 
 namespace ECS {
     class World;

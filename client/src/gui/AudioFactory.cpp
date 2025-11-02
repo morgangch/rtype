@@ -9,11 +9,13 @@ std::string AudioFactory::getMusicPath(MusicId id) {
         case MusicId::Level1:      return "assets/audio/music/level1.mp3";
         case MusicId::Level2:      return "assets/audio/music/level2.mp3";
         case MusicId::Level3:      return "assets/audio/music/level3.mp3";
+        case MusicId::Level4:      return "assets/audio/music/level4.mp3";
         case MusicId::GameOver:    return "assets/audio/music/gameover.mp3";
         case MusicId::BossFight1:  return "assets/audio/enemy/music/bossfight_tankdestroyer.mp3";
         case MusicId::BossFight2:  return "assets/audio/enemy/music/bossfight_thevesselcore.mp3";
         case MusicId::BossFight3:  return "assets/audio/enemy/music/bossfight_theguardianofthecore.mp3";
         case MusicId::BossFight4:  return "assets/audio/enemy/music/bossfight_reactorovermind.mp3";
+        case MusicId::Victory:     return "assets/audio/music/victory.mp3";
         default: return {};
     }
 }

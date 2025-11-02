@@ -80,6 +80,7 @@ struct GameStartRequestPacket {
  * Server → All clients in room
  */
 struct GameStartPacket {
+    uint8_t startLevel;   // starting level index: 0=Lvl1, 1=Lvl2
 };
 
 /**
@@ -238,6 +239,7 @@ struct LobbySettingsUpdatePacket {
     bool friendlyFire;    // cosmetic for now
     bool aiAssist;        // functional
     bool megaDamage;      // functional
+    uint8_t startLevel;   // debug start level: 0=Lvl1, 1=Lvl2
 };
 
 /**

@@ -62,7 +62,8 @@ namespace rtype::server::network::senders {
             return;
         }
 
-        GameStartPacket pkt{}; // Empty packet for game start signal
+        GameStartPacket pkt{}; // Include start level so clients can sync visuals immediately
+        pkt.startLevel = room->startLevelIndex; // 0=Lvl1,1=Lvl2
 
         std::cout << "Broadcasting GAME_START to room " << room_id << std::endl;
         room->broadcastPacket(&pkt, sizeof(pkt), GAME_START, true);
