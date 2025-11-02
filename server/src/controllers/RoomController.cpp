@@ -213,11 +213,18 @@ void room_controller::sendJoinAccepted(ECS::EntityID player, ECS::EntityID room)
     // Store room entity ID in player's connection (note: field name 'room_code' is misleading, it stores entity ID)
     playernet->room_code = room;
 
+    // Get player's vessel type
+    uint8_t vesselType = 0; // Default: CrimsonStriker
+    auto *vesselClass = root.world.GetComponent<rtype::common::components::VesselClass>(player);
+    if (vesselClass) {
+        vesselType = static_cast<uint8_t>(vesselClass->type);
+    }
+
     std::cout << "Sending JOIN_ROOM_ACCEPTED to player " << player << " (isAdmin=" <<
-            (rp->ownerId == player) << ", roomCode=" << rp->joinCode << ", playerServerId=" << player << ")" <<
-            std::endl;
+            (rp->ownerId == player) << ", roomCode=" << rp->joinCode << ", playerServerId=" << player << 
+            ", vesselType=" << static_cast<int>(vesselType) << ")" << std::endl;
     network::senders::send_join_room_accepted(player, (rp->ownerId == player), rp->joinCode,
-                                              static_cast<uint32_t>(player));
+                                              static_cast<uint32_t>(player), vesselType);
 }
 
 void room_controller::notifyJoiningPlayerOfExisting(ECS::EntityID player, ECS::EntityID room) {
@@ -300,30 +307,12 @@ ECS::EntityID room_controller::createServerProjectile(ECS::EntityID room, ECS::E
     
     switch (weaponMode) {
         case rtype::common::components::WeaponMode::Single: {
-            // SolarGuardian charged shot: Shield instead of projectile
-            if (vesselClass->type == rtype::common::components::VesselType::SolarGuardian && isCharged) {
-                // Apply shield to the player
-                auto* existingShield = root.world.GetComponent<rtype::common::components::Shield>(owner);
-                if (existingShield) {
-                    // Activate existing shield
-                    if (existingShield->activate()) {
-                        std::cout << "[SHIELD] Player " << owner << " activated shield" << std::endl;
-                        // Broadcast shield activation to all clients
-                        network::senders::broadcast_shield_state(room, static_cast<uint32_t>(owner), true, existingShield->duration);
-                    }
-                } else {
-                    // Add new shield component (3s duration, 50% damage reduction, 6s cooldown)
-                    root.world.AddComponent<rtype::common::components::Shield>(owner, 3.0f, 0.5f, 6.0f);
-                    auto* shield = root.world.GetComponent<rtype::common::components::Shield>(owner);
-                    if (shield && shield->activate()) {
-                        std::cout << "[SHIELD] Player " << owner << " activated shield" << std::endl;
-                        // Broadcast shield activation to all clients
-                        network::senders::broadcast_shield_state(room, static_cast<uint32_t>(owner), true, shield->duration);
-                    }
-                }
-                // Don't create projectile, just return 0
-                return 0;
-            }
+            // TODO: SolarGuardian charged shot: Re-implement shield with new ShieldComponent system
+            // if (vesselClass->type == rtype::common::components::VesselType::SolarGuardian && isCharged) {
+            //     // Apply shield to the player
+            //     // Don't create projectile, just return 0
+            //     return 0;
+            // }
             
             // Normal single projectile (CrimsonStriker normal, EmeraldTitan)
             firstProjectile = createSingleProjectile(room, owner, projectileX, y, baseSpeed, baseDamage, piercing, isCharged);

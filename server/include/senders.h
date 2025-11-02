@@ -57,7 +57,7 @@ namespace rtype::server::network::senders {
      * @param roomCode The room join code
      * @param playerServerId The server-assigned player ID
      */
-    void send_join_room_accepted(ECS::EntityID player, bool isAdmin, uint32_t roomCode, uint32_t playerServerId);
+    void send_join_room_accepted(ECS::EntityID player, bool isAdmin, uint32_t roomCode, uint32_t playerServerId, uint8_t vesselType);
 
 
     /**

@@ -20,6 +20,11 @@
 extern std::string g_username;
 extern uint32_t g_playerServerId;
 
+// External reference to selected vessel (defined in network.cpp)
+namespace rtype::client::gui {
+    extern uint8_t g_selectedVessel;
+}
+
 // Track if player is admin in current room
 static bool g_isPlayerAdmin = false;
 
@@ -38,12 +43,14 @@ namespace rtype::client::controllers::game_controller {
         from_network_endian(p->playerServerId);
 
         std::cout << "Successfully connected on room " << p->roomCode << " as " << (
-            p->admin ? "admin" : "classic player") << " with server player ID: " << p->playerServerId << std::endl;
+            p->admin ? "admin" : "classic player") << " with server player ID: " << p->playerServerId 
+            << " with vessel type: " << static_cast<int>(p->vesselType) << std::endl;
 
 
-        // Store player server ID and admin status for use when GameState is created
+        // Store player server ID, admin status, and vessel type for use when GameState is created
         g_playerServerId = p->playerServerId;
         g_isPlayerAdmin = p->admin;
+        rtype::client::gui::g_selectedVessel = p->vesselType;
 
         // Transition to PrivateServerLobbyState (the lobby where admin can click "Start Game")
         using rtype::client::gui::g_stateManager;
@@ -179,10 +186,11 @@ namespace rtype::client::controllers::game_controller {
         // Clear lobby state pointer
         g_lobbyState = nullptr;
 
-        // Create and transition to GameState with the local player server ID and admin status
+        // Create and transition to GameState with the local player server ID, admin status, and vessel type
         auto gameState = std::make_unique<GameState>(*g_stateManager);
         gameState->setLocalPlayerServerId(g_playerServerId);
         gameState->setIsAdmin(g_isPlayerAdmin);
+        gameState->setLocalVesselType(static_cast<rtype::common::components::VesselType>(rtype::client::gui::g_selectedVessel));
         g_stateManager->changeState(std::move(gameState));
 
         std::cout << "✓ CLIENT: Successfully transitioned to GameState (admin=" << (g_isPlayerAdmin ? "YES" : "NO") <<

@@ -286,6 +286,12 @@ namespace rtype::client::gui {
         void setIsAdmin(bool isAdmin); // Set whether the local player is room admin
 
         /**
+         * @brief Set the vessel type of the local player
+         * @param vesselType The vessel type selected by the player
+         */
+        void setLocalVesselType(rtype::common::components::VesselType vesselType);
+
+        /**
          * @brief Set in-game score from server and update HUD text
          * @param newScore Absolute score value as sent by the server
          */
@@ -314,6 +320,8 @@ namespace rtype::client::gui {
         uint32_t m_localPlayerServerId{0};
         /// Track if local player is room admin (for boss spawning)
         bool m_isAdmin{false};
+        /// Track local player's vessel type (received from server)
+        rtype::common::components::VesselType m_localVesselType{rtype::common::components::VesselType::CrimsonStriker};
 
         /* === Entity Factory Methods === */
         /**

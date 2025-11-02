@@ -36,11 +36,12 @@ namespace rtype::server::network::senders {
         room->broadcastPacket(&pkt, sizeof(pkt), ENTITY_DESTROY, true);
     }
 
-    void send_join_room_accepted(ECS::EntityID player, bool isAdmin, uint32_t roomCode, uint32_t playerServerId) {
+    void send_join_room_accepted(ECS::EntityID player, bool isAdmin, uint32_t roomCode, uint32_t playerServerId, uint8_t vesselType) {
         JoinRoomAcceptedPacket pkt{};
         pkt.admin = isAdmin;
         pkt.roomCode = roomCode;
         pkt.playerServerId = playerServerId;
+        pkt.vesselType = vesselType;
 
         to_network_endian(pkt.roomCode);
         to_network_endian(pkt.playerServerId);

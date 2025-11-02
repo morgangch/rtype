@@ -59,11 +59,13 @@ struct JoinRoomPacket {
  * @param roomCode The ID of the room the player joined
  * @param admin If the user is an admin, the value is true.
  * @param playerServerId The server-side entity ID for this player
+ * @param vesselType The vessel class assigned to this player (0-3)
  */
 struct JoinRoomAcceptedPacket {
     uint32_t roomCode;
     bool admin;
     uint32_t playerServerId; // NEW: server entity ID for this player
+    uint8_t vesselType; // Vessel class (0=CrimsonStriker, 1=AzurePhantom, 2=EmeraldTitan, 3=SolarGuardian)
 };
 
 /**

@@ -33,20 +33,11 @@ void GameState::startChargedShot() {
             if (chargedShot) {
                 chargedShot->startCharge();
                 
-                // Activate shield for Solar Guardian during charging
-                auto* vesselClass = m_world.GetComponent<rtype::common::components::VesselClass>(entity);
-                if (vesselClass && vesselClass->type == rtype::common::components::VesselType::SolarGuardian) {
-                    auto* shield = m_world.GetComponent<rtype::common::components::Shield>(entity);
-                    if (!shield) {
-                        // Add shield component if it doesn't exist (3s duration, 50% reduction, 6s cooldown)
-                        m_world.AddComponent<rtype::common::components::Shield>(entity, 3.0f, 0.5f, 6.0f);
-                        shield = m_world.GetComponent<rtype::common::components::Shield>(entity);
-                    }
-                    if (shield) {
-                        shield->activate();
-                        std::cout << "[CLIENT] Shield activated for Solar Guardian during charge" << std::endl;
-                    }
-                }
+                // TODO: Re-implement Solar Guardian shield with new ShieldComponent system
+                // auto* vesselClass = m_world.GetComponent<rtype::common::components::VesselClass>(entity);
+                // if (vesselClass && vesselClass->type == rtype::common::components::VesselType::SolarGuardian) {
+                //     // Activate shield during charging
+                // }
             }
         }
     }
