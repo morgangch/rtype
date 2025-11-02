@@ -46,10 +46,41 @@ public:
      * 
      * Loads and categorizes all enemy spawn tiles by type (Classic, Elite, Boss).
      * Each tile contains complete enemy definition including type, stats, and behavior.
+     * Uses MapParser to load tile definitions and classify them by type.
+     * Classic, Elite, and Boss spawns are extracted and cached for round-robin spawning.
      */
     bool loadMap(const std::string& mapDir);
 
 private:
+    float _stateTick; ///< Timer for player state broadcast
+    static constexpr float STATE_TICK_INTERVAL = 0.03f; // 30ms for smooth updates
+
+    // Map-driven spawning state
+    bool _mapLoaded; ///< Whether a map has been successfully loaded
+    std::vector<Tile> _classicEnemySpawns; ///< Tiles for basic/classic enemies
+    std::vector<Tile> _eliteEnemySpawns; ///< Tiles for advanced/elite enemies
+    std::vector<Tile> _bossSpawns; ///< Tiles for boss enemies
+    size_t _nextClassicIndex; ///< Round-robin index for classic spawns
+    size_t _nextEliteIndex; ///< Round-robin index for elite spawns
+    size_t _nextBossIndex; ///< Round-robin index for boss spawns
+    
+    // Spawn timing
+    std::map<TileType, float> _spawnTimers; ///< Current timer for each tile type
+    std::map<TileType, float> _spawnIntervals; ///< Spawn interval for each tile type
+
+    // Update helpers
+    /**
+
+private:
+    float _levelTimer; ///< Timer for current level (resets each level)
+    int _currentLevel; ///< Current level index (0-3 for 4 sub-levels)
+    EnemySpawnPhase _phase; ///< Current enemy spawn phase
+    bool _bossSpawned; ///< Whether a boss is currently spawned for this level
+    bool _gameFinished; ///< Whether the current game has finished (stop spawns)
+
+    std::vector<LevelDefinition> _levelDefinitions; ///< Enemy definitions for each level
+    std::map<rtype::common::components::EnemyType, EnemySpawnConfig> _enemyConfigs; ///< Enemy spawn configs
+
     float _stateTick; ///< Timer for player state broadcast
     static constexpr float STATE_TICK_INTERVAL = 0.03f; // 30ms for smooth updates
 

@@ -94,7 +94,9 @@ namespace rtype::client::gui {
          */
         enum class Theme {
             SpaceDefault,
-            HallwayLevel2
+            HallwayLevel2,
+            ReactorLevel3,
+            ReactorLevel4
         };
 
         /**
@@ -290,6 +292,23 @@ namespace rtype::client::gui {
          */
         std::vector<SpaceDebris> m_debris;
 
+        // Reactor (Level 3) overlays
+        struct EnergyArc {
+            std::vector<sf::Vector2f> points;
+            float phase{0.f};
+            float speed{2.0f};
+        };
+        struct SmokePlume {
+            sf::Vector2f pos;
+            sf::Vector2f vel;
+            float size{30.f};
+            float alpha{60.f};
+        };
+        std::vector<sf::CircleShape> m_reactorCores; // glowing cores
+        std::vector<SmokePlume> m_reactorSmoke;
+        std::vector<EnergyArc> m_energyArcs;
+        float m_reactorBlend{0.0f}; // interpolation [0..1] for reactor overlays
+
         /**
          * @name Theme and hallway visual state
          *
@@ -339,6 +358,8 @@ namespace rtype::client::gui {
          * match the hallway aesthetic.
          */
         void initializeHallwayTheme();
+        void initializeReactorTheme();
+        void initializeReactorBrokenTheme();
 
         /**
          * @brief Optional per-parameter blend hook
@@ -350,6 +371,8 @@ namespace rtype::client::gui {
          * rendering, but this hook can be extended to lerp individual values.
          */
         void blendThemes(float t);
+        void updateReactor(float dt);
+        void renderReactor(sf::RenderWindow& window);
 
         /**
          * @name Corridor scrolling and panel layer
@@ -376,6 +399,11 @@ namespace rtype::client::gui {
         sf::Vector2f m_panelSize{160.0f, 120.0f};    //!< default panel tile size
         std::vector<int> m_panelDamaged;             //!< indices of panels that have damage marks
         std::vector<sf::Vector2f> m_pipePositions;   //!< positions of thin pipes running across the corridor
+        // Level 4: broken / vibrating variant
+        std::vector<int> m_brokenPanels;             //!< indices of panels missing for ReactorLevel4
+        float m_vibrateTimer{0.0f};                  //!< internal timer for vibration effect
+        float m_vibrateAmplitude{0.0f};              //!< vibration amplitude in pixels
+        std::vector<int> m_brokenColumns;            //!< indices of vertical bars that are broken/missing
 
         /**
          * @brief Build the tiled panel grid and precompute damage marks
