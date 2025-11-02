@@ -19,6 +19,8 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "senders.h"
 #include "components/LinkedRoom.h"
@@ -67,6 +69,9 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
     rtype::common::systems::CollisionHandlers handlers;
     std::vector<ECS::EntityID> toDestroy;
 
+    // Track projectile-enemy pairs that have already collided this frame
+    std::unordered_map<ECS::EntityID, std::unordered_set<ECS::EntityID>> piercingCollisions;
+
     handlers.onPlayerVsEnemy = [this, &toDestroy](ECS::EntityID player, ECS::EntityID enemy, ECS::World& world) {
         auto* playerHealth = world.GetComponent<rtype::common::components::Health>(player);
         auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemy);
@@ -83,15 +88,39 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
         if (playerHealth->currentHp <= 0) {
             playerHealth->isAlive = false;
             std::cout << "[COLLISION] Player " << player << " DIED from enemy contact" << std::endl;
+            
+            // DEBUG: Check player components after death
+            auto* pconn = world.GetComponent<rtype::server::components::PlayerConn>(player);
+            auto* linkedRoom = world.GetComponent<rtype::server::components::LinkedRoom>(player);
+            auto* playerComp = world.GetComponent<rtype::common::components::Player>(player);
+            std::cout << "[DEBUG] Dead player " << player << " components: "
+                      << "PlayerConn=" << (pconn != nullptr)
+                      << " LinkedRoom=" << (linkedRoom != nullptr) 
+                      << " Player=" << (playerComp != nullptr) << std::endl;
+            if (linkedRoom) {
+                std::cout << "[DEBUG] Player's room_id: " << linkedRoom->room_id << std::endl;
+            }
         }
 
         broadcastPlayerStateImmediate(world, player);
     };
 
-    handlers.onPlayerProjectileVsEnemy = [this, &toDestroy](ECS::EntityID proj, ECS::EntityID enemy, ECS::World& world) {
+    handlers.onPlayerProjectileVsEnemy = [this, &toDestroy, &piercingCollisions](ECS::EntityID proj, ECS::EntityID enemy, ECS::World& world) {
         auto* projData = world.GetComponent<rtype::common::components::Projectile>(proj);
         auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemy);
         if (!projData || !enemyHealth) return;
+
+        // For piercing projectiles, check if we've already hit this enemy this frame
+        if (projData->piercing) {
+            if (piercingCollisions[proj].count(enemy) > 0) {
+                // Already hit this enemy this frame, skip
+                std::cout << "[COLLISION] ⚠️ Piercing projectile " << proj << " already hit enemy " << enemy << " this frame, SKIPPING" << std::endl;
+                return;
+            }
+            // Mark this collision as processed
+            piercingCollisions[proj].insert(enemy);
+            std::cout << "[COLLISION] 🎯 First hit: Piercing projectile " << proj << " hitting enemy " << enemy << std::endl;
+        }
 
         // Check for active shields (Fortress boss or shielded enemies)
         auto* shield = world.GetComponent<rtype::common::components::ShieldComponent>(enemy);
@@ -232,8 +261,13 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
     std::sort(toDestroy.begin(), toDestroy.end());
     toDestroy.erase(std::unique(toDestroy.begin(), toDestroy.end()), toDestroy.end());
 
+    // Broadcast destruction before actually destroying entities
     for (auto entity : toDestroy) {
         broadcastEntityDestroyToAllRooms(world, entity);
+    }
+    
+    // Now destroy the entities
+    for (auto entity : toDestroy) {
         world.DestroyEntity(entity);
     }
 }
@@ -246,6 +280,7 @@ void ServerCollisionSystem::broadcastEntityDestroyToAllRooms(
     auto* linkedRoom = world.GetComponent<rtype::server::components::LinkedRoom>(entityId);
     if (linkedRoom) {
         // Entity belongs to a specific room - only broadcast to that room
+        std::cout << "[DEBUG] Broadcasting destroy for entity " << entityId << " to room " << linkedRoom->room_id << std::endl;
         rtype::server::network::senders::broadcast_entity_destroy(linkedRoom->room_id, static_cast<uint32_t>(entityId), 1);
         return;
     }

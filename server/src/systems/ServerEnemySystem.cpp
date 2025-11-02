@@ -55,9 +55,9 @@ ServerEnemySystem::ServerEnemySystem()
     // Define the 4 sub-levels
     // Level 0: Basic + Shielded + TankDestroyer
     _levelDefinitions.push_back({
-        rtype::common::components::EnemyType::Suicide,
-        rtype::common::components::EnemyType::Turret,
-        rtype::common::components::EnemyType::Fortress
+        rtype::common::components::EnemyType::Basic,
+        rtype::common::components::EnemyType::Shielded,
+        rtype::common::components::EnemyType::TankDestroyer
     });
 
     // Level 1: Snake + Flanker + Serpent
@@ -503,10 +503,12 @@ void ServerEnemySystem::checkBossDeathAndAdvanceLevel(ECS::World& world) {
 
     // If boss is dead, advance to next level
     if (!bossStillAlive) {
+        std::cout << "[ServerEnemySystem] ========================================" << std::endl;
+        std::cout << "[ServerEnemySystem] Boss defeated! Advancing to level " << (_currentLevel + 1) << std::endl;
+        std::cout << "[ServerEnemySystem] ========================================" << std::endl;
+
+        // Increment level counter
         _currentLevel++;
-        std::cout << "[ServerEnemySystem] ========================================" << std::endl;
-        std::cout << "[ServerEnemySystem] Boss defeated! Advancing to level " << _currentLevel << std::endl;
-        std::cout << "[ServerEnemySystem] ========================================" << std::endl;
 
         // Check if we've completed all 4 levels (game finished)
         if (_currentLevel >= (int)_levelDefinitions.size()) {
@@ -515,8 +517,8 @@ void ServerEnemySystem::checkBossDeathAndAdvanceLevel(ECS::World& world) {
             return;
         }
 
-        // Reset for new level
-        _levelTimer = 0.0f;
+        // Reset for new level - IMPORTANT: Start at -1.0f to give time for entities to be destroyed
+        _levelTimer = -1.0f;  // Negative timer ensures a brief pause before new level starts
         _phase = EnemySpawnPhase::OnlyBasic;
         _bossSpawned = false;
 
