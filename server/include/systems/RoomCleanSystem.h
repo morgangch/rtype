@@ -26,21 +26,44 @@ public:
      *  @param deltaTime Time elapsed since last update (unused)
      */
     void Update(ECS::World &world, float deltaTime) override {
-        for (auto &pair: *world.GetAllComponents<rtype::server::components::RoomProperties>()) {
-            rtype::server::components::RoomProperties *room = pair.second.get();
-            if (!room)
-                continue;
-            auto players = rtype::server::services::player_service::findPlayersByRoom(pair.first);
-            if (players.empty()) {
-                auto linkedEntities = world.GetAllComponents<rtype::server::components::LinkedRoom>();
-                for (auto &linkedPair: *linkedEntities) {
-                    rtype::server::components::LinkedRoom *linkedRoom = linkedPair.second.get();
-                    if (linkedRoom && linkedRoom->room_id == pair.first) {
-                        world.DestroyEntity(linkedPair.first);
-                    }
-                    world.DestroyEntity(pair.first);
+        // Collect rooms with zero players first (avoid destroying while iterating containers)
+        std::vector<ECS::EntityID> rooms_to_destroy;
+
+        if (auto rooms = world.GetAllComponents<rtype::server::components::RoomProperties>()) {
+            for (auto &pair : *rooms) {
+                auto *room = pair.second.get();
+                if (!room)
+                    continue;
+                auto players = rtype::server::services::player_service::findPlayersByRoom(pair.first);
+                if (players.empty()) {
+                    rooms_to_destroy.push_back(pair.first);
                 }
             }
+        }
+
+        if (rooms_to_destroy.empty())
+            return;
+
+        // For each empty room, destroy its linked entities first, then the room entity itself
+        for (auto room_id : rooms_to_destroy) {
+            std::vector<ECS::EntityID> linked_to_destroy;
+
+            if (auto linkedEntities = world.GetAllComponents<rtype::server::components::LinkedRoom>()) {
+                for (auto &linkedPair : *linkedEntities) {
+                    auto *lr = linkedPair.second.get();
+                    if (lr && lr->room_id == room_id) {
+                        linked_to_destroy.push_back(linkedPair.first);
+                    }
+                }
+            }
+
+            // Destroy linked entities
+            for (auto eid : linked_to_destroy) {
+                world.DestroyEntity(eid);
+            }
+
+            // Finally destroy the room entity
+            world.DestroyEntity(room_id);
         }
     }
 };
