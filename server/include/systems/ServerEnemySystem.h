@@ -109,6 +109,7 @@ private:
     int _currentLevel; ///< Current level index (0-3 for 4 sub-levels)
     EnemySpawnPhase _phase; ///< Current enemy spawn phase
     bool _bossSpawned; ///< Whether a boss is currently spawned for this level
+    bool _gameFinished; ///< Whether the current game has finished (stop spawns)
 
     std::vector<LevelDefinition> _levelDefinitions; ///< Enemy definitions for each level
     std::map<rtype::common::components::EnemyType, EnemySpawnConfig> _enemyConfigs; ///< Enemy spawn configs

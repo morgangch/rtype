@@ -14,6 +14,7 @@ std::string AudioFactory::getMusicPath(MusicId id) {
         case MusicId::BossFight2:  return "assets/audio/enemy/music/bossfight_thevesselcore.mp3";
         case MusicId::BossFight3:  return "assets/audio/enemy/music/bossfight_theguardianofthecore.mp3";
         case MusicId::BossFight4:  return "assets/audio/enemy/music/bossfight_reactorovermind.mp3";
+        case MusicId::Victory:     return "assets/audio/music/victory.mp3";
         default: return {};
     }
 }

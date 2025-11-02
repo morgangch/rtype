@@ -624,6 +624,14 @@ namespace rtype::client::gui {
         void showInGameMenu(bool isGameOver = false);
 
         /**
+         * @brief Show the victory screen (YOU WON)
+         * 
+         * Displays a simplified end screen with a victory title, score,
+         * and a single Quit button. Plays victory music.
+         */
+        void showVictoryScreen();
+
+        /**
          * @brief Resume gameplay from paused/menu state
          *
          * Hides menu and resumes normal game update loop.
@@ -675,6 +683,8 @@ namespace rtype::client::gui {
         GameStatus m_gameStatus{GameStatus::Playing};
         /// Flag indicating game over condition
         bool m_isGameOver{false};
+        // Flag indicating victory condition
+        bool m_isVictory{false};
         /// Currently selected menu option index
         int m_selectedMenuOption{0};
         /// SFML text element for game over title

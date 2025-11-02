@@ -36,8 +36,8 @@ void ServerEnemySystem::Update(ECS::World &world, float deltaTime) {
         }
     }
 
-    // Only run enemy spawning logic if game is active
-    if (hasActiveGame) {
+    // Only run enemy spawning logic if game is active and not finished
+    if (hasActiveGame && !_gameFinished) {
         updatePhase(deltaTime);
         updateEnemySpawning(world, deltaTime);
         updateBossSpawning(world, deltaTime);
@@ -50,7 +50,7 @@ void ServerEnemySystem::Update(ECS::World &world, float deltaTime) {
 }
 
 ServerEnemySystem::ServerEnemySystem()
-    : ECS::System("ServerEnemySystem", 5), _levelTimer(0.0f), _currentLevel(0), _phase(EnemySpawnPhase::OnlyBasic), _bossSpawned(false), _stateTick(0.0f)
+    : ECS::System("ServerEnemySystem", 5), _levelTimer(0.0f), _currentLevel(0), _phase(EnemySpawnPhase::OnlyBasic), _bossSpawned(false), _gameFinished(false), _stateTick(0.0f)
 {
     // Define the 4 sub-levels
     // Level 0: Basic + Shielded + TankDestroyer
@@ -197,6 +197,7 @@ void ServerEnemySystem::spawnBoss(ECS::World& world, ECS::EntityID room, rtype::
 }
 
 void ServerEnemySystem::updateBossSpawning(ECS::World& world, float deltaTime) {
+    if (_gameFinished) return;
     // Only spawn boss if we're in BossPhase and boss hasn't spawned yet for this level
     if (_phase != EnemySpawnPhase::BossPhase || _bossSpawned)
         return;
@@ -249,6 +250,7 @@ void ServerEnemySystem::updateBossSpawning(ECS::World& world, float deltaTime) {
 // ============================================================================
 
 void ServerEnemySystem::updateEnemySpawning(ECS::World& world, float deltaTime) {
+    if (_gameFinished) return;
     // Check we have a valid level definition
     if (_currentLevel >= (int)_levelDefinitions.size()) {
         return;
@@ -501,7 +503,7 @@ void ServerEnemySystem::checkBossDeathAndAdvanceLevel(ECS::World& world) {
         }
     }
 
-    // If boss is dead, advance to next level
+    // If boss is dead, advance to next level (or finish the game after level 2)
     if (!bossStillAlive) {
         std::cout << "[ServerEnemySystem] ========================================" << std::endl;
         std::cout << "[ServerEnemySystem] Boss defeated! Advancing to level " << (_currentLevel + 1) << std::endl;
@@ -510,10 +512,10 @@ void ServerEnemySystem::checkBossDeathAndAdvanceLevel(ECS::World& world) {
         // Increment level counter
         _currentLevel++;
 
-        // Check if we've completed all 4 levels (game finished)
-        if (_currentLevel >= (int)_levelDefinitions.size()) {
-            std::cout << "[ServerEnemySystem] ALL LEVELS COMPLETED! Game finished!" << std::endl;
-            // TODO: Trigger game victory/end state
+        // Finish game after second boss (level index 1). After increment, currentLevel >= 2 means victory.
+        if (_currentLevel >= 2) {
+            std::cout << "[ServerEnemySystem] GAME FINISHED after Level 2 boss. Stopping spawns." << std::endl;
+            _gameFinished = true;
             return;
         }
 
@@ -542,6 +544,7 @@ void ServerEnemySystem::setStartLevel(int index) {
     _levelTimer = 0.0f;
     _phase = EnemySpawnPhase::OnlyBasic;
     _bossSpawned = false;
+    _gameFinished = false;
     // Reset spawn timers for regular enemies so spawns begin fresh
     for (auto &entry : _enemyConfigs) {
         entry.second.timer = 0.0f;

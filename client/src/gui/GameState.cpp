@@ -392,6 +392,7 @@ bool GameState::isMusicMuted() const {
 void GameState::showInGameMenu(bool isGameOver) {
     m_gameStatus = GameStatus::InGameMenu;
     m_isGameOver = isGameOver;
+    m_isVictory = false;
     m_selectedMenuOption = 0;
     
     // Update restart button text based on context
@@ -434,6 +435,35 @@ void GameState::showInGameMenu(bool isGameOver) {
         // Pause background music while paused
         m_musicManager.setMuted(true);
     }
+}
+
+void GameState::showVictoryScreen() {
+    m_gameStatus = GameStatus::InGameMenu;
+    m_isGameOver = false;
+    m_isVictory = true;
+    m_selectedMenuOption = 1; 
+
+    // Set title and center
+    m_gameOverTitleText.setString("YOU WON");
+    GUIHelper::centerText(m_gameOverTitleText, SCREEN_WIDTH / 2.0f, 150.0f);
+
+    // Set Quit label
+    m_menuText.setString("Quit");
+
+    // Stop any current music and play victory track (looping)
+    m_musicManager.stop();
+    const std::string victory = AudioFactory::getMusicPath(AudioFactory::MusicId::Victory);
+    if (!victory.empty()) {
+        if (m_musicManager.loadFromFile(victory)) {
+            m_musicManager.setVolume(40.0f);
+            m_musicManager.play(true);
+        } else {
+            std::cerr << "GameState: could not load victory music: " << victory << std::endl;
+        }
+    }
+
+    // Reset input states to prevent stuck keys
+    m_keyUp = m_keyDown = m_keyLeft = m_keyRight = m_keyFire = false;
 }
 
 void GameState::resumeGame() {
@@ -594,9 +624,15 @@ void GameState::updateBossMusicState() {
         if (m_soundManager.has(AudioFactory::SfxId::BossDeath)) {
             m_soundManager.play(AudioFactory::SfxId::BossDeath);
         }
-        // Advance level (swaps background and loads next level music)
-        advanceLevel();
         m_bossMusicActive = false;
+
+        // If this was the level 2 boss (index 1), end the game with victory
+        if (m_levelIndex >= 1) {
+            showVictoryScreen();
+        } else {
+            // Otherwise proceed to next level
+            advanceLevel();
+        }
     }
 }
 
