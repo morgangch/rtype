@@ -200,28 +200,36 @@ ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t 
     // Velocity
     m_world.AddComponent<rtype::common::components::Velocity>(entity, vx, vy, std::sqrt(vx*vx + vy*vy));
     
-    // Sprite - Different sprite for charged vs normal (textures pre-loaded in loadHUDTextures)
-    if (isCharged) {
-        // Charged projectile sprite - PROJECTILE_4 (rose/magenta, more dense and imposing)
-        m_world.AddComponent<rtype::client::components::Sprite>(
-            entity,
-            rtype::client::assets::projectiles::PROJECTILE_4,
-            sf::Vector2f(81.0f, 17.0f),
-            true,
-            sf::IntRect(185, 17, 81, 17), // Frame 2, line 2: denser visual
-            0.6f); // Scale 0.6x (49px wide, 10px tall) - bigger than normal
-        std::cout << "[GameState]   Using CHARGED sprite (PROJECTILE_4, rect: 185,17,81,17, scale: 0.6)" << std::endl;
-    } else {
-        // Normal projectile sprite - PROJECTILE_1
-        m_world.AddComponent<rtype::client::components::Sprite>(
-            entity,
-            rtype::client::assets::projectiles::PROJECTILE_1,
-            sf::Vector2f(81.0f, 17.0f),
-            true,
-            sf::IntRect(185, 0, 81, 17),
-            0.5f);
-        std::cout << "[GameState]   Using NORMAL sprite (PROJECTILE_1, rect: 185,0,81,17, scale: 0.5)" << std::endl;
+    // Sprite selection mapping to use requested assets 1..4
+    const char* tex = rtype::client::assets::projectiles::PROJECTILE_1;
+    sf::IntRect rect(185, 0, 81, 17);
+    float scale = 0.5f;
+    if (isCharged || piercing) {
+        tex = rtype::client::assets::projectiles::PROJECTILE_4;
+        rect = sf::IntRect(185, 17, 81, 17);
+        scale = 0.6f;
+    } else if (std::fabs(vy) > 1e-3f) {
+        // Angled shots (e.g., Azure bouncy split) -> PROJECTILE_2
+        tex = rtype::client::assets::projectiles::PROJECTILE_2;
+        rect = sf::IntRect(185, 0, 81, 17);
+        scale = 0.5f;
+    } else if (damage >= 2) {
+        // Higher damage straight shots (e.g., Dual laser) -> PROJECTILE_3
+        tex = rtype::client::assets::projectiles::PROJECTILE_3;
+        rect = sf::IntRect(185, 0, 81, 17);
+        scale = 0.55f;
     }
+
+    // Lazy load missing textures (2 and 3)
+    rtype::client::gui::TextureCache::getInstance().loadTexture(tex);
+    m_world.AddComponent<rtype::client::components::Sprite>(
+        entity,
+        tex,
+        sf::Vector2f(81.0f, 17.0f),
+        true,
+        rect,
+        scale);
+    std::cout << "[GameState]   Using projectile sprite: " << tex << std::endl;
     
     // Team - Player team (projectiles are always player team for now)
     m_world.AddComponent<rtype::common::components::Team>(
