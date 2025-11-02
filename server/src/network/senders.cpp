@@ -121,6 +121,24 @@ namespace rtype::server::network::senders {
         room->broadcastPacket(&spawnPkt, sizeof(spawnPkt), SPAWN_PROJECTILE, true);
     }
 
+    void broadcast_shield_state(ECS::EntityID room_id, uint32_t playerId, bool isActive, float duration) {
+        ShieldStatePacket shieldPkt{};
+        shieldPkt.playerId = playerId;
+        shieldPkt.isActive = isActive;
+        shieldPkt.duration = duration;
+
+        // Convert to network endian
+        to_network_endian(shieldPkt.playerId);
+        to_network_endian(shieldPkt.duration);
+
+        auto room = root.world.GetComponent<rtype::server::components::RoomProperties>(room_id);
+        if (!room) {
+            std::cerr << "ERROR: Cannot broadcast ShieldStatePacket, room " << room_id << " not found" << std::endl;
+            return;
+        }
+        room->broadcastPacket(&shieldPkt, sizeof(shieldPkt), SHIELD_STATE, true);
+    }
+
     void send_lobby_state(ECS::EntityID player, uint32_t totalPlayers, uint32_t readyPlayers) {
         LobbyStatePacket pkt{};
         pkt.totalPlayers = totalPlayers;

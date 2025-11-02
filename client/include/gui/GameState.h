@@ -29,6 +29,8 @@
 #include <common/components/Player.h>
 #include <common/components/FireRate.h>
 #include <common/components/EnemyType.h>
+#include <common/components/Shield.h>
+#include <common/components/VesselClass.h>
 #include <common/systems/ChargedShotSystem.h>
 #include <client/components/Components.h>
 #include <vector>
@@ -255,6 +257,14 @@ namespace rtype::client::gui {
          * @param invulnerable Invulnerability state from server
          */
         void updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable);
+
+        /**
+         * @brief Update shield state for an entity from server
+         * @param serverId Server entity id
+         * @param isActive Whether the shield is active
+         * @param duration Remaining duration of the shield
+         */
+        void updateShieldStateFromServer(uint32_t serverId, bool isActive, float duration);
 
         /**
          * @brief Destroy a local entity corresponding to a server entity id
@@ -624,6 +634,12 @@ namespace rtype::client::gui {
         int getPlayerLives() const;
 
         /**
+         * @brief Get maximum player lives/health
+         * @return Maximum HP of the player entity
+         */
+        int getPlayerMaxLives() const;
+
+        /**
          * @brief Check if a boss entity is currently active
          * @return true if a boss enemy exists in the world
          */
@@ -750,6 +766,10 @@ namespace rtype::client::gui {
         sf::Sprite m_fullHeartSprite;
         /// Sprite for empty/lost health heart
         sf::Sprite m_emptyHeartSprite;
+        /// Texture for shield effect
+        sf::Texture m_shieldTexture;
+        /// Sprite for shield effect
+        sf::Sprite m_shieldSprite;
         /// Player score value
         int m_score{0};
         /// HUD text for score rendering

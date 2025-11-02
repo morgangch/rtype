@@ -11,6 +11,7 @@
 #include <common/packets/packets.h>
 #include "gui/GameState.h"
 #include "gui/PrivateServerLobbyState.h"
+#include <common/components/Shield.h>
 #include <cstring>
 
 #include "utils/endiane_converter.h"
@@ -230,4 +231,18 @@ namespace rtype::client::controllers::game_controller {
         // For simplicity, accept and set regardless; multi-player HUD can filter by playerId later.
         g_gameState->setScoreFromServer(static_cast<int>(p->score));
     }
+
+    void handle_shield_state(const packet_t &packet) {
+        using namespace rtype::client::gui;
+        
+        if (!g_gameState) return;
+
+        ShieldStatePacket *p = (ShieldStatePacket*) packet.data;
+        from_network_endian(p->playerId);
+        from_network_endian(p->duration);
+
+        // Update shield state via GameState method
+        g_gameState->updateShieldStateFromServer(p->playerId, p->isActive, p->duration);
+    }
+
 }

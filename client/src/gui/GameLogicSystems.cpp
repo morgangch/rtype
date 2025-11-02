@@ -390,15 +390,8 @@ void GameState::handlePlayerFire() {
                 // Emerald Titan - Explosive bomb OR Solar Guardian - Shield
                 if (vesselClass->type == rtype::common::components::VesselType::EmeraldTitan) {
                     createExplosiveProjectile(pos->x, pos->y, true);
-                } else if (vesselClass->type == rtype::common::components::VesselType::SolarGuardian) {
-                    // Activate shield
-                    auto* shield = m_world.GetComponent<rtype::common::components::Shield>(m_playerEntity);
-                    if (shield && shield->activate()) {
-                        std::cout << "[GameState] Shield activated! (3s duration, 6s cooldown)" << std::endl;
-                    } else {
-                        std::cout << "[GameState] Shield on cooldown!" << std::endl;
-                    }
                 }
+                // Solar Guardian: Shield displayed during charging, no projectile created
                 break;
                 
             default:
@@ -451,12 +444,6 @@ void GameState::updateShieldSystem(float deltaTime) {
     
     for (auto& [entity, shield] : *shields) {
         shield->update(deltaTime);
-        
-        // Visual feedback (could be expanded with sprite effects)
-        if (shield->isActive && entity == m_playerEntity) {
-            // Shield is active on player - could add visual effect here
-            // For now, just ensure it's tracked
-        }
     }
 }
 

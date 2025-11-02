@@ -15,6 +15,7 @@
 #include <common/systems/CollisionSystem.h>
 #include <common/components/Score.h>
 #include <common/components/Explosion.h>
+#include <common/components/Shield.h>
 #include <iostream>
 #include <cmath>
 #include <algorithm>
@@ -72,6 +73,13 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
         if (!playerHealth || !enemyHealth) return;
 
         if (playerHealth->invulnerable || !playerHealth->isAlive || playerHealth->currentHp <= 0) return;
+
+        // Check if player has active shield - no damage if shield is active
+        auto* shield = world.GetComponent<rtype::common::components::Shield>(player);
+        if (shield && shield->isActive) {
+            std::cout << "[COLLISION] Player " << player << " hit enemy " << enemy << " - BLOCKED by shield!" << std::endl;
+            return;
+        }
 
         std::cout << "[COLLISION] Player " << player << " hit enemy " << enemy << " - HP: " << playerHealth->currentHp << " -> " << (playerHealth->currentHp - 1) << std::endl;
 
@@ -192,6 +200,14 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
         auto* playerHealth = world.GetComponent<rtype::common::components::Health>(player);
         if (!projData || !playerHealth) return;
 
+        // Check if player has active shield - no damage if shield is active
+        auto* shield = world.GetComponent<rtype::common::components::Shield>(player);
+        if (shield && shield->isActive) {
+            std::cout << "[COLLISION] Enemy projectile " << proj << " hit player " << player << " - BLOCKED by shield!" << std::endl;
+            toDestroy.push_back(proj); // Destroy projectile but no damage
+            return;
+        }
+
         std::cout << "[COLLISION] Enemy projectile " << proj << " hit player " << player << " - Player HP: " << playerHealth->currentHp << " -> " << (playerHealth->currentHp - projData->damage) << std::endl;
 
         playerHealth->currentHp -= projData->damage;
@@ -227,6 +243,13 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
                 float distance = std::sqrt(dx * dx + dy * dy);
 
                 if (distance <= EXPLOSION_RADIUS) {
+                    // Check if player has active shield - no damage if shield is active
+                    auto* shield = world.GetComponent<rtype::common::components::Shield>(playerEntity);
+                    if (shield && shield->isActive) {
+                        std::cout << "[COLLISION] Suicide explosion on player " << playerEntity << " - BLOCKED by shield!" << std::endl;
+                        continue;
+                    }
+
                     playerHealth->currentHp -= EXPLOSION_DAMAGE;
                     playerHealth->invulnerable = true;
                     playerHealth->invulnerabilityTimer = 1.0f;

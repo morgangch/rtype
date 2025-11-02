@@ -238,6 +238,38 @@ void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y,
     }
 }
 
+void GameState::updateShieldStateFromServer(uint32_t serverId, bool isActive, float duration) {
+    // Handle local player specially (not in serverEntityMap)
+    ECS::EntityID e = 0;
+    if (serverId == m_localPlayerServerId) {
+        e = m_playerEntity;
+    } else {
+        auto it = m_serverEntityMap.find(serverId);
+        if (it == m_serverEntityMap.end()) {
+            return;
+        }
+        e = it->second;
+    }
+    
+    if (!e) {
+        return;
+    }
+    auto* shield = m_world.GetComponent<rtype::common::components::Shield>(e);
+    if (!shield) {
+        // Add shield if it doesn't exist (3s duration, 50% reduction, 6s cooldown)
+        m_world.AddComponent<rtype::common::components::Shield>(e, 3.0f, 0.5f, 6.0f);
+        shield = m_world.GetComponent<rtype::common::components::Shield>(e);
+    }
+
+    if (shield) {
+        if (isActive) {
+            shield->activate();
+        } else {
+            shield->deactivate();
+        }
+    }
+}
+
 void GameState::setLocalPlayerServerId(uint32_t serverId) {
     m_localPlayerServerId = serverId;
     std::cout << "[GameState] Local player server ID set to: " << serverId << std::endl;
@@ -326,6 +358,17 @@ void GameState::loadHUDTextures() {
     m_emptyHeartSprite.setTexture(m_heartTexture);
     m_emptyHeartSprite.setTextureRect(sf::IntRect(startX + frameWidth * 8, startY, frameWidth * 4, frameHeight * 2));
     m_emptyHeartSprite.setScale(0.08f, 0.08f);  // Scale down (992*0.08 = 79px, 432*0.08 = 35px)
+
+    // Load shield texture
+    if (!m_shieldTexture.loadFromFile("assets/sprites/Shield/shield_spritesheet_64.png")) {
+        std::cerr << "Failed to load shield texture!" << std::endl;
+    } else {
+        // Shield spritesheet: 1024x64, 16 frames of 64x64
+        m_shieldSprite.setTexture(m_shieldTexture);
+        m_shieldSprite.setTextureRect(sf::IntRect(0, 0, 64, 64)); // First frame
+        m_shieldSprite.setOrigin(32.0f, 32.0f); // Center origin
+        m_shieldSprite.setScale(2.0f, 2.0f); // Scale to ~128x128
+    }
 
     // Pre-load projectile textures to avoid loading in hot path (entity creation)
     rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_1);
@@ -482,6 +525,16 @@ int GameState::getPlayerLives() const {
     if (!health) return 0;
     
     return health->currentHp;
+}
+
+int GameState::getPlayerMaxLives() const {
+    if (m_playerEntity == 0) return 3; // Default
+    
+    // Cast away const to access component (ECS::World doesn't have const GetComponent)
+    auto* health = const_cast<ECS::World&>(m_world).GetComponent<rtype::common::components::Health>(m_playerEntity);
+    if (!health) return 3; // Default
+    
+    return health->maxHp;
 }
 
 void GameState::damagePlayer(int damage) {

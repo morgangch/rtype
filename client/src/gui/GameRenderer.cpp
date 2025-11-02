@@ -16,8 +16,12 @@
 #include "gui/GameState.h"
 #include "gui/GUIHelper.h"
 #include "gui/TextureCache.h"
+#include <common/components/Shield.h>
+#include <common/components/ChargedShot.h>
+#include <common/components/VesselClass.h>
 #include <sstream>
 #include <cmath>
+#include <iostream>
 
 namespace rtype::client::gui {
 
@@ -92,13 +96,42 @@ void GameState::renderEntities(sf::RenderWindow& window) {
             shape.setFillColor(sprite->color);
             window.draw(shape);
         }
+        
+        // Draw shield effect while charging (for Solar Guardian)
+        auto* chargedShot = m_world.GetComponent<rtype::common::components::ChargedShot>(entity);
+        auto* vesselClass = m_world.GetComponent<rtype::common::components::VesselClass>(entity);
+        
+        if (chargedShot && chargedShot->isCharging && vesselClass && 
+            vesselClass->type == rtype::common::components::VesselType::SolarGuardian) {
+            
+            // Pulse opacity based on charge progress
+            float chargeRatio = chargedShot->chargeTime / chargedShot->maxChargeTime;
+            float alpha = 100 + 155 * chargeRatio; // Fade in from 100 to 255 as charging
+            
+            // Draw frame 4 (index 3) - 64x64 texture
+            m_shieldSprite.setTextureRect(sf::IntRect(3 * 64, 0, 64, 64));
+            
+            // Center origin of shield sprite (like other sprites)
+            m_shieldSprite.setOrigin(32.0f, 32.0f); // Half of 64x64
+            
+            // Scale shield to surround the vessel (2x size = 128x128)
+            m_shieldSprite.setScale(2.0f, 2.0f);
+            
+            // Position on vessel center (pos.x, pos.y is already centered due to origin)
+            m_shieldSprite.setPosition(pos.x, pos.y);
+            m_shieldSprite.setColor(sf::Color(255, 255, 255, static_cast<sf::Uint8>(alpha)));
+            window.draw(m_shieldSprite);
+            
+            // Reset scale for other sprites
+            m_shieldSprite.setScale(1.0f, 1.0f);
+        }
     }
 }
 
 void GameState::renderHUD(sf::RenderWindow& window) {
     // Get player lives
     int lives = getPlayerLives();
-    int maxLives = 3;  // Maximum player lives
+    int maxLives = getPlayerMaxLives();  // Get actual maximum player lives from vessel
     
     // Draw hearts for lives (full hearts + empty hearts)
     // Both hearts are 992x432px (4 cols x 2 rows)

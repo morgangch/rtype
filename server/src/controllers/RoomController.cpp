@@ -26,6 +26,7 @@
 #include <common/components/VesselClass.h>
 #include <common/components/Explosion.h>
 #include <common/components/Homing.h>
+#include <common/components/Shield.h>
 #include <iostream>
 #include <cstring>
 #include <cmath>
@@ -66,15 +67,33 @@ void room_controller::markPlayersAsInGame(ECS::EntityID room) {
             std::cout << "  - Marked player " << pid << " as in-game" << std::endl;
         }
 
-        // Reset player HP for the game start
+        // Reset player HP for the game start based on vessel class
         auto *health = root.world.GetComponent<rtype::common::components::Health>(pid);
-        if (health) {
-            health->currentHp = 3;
-            health->maxHp = 3;
+        auto *vesselClass = root.world.GetComponent<rtype::common::components::VesselClass>(pid);
+        if (health && vesselClass) {
+            // Base HP per vessel type (hearts in UI)
+            int baseHp = 3; // Default
+            switch (vesselClass->type) {
+                case rtype::common::components::VesselType::CrimsonStriker:
+                    baseHp = 3; // Balanced
+                    break;
+                case rtype::common::components::VesselType::AzurePhantom:
+                    baseHp = 3; // Agile (low defense)
+                    break;
+                case rtype::common::components::VesselType::EmeraldTitan:
+                    baseHp = 3; // Tank (requested: 3 instead of 4)
+                    break;
+                case rtype::common::components::VesselType::SolarGuardian:
+                    baseHp = 4; // Defense (requested: 4 instead of 5)
+                    break;
+            }
+            
+            health->currentHp = baseHp;
+            health->maxHp = baseHp;
             health->isAlive = true;
             health->invulnerable = false;
             health->invulnerabilityTimer = 0.0f;
-            std::cout << "  - Reset player " << pid << " HP to 3" << std::endl;
+            std::cout << "  - Reset player " << pid << " HP to " << baseHp << " (Vessel: " << static_cast<int>(vesselClass->type) << ")" << std::endl;
         }
 
         // Reset player score to 0 for the game start
@@ -281,13 +300,38 @@ ECS::EntityID room_controller::createServerProjectile(ECS::EntityID room, ECS::E
     
     switch (weaponMode) {
         case rtype::common::components::WeaponMode::Single: {
-            // Single projectile (CrimsonStriker normal, EmeraldTitan)
+            // SolarGuardian charged shot: Shield instead of projectile
+            if (vesselClass->type == rtype::common::components::VesselType::SolarGuardian && isCharged) {
+                // Apply shield to the player
+                auto* existingShield = root.world.GetComponent<rtype::common::components::Shield>(owner);
+                if (existingShield) {
+                    // Activate existing shield
+                    if (existingShield->activate()) {
+                        std::cout << "[SHIELD] Player " << owner << " activated shield" << std::endl;
+                        // Broadcast shield activation to all clients
+                        network::senders::broadcast_shield_state(room, static_cast<uint32_t>(owner), true, existingShield->duration);
+                    }
+                } else {
+                    // Add new shield component (3s duration, 50% damage reduction, 6s cooldown)
+                    root.world.AddComponent<rtype::common::components::Shield>(owner, 3.0f, 0.5f, 6.0f);
+                    auto* shield = root.world.GetComponent<rtype::common::components::Shield>(owner);
+                    if (shield && shield->activate()) {
+                        std::cout << "[SHIELD] Player " << owner << " activated shield" << std::endl;
+                        // Broadcast shield activation to all clients
+                        network::senders::broadcast_shield_state(room, static_cast<uint32_t>(owner), true, shield->duration);
+                    }
+                }
+                // Don't create projectile, just return 0
+                return 0;
+            }
+            
+            // Normal single projectile (CrimsonStriker normal, EmeraldTitan)
             firstProjectile = createSingleProjectile(room, owner, projectileX, y, baseSpeed, baseDamage, piercing, isCharged);
             broadcastProjectileSpawn(firstProjectile, owner, room, isCharged);
             
             // EmeraldTitan: Add explosion component
             if (vesselClass->type == rtype::common::components::VesselType::EmeraldTitan) {
-                float radius = isCharged ? 80.0f : 50.0f;  // Larger for charged
+                float radius = isCharged ? 150.0f : 80.0f;  // Larger for charged
                 root.world.AddComponent<rtype::common::components::Explosion>(firstProjectile, radius, baseDamage, baseDamage / 2);
             }
             break;

@@ -36,6 +36,7 @@ enum Packets {
     SPAWN_BOSS_REQUEST = 16,
     PLAYER_SCORE_UPDATE = 17,
     LOBBY_SETTINGS_UPDATE = 18,
+    SHIELD_STATE = 19,
 };
 
 
@@ -234,6 +235,16 @@ struct LobbySettingsUpdatePacket {
     bool friendlyFire;    // cosmetic for now
     bool aiAssist;        // functional
     bool megaDamage;      // functional
+};
+
+/**
+ * Server → All: Update shield state for a player
+ * Sent when a player activates or deactivates their shield
+ */
+struct ShieldStatePacket {
+    uint32_t playerId;    // Player entity ID
+    bool isActive;        // true = shield activated, false = shield deactivated
+    float duration;       // Remaining duration in seconds (if active)
 };
 
 #endif //PACKETS_H
