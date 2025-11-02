@@ -14,6 +14,7 @@
 #include "packetmanager.h"
 #include <common/systems/CollisionSystem.h>
 #include <common/components/Score.h>
+#include <common/components/Explosion.h>
 #include <iostream>
 #include <cmath>
 #include <algorithm>
@@ -91,9 +92,69 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
         auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemy);
         if (!projData || !enemyHealth) return;
 
-        std::cout << "[COLLISION] Projectile " << proj << " hit enemy " << enemy << " - Enemy HP: " << enemyHealth->currentHp << " -> " << (enemyHealth->currentHp - projData->damage) << std::endl;
+        std::cout << "[COLLISION] Projectile " << proj << " (damage=" << projData->damage << ") hit enemy " << enemy 
+                  << " - Enemy HP: " << enemyHealth->currentHp << " -> " << (enemyHealth->currentHp - projData->damage) << std::endl;
 
         enemyHealth->currentHp -= projData->damage;
+
+        // Check if projectile has explosion component (EmeraldTitan weapons)
+        auto* explosion = world.GetComponent<rtype::common::components::Explosion>(proj);
+        if (explosion && !explosion->triggered) {
+            explosion->triggered = true;
+            
+            // Get projectile position for AoE center
+            auto* projPos = world.GetComponent<rtype::common::components::Position>(proj);
+            if (projPos) {
+                std::cout << "[EXPLOSION] Projectile " << proj << " exploded at (" << projPos->x << ", " << projPos->y << ") - Radius: " << explosion->radius << std::endl;
+                
+                // Apply AoE damage to all enemies in range
+                auto* allEnemyHealth = world.GetAllComponents<rtype::common::components::Health>();
+                if (allEnemyHealth) {
+                    for (auto& [targetEntity, targetHealth] : *allEnemyHealth) {
+                        if (targetEntity == enemy) continue; // Already damaged this one
+                        
+                        // Only affect enemies
+                        auto* targetTeam = world.GetComponent<rtype::common::components::Team>(targetEntity);
+                        if (!targetTeam || targetTeam->team != rtype::common::components::TeamType::Enemy) continue;
+                        
+                        auto* targetPos = world.GetComponent<rtype::common::components::Position>(targetEntity);
+                        if (!targetPos) continue;
+                        
+                        // Calculate distance from explosion center
+                        float dx = targetPos->x - projPos->x;
+                        float dy = targetPos->y - projPos->y;
+                        float distance = std::sqrt(dx * dx + dy * dy);
+                        
+                        if (distance <= explosion->radius) {
+                            // Linear interpolation between center and edge damage
+                            float ratio = distance / explosion->radius;
+                            int aoeDamage = explosion->centerDamage + 
+                                          static_cast<int>(ratio * (explosion->edgeDamage - explosion->centerDamage));
+                            
+                            targetHealth->currentHp -= aoeDamage;
+                            std::cout << "[EXPLOSION] Hit enemy " << targetEntity << " (dist: " << distance << ") for " << aoeDamage << " damage" << std::endl;
+                            
+                            if (targetHealth->currentHp <= 0) {
+                                targetHealth->isAlive = false;
+                                toDestroy.push_back(targetEntity);
+                                
+                                // Award points to shooter
+                                ECS::EntityID shooter = projData->ownerId;
+                                auto* shooterPlayer = world.GetComponent<rtype::common::components::Player>(shooter);
+                                auto* shooterScore = world.GetComponent<rtype::common::components::Score>(shooter);
+                                if (shooterPlayer && shooterScore) {
+                                    auto* enemyType = world.GetComponent<rtype::common::components::EnemyTypeComponent>(targetEntity);
+                                    int points = enemyType ? getScoreForEnemyType(enemyType->type) : 10;
+                                    shooterScore->points += points;
+                                    shooterScore->kills++;
+                                    network::senders::send_player_score(shooter, shooterPlayer->serverId, shooterScore->points);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         if (enemyHealth->currentHp <= 0) {
             enemyHealth->isAlive = false;

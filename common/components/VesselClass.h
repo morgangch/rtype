@@ -14,6 +14,8 @@
 
 #include <ECS/ECS.h>
 #include <string>
+#include <cmath>
+#include <algorithm>
 
 namespace rtype::common::components {
 
@@ -214,10 +216,12 @@ namespace rtype::common::components {
         /**
          * @brief Get the effective damage for this vessel
          * @param baseDamage Base damage value
-         * @return Modified damage
+         * @return Modified damage (minimum 1 if base > 0)
          */
         int getEffectiveDamage(int baseDamage) const {
-            return static_cast<int>(baseDamage * stats.damageMultiplier);
+            if (baseDamage == 0) return 0;
+            int effectiveDamage = static_cast<int>(std::round(baseDamage * stats.damageMultiplier));
+            return std::max(1, effectiveDamage); // Ensure minimum 1 damage
         }
 
         /**

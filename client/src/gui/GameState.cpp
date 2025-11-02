@@ -163,8 +163,6 @@ ECS::EntityID GameState::createRemotePlayer(const std::string &name, uint32_t se
 }
 
 ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t ownerId, float x, float y, float vx, float vy, uint16_t damage, bool piercing, bool isCharged) {
-    std::cout << "[GameState] Creating projectile from server: serverId=" << serverId << " owner=" << ownerId << " pos=(" << x << "," << y << ") vel=(" << vx << "," << vy << ") charged=" << isCharged << std::endl;
-    
     // Check if we already have this projectile (shouldn't happen)
     auto it = m_serverEntityMap.find(serverId);
     if (it != m_serverEntityMap.end()) {
