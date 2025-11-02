@@ -6,6 +6,7 @@
 #include "systems/ServerEnemySystem.h"
 #include "systems/ServerCollisionSystem.h"
 #include "systems/EnemyAISystem.h"
+#include "systems/RoomCleanSystem.h"
 #include "systems/AssistantSystem.h"
 #include <common/components/Position.h>
 #include <common/components/Velocity.h>
@@ -111,6 +112,7 @@ int main() {
     root.world.RegisterSystem<ServerEnemySystem>();
     root.world.RegisterSystem<rtype::server::systems::ServerCollisionSystem>();
     root.world.RegisterSystem<rtype::server::systems::AssistantSystem>();
+    root.world.RegisterSystem<RoomCleanSystem>();
     std::cout << "✓ Registered AssistantSystem" << std::endl;
     std::cout << "✓ Registered ServerCollisionSystem" << std::endl;
 
