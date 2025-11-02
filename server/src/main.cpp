@@ -6,12 +6,14 @@
 #include "systems/ServerEnemySystem.h"
 #include "systems/ServerCollisionSystem.h"
 #include "systems/EnemyAISystem.h"
+#include "systems/RoomCleanSystem.h"
 #include "systems/AssistantSystem.h"
 #include <common/components/Position.h>
 #include <common/components/Velocity.h>
 #include <common/components/Projectile.h>
 #include <common/components/Player.h>
 #include <common/systems/MovementSystem.h>
+#include <common/systems/FortressShieldSystem.h>
 #include "components/LobbyState.h"
 #include "components/PlayerConn.h"
 #include "components/LinkedRoom.h"
@@ -84,6 +86,9 @@ void rtype::server::Rtype::loop(float deltaTime) {
     }
 
     world.UpdateSystems(deltaTime);
+    
+    // Update Fortress shield system (manages RED shield requiring 2 charged shots)
+    rtype::common::systems::FortressShieldSystem::update(world, deltaTime);
 }
 
 
@@ -99,6 +104,7 @@ int main() {
     root.packetHandler.registerCallback(Packets::PLAYER_INPUT, rtype::server::controllers::room_controller::handlePlayerInput);
     root.packetHandler.registerCallback(Packets::PLAYER_READY, rtype::server::controllers::room_controller::handlePlayerReady);
     root.packetHandler.registerCallback(Packets::PLAYER_SHOOT, rtype::server::controllers::room_controller::handlePlayerShoot);
+    root.packetHandler.registerCallback(Packets::LOBBY_SETTINGS_UPDATE, rtype::server::controllers::room_controller::handleLobbySettingsUpdate);
     std::cout << "✓ Registered PLAYER_READY callback (type " << static_cast<int>(Packets::PLAYER_READY) << ")" << std::endl;
 
     // Register systems
@@ -106,6 +112,7 @@ int main() {
     root.world.RegisterSystem<ServerEnemySystem>();
     root.world.RegisterSystem<rtype::server::systems::ServerCollisionSystem>();
     root.world.RegisterSystem<rtype::server::systems::AssistantSystem>();
+    root.world.RegisterSystem<RoomCleanSystem>();
     std::cout << "✓ Registered AssistantSystem" << std::endl;
     std::cout << "✓ Registered ServerCollisionSystem" << std::endl;
 

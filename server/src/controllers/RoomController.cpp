@@ -21,7 +21,14 @@
 #include <common/components/Team.h>
 #include <common/components/Projectile.h>
 #include <common/components/Health.h>
+#include <common/components/Score.h>
 #include <common/components/EnemyType.h>
+#include <common/components/VesselClass.h>
+#include <common/components/Explosion.h>
+#include <common/components/Homing.h>
+#include <common/components/Shield.h>
+#include <common/components/ForgeAugment.h>
+#include <common/components/Bounce.h>
 #include <iostream>
 #include <cstring>
 #include <cmath>
@@ -41,6 +48,7 @@
 #include "common/utils/endiane_converter.h"
 #include "components/LinkedRoom.h"
 #include "components/Assistant.h"
+#include "systems/ServerEnemySystem.h"
 
 using namespace rtype::server::controllers;
 using namespace rtype::server::services;
@@ -49,15 +57,143 @@ using namespace rtype::server::services;
 // HELPER FUNCTIONS - Game Start Flow
 // ============================================================================
 
+// Forge helper: spawn extra projectiles based on player's unlocked augment
+static void spawnForgeExtras(ECS::EntityID room, ECS::EntityID owner, float x, float y) {
+    auto* forge = root.world.GetComponent<rtype::common::components::ForgeAugment>(owner);
+    if (!forge || !forge->unlocked || forge->type == rtype::common::components::ForgeAugmentType::None) return;
+
+    using FA = rtype::common::components::ForgeAugmentType;
+
+    switch (forge->type) {
+        case FA::DualLaser: {
+            // Crimson Striker: Dual laser beams (≈1.5 -> rounded to 2 dmg), straight and fast
+            const float speed = 700.f;
+            const int dmg = 2;
+            const float offY = 6.f;
+            auto p1 = room_controller::createSingleProjectile(room, owner, x + 32.f, y - offY, speed, dmg, false, false);
+            auto p2 = room_controller::createSingleProjectile(room, owner, x + 32.f, y + offY, speed, dmg, false, false);
+            room_controller::broadcastProjectileSpawn(p1, owner, room, false);
+            room_controller::broadcastProjectileSpawn(p2, owner, room, false);
+            break;
+        }
+        case FA::BouncySplit: {
+            // Azure Phantom: two angled bouncing shots, 1 dmg each, bounce on top/bottom borders
+            const float speed = 520.f;
+            const float angle = 10.f * 3.1415926f / 180.f;
+            float vx = speed * std::cos(0.f);
+            float vyUp = speed * std::sin(angle);
+            float vyDown = -vyUp;
+
+            auto pUp = room_controller::createSingleProjectile(room, owner, x + 32.f, y, vx, vyUp, speed, 1, false, false);
+            auto pDn = room_controller::createSingleProjectile(room, owner, x + 32.f, y, vx, vyDown, speed, 1, false, false);
+            // Add Bounce (Y only)
+            root.world.AddComponent<rtype::common::components::Bounce>(pUp, 6, false, true);
+            root.world.AddComponent<rtype::common::components::Bounce>(pDn, 6, false, true);
+            room_controller::broadcastProjectileSpawn(pUp, owner, room, false);
+            room_controller::broadcastProjectileSpawn(pDn, owner, room, false);
+            break;
+        }
+        case FA::ShortSpread: {
+            // Shotgun: 5 pellets in a cone, short lifetime (~0.5s)
+            const int count = 5;
+            const float angleSpread = 30.f;
+            const float angleStep = angleSpread / (count - 1);
+            const float startDeg = -angleSpread / 2.f;
+            const float baseSpeed = 600.f;
+            const int dmg = 1; // 0.5 -> rounded to 1
+            for (int i = 0; i < count; ++i) {
+                float deg = startDeg + i * angleStep;
+                float rad = deg * 3.1415926f / 180.f;
+                float vx = baseSpeed * std::cos(rad);
+                float vy = baseSpeed * std::sin(rad);
+                auto p = room_controller::createSingleProjectile(room, owner, x + 32.f, y, vx, vy, baseSpeed, dmg, false, false);
+                if (auto* pr = root.world.GetComponent<rtype::common::components::Projectile>(p)) {
+                    pr->maxDistance = baseSpeed * 0.5f; // ~0.5s travel
+                }
+                room_controller::broadcastProjectileSpawn(p, owner, room, false);
+            }
+            break;
+        }
+        case FA::GuardianTriBeam: {
+            // Solar Guardian: triple forward beams, short to mid range
+            const float speed = 560.f;
+            const int dmg = 1;
+            const float offsets[3] = {-8.f, 0.f, 8.f};
+            for (float offY : offsets) {
+                auto p = room_controller::createSingleProjectile(room, owner, x + 32.f, y + offY, speed, dmg, false, false);
+                if (auto* pr = root.world.GetComponent<rtype::common::components::Projectile>(p)) {
+                    pr->maxDistance = 380.f; // moderate range
+                }
+                room_controller::broadcastProjectileSpawn(p, owner, room, false);
+            }
+            break;
+        }
+        default: break;
+    }
+}
+
 void room_controller::markPlayersAsInGame(ECS::EntityID room) {
     auto players_in_room = player_service::findPlayersByRoom(room);
     std::cout << "Found " << players_in_room.size() << " players in room" << std::endl;
+
+    auto *rp = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
 
     for (auto pid: players_in_room) {
         auto *lobbyState = root.world.GetComponent<rtype::server::components::LobbyState>(pid);
         if (lobbyState) {
             lobbyState->isInGame = true;
             std::cout << "  - Marked player " << pid << " as in-game" << std::endl;
+        }
+
+        // Reset player HP for the game start based on vessel class
+        auto *health = root.world.GetComponent<rtype::common::components::Health>(pid);
+        auto *vesselClass = root.world.GetComponent<rtype::common::components::VesselClass>(pid);
+        if (health && vesselClass) {
+            // Base HP per vessel type (hearts in UI)
+            int baseHp = 3; // Default
+            switch (vesselClass->type) {
+                case rtype::common::components::VesselType::CrimsonStriker:
+                    baseHp = 3; // Balanced
+                    break;
+                case rtype::common::components::VesselType::AzurePhantom:
+                    baseHp = 3; // Agile (low defense)
+                    break;
+                case rtype::common::components::VesselType::EmeraldTitan:
+                    baseHp = 4; // Tank (4 HP, 4 hearts)
+                    break;
+                case rtype::common::components::VesselType::SolarGuardian:
+                    baseHp = 5; // Defense (5 HP, 5 hearts)
+                    break;
+            }
+            
+            health->currentHp = baseHp;
+            health->maxHp = baseHp;
+            health->isAlive = true;
+            health->invulnerable = false;
+            health->invulnerabilityTimer = 0.0f;
+            std::cout << "  - Reset player " << pid << " HP to " << baseHp << " (Vessel: " << static_cast<int>(vesselClass->type) << ")" << std::endl;
+        }
+
+        // Reset player score to 0 for the game start
+        auto *score = root.world.GetComponent<rtype::common::components::Score>(pid);
+        if (score) {
+            score->points = 0;
+            score->kills = 0;
+            score->deaths = 0;
+            score->combo = 0;
+            score->comboTimer = 0.0f;
+            score->highestCombo = 0;
+            std::cout << "  - Reset player " << pid << " score to 0" << std::endl;
+        }
+
+        // Broadcast initial player state so clients see the correct HP immediately
+        auto *pos = root.world.GetComponent<rtype::common::components::Position>(pid);
+        if (pos && health) {
+            // Send to all players in the same room
+            for (auto recipientPid: players_in_room) {
+                network::senders::send_player_state(recipientPid, pid, pos->x, pos->y, pos->rotation,
+                                                    static_cast<uint16_t>(health->currentHp), health->isAlive);
+            }
         }
     }
 }
@@ -106,8 +242,10 @@ ECS::EntityID room_controller::findOrCreatePlayer(const packet_t &packet, const 
         return player; // Existing player, not in game - allow rejoin
     }
 
-    // Player doesn't exist, create new one
-    player = player_service::createNewPlayer(playerName, joinCode, ipStr, port);
+    // Player doesn't exist, create new one with selected vessel type (from JoinRoomPacket)
+    const JoinRoomPacket *jp = reinterpret_cast<const JoinRoomPacket *>(packet.data);
+    auto vesselType = static_cast<rtype::common::components::VesselType>(jp ? jp->vesselType : 0);
+    player = player_service::createNewPlayer(playerName, joinCode, ipStr, port, vesselType);
 
     // Re-check to ensure player was created successfully
     player = player_service::findPlayerByNetwork(packet.header.client_addr, packet.header.client_port);
@@ -153,11 +291,18 @@ void room_controller::sendJoinAccepted(ECS::EntityID player, ECS::EntityID room)
     // Store room entity ID in player's connection (note: field name 'room_code' is misleading, it stores entity ID)
     playernet->room_code = room;
 
+    // Get player's vessel type
+    uint8_t vesselType = 0; // Default: CrimsonStriker
+    auto *vesselClass = root.world.GetComponent<rtype::common::components::VesselClass>(player);
+    if (vesselClass) {
+        vesselType = static_cast<uint8_t>(vesselClass->type);
+    }
+
     std::cout << "Sending JOIN_ROOM_ACCEPTED to player " << player << " (isAdmin=" <<
-            (rp->ownerId == player) << ", roomCode=" << rp->joinCode << ", playerServerId=" << player << ")" <<
-            std::endl;
+            (rp->ownerId == player) << ", roomCode=" << rp->joinCode << ", playerServerId=" << player << 
+            ", vesselType=" << static_cast<int>(vesselType) << ")" << std::endl;
     network::senders::send_join_room_accepted(player, (rp->ownerId == player), rp->joinCode,
-                                              static_cast<uint32_t>(player));
+                                              static_cast<uint32_t>(player), vesselType);
 }
 
 void room_controller::notifyJoiningPlayerOfExisting(ECS::EntityID player, ECS::EntityID room) {
@@ -206,42 +351,173 @@ void room_controller::initializeLobbyState(ECS::EntityID player) {
 // ============================================================================
 
 ECS::EntityID room_controller::createServerProjectile(ECS::EntityID room, ECS::EntityID owner, float x, float y, bool isCharged) {
-    auto projectile = root.world.CreateEntity();
-
-    // Projectile starts at given position with offset
-    float projectileX = x + 32.0f; // Offset to spawn in front of player
-    float projectileY = y;
-
-    // Projectile parameters depend on whether it's charged or not
-    float projectileSpeed;
-    uint16_t damage;
-    bool piercing;
-
-    if (isCharged) {
-        projectileSpeed = 600.0f;
-        damage = 2;
-        piercing = true;
-    } else {
-        projectileSpeed = 500.0f;
-        damage = 1;
-        piercing = false;
+    // Get vessel class to determine weapon behavior
+    auto *vesselClass = root.world.GetComponent<rtype::common::components::VesselClass>(owner);
+    if (!vesselClass) {
+        // Fallback to default single projectile if no vessel class
+        std::cerr << "WARNING: Player " << owner << " has no VesselClass component, using default weapon" << std::endl;
+        vesselClass = new rtype::common::components::VesselClass(); // Default CrimsonStriker
     }
+    
+    // Get weapon mode based on charged state
+    rtype::common::components::WeaponMode weaponMode = isCharged ? 
+        vesselClass->chargedWeaponMode : vesselClass->normalWeaponMode;
+    
+    // Base damage from vessel class
+    uint16_t baseDamage = isCharged ? 
+        vesselClass->chargedShotDamage : vesselClass->normalShotDamage;
+    
+    // Apply vessel damage multiplier
+    baseDamage = vesselClass->getEffectiveDamage(baseDamage);
+    
+    // Apply mega damage if enabled
+    auto *rp = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
+    if (rp && rp->ownerId == owner && rp->megaDamageEnabled) {
+        baseDamage = 1000;
+    }
+    
+    bool piercing = isCharged && vesselClass->chargedShotPiercing;
+    float baseSpeed = isCharged ? 600.0f : 500.0f;
+    float projectileX = x + 32.0f; // Offset to spawn in front of player
+    
+    // Create projectile(s) based on weapon mode
+    ECS::EntityID firstProjectile = 0;
+    
+    switch (weaponMode) {
+        case rtype::common::components::WeaponMode::Single: {
+            // Solar Guardian charged: Solar Pulse (radial burst)
+            if (vesselClass->type == rtype::common::components::VesselType::SolarGuardian && isCharged) {
+                const int count = 12;
+                const float baseSpeed = 480.0f;
+                const int dmg = 1;
+                const float step = 360.0f / count;
+                ECS::EntityID first = 0;
+                for (int i = 0; i < count; ++i) {
+                    float deg = i * step;
+                    float rad = deg * 3.1415926f / 180.f;
+                    float vx = baseSpeed * std::cos(rad);
+                    float vy = baseSpeed * std::sin(rad);
+                    auto proj = createSingleProjectile(room, owner, x, y, vx, vy, baseSpeed, dmg, false, true);
+                    if (auto* pr = root.world.GetComponent<rtype::common::components::Projectile>(proj)) {
+                        pr->maxDistance = 260.0f; // short-lived pulse
+                    }
+                    broadcastProjectileSpawn(proj, owner, room, true);
+                    if (i == 0) first = proj;
+                }
+                return first; // Done
+            }
 
-    float projectileVx = projectileSpeed;
-    float projectileVy = 0.0f;
+            // Normal single projectile (CrimsonStriker normal, EmeraldTitan)
+            firstProjectile = createSingleProjectile(room, owner, projectileX, y, baseSpeed, baseDamage, piercing, isCharged);
+            broadcastProjectileSpawn(firstProjectile, owner, room, isCharged);
+            
+            // EmeraldTitan: Add explosion component
+            if (vesselClass->type == rtype::common::components::VesselType::EmeraldTitan) {
+                float radius = isCharged ? 150.0f : 80.0f;  // Larger for charged
+                root.world.AddComponent<rtype::common::components::Explosion>(firstProjectile, radius, baseDamage, baseDamage / 2);
+            }
+            break;
+        }
+        
+        case rtype::common::components::WeaponMode::Dual: {
+            // Dual projectiles (AzurePhantom normal) - shoot from top and bottom of ship
+            float offset = 10.0f;
+            // Keep full damage for each projectile (balanced by lower fire rate)
+            auto proj1 = createSingleProjectile(room, owner, projectileX, y - offset, baseSpeed, baseDamage, piercing, isCharged);
+            auto proj2 = createSingleProjectile(room, owner, projectileX, y + offset, baseSpeed, baseDamage, piercing, isCharged);
+            broadcastProjectileSpawn(proj1, owner, room, isCharged);
+            broadcastProjectileSpawn(proj2, owner, room, isCharged);
+            firstProjectile = proj1;
+            break;
+        }
+        
+        case rtype::common::components::WeaponMode::Burst: {
+            // Burst/Homing projectiles (AzurePhantom charged) - 3 homing darts
+            int count = vesselClass->projectileCount;
+            float angleStep = 15.0f; // 15 degrees between each dart
+            float startAngle = -(angleStep * (count - 1)) / 2.0f;
+            
+            for (int i = 0; i < count; ++i) {
+                float angle = startAngle + (i * angleStep);
+                float radians = angle * 3.14159f / 180.0f;
+                float vx = baseSpeed * std::cos(radians);
+                float vy = baseSpeed * std::sin(radians);
+                
+                auto proj = root.world.CreateEntity();
+                root.world.AddComponent<rtype::common::components::Position>(proj, projectileX, y, 0.0f);
+                root.world.AddComponent<rtype::common::components::Velocity>(proj, vx, vy, baseSpeed);
+                root.world.AddComponent<rtype::common::components::Team>(proj, rtype::common::components::TeamType::Player);
+                root.world.AddComponent<rtype::common::components::Projectile>(proj, baseDamage, piercing, true, baseSpeed);
+                auto *projComp = root.world.GetComponent<rtype::common::components::Projectile>(proj);
+                if (projComp) projComp->ownerId = owner;
+                root.world.AddComponent<rtype::server::components::LinkedRoom>(proj, room);
+                
+                // Add homing component
+                root.world.AddComponent<rtype::common::components::Homing>(proj, 0, 800.0f, 180.0f, 450.0f);
+                
+                // Broadcast each projectile
+                broadcastProjectileSpawn(proj, owner, room, isCharged);
+                
+                if (i == 0) firstProjectile = proj;
+            }
+            break;
+        }
+        
+        case rtype::common::components::WeaponMode::Spread: {
+            // Spread/Shotgun (SolarGuardian normal) - 4 pellets in a cone
+            int count = vesselClass->projectileCount;
+            float angleSpread = 30.0f; // Total spread angle
+            float angleStep = angleSpread / (count - 1);
+            float startAngle = -angleSpread / 2.0f;
+            
+            for (int i = 0; i < count; ++i) {
+                float angle = startAngle + (i * angleStep);
+                float radians = angle * 3.14159f / 180.0f;
+                float vx = baseSpeed * std::cos(radians);
+                float vy = baseSpeed * std::sin(radians);
+                
+                auto proj = createSingleProjectile(room, owner, projectileX, y, vx, vy, baseSpeed, baseDamage, piercing, isCharged);
+                broadcastProjectileSpawn(proj, owner, room, isCharged);
+                if (i == 0) firstProjectile = proj;
+            }
+            break;
+        }
+        
+        case rtype::common::components::WeaponMode::Piercing: {
+            // Piercing beam (CrimsonStriker charged)
+            firstProjectile = createSingleProjectile(room, owner, projectileX, y, baseSpeed, baseDamage, true, isCharged);
+            broadcastProjectileSpawn(firstProjectile, owner, room, isCharged);
+            break;
+        }
+    }
+    
+    // After base projectile(s), append forge extras if unlocked
+    spawnForgeExtras(room, owner, x, y);
+    return firstProjectile;
+}
 
-    // Add components to server projectile
-    root.world.AddComponent<rtype::common::components::Position>(projectile, projectileX, projectileY, 0.0f);
-    root.world.AddComponent<rtype::common::components::Velocity>(projectile, projectileVx, projectileVy,
-                                                                 projectileSpeed);
+// Helper function to create a single projectile
+ECS::EntityID room_controller::createSingleProjectile(ECS::EntityID room, ECS::EntityID owner, 
+                                                       float x, float y, float speed, 
+                                                       uint16_t damage, bool piercing, bool isCharged) {
+    return createSingleProjectile(room, owner, x, y, speed, 0.0f, speed, damage, piercing, isCharged);
+}
+
+ECS::EntityID room_controller::createSingleProjectile(ECS::EntityID room, ECS::EntityID owner, 
+                                                       float x, float y, float vx, float vy, float speed,
+                                                       uint16_t damage, bool piercing, bool isCharged) {
+    auto projectile = root.world.CreateEntity();
+    
+    root.world.AddComponent<rtype::common::components::Position>(projectile, x, y, 0.0f);
+    root.world.AddComponent<rtype::common::components::Velocity>(projectile, vx, vy, speed);
     root.world.AddComponent<rtype::common::components::Team>(projectile, rtype::common::components::TeamType::Player);
-    root.world.AddComponent<rtype::common::components::Projectile>(projectile, damage, piercing, true /* serverOwned */,
-                                                                   projectileSpeed,
-                                                                   rtype::common::components::ProjectileType::Basic);
-    // Set projectile owner for score attribution
+    root.world.AddComponent<rtype::common::components::Projectile>(projectile, damage, piercing, true, speed);
+    
     auto *projComp = root.world.GetComponent<rtype::common::components::Projectile>(projectile);
     if (projComp) projComp->ownerId = owner;
+    
     root.world.AddComponent<rtype::server::components::LinkedRoom>(projectile, room);
+    
     return projectile;
 }
 
@@ -323,10 +599,18 @@ void room_controller::handleGameStartRequest(const packet_t &packet) {
     broadcastGameStart(room);
     broadcastPlayerRoster(room);
 
-    // Spawn an AI assistant only if there is exactly 1 human player in the room
+    // Apply lobby debug start level to the enemy spawner
+    if (rp) {
+        if (auto* sys = root.world.GetSystem<ServerEnemySystem>()) {
+            int forcedLevel = static_cast<int>(rp->startLevelIndex); // 0=Lvl1,1=Lvl2
+            sys->setStartLevel(forcedLevel);
+        }
+    }
+
+    // Spawn an AI assistant only if there is exactly 1 human player in the room and AI assist is enabled
     {
         auto players_in_room = player_service::findPlayersByRoom(room);
-        if (players_in_room.size() == 1) {
+        if (players_in_room.size() == 1 && rp && rp->aiAssistEnabled) {
             // Create assistant entity (server-controlled, not network-connected)
             auto assistant = root.world.CreateEntity();
             // Place assistant near the left side of the screen, centered vertically
@@ -414,9 +698,53 @@ void room_controller::handlePlayerShoot(const packet_t &packet) {
     // Use extracted helper functions
     ECS::EntityID projectile = createServerProjectile(room, player, playerX, playerY, isCharged);
     std::cout << "Player " << player << " shot a "
-              << (isCharged ? "CHARGED" : "regular") << " projectile (entity " << projectile << ") from position ("
+              << (isCharged ? "CHARGED" : "regular") << " projectile from position ("
               << playerX << ", " << playerY << ")" << std::endl;
-    broadcastProjectileSpawn(projectile, player, room, isCharged);
+    // Note: broadcastProjectileSpawn is now called inside createServerProjectile for each projectile created
+}
+
+void room_controller::handleLobbySettingsUpdate(const packet_t &packet) {
+    LobbySettingsUpdatePacket *p = (LobbySettingsUpdatePacket *) packet.data;
+
+    // Identify the player and room
+    ECS::EntityID player = player_service::findPlayerByNetwork(packet.header.client_addr, packet.header.client_port);
+    if (!player) {
+        std::cerr << "ERROR: Player not found for settings update" << std::endl;
+        return;
+    }
+
+    ECS::EntityID room = room_service::getRoomByPlayer(player);
+    if (!room) {
+        std::cerr << "ERROR: Player " << player << " not in a room for settings update" << std::endl;
+        return;
+    }
+
+    auto *rp = root.world.GetComponent<rtype::server::components::RoomProperties>(room);
+    if (!rp) {
+        std::cerr << "ERROR: Room properties not found for settings update" << std::endl;
+        return;
+    }
+
+    // Only the room owner may update settings
+    if (rp->ownerId != player) {
+        std::cout << "WARNING: Non-admin player " << player << " attempted to update lobby settings in room " << room << std::endl;
+        return;
+    }
+
+    // Apply settings
+    rp->difficultyIndex = p->difficulty;
+    rp->friendlyFire = p->friendlyFire;
+    rp->aiAssistEnabled = p->aiAssist;
+    rp->megaDamageEnabled = p->megaDamage;
+    rp->startLevelIndex = p->startLevel;
+
+    std::cout << "✓ Updated lobby settings for room " << room
+              << " [diff=" << static_cast<int>(rp->difficultyIndex)
+              << ", FF=" << (rp->friendlyFire ? "on" : "off")
+              << ", AI=" << (rp->aiAssistEnabled ? "on" : "off")
+              << ", MEGA=" << (rp->megaDamageEnabled ? "on" : "off")
+              << ", START_LVL=L" << static_cast<int>(rp->startLevelIndex + 1)
+              << "]" << std::endl;
 }
 
 void room_controller::handleJoinRoomPacket(const packet_t &packet) {
@@ -622,13 +950,15 @@ void room_controller::handleSpawnBossRequest(const packet_t &packet) {
 
     std::cout << "✓ Admin " << player << " authorized to spawn boss in room " << room << std::endl;
 
-    // Check if a boss already exists
+    // Check if a boss already exists (any boss type)
     bool bossExists = false;
     auto *enemyTypes = root.world.GetAllComponents<rtype::common::components::EnemyTypeComponent>();
     if (enemyTypes) {
         for (auto &etPair: *enemyTypes) {
             auto *et = etPair.second.get();
-            if (et && et->type == rtype::common::components::EnemyType::TankDestroyer) {
+            if (!et) continue;
+            using ET = rtype::common::components::EnemyType;
+            if (et->type == ET::TankDestroyer || et->type == ET::Serpent || et->type == ET::Fortress || et->type == ET::Core) {
                 auto *health = root.world.GetComponent<rtype::common::components::Health>(etPair.first);
                 if (health && health->isAlive && health->currentHp > 0) {
                     bossExists = true;
@@ -644,23 +974,14 @@ void room_controller::handleSpawnBossRequest(const packet_t &packet) {
         return;
     }
 
-    // Spawn the boss
-    float spawnX = 1280.0f - 100.0f;
-    float spawnY = 360.0f;
-
-    auto boss = root.world.CreateEntity();
-    root.world.AddComponent<rtype::common::components::Position>(boss, spawnX, spawnY, 0.0f);
-    root.world.AddComponent<rtype::common::components::Velocity>(boss, -50.0f, 0.0f, 50.0f);
-    root.world.AddComponent<rtype::common::components::Health>(boss, 50);
-    root.world.AddComponent<rtype::common::components::Team>(boss, rtype::common::components::TeamType::Enemy);
-    root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(
-        boss, rtype::common::components::EnemyType::TankDestroyer);
-    root.world.AddComponent<rtype::server::components::LinkedRoom>(boss, room);
-    std::cout << "SERVER: Admin spawned boss (id=" << boss << ") in room " << room << std::endl;
-
-    network::senders::broadcast_enemy_spawn(room, static_cast<uint32_t>(boss),
-                                            rtype::common::components::EnemyType::TankDestroyer,
-                                            spawnX, spawnY, 50);
+        // Spawn the appropriate boss for the current level using the enemy system
+        if (auto* sys = root.world.GetSystem<ServerEnemySystem>()) {
+            auto type = sys->getCurrentBossType();
+            std::cout << "✓ Admin spawning level-appropriate boss type=" << static_cast<int>(type) << " in room " << room << std::endl;
+            sys->spawnBoss(root.world, room, type);
+        } else {
+            std::cerr << "ERROR: ServerEnemySystem not available; cannot spawn boss" << std::endl;
+        }
 }
 
 // Register all packet callbacks on a player's packet handler
@@ -671,7 +992,8 @@ void room_controller::registerPlayerCallbacks(PacketHandler &handler) {
     handler.registerCallback(Packets::PLAYER_READY, handlePlayerReady);
     handler.registerCallback(Packets::PLAYER_SHOOT, handlePlayerShoot);
     handler.registerCallback(Packets::SPAWN_BOSS_REQUEST, handleSpawnBossRequest);
+    handler.registerCallback(Packets::LOBBY_SETTINGS_UPDATE, handleLobbySettingsUpdate);
     std::cout <<
-            "✓ Registered player callbacks: JOIN_ROOM, GAME_START_REQUEST, PLAYER_INPUT, PLAYER_READY, PLAYER_SHOOT, SPAWN_BOSS_REQUEST"
+            "✓ Registered player callbacks: JOIN_ROOM, GAME_START_REQUEST, PLAYER_INPUT, PLAYER_READY, PLAYER_SHOOT, SPAWN_BOSS_REQUEST, LOBBY_SETTINGS_UPDATE"
             << std::endl;
 }

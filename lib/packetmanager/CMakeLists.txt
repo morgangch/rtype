@@ -10,6 +10,10 @@ target_include_directories(packetmanager PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+# Search, and include the zlib dependency
+find_package(ZLIB REQUIRED)
+target_link_libraries(packetmanager PUBLIC ZLIB::ZLIB)
+
 # Set C++ standard
 target_compile_features(packetmanager PUBLIC cxx_std_17)
 

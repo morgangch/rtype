@@ -26,6 +26,7 @@
 #endif
 
 #include "ECS/Types.h"
+#include <common/components/VesselClass.h>
 
 namespace rtype::server::services::player_service {
     /**
@@ -35,9 +36,11 @@ namespace rtype::server::services::player_service {
      * @param room_code The room code the player is joining (default is 0)
      * @param ip The IP address of the player (default is empty string)
      * @param port The port number of the player (default is 0)
+     * @param vesselType The vessel class chosen by the player (default is CrimsonStriker)
      * @return The EntityID of the newly created player
      */
-    ECS::EntityID createNewPlayer(std::string name, int room_code = 0, std::string ip = "", int port = 0);
+    ECS::EntityID createNewPlayer(std::string name, int room_code = 0, std::string ip = "", int port = 0, 
+                                   rtype::common::components::VesselType vesselType = rtype::common::components::VesselType::CrimsonStriker);
 
     /**
      * @brief Find a player entity from its network properties

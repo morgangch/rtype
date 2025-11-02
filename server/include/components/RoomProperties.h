@@ -22,6 +22,7 @@
 #include "rtype.h"
 #include "components/PlayerConn.h"
 #include "services/PlayerService.h"
+#include "common/components/Health.h"
 
 namespace rtype::server::components {
     /**
@@ -60,6 +61,12 @@ namespace rtype::server::components {
                 return;
             }
             for (auto player: players) {
+                // Skip dead players - their network connection may be invalid
+                auto *health = root.world.GetComponent<rtype::common::components::Health>(player);
+                if (health && (!health->isAlive || health->currentHp <= 0)) {
+                    continue;
+                }
+                
                 auto *pconn = root.world.GetComponent<rtype::server::components::PlayerConn>(player);
                 if (!pconn) {
                     continue;
@@ -88,6 +95,13 @@ namespace rtype::server::components {
          * @brief Entity ID of the room owner (first player to create it)
          */
         ECS::EntityID ownerId = 0; // EntityID of the room owner (first player who created the room)
+
+        // Lobby settings (admin-controlled)
+        uint8_t difficultyIndex = 1;  // 0=Easy,1=Normal,2=Hard (cosmetic)
+        bool friendlyFire = false;    // cosmetic for now
+        bool aiAssistEnabled = false; // spawn AI assistant if exactly one human
+        bool megaDamageEnabled = false; // admin projectile dmg=1000
+        uint8_t startLevelIndex = 0; // debug start level: 0=Lvl1, 1=Lvl2
     };
 }
 

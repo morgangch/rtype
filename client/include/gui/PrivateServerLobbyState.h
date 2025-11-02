@@ -100,6 +100,12 @@ namespace rtype::client::gui {
         void onEnter() override;
 
         /**
+         * @brief Called when exiting this state
+         * Ensures global lobby pointer is cleared to avoid dangling references.
+         */
+        void onExit() override;
+
+        /**
          * @brief Destroy the PrivateServerLobbyState
          *
          * Destructor defined in the .cpp so unique_ptr<ParallaxSystem>
@@ -215,6 +221,71 @@ namespace rtype::client::gui {
          * @param window Render window used to size/create the parallax
          */
         void ensureParallaxInitialized(const sf::RenderWindow& window);
+        /** @} */
+
+        /**
+         * @name Lobby Settings (Admin-only)
+         * Panel accessible via a settings gear in the bottom-left.
+         * Contains three columns: Gameplay, AI, Cheats.
+         * - Gameplay: Difficulty (cycles Easy/Normal/Hard), Friendly fire toggle (cosmetic)
+         * - AI: AI assist toggle (visible only when exactly one player is in the lobby)
+         * - Cheats: Mega damage (+1000 dmg) (applies to admin only)
+         * @{ */
+        // Access icon (bottom-left)
+        sf::Texture m_settingsTexture;
+        sf::Sprite  m_settingsSprite;
+        bool        m_settingsSpriteLoaded{false};
+        bool        m_settingsHovered{false};
+        sf::RectangleShape m_settingsRect; // fallback/click zone and hover hit area
+
+        // Panel visibility and background
+        bool m_showSettings{false};
+        sf::RectangleShape m_settingsPanelRect;
+
+        // Section titles
+        sf::Text m_gameplayTitle;
+        sf::Text m_aiTitle;
+        sf::Text m_cheatsTitle;
+
+        // Gameplay controls
+        sf::Text m_difficultyLabel;
+        sf::Text m_difficultyValue;
+        sf::RectangleShape m_rectDifficulty; // invisible clickable area
+
+        sf::Text m_friendlyFireLabel;
+        sf::RectangleShape m_rectFriendlyFire; // invisible clickable area
+
+        // AI controls (shown only when exactly 1 player in lobby)
+        sf::Text m_aiAssistLabel;
+        sf::RectangleShape m_rectAIAssist; // invisible clickable area
+        sf::RectangleShape m_sqAIAssist;   // visual toggle square
+
+        // Cheats controls
+        sf::Text m_megaDamageLabel;
+        sf::RectangleShape m_rectMegaDamage; // invisible clickable area
+        sf::RectangleShape m_sqMegaDamage;   // visual toggle square
+
+        // Debug: Start Level selector (Lvl1/Lvl2/Lvl3/Lvl4), shown under Mega Damage
+        sf::Text m_startLevelLabel;
+        sf::Text m_startLevelValue;
+        sf::RectangleShape m_rectStartLevel; // invisible clickable area
+
+        // Settings values (cosmetic except cheats to be applied to admin later)
+        int  m_difficultyIndex{1}; // 0=Easy, 1=Normal, 2=Hard
+        bool m_friendlyFire{false};
+        bool m_aiAssist{true};
+        bool m_megaDamage{false};
+        uint8_t m_startLevelIndex{0}; // 0=Lvl1, 1=Lvl2, 2=Lvl3, 3=Lvl4 (debug)
+        // Visual squares for toggles
+        sf::RectangleShape m_sqFriendlyFire;
+
+        // Track players to control AI section visibility
+        uint32_t m_totalPlayersInLobby{1};
+
+        // Helpers
+        void renderSettingsPanel(sf::RenderWindow& window);
+        void updateSettingsTexts();
+        void updateSettingsLayout(const sf::Vector2u& windowSize);
         /** @} */
         
     public:

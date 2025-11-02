@@ -57,7 +57,7 @@ namespace rtype::server::network::senders {
      * @param roomCode The room join code
      * @param playerServerId The server-assigned player ID
      */
-    void send_join_room_accepted(ECS::EntityID player, bool isAdmin, uint32_t roomCode, uint32_t playerServerId);
+    void send_join_room_accepted(ECS::EntityID player, bool isAdmin, uint32_t roomCode, uint32_t playerServerId, uint8_t vesselType);
 
 
     /**
@@ -77,6 +77,14 @@ namespace rtype::server::network::senders {
                                     float x, float y, float vx, float vy, uint16_t damage, bool piercing,
                                     bool isCharged);
 
+    /**
+     * Broadcasts a shield state change to all players in the specified room
+     * @param room_id The room entity ID
+     * @param playerId The player entity ID who activated/deactivated the shield
+     * @param isActive Whether the shield is active
+     * @param duration Remaining duration in seconds (if active)
+     */
+    void broadcast_shield_state(ECS::EntityID room_id, uint32_t playerId, bool isActive, float duration);
 
     /**
      * Sends the lobby state to the specified player
@@ -105,6 +113,14 @@ namespace rtype::server::network::senders {
      * @param playerId  The player entity ID that disconnected
      */
     void broadcast_player_disconnect(ECS::EntityID room_id, uint32_t playerId);
+
+    /**
+     * Sends a player score update packet to the specified player
+     * @param player The player entity ID
+     * @param playerId The server-assigned player ID
+     * @param score The new score value
+     */
+    void send_player_score(ECS::EntityID player, uint32_t playerId, int32_t score);
 }
 
 #endif //SENDERS_H

@@ -29,6 +29,8 @@
 #include <common/components/Player.h>
 #include <common/components/FireRate.h>
 #include <common/components/EnemyType.h>
+#include <common/components/Shield.h>
+#include <common/components/VesselClass.h>
 #include <common/systems/ChargedShotSystem.h>
 #include <client/components/Components.h>
 #include <vector>
@@ -206,6 +208,12 @@ namespace rtype::client::gui {
      */
     int getLevelIndex() const;
 
+        /**
+         * @brief Set current level index (0 = level1, 1 = level2, ...)
+         * @param index New level index to apply before entering the state
+         */
+        void setLevelIndex(int index);
+
         /* === Network-aware helpers (used by packet handlers) === */
         /**
          * @brief Create or update an enemy entity based on server spawn packet
@@ -225,9 +233,11 @@ namespace rtype::client::gui {
          * @brief Create a remote player representation for another client
          * @param name Player display name
          * @param serverId Server entity id
+         * @param vesselType Vessel class of the remote player
          * @return Local ECS::EntityID for the remote player entity
          */
-        ECS::EntityID createRemotePlayer(const std::string &name, uint32_t serverId);
+        ECS::EntityID createRemotePlayer(const std::string &name, uint32_t serverId, 
+                                         rtype::common::components::VesselType vesselType = rtype::common::components::VesselType::CrimsonStriker);
 
         /**
          * @brief Create a projectile spawned by the server
@@ -251,8 +261,17 @@ namespace rtype::client::gui {
          * @param y Y position
          * @param hp Health value
          * @param invulnerable Invulnerability state from server
+         * @param maxHp Maximum health (varies by vessel type)
          */
-        void updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable);
+        void updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable, uint16_t maxHp = 3);
+
+        /**
+         * @brief Update shield state for an entity from server
+         * @param serverId Server entity id
+         * @param isActive Whether the shield is active
+         * @param duration Remaining duration of the shield
+         */
+        void updateShieldStateFromServer(uint32_t serverId, bool isActive, float duration);
 
         /**
          * @brief Destroy a local entity corresponding to a server entity id
@@ -271,6 +290,12 @@ namespace rtype::client::gui {
          * @param isAdmin True to mark as admin
          */
         void setIsAdmin(bool isAdmin); // Set whether the local player is room admin
+
+        /**
+         * @brief Set the vessel type of the local player
+         * @param vesselType The vessel type selected by the player
+         */
+        void setLocalVesselType(rtype::common::components::VesselType vesselType);
 
         /**
          * @brief Set in-game score from server and update HUD text
@@ -301,16 +326,20 @@ namespace rtype::client::gui {
         uint32_t m_localPlayerServerId{0};
         /// Track if local player is room admin (for boss spawning)
         bool m_isAdmin{false};
+        /// Track local player's vessel type (received from server)
+        rtype::common::components::VesselType m_localVesselType{rtype::common::components::VesselType::CrimsonStriker};
 
         /* === Entity Factory Methods === */
         /**
          * @brief Create the local player entity
+         * @param vesselType The vessel class to create (default: CrimsonStriker)
          * @return Entity ID of the created player
          *
          * Creates the main player entity with Position, Velocity, Sprite, Health,
-         * Team, Player, FireRate, and ChargedShot components.
+         * Team, Player, FireRate, ChargedShot, and VesselClass components.
+         * Stats are modified based on the vessel type selected.
          */
-        ECS::EntityID createPlayer();
+        ECS::EntityID createPlayer(rtype::common::components::VesselType vesselType = rtype::common::components::VesselType::CrimsonStriker);
 
         /**
          * @brief Create a basic enemy entity
@@ -334,16 +363,6 @@ namespace rtype::client::gui {
         ECS::EntityID createSnakeEnemy(float x, float y);
 
         /**
-         * @brief Create a shooter enemy entity
-         * @param x X position
-         * @param y Y position
-         * @return Entity ID of the created shooter enemy
-         *
-         * Creates a shooter-type enemy with 3 HP that fires projectiles at regular intervals.
-         */
-        ECS::EntityID createShooterEnemy(float x, float y);
-
-        /**
          * @brief Create a suicide enemy entity
          * @param x X position
          * @param y Y position
@@ -360,6 +379,96 @@ namespace rtype::client::gui {
          * Creates a large boss entity with high HP (30) and alternating movement pattern.
          */
         ECS::EntityID createTankDestroyer(float x, float y);
+
+        /**
+         * @brief Create a Pata enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Pata enemy
+         *
+         * Creates a Pata-type enemy with moderate HP and unique movement pattern.
+         */
+        ECS::EntityID createPataEnemy(float x, float y);
+
+        /**
+         * @brief Create a Shielded enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Shielded enemy
+         *
+         * Creates a Shielded enemy with protective shield mechanics and higher durability.
+         */
+        ECS::EntityID createShieldedEnemy(float x, float y);
+
+        /**
+         * @brief Create a Flanker enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Flanker enemy
+         *
+         * Creates a Flanker enemy that attempts to outmaneuver the player with agile movement.
+         */
+        ECS::EntityID createFlankerEnemy(float x, float y);
+
+        /**
+         * @brief Create a Turret enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Turret enemy
+         *
+         * Creates a stationary Turret enemy that fires 3-shot bursts aimed at the player.
+         */
+        ECS::EntityID createTurretEnemy(float x, float y);
+
+        /**
+         * @brief Create a Waver enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Waver enemy
+         *
+         * Creates a Waver enemy with wave-pattern movement similar to snake but with distinct behavior.
+         */
+        ECS::EntityID createWaverEnemy(float x, float y);
+
+        /**
+         * @brief Create a Serpent Boss entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Serpent Boss
+         *
+         * Creates a large Serpent boss with segmented body mechanics and high HP pool.
+         */
+        ECS::EntityID createSerpentBoss(float x, float y);
+
+        /**
+         * @brief Create a Fortress Boss entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Fortress Boss
+         *
+         * Creates a stationary Fortress boss with heavy armor and multiple attack patterns.
+         */
+        ECS::EntityID createFortressBoss(float x, float y);
+
+        /**
+         * @brief Create a Core Boss entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Core Boss
+         *
+         * Creates the final Core boss with complex attack phases and maximum difficulty.
+         */
+        ECS::EntityID createCoreBoss(float x, float y);
+
+        /**
+         * @brief Create a Meteorite obstacle entity (5 HP, spins)
+         */
+        ECS::EntityID createMeteorite(float x, float y);
+
+        /**
+         * @brief Create a Debri obstacle entity (1000 HP, row spawn)
+         */
+        ECS::EntityID createDebri(float x, float y);
 
         /**
          * @brief Create a player projectile entity
@@ -380,6 +489,49 @@ namespace rtype::client::gui {
          * Creates a charged projectile with higher damage and piercing capability.
          */
         ECS::EntityID createChargedProjectile(float x, float y);
+
+        /**
+         * @brief Create dual projectiles (Azure Phantom normal shot)
+         * @param x X position
+         * @param y Y position
+         * @return Number of projectiles created (2)
+         *
+         * Creates two projectiles with vertical offset (±5 pixels).
+         */
+        int createDualProjectiles(float x, float y);
+
+        /**
+         * @brief Create burst of homing projectiles (Azure Phantom charged shot)
+         * @param x X position
+         * @param y Y position
+         * @param count Number of projectiles in burst (default: 3)
+         * @return Number of projectiles created
+         *
+         * Creates multiple homing projectiles that track nearest enemy.
+         */
+        int createHomingBurst(float x, float y, int count = 3);
+
+        /**
+         * @brief Create spread shot projectiles (Solar Guardian normal shot)
+         * @param x X position
+         * @param y Y position
+         * @param count Number of projectiles (default: 4)
+         * @return Number of projectiles created
+         *
+         * Creates shotgun-like spread of projectiles with vertical spread.
+         */
+        int createSpreadShot(float x, float y, int count = 4);
+
+        /**
+         * @brief Create explosive projectile (Emerald Titan normal shot)
+         * @param x X position
+         * @param y Y position
+         * @param isCharged Whether this is a charged shot (bigger AoE)
+         * @return Entity ID of the created projectile
+         *
+         * Creates a projectile that explodes on impact with AoE damage.
+         */
+        ECS::EntityID createExplosiveProjectile(float x, float y, bool isCharged = false);
 
         /**
          * @brief Create an enemy projectile entity
@@ -425,6 +577,22 @@ namespace rtype::client::gui {
          * Manages charged shot accumulation and release for the local player.
          */
         void updateChargedShotSystem(float deltaTime);
+
+        /**
+         * @brief Update homing projectile system
+         * @param deltaTime Time elapsed since last frame
+         *
+         * Updates homing projectiles to track and follow targets.
+         */
+        void updateHomingSystem(float deltaTime);
+
+        /**
+         * @brief Update shield system
+         * @param deltaTime Time elapsed since last frame
+         *
+         * Updates active shields and cooldowns for Solar Guardian.
+         */
+        void updateShieldSystem(float deltaTime);
 
         /**
          * @brief Update invulnerability timers for entities
@@ -491,6 +659,12 @@ namespace rtype::client::gui {
         int getPlayerLives() const;
 
         /**
+         * @brief Get maximum player lives/health
+         * @return Maximum HP of the player entity
+         */
+        int getPlayerMaxLives() const;
+
+        /**
          * @brief Check if a boss entity is currently active
          * @return true if a boss enemy exists in the world
          */
@@ -524,6 +698,25 @@ namespace rtype::client::gui {
          */
         void renderGameOverMenu(sf::RenderWindow& window);
 
+    /* === Victory Effects (Confetti) === */
+    /**
+     * @brief Spawn/initialize confetti effect for victory screen
+     * @param initialBurst Number of particles to spawn immediately
+     */
+    void spawnVictoryConfetti(std::size_t initialBurst = 150);
+    /**
+     * @brief Update victory effects (particles) each frame
+     */
+    void updateVictoryEffects(float deltaTime);
+    /**
+     * @brief Render victory effects below UI (after overlay)
+     */
+    void renderVictoryEffects(sf::RenderWindow& window);
+    /**
+     * @brief Clear and disable confetti effects
+     */
+    void clearVictoryEffects();
+
         /* === UI and Resource Management === */
         /**
          * @brief Set up game over UI text elements
@@ -546,6 +739,14 @@ namespace rtype::client::gui {
          * Pauses gameplay and displays menu options.
          */
         void showInGameMenu(bool isGameOver = false);
+
+        /**
+         * @brief Show the victory screen (YOU WON)
+         * 
+         * Displays a simplified end screen with a victory title, score,
+         * and a single Quit button. Plays victory music.
+         */
+        void showVictoryScreen();
 
         /**
          * @brief Resume gameplay from paused/menu state
@@ -599,6 +800,8 @@ namespace rtype::client::gui {
         GameStatus m_gameStatus{GameStatus::Playing};
         /// Flag indicating game over condition
         bool m_isGameOver{false};
+        // Flag indicating victory condition
+        bool m_isVictory{false};
         /// Currently selected menu option index
         int m_selectedMenuOption{0};
         /// SFML text element for game over title
@@ -617,6 +820,10 @@ namespace rtype::client::gui {
         sf::Sprite m_fullHeartSprite;
         /// Sprite for empty/lost health heart
         sf::Sprite m_emptyHeartSprite;
+        /// Texture for shield effect
+        sf::Texture m_shieldTexture;
+        /// Sprite for shield effect
+        sf::Sprite m_shieldSprite;
         /// Player score value
         int m_score{0};
         /// HUD text for score rendering
@@ -636,6 +843,23 @@ namespace rtype::client::gui {
         int m_levelIndex{0};
         /// If true, render a plain white background instead of parallax (TEMP testing)
         bool m_forceWhiteBackground{false};
+
+        /* === Victory Confetti Data === */
+        struct ConfettiParticle {
+            sf::Vector2f pos;
+            sf::Vector2f vel;
+            float rotation{0.f};
+            float angular{0.f};
+            sf::Color color{255,255,255,255};
+            float size{6.f};
+            float age{0.f};
+            float life{4.f};
+        };
+        std::vector<ConfettiParticle> m_confetti;
+        bool m_confettiActive{false};
+        float m_confettiSpawnAccum{0.f};
+        float m_confettiSpawnRate{120.f}; // particles per second while on victory
+        std::size_t m_confettiMax{350};
 
         /* === Game Constants === */
         /// Interval in seconds between enemy projectile shots

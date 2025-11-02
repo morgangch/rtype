@@ -16,6 +16,7 @@
 #include "gui/GameState.h"
 #include "gui/GUIHelper.h"
 #include "gui/TextureCache.h"
+#include "components/ShieldVisual.h"
 #include <sstream>
 #include <cmath>
 
@@ -80,6 +81,8 @@ void GameState::renderEntities(sf::RenderWindow& window) {
                     sprite->sprite.setTextureRect(sprite->textureRect);
                 }
                 sprite->sprite.setPosition(pos.x, pos.y);
+                    // Apply rotation from Position component (used by obstacles like Meteorite)
+                    sprite->sprite.setRotation(pos.rotation);
                 window.draw(sprite->sprite);
             }
         }
@@ -92,13 +95,39 @@ void GameState::renderEntities(sf::RenderWindow& window) {
             shape.setFillColor(sprite->color);
             window.draw(shape);
         }
+
+        // Draw shield visual effect if entity has ShieldVisual component
+        auto* shield = m_world.GetComponent<rtype::client::components::ShieldVisual>(entity);
+        if (shield && shield->enabled) {
+            // Update pulse animation
+            shield->pulseTimer += 0.016f; // Assume ~60 FPS
+            float pulseScale = 1.0f + 0.1f * std::sin(shield->pulseTimer * shield->pulseSpeed);
+            
+            // Draw outer circle (border)
+            sf::CircleShape outerCircle(shield->radius * pulseScale);
+            outerCircle.setPosition(pos.x - shield->radius * pulseScale, 
+                                   pos.y - shield->radius * pulseScale);
+            outerCircle.setFillColor(sf::Color::Transparent);
+            outerCircle.setOutlineColor(shield->color);
+            outerCircle.setOutlineThickness(shield->thickness);
+            window.draw(outerCircle);
+            
+            // Draw inner fill (more transparent)
+            sf::CircleShape innerCircle(shield->radius * pulseScale * 0.9f);
+            innerCircle.setPosition(pos.x - shield->radius * pulseScale * 0.9f, 
+                                   pos.y - shield->radius * pulseScale * 0.9f);
+            sf::Color fillColor = shield->color;
+            fillColor.a = static_cast<sf::Uint8>(fillColor.a * 0.3f); // 30% opacity for fill
+            innerCircle.setFillColor(fillColor);
+            window.draw(innerCircle);
+        }
     }
 }
 
 void GameState::renderHUD(sf::RenderWindow& window) {
     // Get player lives
     int lives = getPlayerLives();
-    int maxLives = 3;  // Maximum player lives
+    int maxLives = getPlayerMaxLives();  // Get max lives from player's health component
     
     // Draw hearts for lives (full hearts + empty hearts)
     // Both hearts are 992x432px (4 cols x 2 rows)
@@ -136,6 +165,11 @@ void GameState::renderGameOverMenu(sf::RenderWindow& window) {
     overlay.setFillColor(sf::Color(0, 0, 0, 180)); // Dark overlay
     window.draw(overlay);
     
+    // Draw celebratory effects under UI when in victory mode
+    if (m_isVictory) {
+        renderVictoryEffects(window);
+    }
+    
     // Title positioning
     sf::FloatRect titleBounds = m_gameOverTitleText.getLocalBounds();
     m_gameOverTitleText.setPosition(
@@ -151,32 +185,42 @@ void GameState::renderGameOverMenu(sf::RenderWindow& window) {
     const float button1Y = 340.0f;
     const float button2Y = 420.0f;
     
-    // Restart/Resume button
-    sf::RectangleShape restartButton(sf::Vector2f(buttonWidth, buttonHeight));
-    restartButton.setPosition(buttonX, button1Y);
-    restartButton.setFillColor(m_selectedMenuOption == 0 ? 
-                               GUIHelper::Colors::BUTTON_HOVER : 
-                               GUIHelper::Colors::BUTTON_NORMAL);
-    restartButton.setOutlineColor(GUIHelper::Colors::TEXT);
-    restartButton.setOutlineThickness(2.0f);
-    window.draw(restartButton);
-    
-    // Restart text
-    if (m_isGameOver) {
-        m_restartText.setString("Restart");
+    if (!m_isVictory) {
+        // Restart/Resume button (hidden in victory)
+        sf::RectangleShape restartButton(sf::Vector2f(buttonWidth, buttonHeight));
+        restartButton.setPosition(buttonX, button1Y);
+        restartButton.setFillColor(m_selectedMenuOption == 0 ? 
+                                   GUIHelper::Colors::BUTTON_HOVER : 
+                                   GUIHelper::Colors::BUTTON_NORMAL);
+        restartButton.setOutlineColor(GUIHelper::Colors::TEXT);
+        restartButton.setOutlineThickness(2.0f);
+        window.draw(restartButton);
+
+        // Restart text
+        if (m_isGameOver) {
+            m_restartText.setString("Restart");
+        } else {
+            m_restartText.setString("Resume");
+        }
+        sf::FloatRect restartBounds = m_restartText.getLocalBounds();
+        m_restartText.setPosition(
+            buttonX + (buttonWidth - restartBounds.width) * 0.5f,
+            button1Y + (buttonHeight - restartBounds.height) * 0.5f - 5.0f
+        );
+        window.draw(m_restartText);
     } else {
-        m_restartText.setString("Resume");
+        // In victory screen, draw the score centered under the title
+        sf::Text scoreText = m_scoreText; // copy formatting
+        scoreText.setString("score " + std::to_string(m_score));
+        sf::FloatRect sb = scoreText.getLocalBounds();
+        scoreText.setPosition((SCREEN_WIDTH - sb.width) * 0.5f, 260.0f);
+        window.draw(scoreText);
     }
-    sf::FloatRect restartBounds = m_restartText.getLocalBounds();
-    m_restartText.setPosition(
-        buttonX + (buttonWidth - restartBounds.width) * 0.5f,
-        button1Y + (buttonHeight - restartBounds.height) * 0.5f - 5.0f
-    );
-    window.draw(m_restartText);
     
-    // Menu button
+    // Menu/Quit button (only button in victory mode)
+    float quitY = m_isVictory ? 360.0f : button2Y;
     sf::RectangleShape menuButton(sf::Vector2f(buttonWidth, buttonHeight));
-    menuButton.setPosition(buttonX, button2Y);
+    menuButton.setPosition(buttonX, quitY);
     menuButton.setFillColor(m_selectedMenuOption == 1 ? 
                             GUIHelper::Colors::BUTTON_HOVER : 
                             GUIHelper::Colors::BUTTON_NORMAL);
@@ -188,7 +232,7 @@ void GameState::renderGameOverMenu(sf::RenderWindow& window) {
     sf::FloatRect menuBounds = m_menuText.getLocalBounds();
     m_menuText.setPosition(
         buttonX + (buttonWidth - menuBounds.width) * 0.5f,
-        button2Y + (buttonHeight - menuBounds.height) * 0.5f - 5.0f
+        quitY + (buttonHeight - menuBounds.height) * 0.5f - 5.0f
     );
     window.draw(m_menuText);
 }

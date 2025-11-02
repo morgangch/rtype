@@ -9,6 +9,7 @@
  * - Invulnerability System: Manages damage immunity
  * - Enemy Spawn System: Spawns enemies periodically
  * - Enemy AI System: Now uses common/systems/EnemyAISystem
+ * - Shield Sync System: Syncs ShieldVisual with ShieldComponent state
  * - Cleanup System: Removes off-screen entities
  * - Collision System: Detects and handles collisions
  *
@@ -27,6 +28,9 @@
 #include <common/systems/FireRateSystem.h>
 #include <common/systems/EnemyAISystem.h>
 #include <common/systems/CollisionSystem.h>
+#include <common/systems/FortressShieldSystem.h>
+#include <common/components/Shield.h>
+#include "components/ShieldVisual.h"
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -163,6 +167,18 @@ void GameState::updateEnemyAISystem(float deltaTime) {
 
     // Use shared EnemyAI logic for local prediction (server will confirm via SPAWN_PROJECTILE)
     rtype::common::systems::EnemyAISystem::update(m_world, deltaTime, createProjectile);
+
+    // Client-only cosmetic: spin meteorites slowly
+    auto* types = m_world.GetAllComponents<rtype::common::components::EnemyTypeComponent>();
+    if (types) {
+        for (auto& [entity, typePtr] : *types) {
+            if (!typePtr) continue;
+            if (typePtr->type == rtype::common::components::EnemyType::Meteorite) {
+                auto* pos = m_world.GetComponent<rtype::common::components::Position>(entity);
+                if (pos) pos->rotation += 90.0f * deltaTime; // 90 deg per second
+            }
+        }
+    }
 }
 
 void GameState::updateChargedShotSystem(float deltaTime) {
@@ -184,6 +200,67 @@ void GameState::updateInvulnerabilitySystem(float deltaTime) {
             if (healthPtr->invulnerabilityTimer <= 0.0f) {
                 healthPtr->invulnerable = false;
                 healthPtr->invulnerabilityTimer = 0.0f;
+            }
+        }
+    }
+    
+    // Synchronize ShieldVisual with ShieldComponent state
+    auto* shields = m_world.GetAllComponents<rtype::common::components::ShieldComponent>();
+    if (shields) {
+        for (auto& [entity, shieldPtr] : *shields) {
+            auto* visual = m_world.GetComponent<rtype::client::components::ShieldVisual>(entity);
+            
+            // If entity has ShieldComponent but no ShieldVisual, create one
+            if (!visual && shieldPtr->isActive) {
+                float radius = 50.0f;
+                sf::Color color(100, 200, 255, 120);
+                
+                // Set radius and color based on shield type
+                switch (shieldPtr->type) {
+                    case rtype::common::components::ShieldType::Red:
+                        radius = 120.0f;
+                        color = sf::Color(255, 50, 50, 150); // RED (boss invincible)
+                        break;
+                    case rtype::common::components::ShieldType::Blue:
+                        radius = 60.0f;
+                        color = sf::Color(100, 150, 255, 140); // BLUE (turrets)
+                        break;
+                    case rtype::common::components::ShieldType::Cyclic:
+                        radius = 50.0f;
+                        color = sf::Color(100, 200, 255, 120); // LIGHT BLUE (shielded enemy)
+                        break;
+                    default:
+                        break;
+                }
+                
+                m_world.AddComponent<rtype::client::components::ShieldVisual>(
+                    entity, radius, color, 2.5f, 3.5f);
+                visual = m_world.GetComponent<rtype::client::components::ShieldVisual>(entity);
+            }
+            
+            if (visual) {
+                // Sync visual enabled state with shield active state
+                visual->enabled = shieldPtr->isActive;
+                
+                // Update color based on shield type (in case it changes)
+                if (shieldPtr->isActive) {
+                    switch (shieldPtr->type) {
+                        case rtype::common::components::ShieldType::Red:
+                            visual->color = sf::Color(255, 50, 50, 150); // RED (boss invincible)
+                            visual->radius = 120.0f;
+                            break;
+                        case rtype::common::components::ShieldType::Blue:
+                            visual->color = sf::Color(100, 150, 255, 140); // BLUE (turrets)
+                            visual->radius = 60.0f;
+                            break;
+                        case rtype::common::components::ShieldType::Cyclic:
+                            visual->color = sf::Color(100, 200, 255, 120); // LIGHT BLUE (shielded enemy)
+                            visual->radius = 50.0f;
+                            break;
+                        default:
+                            break;
+                    }
+                }
             }
         }
     }
@@ -237,8 +314,13 @@ void GameState::updateCollisionSystem() {
         playerHealth->invulnerable = true;
         playerHealth->invulnerabilityTimer = 1.0f;
 
-        if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) {
-            m_soundManager.play(AudioFactory::SfxId::LoseLife);
+        // Check for game over
+        if (playerHealth->currentHp <= 0) {
+            showInGameMenu(true); // Game Over
+        } else {
+            if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) {
+                m_soundManager.play(AudioFactory::SfxId::LoseLife);
+            }
         }
     };
 
@@ -246,6 +328,16 @@ void GameState::updateCollisionSystem() {
         auto* projData = world.GetComponent<rtype::common::components::Projectile>(proj);
         auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemy);
         if (!projData || !enemyHealth) return;
+
+        // 🛡️ Shielded enemies: Only take damage from piercing shots (charged shots)!
+        auto* enemyType = world.GetComponent<rtype::common::components::EnemyTypeComponent>(enemy);
+        if (enemyType && enemyType->type == rtype::common::components::EnemyType::Shielded) {
+            if (!projData->piercing) {
+                // Normal projectile hits shield - blocked!
+                toDestroy.push_back(proj); // Projectile destroyed by shield
+                return; // No damage to shielded enemy
+            }
+        }
 
         enemyHealth->currentHp -= projData->damage;
 
@@ -267,8 +359,13 @@ void GameState::updateCollisionSystem() {
         playerHealth->invulnerable = true;
         playerHealth->invulnerabilityTimer = 1.0f;
 
-        if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) {
-            m_soundManager.play(AudioFactory::SfxId::LoseLife);
+        // Check for game over
+        if (playerHealth->currentHp <= 0) {
+            showInGameMenu(true); // Game Over
+        } else {
+            if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) {
+                m_soundManager.play(AudioFactory::SfxId::LoseLife);
+            }
         }
 
         toDestroy.push_back(proj);
@@ -293,6 +390,15 @@ void GameState::updateCollisionSystem() {
                 playerHealth->currentHp -= EXPLOSION_DAMAGE;
                 playerHealth->invulnerable = true;
                 playerHealth->invulnerabilityTimer = 1.0f;
+
+                // Check for game over
+                if (playerHealth->currentHp <= 0) {
+                    showInGameMenu(true); // Game Over
+                } else {
+                    if (m_soundManager.has(AudioFactory::SfxId::LoseLife)) {
+                        m_soundManager.play(AudioFactory::SfxId::LoseLife);
+                    }
+                }
             }
         }
 

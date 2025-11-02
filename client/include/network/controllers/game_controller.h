@@ -67,6 +67,11 @@ namespace rtype::client::controllers::game_controller {
      */
     void handle_player_score_update(const packet_t& packet);
 
+    /**
+     * @brief Handle SHIELD_STATE packet from server.
+     */
+    void handle_shield_state(const packet_t& packet);
+
 }
 
 #endif //GAME_CONTROLLER_H

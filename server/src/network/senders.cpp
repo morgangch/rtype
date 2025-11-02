@@ -16,6 +16,9 @@
 #include "common/utils/endiane_converter.h"
 #include "services/PlayerService.h"
 
+#include <common/components/Player.h>
+#include <common/components/Health.h>
+
 namespace rtype::server::network::senders {
     void broadcast_entity_destroy(ECS::EntityID room_id, uint32_t entity_id, uint16_t reason) {
         EntityDestroyPacket pkt{};
@@ -33,11 +36,12 @@ namespace rtype::server::network::senders {
         room->broadcastPacket(&pkt, sizeof(pkt), ENTITY_DESTROY, true);
     }
 
-    void send_join_room_accepted(ECS::EntityID player, bool isAdmin, uint32_t roomCode, uint32_t playerServerId) {
+    void send_join_room_accepted(ECS::EntityID player, bool isAdmin, uint32_t roomCode, uint32_t playerServerId, uint8_t vesselType) {
         JoinRoomAcceptedPacket pkt{};
         pkt.admin = isAdmin;
         pkt.roomCode = roomCode;
         pkt.playerServerId = playerServerId;
+        pkt.vesselType = vesselType;
 
         to_network_endian(pkt.roomCode);
         to_network_endian(pkt.playerServerId);
@@ -58,7 +62,8 @@ namespace rtype::server::network::senders {
             return;
         }
 
-        GameStartPacket pkt{}; // Empty packet for game start signal
+        GameStartPacket pkt{}; // Include start level so clients can sync visuals immediately
+        pkt.startLevel = room->startLevelIndex; // 0=Lvl1,1=Lvl2
 
         std::cout << "Broadcasting GAME_START to room " << room_id << std::endl;
         room->broadcastPacket(&pkt, sizeof(pkt), GAME_START, true);
@@ -69,6 +74,13 @@ namespace rtype::server::network::senders {
         joinPkt.newPlayerId = new_player;
         strncpy(joinPkt.name, new_player_name.c_str(), sizeof(joinPkt.name) - 1);
         joinPkt.name[sizeof(joinPkt.name) - 1] = '\0';
+
+        // Include vessel type for correct visuals client-side
+        if (auto *newPlayerComp = root.world.GetComponent<rtype::common::components::Player>(new_player)) {
+            joinPkt.vesselType = static_cast<uint8_t>(newPlayerComp->vesselType);
+        } else {
+            joinPkt.vesselType = 0; // Default to CrimsonStriker if not found
+        }
 
         // Convert to network endian
         to_network_endian(joinPkt.newPlayerId);
@@ -109,6 +121,24 @@ namespace rtype::server::network::senders {
             return;
         }
         room->broadcastPacket(&spawnPkt, sizeof(spawnPkt), SPAWN_PROJECTILE, true);
+    }
+
+    void broadcast_shield_state(ECS::EntityID room_id, uint32_t playerId, bool isActive, float duration) {
+        ShieldStatePacket shieldPkt{};
+        shieldPkt.playerId = playerId;
+        shieldPkt.isActive = isActive;
+        shieldPkt.duration = duration;
+
+        // Convert to network endian
+        to_network_endian(shieldPkt.playerId);
+        to_network_endian(shieldPkt.duration);
+
+        auto room = root.world.GetComponent<rtype::server::components::RoomProperties>(room_id);
+        if (!room) {
+            std::cerr << "ERROR: Cannot broadcast ShieldStatePacket, room " << room_id << " not found" << std::endl;
+            return;
+        }
+        room->broadcastPacket(&shieldPkt, sizeof(shieldPkt), SHIELD_STATE, true);
     }
 
     void send_lobby_state(ECS::EntityID player, uint32_t totalPlayers, uint32_t readyPlayers) {
@@ -152,6 +182,12 @@ namespace rtype::server::network::senders {
     }
 
     void send_player_state(ECS::EntityID to_player, ECS::EntityID playerId, float x, float y, float dir, uint16_t hp, bool isAlive) {
+        // Don't send to dead players - their connection may be invalid
+        auto *toHealth = root.world.GetComponent<rtype::common::components::Health>(to_player);
+        if (toHealth && (!toHealth->isAlive || toHealth->currentHp <= 0)) {
+            return;
+        }
+        
         PlayerStatePacket pkt{};
         pkt.playerId = playerId;
         pkt.x = x;
@@ -160,12 +196,20 @@ namespace rtype::server::network::senders {
         pkt.hp = hp;
         pkt.isAlive = isAlive;
 
+        // Populate invulnerability, vessel type, and maxHp
+        auto *health = root.world.GetComponent<rtype::common::components::Health>(playerId);
+        pkt.invulnerable = health ? health->invulnerable : false;
+        pkt.maxHp = health ? health->maxHp : 3; // Send maxHp for heart display
+        auto *playerComp = root.world.GetComponent<rtype::common::components::Player>(playerId);
+        pkt.vesselType = playerComp ? static_cast<uint8_t>(playerComp->vesselType) : 0;
+
         // Convert to network endian
         to_network_endian(pkt.playerId);
         to_network_endian(pkt.x);
         to_network_endian(pkt.y);
         to_network_endian(pkt.dir);
         to_network_endian(pkt.hp);
+        to_network_endian(pkt.maxHp);
 
         auto *pconn = root.world.GetComponent<rtype::server::components::PlayerConn>(to_player);
         if (!pconn) {

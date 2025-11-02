@@ -29,15 +29,21 @@
 #include <common/components/EnemyType.h>
 
 enum class EnemySpawnPhase {
-    OnlyBasic,
-    BasicAndAdvanced,
-    BossAndAll
+    OnlyBasic,          // 0-60s: Basic enemies only
+    BasicAndAdvanced,   // 60-180s: Basic + Advanced enemies
+    BossPhase           // 180s+: Boss + Basic + Advanced enemies
 };
 
 struct EnemySpawnConfig {
     rtype::common::components::EnemyType type;
     float interval; // seconds between spawns
     float timer;    // current timer for this type
+};
+
+struct LevelDefinition {
+    rtype::common::components::EnemyType basicEnemy;
+    rtype::common::components::EnemyType advancedEnemy;
+    rtype::common::components::EnemyType bossEnemy;
 };
 
 
@@ -79,22 +85,53 @@ public:
      */
     void spawnBoss(ECS::World& world, ECS::EntityID room, rtype::common::components::EnemyType bossType);
 
-private:
-    float _levelTimer; ///< Total time since game start
-    EnemySpawnPhase _phase; ///< Current enemy spawn phase
-    bool _bossSpawned; ///< Whether a boss is currently spawned
+    /**
+     * @brief Force the starting level for the enemy spawner.
+     * @param index Level index (0..3). Values out of range will be clamped.
+     * Resets timers and phase so the level begins from OnlyBasic phase.
+     */
+    void setStartLevel(int index);
 
+    /**
+     * @brief Get the current level index used by the spawner
+     * @return Current level index (0..3)
+     */
+    int getCurrentLevel() const { return _currentLevel; }
+
+    /**
+     * @brief Get the boss type corresponding to the current level
+     * @return EnemyType of the current level's boss
+     */
+    rtype::common::components::EnemyType getCurrentBossType() const;
+
+private:
+    float _levelTimer; ///< Timer for current level (resets each level)
+    int _currentLevel; ///< Current level index (0-3 for 4 sub-levels)
+    EnemySpawnPhase _phase; ///< Current enemy spawn phase
+    bool _bossSpawned; ///< Whether a boss is currently spawned for this level
+    bool _gameFinished; ///< Whether the current game has finished (stop spawns)
+
+    std::vector<LevelDefinition> _levelDefinitions; ///< Enemy definitions for each level
     std::map<rtype::common::components::EnemyType, EnemySpawnConfig> _enemyConfigs; ///< Enemy spawn configs
 
     float _stateTick; ///< Timer for player state broadcast
     static constexpr float STATE_TICK_INTERVAL = 0.03f; // 30ms for better responsiveness
 
+    // Obstacle spawn timers (randomized per interval)
+    float _meteoriteTimer{0.0f};
+    float _meteoriteNext{3.0f};
+    float _debrisTimer{0.0f};
+    float _debrisNext{7.0f};
+
     // Update helpers
     void updatePhase(float deltaTime);
     void updateEnemySpawning(ECS::World& world, float deltaTime);
     void updateBossSpawning(ECS::World& world, float deltaTime);
+    void updateObstacleSpawning(ECS::World& world, float deltaTime);
+    void spawnDebrisRow(ECS::World& world, ECS::EntityID room, int count);
     void updatePlayerStateBroadcast(ECS::World& world, float deltaTime);
     void cleanupDeadEntities(ECS::World& world);
+    void checkBossDeathAndAdvanceLevel(ECS::World& world);
 };
 
 #endif // SERVER_ENEMY_SYSTEM_H

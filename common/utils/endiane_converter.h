@@ -9,7 +9,13 @@
 
 #include <cstdint>
 #include <cstring>
-#include <arpa/inet.h> // For htons, htonl
+#include <type_traits>
+#ifdef _WIN32
+    #include <winsock2.h>
+#else
+    #include <arpa/inet.h>
+#endif
+// For htons, htonl
 
 /**
  * @brief Convert a value to network endian (big-endian) in place.
@@ -18,7 +24,27 @@
  */
 template<typename T>
 inline void to_network_endian(T& value) {
-    if constexpr (sizeof(T) == 2) value = htons(value);
+    // Special handling for float/double - convert via memcpy to preserve bit pattern
+    if constexpr (std::is_same_v<T, float>) {
+        uint32_t tmp;
+        std::memcpy(&tmp, &value, 4);
+        tmp = htonl(tmp);
+        std::memcpy(&value, &tmp, 4);
+    }
+    else if constexpr (std::is_same_v<T, double>) {
+        uint64_t tmp;
+        std::memcpy(&tmp, &value, 8);
+        tmp = ((tmp & 0x00000000000000FFULL) << 56)
+            | ((tmp & 0x000000000000FF00ULL) << 40)
+            | ((tmp & 0x0000000000FF0000ULL) << 24)
+            | ((tmp & 0x00000000FF000000ULL) << 8)
+            | ((tmp & 0x000000FF00000000ULL) >> 8)
+            | ((tmp & 0x0000FF0000000000ULL) >> 24)
+            | ((tmp & 0x00FF000000000000ULL) >> 40)
+            | ((tmp & 0xFF00000000000000ULL) >> 56);
+        std::memcpy(&value, &tmp, 8);
+    }
+    else if constexpr (sizeof(T) == 2) value = htons(value);
     else if constexpr (sizeof(T) == 4) value = htonl(value);
     else if constexpr (sizeof(T) == 8) {
         uint64_t tmp;

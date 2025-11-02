@@ -19,8 +19,9 @@ namespace rtype::client::network::senders {
      * @brief Send a join room request to the server
      * @param player_name The player name
      * @param room_code The room code to join
+     * @param vessel_type The vessel type selected by the player (0-3)
      */
-    void send_join_room_request(const std::string &player_name, std::uint32_t room_code);
+    void send_join_room_request(const std::string &player_name, std::uint32_t room_code, uint8_t vessel_type = 0);
     
     /**
      * @brief Send a player ready state update to the server
@@ -50,6 +51,15 @@ namespace rtype::client::network::senders {
      * Server will verify if the sender is an admin before spawning
      */
     void send_spawn_boss_request();
+
+    /**
+     * @brief Send a lobby settings update (admin-only) to the server.
+     * @param difficultyIndex 0=Easy,1=Normal,2=Hard (cosmetic for now)
+     * @param friendlyFire Cosmetic toggle
+     * @param aiAssist Spawn AI assistant when exactly one player
+     * @param megaDamage Admin projectile damage becomes 1000
+     */
+    void send_lobby_settings_update(uint8_t difficultyIndex, bool friendlyFire, bool aiAssist, bool megaDamage, uint8_t startLevel);
 }
 
 #endif //SENDERS_H

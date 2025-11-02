@@ -13,7 +13,14 @@ namespace rtype::common::components {
         float comboTimer;
         int highestCombo;
 
-        Score(int points = 0, int kills = 0, int deaths = 0);
+        Score(int points = 0, int kills = 0, int deaths = 0)
+            : points(points)
+            , kills(kills)
+            , deaths(deaths)
+            , combo(0)
+            , comboTimer(0.0f)
+            , highestCombo(0)
+        {}
     };
 }
 
