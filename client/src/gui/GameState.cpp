@@ -89,6 +89,14 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
             e = createWaverEnemy(x, y);
             break;
 
+        // Obstacles
+        case rtype::common::components::EnemyType::Meteorite:
+            e = createMeteorite(x, y);
+            break;
+        case rtype::common::components::EnemyType::Debri:
+            e = createDebri(x, y);
+            break;
+
         // Boss enemies
         case rtype::common::components::EnemyType::TankDestroyer:
             e = createTankDestroyer(x, y);
