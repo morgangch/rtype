@@ -383,15 +383,15 @@ ECS::EntityID GameState::createShieldedEnemy(float x, float y) {
     m_world.AddComponent<rtype::common::components::Velocity>(entity, -90.0f, 0.0f, 90.0f);
     m_world.AddComponent<rtype::common::components::Health>(entity, 4);
 
-    // Sprite - Shielded enemy with Ship5 PNG sprite
-    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::SHIP_5);
+    // Sprite - Shielded enemy with ADVANCED_ENEMY_1 GIF sprite (armored look)
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::ADVANCED_ENEMY_1);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        rtype::client::assets::enemies::SHIP_5,
-        sf::Vector2f(32.0f, 32.0f),
+        rtype::client::assets::enemies::ADVANCED_ENEMY_1,
+        sf::Vector2f(33.0f, 36.0f),
         true,
-        sf::IntRect(0, 0, 32, 32),
-        2.5f);  // Scale 2.5x (32*2.5 = 80 pixels)
+        sf::IntRect(0, 0, 33, 36),
+        2.5f);  // Scale 2.5x (33*2.5 = 82 pixels)
 
     m_world.AddComponent<rtype::common::components::Team>(
         entity, rtype::common::components::TeamType::Enemy);
