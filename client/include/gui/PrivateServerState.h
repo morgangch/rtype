@@ -23,6 +23,9 @@
 #include "State.h"
 #include "StateManager.h"
 #include "GUIHelper.h"
+#include "SettingsConfig.h"
+#include "ParallaxSystem.h"
+#include <memory>
 #include <SFML/Graphics.hpp>
 #include <string>
 
@@ -95,11 +98,20 @@ namespace rtype::client::gui {
          * Performs cleanup (note: doesn't disconnect as we might be transitioning to lobby)
          */
         void onExit() override;
+
+        /**
+         * @brief Destroy the PrivateServerState
+         *
+         * Destructor defined in the .cpp so unique_ptr destructor is instantiated
+         * where ParallaxSystem is complete.
+         */
+        ~PrivateServerState();
         
     private:
         // Core references and configuration
         StateManager& stateManager;     ///< Reference to state manager for navigation
         std::string username;           ///< Player's username for server connection
+        SettingsConfig config;          ///< Settings configuration for network parameters
         
         // UI Text Elements
         sf::Text titleText;             ///< "Private Servers" title display
@@ -114,6 +126,19 @@ namespace rtype::client::gui {
         sf::RectangleShape joinButtonRect;   ///< Clickable area for join server button
         sf::RectangleShape createButtonRect; ///< Clickable area for create server button
         sf::RectangleShape returnButtonRect; ///< Clickable area for return button
+        // Sprite-based buttons (match Public/Private menu buttons)
+        sf::Texture buttonTexture;           ///< Shared texture for join/create sprites
+        sf::Sprite joinButtonSprite;         ///< Sprite for Join button
+        sf::Sprite createButtonSprite;       ///< Sprite for Create button
+        bool buttonTextureLoaded{false};     ///< True if button texture loaded
+        bool joinHovered{false};             ///< Hover state for Join button
+        bool createHovered{false};           ///< Hover state for Create button
+        float joinBaseScale{1.0f};           ///< Base uniform scale for Join sprite
+        float createBaseScale{1.0f};         ///< Base uniform scale for Create sprite
+        sf::Texture returnTexture;      ///< Texture for return button sprite
+        sf::Sprite returnSprite;        ///< Sprite for return button
+        bool returnSpriteLoaded{false}; ///< True if return texture loaded
+        bool returnHovered{false};      ///< Hover state for return button
         
         // Input State Management
         std::string serverCode;         ///< Current server code input (max 4 digits)
@@ -176,6 +201,39 @@ namespace rtype::client::gui {
          * Generates random server code and creates new private lobby as admin
          */
         void createServer();
+        
+        /**
+         * @brief Get validated port number from config with fallback
+         * @return Valid port number (1-65535), or default 4242 if invalid
+         * 
+         * Parses port from config and validates range. Returns default port
+         * if parsing fails or value is out of valid range.
+         */
+        int getValidatedPort();
+
+        /**
+         * @name Parallax background (lazy-initialized)
+         *
+         * The menu displays a multi-layer parallax background matching the
+         * current game level. The parallax system is created on-demand so it
+         * can be sized to the active render window. A semi-transparent black
+         * overlay (`m_overlay`) is drawn on top of the parallax to keep the
+         * input fields and buttons readable.
+         *
+         * The destructor for this class is defined in the .cpp so that the
+         * `std::unique_ptr<ParallaxSystem>` is destroyed in a translation
+         * unit where `ParallaxSystem` is a complete type.
+         * @{ */
+        std::unique_ptr<ParallaxSystem> m_parallaxSystem; ///< Owned parallax system (created lazily)
+        bool m_parallaxInitialized{false};                 ///< True after creation and sizing
+        sf::RectangleShape m_overlay;                      ///< Semi-transparent dark overlay for readability
+
+        /**
+         * @brief Ensure the parallax system exists and is sized to the provided window.
+         * @param window Render window used to size/create the parallax system
+         */
+        void ensureParallaxInitialized(const sf::RenderWindow& window);
+        /** @} */
     };
 }
 

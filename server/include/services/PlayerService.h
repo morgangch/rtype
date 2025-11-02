@@ -1,16 +1,32 @@
-/*
-** EPITECH PROJECT, 2025
-** rtype
-** File description:
-** TODO: add description
-*/
+/**
+ * @file PlayerService.h
+ * @brief Service layer for player entity management
+ *
+ * Provides utility functions to create, find, and query player entities
+ * on the server. This service abstracts common operations like locating
+ * players by network address or room code, reducing code duplication across
+ * controllers and systems.
+ *
+ * @author R-TYPE Dev Team
+ * @date 2025
+ */
+
 #ifndef PLAYERSERVICE_H
 #define PLAYERSERVICE_H
 #include <string>
 #include <vector>
-#include <netinet/in.h>
+
+// Platform-specific network headers
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+#else
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+#endif
 
 #include "ECS/Types.h"
+#include <common/components/VesselClass.h>
 
 namespace rtype::server::services::player_service {
     /**
@@ -20,9 +36,11 @@ namespace rtype::server::services::player_service {
      * @param room_code The room code the player is joining (default is 0)
      * @param ip The IP address of the player (default is empty string)
      * @param port The port number of the player (default is 0)
+     * @param vesselType The vessel class chosen by the player (default is CrimsonStriker)
      * @return The EntityID of the newly created player
      */
-    ECS::EntityID createNewPlayer(std::string name, int room_code = 0, std::string ip = "", int port = 0);
+    ECS::EntityID createNewPlayer(std::string name, int room_code = 0, std::string ip = "", int port = 0, 
+                                   rtype::common::components::VesselType vesselType = rtype::common::components::VesselType::CrimsonStriker);
 
     /**
      * @brief Find a player entity from its network properties
@@ -39,6 +57,13 @@ namespace rtype::server::services::player_service {
      * @return A vector of EntityIDs of players in the specified room
      */
     std::vector<ECS::EntityID> findPlayersByRoomCode(int room_code);
+
+    /**
+     * @brief Find players from a room entity ID
+     * @param room The room entity ID
+     * @return A vector of EntityIDs of players in the specified room
+     */
+    std::vector<ECS::EntityID> findPlayersByRoom(ECS::EntityID room);
 }
 
 #endif //PLAYERSERVICE_H

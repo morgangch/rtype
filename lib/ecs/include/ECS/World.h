@@ -15,17 +15,19 @@
 #include "Types.h"
 #include "EntityManager.h"
 #include "ComponentManager.h"
+#include "SystemManager.h"
 
 namespace ECS {
     /**
      * @brief Central manager for the ECS world
      *
      * The World class is the primary interface for ECS operations. It coordinates
-     * between EntityManager and ComponentManager to provide a unified, easy-to-use
-     * API for creating entities, adding components, and managing the ECS state.
+     * between EntityManager, ComponentManager, and SystemManager to provide a unified,
+     * easy-to-use API for creating entities, adding components, managing systems,
+     * and running the ECS world.
      *
      * The World acts as a facade that simplifies ECS usage by hiding the complexity
-     * of managing separate entity and component systems.
+     * of managing separate entity, component, and system managers.
      */
     class World {
     private:
@@ -39,11 +41,16 @@ namespace ECS {
          */
         ComponentManager m_componentManager;
 
+        /**
+         * @brief Manages system registration, execution, and lifecycle
+         */
+        SystemManager m_systemManager;
+
     public:
         /**
          * @brief Default constructor
          *
-         * Initializes a new ECS world with empty entity and component managers.
+         * Initializes a new ECS world with empty entity, component, and system managers.
          */
         World() = default;
 
@@ -51,6 +58,8 @@ namespace ECS {
          * @brief Default destructor
          */
         ~World() = default;
+
+        // Entity Management
 
         /**
          * @brief Creates a new entity in the world
@@ -75,6 +84,23 @@ namespace ECS {
          * @return true if the entity exists and is alive, false otherwise
          */
         bool IsEntityAlive(EntityID entity) const;
+
+        /**
+         * @brief Gets the number of currently alive entities
+         *
+         * @return size_t The count of entities that are currently active
+         */
+        size_t GetAliveEntityCount() const;
+
+        /**
+         * @brief Get a vector of all currently alive entities.
+         * @return Vector of EntityID representing all alive entities.
+         */
+        std::vector<EntityID> GetAllEntities() const {
+            return m_entityManager.GetAllEntities();
+        }
+
+        // Component Management
 
         /**
          * @brief Adds a component to an entity
@@ -142,27 +168,142 @@ namespace ECS {
             return m_componentManager.GetAllComponents<T>();
         }
 
+        // System Management
+
+        /**
+         * @brief Register a new system to the world
+         *
+         * Creates and registers a system of type T with the provided arguments.
+         * The system will be initialized and added to the execution queue.
+         *
+         * @tparam T The system type to register (must inherit from System)
+         * @tparam Args Constructor argument types for the system
+         * @param args Arguments to forward to the system constructor
+         * @return T* Pointer to the registered system
+         */
+        template<typename T, typename... Args>
+        T* RegisterSystem(Args&&... args) {
+            return m_systemManager.RegisterSystem<T>(*this, std::forward<Args>(args)...);
+        }
+
+        /**
+         * @brief Remove a system by name
+         *
+         * @param systemName Name of the system to remove
+         * @return true if system was found and removed, false otherwise
+         */
+        bool RemoveSystem(const std::string& systemName) {
+            return m_systemManager.RemoveSystem(*this, systemName);
+        }
+
+        /**
+         * @brief Remove a system by pointer
+         *
+         * @param system Pointer to the system to remove
+         * @return true if system was found and removed, false otherwise
+         */
+        bool RemoveSystem(System* system) {
+            return m_systemManager.RemoveSystem(*this, system);
+        }
+
+        /**
+         * @brief Get a system by name
+         *
+         * @param systemName Name of the system to retrieve
+         * @return System* Pointer to the system, or nullptr if not found
+         */
+        System* GetSystem(const std::string& systemName) {
+            return m_systemManager.GetSystem(systemName);
+        }
+
+        /**
+         * @brief Get a system by type
+         *
+         * @tparam T The system type to retrieve
+         * @return T* Pointer to the system, or nullptr if not found
+         */
+        template<typename T>
+        T* GetSystem() {
+            return m_systemManager.GetSystem<T>();
+        }
+
+        /**
+         * @brief Enable a system by name
+         *
+         * @param systemName Name of the system to enable
+         * @return true if system was found and enabled, false otherwise
+         */
+        bool EnableSystem(const std::string& systemName) {
+            return m_systemManager.EnableSystem(systemName);
+        }
+
+        /**
+         * @brief Disable a system by name
+         *
+         * @param systemName Name of the system to disable
+         * @return true if system was found and disabled, false otherwise
+         */
+        bool DisableSystem(const std::string& systemName) {
+            return m_systemManager.DisableSystem(systemName);
+        }
+
+        /**
+         * @brief Check if a system is enabled
+         *
+         * @param systemName Name of the system to check
+         * @return true if system exists and is enabled, false otherwise
+         */
+        bool IsSystemEnabled(const std::string& systemName) const {
+            return m_systemManager.IsSystemEnabled(systemName);
+        }
+
+        /**
+         * @brief Update all enabled systems
+         *
+         * Calls the Update method on all enabled systems in priority order.
+         * This should be called once per frame in your game loop.
+         *
+         * @param deltaTime Time elapsed since last update in seconds
+         */
+        void UpdateSystems(float deltaTime) {
+            m_systemManager.UpdateSystems(*this, deltaTime);
+        }
+
+        /**
+         * @brief Set the priority of a system
+         *
+         * @param systemName Name of the system
+         * @param priority New priority value (lower = earlier execution)
+         * @return true if system was found and priority was set, false otherwise
+         */
+        bool SetSystemPriority(const std::string& systemName, int priority) {
+            return m_systemManager.SetSystemPriority(systemName, priority);
+        }
+
+        /**
+         * @brief Get the number of registered systems
+         *
+         * @return size_t Number of systems currently registered
+         */
+        size_t GetSystemCount() const {
+            return m_systemManager.GetSystemCount();
+        }
+
+        /**
+         * @brief Get names of all registered systems
+         *
+         * @return std::vector<std::string> Vector containing all system names
+         */
+        std::vector<std::string> GetSystemNames() const {
+            return m_systemManager.GetSystemNames();
+        }
+
         /**
          * @brief Clears all entities and components from the world
          *
          * Resets the world to its initial empty state.
          */
         void Clear();
-
-        /**
-         * @brief Gets the number of currently alive entities
-         *
-         * @return size_t The count of entities that are currently active
-         */
-        size_t GetAliveEntityCount() const;
-
-        /**
-         * @brief Get a vector of all currently alive entities.
-         * @return Vector of EntityID representing all alive entities.
-         */
-        std::vector<EntityID> GetAllEntities() const {
-            return m_entityManager.GetAllEntities();
-        }
     };
 }
 

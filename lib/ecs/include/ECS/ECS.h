@@ -34,6 +34,8 @@
 #include "Component.h"
 #include "EntityManager.h"
 #include "ComponentManager.h"
+#include "System.h"
+#include "SystemManager.h"
 #include "World.h"
 
 /**

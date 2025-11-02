@@ -11,14 +11,49 @@ target_include_directories(client PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}     # Current directory
 )
 
-find_package(SFML 2.5 COMPONENTS system window graphics audio network REQUIRED)
+find_package(SFML 2.6 COMPONENTS system window graphics audio network)
+
+# If SFML 2.6+ not found, try 2.5+
+if(NOT SFML_FOUND)
+    find_package(SFML 2.5 COMPONENTS system window graphics audio network REQUIRED)
+endif()
+
+# If SFML still not found, provide helpful error message
+if(NOT SFML_FOUND)
+    message(FATAL_ERROR "SFML 2.6 or later is required but not found. Please install SFML:\n"
+                        "  Ubuntu/Debian: sudo apt-get install libsfml-dev\n"
+                        "  macOS: brew install sfml@2 && brew link --force sfml@2\n"
+                        "  Windows: vcpkg install sfml")
+endif()
+
+# Debug: Print SFML variables
+message(STATUS "SFML_FOUND: ${SFML_FOUND}")
+message(STATUS "SFML_VERSION: ${SFML_VERSION}")
+message(STATUS "SFML_INCLUDE_DIR: ${SFML_INCLUDE_DIR}")
+message(STATUS "SFML_LIBRARIES: ${SFML_LIBRARIES}")
 
 # Link with ECS and common libraries
 target_link_libraries(client PRIVATE ecs common packethandler packetmanager)
 
 target_include_directories(client PRIVATE include)
 
-target_link_libraries(client PRIVATE sfml-graphics sfml-window sfml-system)
+# Link SFML libraries - try both modern targets and legacy libraries
+if(TARGET sfml-graphics)
+    # Modern CMake targets (SFML 2.5+)
+    target_link_libraries(client PRIVATE 
+        sfml-graphics 
+        sfml-window 
+        sfml-system 
+        sfml-audio
+        sfml-network
+    )
+else()
+    # Legacy library names
+    target_link_libraries(client PRIVATE 
+        ${SFML_LIBRARIES}
+        ${SFML_DEPENDENCIES}
+    )
+endif()
 
 
 # Set output directory - handle both single and multi-config generators

@@ -34,4 +34,11 @@
 *.out
 *.app
 
+# Configuration files
+config.json
+
+# Score files
+scores.json
+
 /build/
+/flood.py

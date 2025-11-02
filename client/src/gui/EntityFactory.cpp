@@ -13,12 +13,16 @@
 
 #include "gui/GameState.h"
 #include "gui/AssetPaths.h"
+#include "gui/TextureCache.h"
+#include "components/ShieldVisual.h"
+#include <common/components/Shield.h>
 #include <cstdlib>
 #include <cmath>
+#include <iostream>
 
 namespace rtype::client::gui {
 
-ECS::EntityID GameState::createPlayer() {
+ECS::EntityID GameState::createPlayer(rtype::common::components::VesselType vesselType) {
     auto entity = m_world.CreateEntity();
     
     // Position - Center-left of screen
@@ -29,17 +33,43 @@ ECS::EntityID GameState::createPlayer() {
     m_world.AddComponent<rtype::common::components::Velocity>(
         entity, 0.0f, 0.0f, 300.0f);
     
-    // Health - 3 HP (invulnerability built-in)
-    m_world.AddComponent<rtype::common::components::Health>(entity, 3);
+    // Health - HP based on vessel type
+    int baseHp = 3; // Default
+    switch (vesselType) {
+        case rtype::common::components::VesselType::CrimsonStriker:
+            baseHp = 3; // Balanced
+            break;
+        case rtype::common::components::VesselType::AzurePhantom:
+            baseHp = 2; // Agile (low defense, only 2 hearts)
+            break;
+        case rtype::common::components::VesselType::EmeraldTitan:
+            baseHp = 4; // Tank (4 HP, 4 hearts)
+            break;
+        case rtype::common::components::VesselType::SolarGuardian:
+            baseHp = 5; // Defense (5 HP, 5 hearts)
+            break;
+    }
+    std::cout << "[CLIENT] Creating player with vesselType=" << static_cast<int>(vesselType) 
+              << " baseHp=" << baseHp << " (maxHp will be " << baseHp << ")" << std::endl;
+    m_world.AddComponent<rtype::common::components::Health>(entity, baseHp);
     
-    // Sprite - Player ship with texture (first frame: 33x17 from 166x86 spritesheet)
-    // Player spritesheet has 5 frames horizontally: 166/5 = ~33 pixels per frame
+    // Sprite - Player ship with texture
+    // PLAYER.gif is 166x86 (5 frames x 4-5 rows)
+    // Each frame: 33x17 pixels (166/5 = 33 width)
+    // Each vessel type occupies one row (17 pixels height)
+    const int frameWidth = 33;
+    const int frameHeight = 17;
+    int vesselRow = static_cast<int>(vesselType);  // 0=Crimson, 1=Azure, 2=Emerald, 3=Solar
+    int startY = vesselRow * frameHeight;  // Y offset for this vessel type
+    
+    // Preload texture to avoid first-frame hitch
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::player::PLAYER_SPRITE);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity, 
         rtype::client::assets::player::PLAYER_SPRITE,
-        sf::Vector2f(33.0f, 17.0f),
+        sf::Vector2f(static_cast<float>(frameWidth), static_cast<float>(frameHeight)),
         true,
-        sf::IntRect(0, 0, 33, 17),  // First frame of spritesheet
+        sf::IntRect(0, startY, frameWidth, frameHeight),  // Use correct row for vessel type
         3.0f);  // Scale 3x for better visibility (33*3 = 99 pixels)
     
     // Animation - 5 frames, 0.08s per frame (smooth animation when moving up)
@@ -52,6 +82,9 @@ ECS::EntityID GameState::createPlayer() {
     
     // Player - Marks as player-controlled
     m_world.AddComponent<rtype::common::components::Player>(entity, "Player1", 0);
+    
+    // VesselClass - Store vessel type for gameplay mechanics
+    m_world.AddComponent<rtype::common::components::VesselClass>(entity, vesselType);
     
     // Team - Player team
     m_world.AddComponent<rtype::common::components::Team>(
@@ -82,6 +115,8 @@ ECS::EntityID GameState::createEnemy(float x, float y) {
     
     // Sprite - Basic enemy with texture (first frame: 33x36 from 533x36 spritesheet)
     // Enemy spritesheet has ~16 frames: 533/33 = ~16 frames
+    // Preload enemy sprite
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BASIC_ENEMY_1);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
         rtype::client::assets::enemies::BASIC_ENEMY_1,
@@ -108,21 +143,22 @@ ECS::EntityID GameState::createEnemy(float x, float y) {
     return entity;
 }
 
-ECS::EntityID GameState::createShooterEnemy(float x, float y) {
+ECS::EntityID GameState::createSnakeEnemy(float x, float y) {
     auto entity = m_world.CreateEntity();
     
     // Position
     m_world.AddComponent<rtype::common::components::Position>(
         entity, x, y, 0.0f);
     
-    // Velocity - Moves left at 80 px/s (slower than basic enemy)
+    // Velocity - Moves left at 120 px/s, vertical oscillation
     m_world.AddComponent<rtype::common::components::Velocity>(
-        entity, -80.0f, 0.0f, 80.0f);
+        entity, -120.0f, 0.0f, 120.0f);
     
-    // Health - 2 HP (more resistant)
-    m_world.AddComponent<rtype::common::components::Health>(entity, 2);
+    // Health - 1 HP (dies in one hit)
+    m_world.AddComponent<rtype::common::components::Health>(entity, 1);
     
-    // Sprite - Shooter enemy with texture (first frame from BASICENEMY_2)
+    // TODO: Replace with a unique snake enemy sprite and animation
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BASIC_ENEMY_2);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
         rtype::client::assets::enemies::BASIC_ENEMY_2,
@@ -135,22 +171,45 @@ ECS::EntityID GameState::createShooterEnemy(float x, float y) {
     m_world.AddComponent<rtype::common::components::Team>(
         entity, rtype::common::components::TeamType::Enemy);
     
-    // EnemyType - Shooter enemy (actively shoots)
+    // EnemyType - Snake enemy (moves in sine wave)
     m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
-        entity, rtype::common::components::EnemyType::Shooter);
+        entity, rtype::common::components::EnemyType::Snake);
     
-    // FireRate - Shooter enemy shoots every 1.5 seconds (faster than basic)
+    // FireRate - Snake enemy shoots every 3.0 seconds
     // Random initial cooldown to stagger shots
-    const float SHOOTER_FIRE_INTERVAL = 1.5f;
-    float randomCooldown = static_cast<float>(rand() % 1000) / 1000.0f * SHOOTER_FIRE_INTERVAL;
-    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(
-        entity, SHOOTER_FIRE_INTERVAL);
+    float randomCooldown = static_cast<float>(rand() % 1000) / 1000.0f * 3.0f;
+    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 3.0f);
     fireRate->cooldown = randomCooldown;
     
     return entity;
 }
 
-ECS::EntityID GameState::createBoss(float x, float y) {
+ECS::EntityID GameState::createSuicideEnemy(float x, float y) {
+    auto entity = m_world.CreateEntity();
+
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, -150.0f, 0.0f, 200.0f);
+    m_world.AddComponent<rtype::common::components::Health>(entity, 1);
+
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BASIC_ENEMY_2);
+    m_world.AddComponent<rtype::client::components::Sprite>(
+        entity,
+        rtype::client::assets::enemies::BASIC_ENEMY_2,
+        sf::Vector2f(33.0f, 36.0f),
+        true,
+        sf::IntRect(0, 0, 33, 36),
+        2.5f);
+
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Enemy);
+
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
+        entity, rtype::common::components::EnemyType::Suicide);
+
+    return entity;
+}
+
+ECS::EntityID GameState::createTankDestroyer(float x, float y) {
     auto entity = m_world.CreateEntity();
     
     // Position
@@ -165,10 +224,12 @@ ECS::EntityID GameState::createBoss(float x, float y) {
     // Health - 20 HP (BOSS - very tough!)
     m_world.AddComponent<rtype::common::components::Health>(entity, 20);
     
-    // Sprite - Boss enemy with texture (first frame from BASICENEMY_4)
+    // Sprite - Boss enemy with texture (first frame from BOSS_ENEMY_1)
+    // Preload boss sprite
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BOSS_ENEMY_1);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        rtype::client::assets::enemies::BASIC_ENEMY_4,
+        rtype::client::assets::enemies::BOSS_ENEMY_1,
         sf::Vector2f(33.0f, 36.0f),
         true,
         sf::IntRect(0, 0, 33, 36),  // First frame
@@ -178,9 +239,9 @@ ECS::EntityID GameState::createBoss(float x, float y) {
     m_world.AddComponent<rtype::common::components::Team>(
         entity, rtype::common::components::TeamType::Enemy);
     
-    // EnemyType - Boss (shoots in spread pattern)
+    // EnemyType - TankDestroyer boss
     m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
-        entity, rtype::common::components::EnemyType::Boss);
+        entity, rtype::common::components::EnemyType::TankDestroyer);
     
     // FireRate - Boss shoots every 0.8 seconds (rapid fire!)
     const float BOSS_FIRE_INTERVAL = 0.8f;
@@ -203,6 +264,8 @@ ECS::EntityID GameState::createPlayerProjectile(float x, float y) {
         entity, 500.0f, 0.0f, 500.0f);
     
     // Sprite - PROJECTILE_2, frame 2, première ligne seulement
+    // Preload projectile textures
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_1);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
         rtype::client::assets::projectiles::PROJECTILE_1,
@@ -215,8 +278,8 @@ ECS::EntityID GameState::createPlayerProjectile(float x, float y) {
     m_world.AddComponent<rtype::common::components::Team>(
         entity, rtype::common::components::TeamType::Player);
     
-    // Projectile - 1 damage
-    m_world.AddComponent<rtype::common::components::Projectile>(entity, 1);
+    // Projectile - 1 damage, non-piercing, client-owned
+    m_world.AddComponent<rtype::common::components::Projectile>(entity, 1, false /* piercing */, false /* serverOwned */);
     
     return entity;
 }
@@ -234,6 +297,7 @@ ECS::EntityID GameState::createEnemyProjectile(float x, float y, float vx, float
         entity, vx, vy, speed);
     
     // Sprite - PROJECTILE_1 (orange), frame 2, première ligne
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_2);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
         rtype::client::assets::projectiles::PROJECTILE_2,
@@ -246,9 +310,8 @@ ECS::EntityID GameState::createEnemyProjectile(float x, float y, float vx, float
     m_world.AddComponent<rtype::common::components::Team>(
         entity, rtype::common::components::TeamType::Enemy);
     
-    // Projectile - 1 damage
-    m_world.AddComponent<rtype::common::components::Projectile>(entity, 1, 300.0f, 
-        rtype::common::components::ProjectileType::Basic, false);
+    // Projectile - 1 damage, non-piercing
+    m_world.AddComponent<rtype::common::components::Projectile>(entity, 1, false /* piercing */, false /* serverOwned */, 300.0f, rtype::common::components::ProjectileType::Basic);
     
     return entity;
 }
@@ -265,6 +328,7 @@ ECS::EntityID GameState::createChargedProjectile(float x, float y) {
         entity, 600.0f, 0.0f, 600.0f);
     
     // Sprite - PROJECTILE_4 (rose/magenta), frame 2, ligne 2 (plus dense et imposant)
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::projectiles::PROJECTILE_4);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
         rtype::client::assets::projectiles::PROJECTILE_4,
@@ -277,10 +341,276 @@ ECS::EntityID GameState::createChargedProjectile(float x, float y) {
     m_world.AddComponent<rtype::common::components::Team>(
         entity, rtype::common::components::TeamType::Player);
     
-    // Projectile - 2 damage, PIERCING
-    m_world.AddComponent<rtype::common::components::Projectile>(entity, 2, 600.0f, 
-        rtype::common::components::ProjectileType::Piercing, true);
+    // Projectile - 2 damage, PIERCING, client-owned
+    m_world.AddComponent<rtype::common::components::Projectile>(entity, 2, true /* piercing */, false /* serverOwned */, 600.0f, rtype::common::components::ProjectileType::Piercing);
     
+    return entity;
+}
+
+ECS::EntityID GameState::createPataEnemy(float x, float y) {
+    auto entity = m_world.CreateEntity();
+
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, -100.0f, 0.0f, 100.0f);
+    m_world.AddComponent<rtype::common::components::Health>(entity, 2);
+
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BASIC_ENEMY_3);
+    m_world.AddComponent<rtype::client::components::Sprite>(
+        entity,
+        rtype::client::assets::enemies::BASIC_ENEMY_3,
+        sf::Vector2f(33.0f, 36.0f),
+        true,
+        sf::IntRect(0, 0, 33, 36),
+        2.5f);
+
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Enemy);
+
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
+        entity, rtype::common::components::EnemyType::Pata);
+
+    // Pata fires double shots every 3.5s
+    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 3.5f);
+    fireRate->cooldown = static_cast<float>(rand() % 1000) / 1000.0f * 3.5f;
+
+    return entity;
+}
+
+ECS::EntityID GameState::createShieldedEnemy(float x, float y) {
+    auto entity = m_world.CreateEntity();
+
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, -90.0f, 0.0f, 90.0f);
+    m_world.AddComponent<rtype::common::components::Health>(entity, 4);
+
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::ADVANCED_ENEMY_1);
+    m_world.AddComponent<rtype::client::components::Sprite>(
+        entity,
+        rtype::client::assets::enemies::ADVANCED_ENEMY_1,
+        sf::Vector2f(33.0f, 36.0f),
+        true,
+        sf::IntRect(0, 0, 33, 36),
+        2.5f);
+
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Enemy);
+
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
+        entity, rtype::common::components::EnemyType::Shielded);
+
+    // Add cyclic shield component (alternates on/off)
+    m_world.AddComponent<rtype::common::components::ShieldComponent>(
+        entity, rtype::common::components::ShieldType::Cyclic, true);
+
+    // Add visual shield effect (blue pulsing circle)
+    m_world.AddComponent<rtype::client::components::ShieldVisual>(
+        entity,
+        50.0f,                                      // radius
+        sf::Color(100, 200, 255, 120),              // light blue, semi-transparent
+        3.0f,                                       // pulse speed
+        3.0f);                                      // border thickness
+
+    // Shielded fires every 5.0s
+    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 5.0f);
+    fireRate->cooldown = static_cast<float>(rand() % 1000) / 1000.0f * 5.0f;
+
+    return entity;
+}
+
+ECS::EntityID GameState::createFlankerEnemy(float x, float y) {
+    auto entity = m_world.CreateEntity();
+
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, -90.0f, 0.0f, 120.0f);
+    m_world.AddComponent<rtype::common::components::Health>(entity, 3);
+
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::ADVANCED_ENEMY_2);
+    m_world.AddComponent<rtype::client::components::Sprite>(
+        entity,
+        rtype::client::assets::enemies::ADVANCED_ENEMY_2,
+        sf::Vector2f(33.0f, 36.0f),
+        true,
+        sf::IntRect(0, 0, 33, 36),
+        2.5f);
+
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Enemy);
+
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
+        entity, rtype::common::components::EnemyType::Flanker);
+
+    // Flanker fires perpendicular shots every 4.5s
+    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 4.5f);
+    fireRate->cooldown = static_cast<float>(rand() % 1000) / 1000.0f * 4.5f;
+
+    return entity;
+}
+
+ECS::EntityID GameState::createTurretEnemy(float x, float y) {
+    auto entity = m_world.CreateEntity();
+
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, 0.0f, 0.0f, 0.0f);  // Stationary
+    m_world.AddComponent<rtype::common::components::Health>(entity, 1);  // 1 HP but shielded
+
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::ADVANCED_ENEMY_3);
+    m_world.AddComponent<rtype::client::components::Sprite>(
+        entity,
+        rtype::client::assets::enemies::ADVANCED_ENEMY_3,
+        sf::Vector2f(33.0f, 36.0f),
+        true,
+        sf::IntRect(0, 0, 33, 36),
+        2.5f);
+
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Enemy);
+
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
+        entity, rtype::common::components::EnemyType::Turret);
+
+    // Add cyclic shield (requires charged shot like Shielded enemy)
+    m_world.AddComponent<rtype::common::components::ShieldComponent>(
+        entity, rtype::common::components::ShieldType::Cyclic, true);
+
+    // Add shield visual effect
+    m_world.AddComponent<rtype::client::components::ShieldVisual>(
+        entity,
+        50.0f,                                      // radius
+        sf::Color(150, 150, 255, 120),              // purple-ish blue
+        2.5f,                                       // pulse speed
+        3.0f);                                      // border thickness
+
+    // Turret fires 3-shot burst aimed at player every 2.5s
+    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 2.5f);
+    fireRate->cooldown = static_cast<float>(rand() % 1000) / 1000.0f * 2.5f;
+
+    return entity;
+}
+
+ECS::EntityID GameState::createWaverEnemy(float x, float y) {
+    auto entity = m_world.CreateEntity();
+
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, -110.0f, 0.0f, 150.0f);
+    m_world.AddComponent<rtype::common::components::Health>(entity, 4);
+
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::ADVANCED_ENEMY_1);
+    m_world.AddComponent<rtype::client::components::Sprite>(
+        entity,
+        rtype::client::assets::enemies::ADVANCED_ENEMY_1,
+        sf::Vector2f(33.0f, 36.0f),
+        true,
+        sf::IntRect(0, 0, 33, 36),
+        2.5f);
+
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Enemy);
+
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
+        entity, rtype::common::components::EnemyType::Waver);
+
+    // Waver fires triple bursts every 4.0s
+    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 4.0f);
+    fireRate->cooldown = static_cast<float>(rand() % 1000) / 1000.0f * 4.0f;
+
+    return entity;
+}
+
+ECS::EntityID GameState::createSerpentBoss(float x, float y) {
+    auto entity = m_world.CreateEntity();
+
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, 0.0f, 0.0f, 0.0f);
+    m_world.AddComponent<rtype::common::components::Health>(entity, 80);
+
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BOSS_ENEMY_2);
+    m_world.AddComponent<rtype::client::components::Sprite>(
+        entity,
+        rtype::client::assets::enemies::BOSS_ENEMY_2,
+        sf::Vector2f(33.0f, 36.0f),
+        true,
+        sf::IntRect(0, 0, 33, 36),
+        6.5f);
+
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Enemy);
+
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
+        entity, rtype::common::components::EnemyType::Serpent);
+
+    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 0.7f);
+    fireRate->cooldown = 0.0f;
+
+    return entity;
+}
+
+ECS::EntityID GameState::createFortressBoss(float x, float y) {
+    auto entity = m_world.CreateEntity();
+
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, 0.0f, 0.0f, 0.0f);
+    m_world.AddComponent<rtype::common::components::Health>(entity, 100);
+
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BOSS_ENEMY_3);
+    m_world.AddComponent<rtype::client::components::Sprite>(
+        entity,
+        rtype::client::assets::enemies::BOSS_ENEMY_3,
+        sf::Vector2f(33.0f, 36.0f),
+        true,
+        sf::IntRect(0, 0, 33, 36),
+        6.0f);  // Largest boss
+
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Enemy);
+
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
+        entity, rtype::common::components::EnemyType::Fortress);
+
+    // Add RED shield component (server-authoritative, client will sync)
+    m_world.AddComponent<rtype::common::components::ShieldComponent>(
+        entity, rtype::common::components::ShieldType::Red, true);
+
+    // Add RED shield visual effect (invincible boss shield)
+    m_world.AddComponent<rtype::client::components::ShieldVisual>(
+        entity,
+        120.0f,                                     // large radius for boss
+        sf::Color(255, 50, 50, 150),                // RED, semi-transparent
+        1.5f,                                       // slow pulse
+        4.0f);                                      // thick border
+
+    // Fortress fires randomly every 0.5s
+    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 0.5f);
+    fireRate->cooldown = 0.0f;
+
+    return entity;
+}
+
+ECS::EntityID GameState::createCoreBoss(float x, float y) {
+    auto entity = m_world.CreateEntity();
+
+    m_world.AddComponent<rtype::common::components::Position>(entity, x, y, 0.0f);
+    m_world.AddComponent<rtype::common::components::Velocity>(entity, 0.0f, 0.0f, 0.0f);
+    m_world.AddComponent<rtype::common::components::Health>(entity, 150);
+
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BOSS_ENEMY_4);
+    m_world.AddComponent<rtype::client::components::Sprite>(
+        entity,
+        rtype::client::assets::enemies::BOSS_ENEMY_4,
+        sf::Vector2f(33.0f, 36.0f),
+        true,
+        sf::IntRect(0, 0, 33, 36),
+        5.5f);  // Final boss size
+
+    m_world.AddComponent<rtype::common::components::Team>(
+        entity, rtype::common::components::TeamType::Enemy);
+
+    m_world.AddComponent<rtype::common::components::EnemyTypeComponent>(
+        entity, rtype::common::components::EnemyType::Core);
+
+    // Core fires multi-phase patterns every 0.6s
+    auto* fireRate = m_world.AddComponent<rtype::common::components::FireRate>(entity, 0.6f);
+    fireRate->cooldown = 0.0f;
+
     return entity;
 }
 

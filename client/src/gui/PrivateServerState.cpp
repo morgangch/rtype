@@ -23,13 +23,21 @@
 #include "gui/PrivateServerState.h"
 #include "gui/PrivateServerLobbyState.h"
 #include "gui/MainMenuState.h"
+#include "gui/ParallaxSystem.h"
+#include "gui/GameState.h"
+#include "gui/VesselSelectionState.h"
 #include <iostream>
 #include "network/network.h"
+#include "gui/AssetPaths.h"
 
 namespace rtype::client::gui {
+    PrivateServerState::~PrivateServerState() = default;
+
     PrivateServerState::PrivateServerState(StateManager& stateManager, const std::string& username)
         : stateManager(stateManager), username(username), isTyping(false), cursorTimer(0.0f), showCursor(true) {
+        config.load(); // Load settings for network configuration
         setupUI();
+        m_overlay.setFillColor(sf::Color(0,0,0,150));
     }
     
     void PrivateServerState::setupUI() {
@@ -56,14 +64,36 @@ namespace rtype::client::gui {
         serverCodeHintText.setCharacterSize(GUIHelper::Sizes::HINT_FONT_SIZE);
         serverCodeHintText.setFillColor(GUIHelper::Colors::HINT_TEXT);
         
-        // Button setup using GUIHelper
+        // Button setup and shared sprite texture (match Public/Private menu)
         GUIHelper::setupButton(joinButton, joinButtonRect, "Join", GUIHelper::Sizes::BUTTON_FONT_SIZE);
-        joinButtonRect.setFillColor(sf::Color(50, 100, 50, 200));
-        
         GUIHelper::setupButton(createButton, createButtonRect, "Create", GUIHelper::Sizes::BUTTON_FONT_SIZE);
-        createButtonRect.setFillColor(sf::Color(50, 50, 100, 200));
+        buttonTextureLoaded = buttonTexture.loadFromFile(rtype::client::assets::ui::BUTTON);
+        if (buttonTextureLoaded) {
+            buttonTexture.setSmooth(true);
+            joinButtonSprite.setTexture(buttonTexture);
+            createButtonSprite.setTexture(buttonTexture);
+            // Center origin for clean scaling/positioning
+            sf::Vector2u texSz = buttonTexture.getSize();
+            joinButtonSprite.setOrigin(static_cast<float>(texSz.x) * 0.5f, static_cast<float>(texSz.y) * 0.5f);
+            createButtonSprite.setOrigin(static_cast<float>(texSz.x) * 0.5f, static_cast<float>(texSz.y) * 0.5f);
+            joinHovered = false;
+            createHovered = false;
+        } else {
+            // Fallback rectangle colors
+            joinButtonRect.setFillColor(sf::Color(50, 100, 50, 200));
+            createButtonRect.setFillColor(sf::Color(50, 50, 100, 200));
+        }
         
-        GUIHelper::setupReturnButton(returnButton, returnButtonRect);
+        // Return button sprite
+        returnSpriteLoaded = returnTexture.loadFromFile(rtype::client::assets::ui::RETURN_BUTTON);
+        if (returnSpriteLoaded) {
+            returnTexture.setSmooth(true);
+            returnSprite.setTexture(returnTexture);
+            sf::Vector2u sz = returnTexture.getSize();
+            returnSprite.setOrigin(static_cast<float>(sz.x) * 0.5f, static_cast<float>(sz.y) * 0.5f);
+        } else {
+            GUIHelper::setupReturnButton(returnButton, returnButtonRect);
+        }
     }
     
     void PrivateServerState::onEnter() {
@@ -88,34 +118,80 @@ namespace rtype::client::gui {
         serverCodeHintText.setPosition(boxBounds.left + 10, boxBounds.top + 15);
         serverCodeText.setPosition(boxBounds.left + 10, boxBounds.top + 15);
         
-        // Button positioning
-        float buttonWidth = 300.0f;
-        float buttonHeight = 80.0f;
+        // Button positioning (match MainMenu public/private sizing and behavior)
+        float baseButtonWidth = std::min(200.0f, windowSize.x * 0.25f);
+        float buttonHeight = 60.0f;
         float buttonSpacing = 20.0f;
         float buttonY = centerY + 80.0f;
-        
-        // Join button
-        joinButtonRect.setSize(sf::Vector2f(buttonWidth, buttonHeight));
-        joinButtonRect.setPosition(centerX - buttonWidth - buttonSpacing / 2, buttonY);
+        float nudge = 20.0f;
+
+        // Compute dynamic widths based on text + padding
+        const float horizontalPadding = 60.0f; // 30px each side
+        sf::FloatRect joinTextBounds = joinButton.getLocalBounds();
+        sf::FloatRect createTextBounds = createButton.getLocalBounds();
+        float joinWidth = std::max(baseButtonWidth, joinTextBounds.width + horizontalPadding);
+        float createWidth = std::max(baseButtonWidth, createTextBounds.width + horizontalPadding);
+
+        // Position rects for click areas
+        joinButtonRect.setSize(sf::Vector2f(joinWidth, buttonHeight));
+        joinButtonRect.setPosition(centerX - joinWidth - buttonSpacing / 2.0f - nudge, buttonY);
         GUIHelper::centerText(joinButton,
-                  joinButtonRect.getPosition().x + buttonWidth / 2,
-                  joinButtonRect.getPosition().y + buttonHeight / 2);
-        
-        // Create button
-        createButtonRect.setSize(sf::Vector2f(buttonWidth, buttonHeight));
-        createButtonRect.setPosition(centerX + buttonSpacing / 2, buttonY);
+                  joinButtonRect.getPosition().x + joinWidth / 2.0f,
+                  joinButtonRect.getPosition().y + buttonHeight / 2.0f);
+
+        createButtonRect.setSize(sf::Vector2f(createWidth, buttonHeight));
+        createButtonRect.setPosition(centerX + buttonSpacing / 2.0f + nudge, buttonY);
         GUIHelper::centerText(createButton,
-                  createButtonRect.getPosition().x + buttonWidth / 2,
-                  createButtonRect.getPosition().y + buttonHeight / 2);
+                  createButtonRect.getPosition().x + createWidth / 2.0f,
+                  createButtonRect.getPosition().y + buttonHeight / 2.0f);
+
+        // If sprite texture available, scale and position sprites to fit rects like in MainMenu
+        if (buttonTextureLoaded) {
+            sf::Vector2u texSize = buttonTexture.getSize();
+            if (texSize.x > 0 && texSize.y > 0) {
+                const float sizeMul = 5.00f; // same as MainMenu
+                joinBaseScale = std::min(joinWidth / static_cast<float>(texSize.x),
+                                         buttonHeight / static_cast<float>(texSize.y)) * sizeMul;
+                createBaseScale = std::min(createWidth / static_cast<float>(texSize.x),
+                                           buttonHeight / static_cast<float>(texSize.y)) * sizeMul;
+                joinButtonSprite.setScale(joinBaseScale, joinBaseScale);
+                createButtonSprite.setScale(createBaseScale, createBaseScale);
+
+                const float spriteYOffset = 6.0f;
+                sf::Vector2f joinCenter(joinButtonRect.getPosition().x + joinWidth * 0.5f,
+                                        joinButtonRect.getPosition().y + buttonHeight * 0.5f);
+                sf::Vector2f createCenter(createButtonRect.getPosition().x + createWidth * 0.5f,
+                                          createButtonRect.getPosition().y + buttonHeight * 0.5f);
+                joinButtonSprite.setPosition(joinCenter.x, joinCenter.y + spriteYOffset);
+                createButtonSprite.setPosition(createCenter.x, createCenter.y + spriteYOffset);
+            }
+        }
         
-        // Return button positioning (top left)
-        float returnButtonWidth = 150.0f;
-        float returnButtonHeight = 50.0f;
-        returnButtonRect.setSize(sf::Vector2f(returnButtonWidth, returnButtonHeight));
-        returnButtonRect.setPosition(20.0f, 20.0f);
-        GUIHelper::centerText(returnButton,
-                  returnButtonRect.getPosition().x + returnButtonWidth / 2,
-                  returnButtonRect.getPosition().y + returnButtonHeight / 2);
+    // Return button positioning (top left)
+    float returnButtonWidth = 300.0f;
+    float returnButtonHeight = 120.0f;
+        float leftMargin = 8.0f;
+        float topMargin = 10.0f;
+        if (returnSpriteLoaded) {
+            sf::Vector2u tex = returnTexture.getSize();
+            if (tex.x > 0 && tex.y > 0) {
+                float scale = std::min(returnButtonWidth / static_cast<float>(tex.x),
+                                       returnButtonHeight / static_cast<float>(tex.y));
+                returnSprite.setScale(scale, scale);
+                float scaledW = static_cast<float>(tex.x) * scale;
+                float scaledH = static_cast<float>(tex.y) * scale;
+                returnSprite.setPosition(leftMargin + scaledW * 0.5f, topMargin + scaledH * 0.5f);
+                returnButtonRect.setSize(sf::Vector2f(scaledW, scaledH));
+                returnButtonRect.setPosition(leftMargin, topMargin);
+                // Hover background removed; we only apply shrink-on-hover during rendering
+            }
+        } else {
+            returnButtonRect.setSize(sf::Vector2f(returnButtonWidth, returnButtonHeight));
+            returnButtonRect.setPosition(leftMargin, topMargin);
+            GUIHelper::centerText(returnButton,
+                      returnButtonRect.getPosition().x + returnButtonWidth / 2,
+                      returnButtonRect.getPosition().y + returnButtonHeight / 2);
+        }
     }
     
     void PrivateServerState::handleEvent(const sf::Event& event) {
@@ -197,18 +273,22 @@ namespace rtype::client::gui {
     void PrivateServerState::handleMouseMoveEvent(const sf::Event& event) {
         sf::Vector2f mousePos(event.mouseMove.x, event.mouseMove.y);
         
-        // Button hover effects using GUIHelper
-        GUIHelper::applyButtonHover(joinButtonRect, joinButton, 
-                                  GUIHelper::isPointInRect(mousePos, joinButtonRect),
-                                  sf::Color(50, 100, 50, 200), sf::Color(70, 150, 70, 200));
+        if (buttonTextureLoaded) {
+            // Sprite hover detection; visual handled in render by scaling
+            joinHovered = GUIHelper::isPointInRect(mousePos, joinButtonRect);
+            createHovered = GUIHelper::isPointInRect(mousePos, createButtonRect);
+        } else {
+            // Fallback rectangle hover visuals
+            GUIHelper::applyButtonHover(joinButtonRect, joinButton, 
+                                      GUIHelper::isPointInRect(mousePos, joinButtonRect),
+                                      sf::Color(50, 100, 50, 200), sf::Color(70, 150, 70, 200));
+            GUIHelper::applyButtonHover(createButtonRect, createButton, 
+                                      GUIHelper::isPointInRect(mousePos, createButtonRect),
+                                      sf::Color(50, 50, 100, 200), sf::Color(70, 70, 150, 200));
+        }
         
-        GUIHelper::applyButtonHover(createButtonRect, createButton, 
-                                  GUIHelper::isPointInRect(mousePos, createButtonRect),
-                                  sf::Color(50, 50, 100, 200), sf::Color(70, 70, 150, 200));
-        
-        GUIHelper::applyButtonHover(returnButtonRect, returnButton, 
-                                  GUIHelper::isPointInRect(mousePos, returnButtonRect),
-                                  GUIHelper::Colors::RETURN_BUTTON, sf::Color(150, 70, 70, 200));
+    // Return hover flag only (visuals applied at render)
+    returnHovered = GUIHelper::isPointInRect(mousePos, returnButtonRect);
     }
     
     void PrivateServerState::update(float deltaTime) {
@@ -225,11 +305,18 @@ namespace rtype::client::gui {
         // Ensure text stays positioned correctly
         sf::FloatRect boxBounds = serverCodeBox.getGlobalBounds();
         serverCodeText.setPosition(boxBounds.left + 10, boxBounds.top + 15);
+        // Update parallax
+        if (m_parallaxSystem) {
+            m_parallaxSystem->update(deltaTime);
+        }
     }
     
     void PrivateServerState::render(sf::RenderWindow& window) {
         // Update layout if needed
         updateLayout(window.getSize());
+        ensureParallaxInitialized(window);
+        if (m_parallaxSystem) m_parallaxSystem->render(window);
+        window.draw(m_overlay);
         
         // Render title
         window.draw(titleText);
@@ -242,13 +329,33 @@ namespace rtype::client::gui {
             window.draw(serverCodeText);
         }
         
-        // Render buttons
-        window.draw(joinButtonRect);
-        window.draw(joinButton);
-        window.draw(createButtonRect);
-        window.draw(createButton);
-        window.draw(returnButtonRect);
-        window.draw(returnButton);
+        // Render Join/Create buttons (sprite if available)
+        if (buttonTextureLoaded) {
+            const float hoverScaleFactor = 1.06f;
+            joinButtonSprite.setScale(joinBaseScale * (joinHovered ? hoverScaleFactor : 1.0f),
+                                      joinBaseScale * (joinHovered ? hoverScaleFactor : 1.0f));
+            createButtonSprite.setScale(createBaseScale * (createHovered ? hoverScaleFactor : 1.0f),
+                                        createBaseScale * (createHovered ? hoverScaleFactor : 1.0f));
+            window.draw(joinButtonSprite);
+            window.draw(createButtonSprite);
+            // Draw labels on top for clarity
+            window.draw(joinButton);
+            window.draw(createButton);
+        } else {
+            window.draw(joinButtonRect);
+            window.draw(joinButton);
+            window.draw(createButtonRect);
+            window.draw(createButton);
+        }
+        if (returnSpriteLoaded) {
+            sf::Vector2f originalScale = returnSprite.getScale();
+            if (returnHovered) returnSprite.setScale(originalScale.x * 0.94f, originalScale.y * 0.94f);
+            window.draw(returnSprite);
+            if (returnHovered) returnSprite.setScale(originalScale);
+        } else {
+            window.draw(returnButtonRect);
+            window.draw(returnButton);
+        }
     }
     
     void PrivateServerState::joinServer() {
@@ -258,7 +365,16 @@ namespace rtype::client::gui {
             // Convert server code to room ID (assuming server code maps to room ID)
             uint32_t roomId = static_cast<uint32_t>(std::stoi(serverCode));
 
-            rtype::client::network::start_room_connection(DEV_SERVER_IP, DEV_SERVER_PORT, username, roomId);
+            // Use network settings from config
+            std::string serverIp = config.getIP();
+            int serverPort = getValidatedPort();
+            
+            std::cout << "Redirecting to vessel selection..." << std::endl;
+            
+            // Push vessel selection state
+            stateManager.pushState(std::make_unique<VesselSelectionState>(
+                stateManager, username, serverIp, serverPort, roomId
+            ));
 
         } else {
             std::cout << "Invalid server code. Please enter a 4-digit number between 1000-9999." << std::endl;
@@ -266,13 +382,54 @@ namespace rtype::client::gui {
     }
     
     void PrivateServerState::createServer() {
-        rtype::client::network::start_room_connection(DEV_SERVER_IP, DEV_SERVER_PORT, username, 0);
+        std::string serverIp = config.getIP();
+        int serverPort = getValidatedPort();
+        
+        std::cout << "Creating server, redirecting to vessel selection..." << std::endl;
+        
+        // Push vessel selection state (room code 0 = create new)
+        stateManager.pushState(std::make_unique<VesselSelectionState>(
+            stateManager, username, serverIp, serverPort, 0
+        ));
+    }
+    
+    int PrivateServerState::getValidatedPort() {
+        try {
+            int port = std::stoi(config.getPort());
+            // Validate port range (1-65535). Port 0 is reserved and invalid for TCP/UDP.
+            if (port < 1 || port > 65535) {
+                std::cerr << "[PrivateServerState] Invalid port number in config (" << port 
+                          << "). Valid range is 1-65535. Using default port 4242." << std::endl;
+                return 4242;
+            }
+            return port;
+        } catch (const std::exception& e) {
+            std::cerr << "[PrivateServerState] Failed to parse port from config: " << e.what() 
+                      << ". Using default port 4242." << std::endl;
+            return 4242;
+        }
     }
     
     void PrivateServerState::onExit() {
         std::cout << "Exiting Private Server state" << std::endl;
         // Note: We don't disconnect here because we might be transitioning to the lobby
         // The lobby will manage the connection
+    }
+
+    void PrivateServerState::ensureParallaxInitialized(const sf::RenderWindow& window) {
+        if (m_parallaxInitialized) return;
+        m_parallaxSystem = std::make_unique<ParallaxSystem>(
+            static_cast<float>(window.getSize().x),
+            static_cast<float>(window.getSize().y)
+        );
+        if (g_gameState) {
+            m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(g_gameState->getLevelIndex()), true);
+        } else {
+            // Keep visuals consistent with last played level when no active game exists
+            m_parallaxSystem->setTheme(ParallaxSystem::themeFromLevel(stateManager.getLastLevelIndex()), true);
+        }
+        m_overlay.setSize(sf::Vector2f(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y)));
+        m_parallaxInitialized = true;
     }
     
 }

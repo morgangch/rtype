@@ -1,17 +1,23 @@
 #ifndef COMMON_ALL_COMPONENTS_HPP
 #define COMMON_ALL_COMPONENTS_HPP
 
-#include "Position.h"
-#include "Velocity.h"
+#include "ChargedShot.h"
+#include "Collision.h"
+#include "EnemyType.h"
+#include "Explosion.h"
+#include "FireRate.h"
 #include "Health.h"
-#include "Projectile.h"
-#include "PowerUp.h"
+#include "Homing.h"
 #include "Input.h"
-#include "EnemyAI.h"
+#include "Player.h"
+#include "Position.h"
+#include "PowerUp.h"
+#include "Projectile.h"
+#include "Score.h"
+#include "Shield.h"
 #include "Team.h"
 #include "Transform.h"
-#include "Score.h"
-#include "Lifetime.h"
-#include "Player.h"
+#include "Velocity.h"
+#include "VesselClass.h"
 
 #endif // COMMON_ALL_COMPONENTS_HPP

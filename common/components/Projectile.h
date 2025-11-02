@@ -16,14 +16,16 @@ namespace rtype::common::components {
         float distanceTraveled;
         ProjectileType type;
         ECS::EntityID ownerId;
-        bool piercing;  ///< If true, projectile passes through enemies
+        bool piercing;     ///< If true, projectile passes through enemies (charged shot)
+        bool serverOwned;  ///< If true, projectile is server-authoritative (client-side collision is prediction only)
 
         Projectile(int damage = 10,
+                   bool piercing = false,
+                   bool serverOwned = false,
                    float speed = 200.0f,
-                   ProjectileType type = ProjectileType::Basic,
-                   bool piercing = false)
+                   ProjectileType type = ProjectileType::Basic)
             : damage(damage), speed(speed), maxDistance(1000.0f), 
-              distanceTraveled(0.0f), type(type), ownerId(0), piercing(piercing) {}
+              distanceTraveled(0.0f), type(type), ownerId(0), piercing(piercing), serverOwned(serverOwned) {}
     };
 }
 

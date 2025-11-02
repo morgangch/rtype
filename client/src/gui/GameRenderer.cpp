@@ -15,6 +15,8 @@
 
 #include "gui/GameState.h"
 #include "gui/GUIHelper.h"
+#include "gui/TextureCache.h"
+#include "components/ShieldVisual.h"
 #include <sstream>
 #include <cmath>
 
@@ -43,20 +45,26 @@ void GameState::renderEntities(sf::RenderWindow& window) {
         
         // Draw entity with texture or colored rectangle
         if (sprite->useTexture) {
-            // Load texture if not already loaded
+            // Use TextureCache instead of loading file per-frame
             if (!sprite->textureLoaded) {
-                if (!sprite->texture.loadFromFile(sprite->texturePath)) {
+                auto texPtr = rtype::client::gui::TextureCache::getInstance().getTexture(sprite->texturePath);
+                if (!texPtr) {
+                    // If factory didn't preload, try to load once now (still avoids repeated disk I/O)
+                    texPtr = rtype::client::gui::TextureCache::getInstance().loadTexture(sprite->texturePath);
+                }
+
+                if (!texPtr) {
                     // Failed to load - fallback to colored shape
                     sprite->useTexture = false;
                     sprite->textureLoaded = false;
                 } else {
-                    // Texture loaded successfully - configure sprite
-                    sprite->sprite.setTexture(sprite->texture);
+                    // Configure sprite to reference cached texture (cache owns texture memory)
+                    sprite->sprite.setTexture(*texPtr);
                     
                     // Set texture rect (use full texture if not specified)
                     if (sprite->textureRect.width == 0 || sprite->textureRect.height == 0) {
                         sprite->textureRect = sf::IntRect(0, 0, 
-                            sprite->texture.getSize().x, sprite->texture.getSize().y);
+                            sprite->sprite.getTexture()->getSize().x, sprite->sprite.getTexture()->getSize().y);
                     }
                     sprite->sprite.setTextureRect(sprite->textureRect);
                     sprite->sprite.setOrigin(sprite->textureRect.width / 2.0f, 
@@ -65,7 +73,7 @@ void GameState::renderEntities(sf::RenderWindow& window) {
                     sprite->textureLoaded = true;
                 }
             }
-            
+
             // Draw sprite with texture (if loaded successfully)
             if (sprite->useTexture) {
                 // Only update texture rect if it has changed (optimization for animations)
@@ -85,13 +93,39 @@ void GameState::renderEntities(sf::RenderWindow& window) {
             shape.setFillColor(sprite->color);
             window.draw(shape);
         }
+
+        // Draw shield visual effect if entity has ShieldVisual component
+        auto* shield = m_world.GetComponent<rtype::client::components::ShieldVisual>(entity);
+        if (shield && shield->enabled) {
+            // Update pulse animation
+            shield->pulseTimer += 0.016f; // Assume ~60 FPS
+            float pulseScale = 1.0f + 0.1f * std::sin(shield->pulseTimer * shield->pulseSpeed);
+            
+            // Draw outer circle (border)
+            sf::CircleShape outerCircle(shield->radius * pulseScale);
+            outerCircle.setPosition(pos.x - shield->radius * pulseScale, 
+                                   pos.y - shield->radius * pulseScale);
+            outerCircle.setFillColor(sf::Color::Transparent);
+            outerCircle.setOutlineColor(shield->color);
+            outerCircle.setOutlineThickness(shield->thickness);
+            window.draw(outerCircle);
+            
+            // Draw inner fill (more transparent)
+            sf::CircleShape innerCircle(shield->radius * pulseScale * 0.9f);
+            innerCircle.setPosition(pos.x - shield->radius * pulseScale * 0.9f, 
+                                   pos.y - shield->radius * pulseScale * 0.9f);
+            sf::Color fillColor = shield->color;
+            fillColor.a = static_cast<sf::Uint8>(fillColor.a * 0.3f); // 30% opacity for fill
+            innerCircle.setFillColor(fillColor);
+            window.draw(innerCircle);
+        }
     }
 }
 
 void GameState::renderHUD(sf::RenderWindow& window) {
     // Get player lives
     int lives = getPlayerLives();
-    int maxLives = 3;  // Maximum player lives
+    int maxLives = getPlayerMaxLives();  // Get max lives from player's health component
     
     // Draw hearts for lives (full hearts + empty hearts)
     // Both hearts are 992x432px (4 cols x 2 rows)
@@ -113,6 +147,14 @@ void GameState::renderHUD(sf::RenderWindow& window) {
             window.draw(m_emptyHeartSprite);
         }
     }
+
+    // Draw score (top-right)
+    m_scoreText.setString("score " + std::to_string(m_score));
+    sf::FloatRect bounds = m_scoreText.getLocalBounds();
+    float scoreX = SCREEN_WIDTH - 20.0f - bounds.width;
+    float scoreY = 20.0f;
+    m_scoreText.setPosition(scoreX, scoreY);
+    window.draw(m_scoreText);
 }
 
 void GameState::renderGameOverMenu(sf::RenderWindow& window) {
@@ -120,6 +162,11 @@ void GameState::renderGameOverMenu(sf::RenderWindow& window) {
     sf::RectangleShape overlay(sf::Vector2f(SCREEN_WIDTH, SCREEN_HEIGHT));
     overlay.setFillColor(sf::Color(0, 0, 0, 180)); // Dark overlay
     window.draw(overlay);
+    
+    // Draw celebratory effects under UI when in victory mode
+    if (m_isVictory) {
+        renderVictoryEffects(window);
+    }
     
     // Title positioning
     sf::FloatRect titleBounds = m_gameOverTitleText.getLocalBounds();
@@ -136,32 +183,42 @@ void GameState::renderGameOverMenu(sf::RenderWindow& window) {
     const float button1Y = 340.0f;
     const float button2Y = 420.0f;
     
-    // Restart/Resume button
-    sf::RectangleShape restartButton(sf::Vector2f(buttonWidth, buttonHeight));
-    restartButton.setPosition(buttonX, button1Y);
-    restartButton.setFillColor(m_selectedMenuOption == 0 ? 
-                               GUIHelper::Colors::BUTTON_HOVER : 
-                               GUIHelper::Colors::BUTTON_NORMAL);
-    restartButton.setOutlineColor(GUIHelper::Colors::TEXT);
-    restartButton.setOutlineThickness(2.0f);
-    window.draw(restartButton);
-    
-    // Restart text
-    if (m_isGameOver) {
-        m_restartText.setString("Restart");
+    if (!m_isVictory) {
+        // Restart/Resume button (hidden in victory)
+        sf::RectangleShape restartButton(sf::Vector2f(buttonWidth, buttonHeight));
+        restartButton.setPosition(buttonX, button1Y);
+        restartButton.setFillColor(m_selectedMenuOption == 0 ? 
+                                   GUIHelper::Colors::BUTTON_HOVER : 
+                                   GUIHelper::Colors::BUTTON_NORMAL);
+        restartButton.setOutlineColor(GUIHelper::Colors::TEXT);
+        restartButton.setOutlineThickness(2.0f);
+        window.draw(restartButton);
+
+        // Restart text
+        if (m_isGameOver) {
+            m_restartText.setString("Restart");
+        } else {
+            m_restartText.setString("Resume");
+        }
+        sf::FloatRect restartBounds = m_restartText.getLocalBounds();
+        m_restartText.setPosition(
+            buttonX + (buttonWidth - restartBounds.width) * 0.5f,
+            button1Y + (buttonHeight - restartBounds.height) * 0.5f - 5.0f
+        );
+        window.draw(m_restartText);
     } else {
-        m_restartText.setString("Resume");
+        // In victory screen, draw the score centered under the title
+        sf::Text scoreText = m_scoreText; // copy formatting
+        scoreText.setString("score " + std::to_string(m_score));
+        sf::FloatRect sb = scoreText.getLocalBounds();
+        scoreText.setPosition((SCREEN_WIDTH - sb.width) * 0.5f, 260.0f);
+        window.draw(scoreText);
     }
-    sf::FloatRect restartBounds = m_restartText.getLocalBounds();
-    m_restartText.setPosition(
-        buttonX + (buttonWidth - restartBounds.width) * 0.5f,
-        button1Y + (buttonHeight - restartBounds.height) * 0.5f - 5.0f
-    );
-    window.draw(m_restartText);
     
-    // Menu button
+    // Menu/Quit button (only button in victory mode)
+    float quitY = m_isVictory ? 360.0f : button2Y;
     sf::RectangleShape menuButton(sf::Vector2f(buttonWidth, buttonHeight));
-    menuButton.setPosition(buttonX, button2Y);
+    menuButton.setPosition(buttonX, quitY);
     menuButton.setFillColor(m_selectedMenuOption == 1 ? 
                             GUIHelper::Colors::BUTTON_HOVER : 
                             GUIHelper::Colors::BUTTON_NORMAL);
@@ -173,7 +230,7 @@ void GameState::renderGameOverMenu(sf::RenderWindow& window) {
     sf::FloatRect menuBounds = m_menuText.getLocalBounds();
     m_menuText.setPosition(
         buttonX + (buttonWidth - menuBounds.width) * 0.5f,
-        button2Y + (buttonHeight - menuBounds.height) * 0.5f - 5.0f
+        quitY + (buttonHeight - menuBounds.height) * 0.5f - 5.0f
     );
     window.draw(m_menuText);
 }

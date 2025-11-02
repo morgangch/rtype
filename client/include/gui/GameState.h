@@ -1,11 +1,11 @@
 /**
  * @file GameState.h
  * @brief Space Invaders game state implementation for R-TYPE using ECS
- * 
+ *
  * This file contains the GameState class which implements the actual gameplay
  * for a Space Invaders style game using a pure ECS architecture.
  * All game entities (player, enemies, projectiles) are managed through the ECS.
- * 
+ *
  * @author R-TYPE Development Team
  * @date 2025
  */
@@ -16,8 +16,11 @@
 #include "State.h"
 #include "StateManager.h"
 #include "ParallaxSystem.h"
+#include "SettingsConfig.h"
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <ECS/ECS.h>
+#include <unordered_map>
 #include <common/components/Position.h>
 #include <common/components/Velocity.h>
 #include <common/components/Health.h>
@@ -26,497 +29,860 @@
 #include <common/components/Player.h>
 #include <common/components/FireRate.h>
 #include <common/components/EnemyType.h>
-#include <common/systems/ChargedShot.h>
-#include <client/components/Sprite.h>
-#include <client/components/Animation.h>
+#include <common/components/Shield.h>
+#include <common/components/VesselClass.h>
+#include <common/systems/ChargedShotSystem.h>
+#include <client/components/Components.h>
 #include <vector>
 #include <functional>
+#include "MusicManager.h"
+#include "SoundManager.h"
+#include "HighscoreManager.h"
 
 namespace rtype::client::gui {
-    
+
     /**
      * @class GameState
-     * @brief The in-game state for Space Invaders gameplay using pure ECS
-     * 
-     * GameState handles the core game loop using Entity Component System architecture:
-     * - All entities (player, enemies, projectiles) are ECS entities
-     * - Components define entity properties (Position, Velocity, Health, etc.)
-     * - Systems update entity behavior each frame
-     * 
-     * ECS Components Used:
-     * - Position: Entity location in 2D space
-     * - Velocity: Movement speed and direction
-     * - Health: Hit points, alive state, and invulnerability (common)
-     * - Team: Distinguishes player/enemy entities (common)
-     * - Player: Marks player-controlled entities (common)
-     * - FireRate: Shooting cooldown timer (common)
-     * - Projectile: Projectile-specific data (common)
-     * - Sprite: Visual representation for rendering (client)
-     * 
-     * Controls:
-     * - Z/Up: Move up
-     * - S/Down: Move down
-     * - Q/Left: Move left
-     * - D/Right: Move right
-     * - Space: Fire projectiles
-     * - ESC: Return to menu
+     * @brief Main gameplay state using ECS for entities and systems
+     *
+     * GameState contains the in-game simulation for the R-TYPE client. It
+     * orchestrates ECS systems (movement, AI, collisions, rendering), manages
+     * creation of entities via factory methods, and exposes a small API used
+     * by network packet handlers to create/update/destroy server-owned entities.
+     *
+     * Responsibilities:
+     * - Host the ECS::World instance used for all game entities
+     * - Provide network-aware factory methods (createEnemyFromServer, createProjectileFromServer)
+     * - Run the per-frame update pipeline in the correct order for deterministic
+     *   and responsive gameplay (input → simulation → collision → render)
+     * - Play music and sound effects and manage HUD/UI for the in-game menu
+     *
+     * Notes on network model:
+     * - The server is authoritative: the client receives spawn/update/destroy packets
+     *   and maps server entity IDs to local ECS entity IDs via m_serverEntityMap.
+     * - The client performs optimistic prediction for low-latency feedback but
+     *   respects server confirmation (ENTITY_DESTROY, authoritative HP, positions).
      */
     class GameState : public State {
     public:
         /**
-         * @enum GameStatus
-         * @brief Represents the current state of the game
+         * @brief Overall UI/gameplay status for the state
          */
-        enum class GameStatus {
-            Playing,     ///< Game is active
-            InGameMenu   ///< Paused or game over, showing in-game menu
-        };
-        
+        enum class GameStatus { Playing, InGameMenu };
+
         /**
-         * @brief Construct a new GameState
-         * @param stateManager Reference to the state manager for transitions
+         * @brief Construct a GameState bound to a StateManager
+         * @param stateManager Reference to the owning StateManager
          */
         GameState(StateManager& stateManager);
-        
+
         /**
-         * @brief Handle input events (keyboard, window)
-         * @param event The SFML event to process
+         * @brief Destroy the GameState
+         *
+         * Ensures global pointers and resources are cleaned up.
+         */
+        ~GameState();
+
+        /**
+         * @brief Handle generic SFML events
+         * @param event The SFML event to handle
          */
         void handleEvent(const sf::Event& event) override;
-        
+
         /**
-         * @brief Handle key press events
-         * @param key The SFML key code that was pressed
+         * @brief Handle a key pressed event
+         * @param key SFML key code
+         * 
+         * Maps keys to configured actions via SettingsConfig. Uses helper methods
+         * for charged shot workflow. Handles reserved keys (Escape for pause, B for boss spawn).
          */
         void handleKeyPressed(sf::Keyboard::Key key);
 
         /**
-         * @brief Handle key release events
-         * @param key The SFML key code that was released
+         * @brief Handle a key released event
+         * @param key SFML key code
+         * 
+         * Maps keys to configured actions via SettingsConfig. Uses helper methods
+         * for charged shot release workflow.
          */
         void handleKeyReleased(sf::Keyboard::Key key);
-        
+
         /**
-         * @brief Handle input events while in menu state
-         * @param event The SFML event to process
+         * @brief Handle input specific to in-game menus
+         * @param event The SFML event to handle
+         * 
+         * Processes keyboard and mouse input for pause/game-over menu navigation.
          */
         void handleMenuInput(const sf::Event& event);
 
         /**
-         * @brief Update game logic (player, enemies, collisions)
-         * @param deltaTime Time elapsed since last update
-         */
-        void update(float deltaTime) override;
-        
-        /**
-         * @brief Render the game to the screen
-         * @param window The render window to draw to
-         */
-        void render(sf::RenderWindow& window) override;
-        
-        /**
-         * @brief Called when entering this state
-         */
-        void onEnter() override;
-        
-        /**
-         * @brief Called when exiting this state
-         */
-        void onExit() override;
-        
-    private:
-        
-        /**
-         * @brief ECS World instance for entity management
+         * @brief Handle joystick axis movement with deadzone and secondary binding support
+         * @param event The joystick axis movement event
          * 
-         * The world manages all entities and their components.
-         * All game objects (player, enemies, projectiles) are entities in this world.
+         * Encodes axis movements as 30000 + axisIndex*10 + dir(0=neg,1=pos) and checks
+         * against secondary bindings. Falls back to common X/Y mapping if not consumed.
          */
-        ECS::World m_world;
-        
-        /**
-         * @brief Entity ID for the player
-         * 
-         * The player is a single entity with components:
-         * - Position, Velocity, Health, Sprite, Controllable, FireRate, Invulnerability
-         */
-        ECS::EntityID m_playerEntity{0};
+        void handleJoystickAxis(const sf::Event& event);
 
         /**
-         * @brief Create the player entity
-         * @note Wrapper around rtype::client::factories::createPlayer()
+         * @brief Handle joystick button press events
+         * @param event The joystick button pressed event
+         * 
+         * Encodes buttons as 10000 + button and checks secondary bindings for action mapping.
+         * Button 9 is hardcoded as pause/menu fallback.
          */
-        ECS::EntityID createPlayer();
-        
+        void handleJoystickButtonPressed(const sf::Event& event);
+
+        /**
+         * @brief Handle joystick button release events
+         * @param event The joystick button released event
+         * 
+         * Releases mapped actions based on secondary binding configuration.
+         * Triggers charged shot release if mapped to shoot action.
+         */
+        void handleJoystickButtonReleased(const sf::Event& event);
+
+        /**
+         * @brief Handle mouse button press events
+         * @param event The mouse button pressed event
+         * 
+         * Encodes mouse buttons as 20000 + button. Left mouse button always acts
+         * as shoot fallback regardless of secondary binding configuration.
+         */
+        void handleMouseButtonPressed(const sf::Event& event);
+
+        /**
+         * @brief Handle mouse button release events
+         * @param event The mouse button released event
+         * 
+         * Triggers charged shot release workflow for configured or fallback mouse buttons.
+         */
+        void handleMouseButtonReleased(const sf::Event& event);
+
+        /**
+         * @brief Start charging all player charged shots
+         * 
+         * Iterates through all player entities and calls startCharge() on their
+         * ChargedShot component. Helper method to eliminate code duplication across
+         * keyboard, joystick, and mouse input handlers.
+         */
+        void startChargedShot();
+
+        /**
+         * @brief Release charged shots for all players and send to server
+         * 
+         * Handles the complete charged shot release workflow:
+         * - Releases charge and queries if fully charged
+         * - Checks fire rate cooldown
+         * - Sends shoot packet to server with current position
+         * - Plays appropriate sound effect (charged vs regular)
+         * 
+         * Helper method to eliminate code duplication across input handlers.
+         */
+        void releaseChargedShot();
+
+        /**
+         * @brief Per-frame update called by the StateManager
+         * @param deltaTime Time elapsed since last frame (seconds)
+         */
+        void update(float deltaTime) override;
+
+        /**
+         * @brief Render current game state to the provided window
+         * @param window SFML RenderWindow to draw into
+         */
+        void render(sf::RenderWindow& window) override;
+
+        /**
+         * @brief Called when this state becomes active
+         */
+        void onEnter() override;
+
+        /**
+         * @brief Called when this state is exited
+         */
+        void onExit() override;
+
+    /**
+     * @brief Get current level index (0 = level1, 1 = level2, ...)
+     */
+    int getLevelIndex() const;
+
+        /**
+         * @brief Set current level index (0 = level1, 1 = level2, ...)
+         * @param index New level index to apply before entering the state
+         */
+        void setLevelIndex(int index);
+
+        /* === Network-aware helpers (used by packet handlers) === */
+        /**
+         * @brief Create or update an enemy entity based on server spawn packet
+         * @param serverId Server-assigned entity id
+         * @param x X position
+         * @param y Y position
+         * @param hp Health value (server authoritative)
+         * @param enemyType Numeric enemy type (maps to EnemyType enum)
+         * @return Local ECS::EntityID of the created/updated entity
+         *
+         * This function maps a server entity id to a local entity and ensures
+         * the appropriate factory (createBoss/createShooter/createEnemy) is used.
+         */
+        ECS::EntityID createEnemyFromServer(uint32_t serverId, float x, float y, uint16_t hp, uint16_t enemyType);
+
+        /**
+         * @brief Create a remote player representation for another client
+         * @param name Player display name
+         * @param serverId Server entity id
+         * @param vesselType Vessel class of the remote player
+         * @return Local ECS::EntityID for the remote player entity
+         */
+        ECS::EntityID createRemotePlayer(const std::string &name, uint32_t serverId, 
+                                         rtype::common::components::VesselType vesselType = rtype::common::components::VesselType::CrimsonStriker);
+
+        /**
+         * @brief Create a projectile spawned by the server
+         * @param serverId Server-assigned projectile id
+         * @param ownerId Server id of projectile owner
+         * @param x X position
+         * @param y Y position
+         * @param vx Velocity X
+         * @param vy Velocity Y
+         * @param damage Damage value
+         * @param piercing Whether projectile pierces
+         * @param isCharged Whether projectile is charged (visual/style)
+         * @return Local ECS::EntityID of the projectile
+         */
+        ECS::EntityID createProjectileFromServer(uint32_t serverId, uint32_t ownerId, float x, float y, float vx, float vy, uint16_t damage, bool piercing, bool isCharged);
+
+        /**
+         * @brief Update an entity position and HP based on authoritative server snapshot
+         * @param serverId Server entity id
+         * @param x X position
+         * @param y Y position
+         * @param hp Health value
+         * @param invulnerable Invulnerability state from server
+         * @param maxHp Maximum health (varies by vessel type)
+         */
+        void updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable, uint16_t maxHp = 3);
+
+        /**
+         * @brief Update shield state for an entity from server
+         * @param serverId Server entity id
+         * @param isActive Whether the shield is active
+         * @param duration Remaining duration of the shield
+         */
+        void updateShieldStateFromServer(uint32_t serverId, bool isActive, float duration);
+
+        /**
+         * @brief Destroy a local entity corresponding to a server entity id
+         * @param serverId Server entity id to destroy
+         */
+        void destroyEntityByServerId(uint32_t serverId);
+
+        /**
+         * @brief Set the server ID of the local player
+         * @param serverId Local player's server id (used to ignore server echoes)
+         */
+        void setLocalPlayerServerId(uint32_t serverId); // Set when receiving initial state from server
+
+        /**
+         * @brief Mark the local player as room admin (enables admin-only input such as boss spawn)
+         * @param isAdmin True to mark as admin
+         */
+        void setIsAdmin(bool isAdmin); // Set whether the local player is room admin
+
+        /**
+         * @brief Set the vessel type of the local player
+         * @param vesselType The vessel type selected by the player
+         */
+        void setLocalVesselType(rtype::common::components::VesselType vesselType);
+
+        /**
+         * @brief Set in-game score from server and update HUD text
+         * @param newScore Absolute score value as sent by the server
+         */
+        void setScoreFromServer(int newScore);
+
+        /**
+         * @brief Mute/unmute music
+         */
+        void setMusicMuted(bool muted);
+
+        /**
+         * @brief Query whether music is muted
+         * @return true if muted
+         */
+        bool isMusicMuted() const;
+
+    private:
+        /* === ECS and Entity Management === */
+        /// Core ECS world containing all game entities and their components
+        ECS::World m_world;
+        /// Entity ID of the local player
+        ECS::EntityID m_playerEntity{0};
+        /// Map between server entity id and local ECS entity id
+        std::unordered_map<uint32_t, ECS::EntityID> m_serverEntityMap;
+        /// Track local player's server ID to filter out own state updates
+        uint32_t m_localPlayerServerId{0};
+        /// Track if local player is room admin (for boss spawning)
+        bool m_isAdmin{false};
+        /// Track local player's vessel type (received from server)
+        rtype::common::components::VesselType m_localVesselType{rtype::common::components::VesselType::CrimsonStriker};
+
+        /* === Entity Factory Methods === */
+        /**
+         * @brief Create the local player entity
+         * @param vesselType The vessel class to create (default: CrimsonStriker)
+         * @return Entity ID of the created player
+         *
+         * Creates the main player entity with Position, Velocity, Sprite, Health,
+         * Team, Player, FireRate, ChargedShot, and VesselClass components.
+         * Stats are modified based on the vessel type selected.
+         */
+        ECS::EntityID createPlayer(rtype::common::components::VesselType vesselType = rtype::common::components::VesselType::CrimsonStriker);
+
         /**
          * @brief Create a basic enemy entity
-         * @note Wrapper around rtype::client::factories::createEnemy()
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created enemy
+         *
+         * Creates a basic enemy with 1 HP that moves left at constant speed.
+         * Includes Position, Velocity, Health, Sprite, Team, EnemyType, and FireRate.
          */
         ECS::EntityID createEnemy(float x, float y);
-        
+
         /**
-         * @brief Create a shooter enemy entity
-         * @note Wrapper around rtype::client::factories::createShooterEnemy()
+         * @brief Create a snake-type enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created snake enemy
+         *
+         * Creates a snake-type enemy with 1 HP that moves in a sine wave pattern.
          */
-        ECS::EntityID createShooterEnemy(float x, float y);
-        
+        ECS::EntityID createSnakeEnemy(float x, float y);
+
+        /**
+         * @brief Create a suicide enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created suicide enemy
+         */
+        ECS::EntityID createSuicideEnemy(float x, float y);
+
         /**
          * @brief Create a boss enemy entity
-         * @note Wrapper around rtype::client::factories::createBoss()
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created boss
+         *
+         * Creates a large boss entity with high HP (30) and alternating movement pattern.
          */
-        ECS::EntityID createBoss(float x, float y);
-        
+        ECS::EntityID createTankDestroyer(float x, float y);
+
         /**
-         * @brief Create a player projectile
-         * @note Wrapper around rtype::client::factories::createPlayerProjectile()
+         * @brief Create a Pata enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Pata enemy
+         *
+         * Creates a Pata-type enemy with moderate HP and unique movement pattern.
+         */
+        ECS::EntityID createPataEnemy(float x, float y);
+
+        /**
+         * @brief Create a Shielded enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Shielded enemy
+         *
+         * Creates a Shielded enemy with protective shield mechanics and higher durability.
+         */
+        ECS::EntityID createShieldedEnemy(float x, float y);
+
+        /**
+         * @brief Create a Flanker enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Flanker enemy
+         *
+         * Creates a Flanker enemy that attempts to outmaneuver the player with agile movement.
+         */
+        ECS::EntityID createFlankerEnemy(float x, float y);
+
+        /**
+         * @brief Create a Turret enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Turret enemy
+         *
+         * Creates a stationary Turret enemy that fires 3-shot bursts aimed at the player.
+         */
+        ECS::EntityID createTurretEnemy(float x, float y);
+
+        /**
+         * @brief Create a Waver enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Waver enemy
+         *
+         * Creates a Waver enemy with wave-pattern movement similar to snake but with distinct behavior.
+         */
+        ECS::EntityID createWaverEnemy(float x, float y);
+
+        /**
+         * @brief Create a Serpent Boss entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Serpent Boss
+         *
+         * Creates a large Serpent boss with segmented body mechanics and high HP pool.
+         */
+        ECS::EntityID createSerpentBoss(float x, float y);
+
+        /**
+         * @brief Create a Fortress Boss entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Fortress Boss
+         *
+         * Creates a stationary Fortress boss with heavy armor and multiple attack patterns.
+         */
+        ECS::EntityID createFortressBoss(float x, float y);
+
+        /**
+         * @brief Create a Core Boss entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Core Boss
+         *
+         * Creates the final Core boss with complex attack phases and maximum difficulty.
+         */
+        ECS::EntityID createCoreBoss(float x, float y);
+
+        /**
+         * @brief Create a player projectile entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created projectile
+         *
+         * Creates a standard player projectile moving right at high speed.
          */
         ECS::EntityID createPlayerProjectile(float x, float y);
-        
+
         /**
-         * @brief Create a charged player projectile
-         * @note Wrapper around rtype::client::factories::createChargedProjectile()
+         * @brief Create a charged player projectile entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created charged projectile
+         *
+         * Creates a charged projectile with higher damage and piercing capability.
          */
         ECS::EntityID createChargedProjectile(float x, float y);
-        
+
         /**
-         * @brief Create an enemy projectile
-         * @note Wrapper around rtype::client::factories::createEnemyProjectile()
+         * @brief Create dual projectiles (Azure Phantom normal shot)
+         * @param x X position
+         * @param y Y position
+         * @return Number of projectiles created (2)
+         *
+         * Creates two projectiles with vertical offset (±5 pixels).
+         */
+        int createDualProjectiles(float x, float y);
+
+        /**
+         * @brief Create burst of homing projectiles (Azure Phantom charged shot)
+         * @param x X position
+         * @param y Y position
+         * @param count Number of projectiles in burst (default: 3)
+         * @return Number of projectiles created
+         *
+         * Creates multiple homing projectiles that track nearest enemy.
+         */
+        int createHomingBurst(float x, float y, int count = 3);
+
+        /**
+         * @brief Create spread shot projectiles (Solar Guardian normal shot)
+         * @param x X position
+         * @param y Y position
+         * @param count Number of projectiles (default: 4)
+         * @return Number of projectiles created
+         *
+         * Creates shotgun-like spread of projectiles with vertical spread.
+         */
+        int createSpreadShot(float x, float y, int count = 4);
+
+        /**
+         * @brief Create explosive projectile (Emerald Titan normal shot)
+         * @param x X position
+         * @param y Y position
+         * @param isCharged Whether this is a charged shot (bigger AoE)
+         * @return Entity ID of the created projectile
+         *
+         * Creates a projectile that explodes on impact with AoE damage.
+         */
+        ECS::EntityID createExplosiveProjectile(float x, float y, bool isCharged = false);
+
+        /**
+         * @brief Create an enemy projectile entity
+         * @param x X position
+         * @param y Y position
+         * @param vx Velocity X (default: -300.0f)
+         * @param vy Velocity Y (default: 0.0f)
+         * @return Entity ID of the created projectile
+         *
+         * Creates an enemy projectile with configurable velocity.
          */
         ECS::EntityID createEnemyProjectile(float x, float y, float vx = -300.0f, float vy = 0.0f);
 
         /**
-         * @brief Movement System - Updates positions based on velocity
-         * @note Wrapper around rtype::client::systems::updateMovementSystem()
-         */
-        void updateMovementSystem(float deltaTime);
-        
-        /**
-         * @brief Input System - Process player input
-         * @note Wrapper around rtype::client::systems::updateInputSystem()
+         * @brief Update input system for player control
+         * @param deltaTime Time elapsed since last frame
+         *
+         * Processes keyboard input state and updates player velocity.
          */
         void updateInputSystem(float deltaTime);
-        
+
         /**
-         * @brief Fire Rate System - Update shooting cooldowns
-         * @note Wrapper around rtype::client::systems::updateFireRateSystem()
+         * @brief Update fire rate cooldowns for all entities with FireRate component
+         * @param deltaTime Time elapsed since last frame
+         *
+         * Decrements cooldown timers for firing mechanics.
          */
         void updateFireRateSystem(float deltaTime);
-        
+
         /**
-         * @brief Charged Shot System - Update charge accumulation
-         * @note Wrapper around rtype::client::systems::updateChargedShotSystem()
-         */
-        void updateChargedShotSystem(float deltaTime);
-        
-        /**
-         * @brief Invulnerability System - Update invulnerability timers
-         * @note Wrapper around rtype::client::systems::updateInvulnerabilitySystem()
-         */
-        void updateInvulnerabilitySystem(float deltaTime);
-        
-        /**
-         * @brief Animation System - Update sprite animations (frame cycling)
-         */
-        void updateAnimationSystem(float deltaTime);
-        
-        /**
-         * @brief Handle player animation based on movement input
-         * @param entity The entity to update animation for
-         * @param animation The animation component
-         * @param sprite The sprite component
-         * @param isMovingUp Whether the UP key is pressed
-         */
-        void updatePlayerAnimation(ECS::EntityID entity, 
-                                   rtype::client::components::Animation* animation,
-                                   rtype::client::components::Sprite* sprite,
-                                   bool isMovingUp);
-        
-        /**
-         * @brief Enemy Spawning System - Spawn enemies periodically
-         * @note Wrapper around rtype::client::systems::updateEnemySpawnSystem()
-         */
-        void updateEnemySpawnSystem(float deltaTime);
-        
-        /**
-         * @brief Enemy AI System - Handle enemy shooting
-         * @note Wrapper around rtype::client::systems::updateEnemyAISystem()
+         * @brief Update enemy AI shooting system with local prediction
+         * @param deltaTime Time elapsed since last frame
+         *
+         * Handles enemy shooting logic locally for immediate feedback.
+         * Server remains authoritative via SPAWN_PROJECTILE packets.
          */
         void updateEnemyAISystem(float deltaTime);
-        
+
         /**
-         * @brief Cleanup System - Remove off-screen entities
-         * @note Wrapper around rtype::client::systems::updateCleanupSystem()
+         * @brief Update charged shot system for player
+         * @param deltaTime Time elapsed since last frame
+         *
+         * Manages charged shot accumulation and release for the local player.
+         */
+        void updateChargedShotSystem(float deltaTime);
+
+        /**
+         * @brief Update homing projectile system
+         * @param deltaTime Time elapsed since last frame
+         *
+         * Updates homing projectiles to track and follow targets.
+         */
+        void updateHomingSystem(float deltaTime);
+
+        /**
+         * @brief Update shield system
+         * @param deltaTime Time elapsed since last frame
+         *
+         * Updates active shields and cooldowns for Solar Guardian.
+         */
+        void updateShieldSystem(float deltaTime);
+
+        /**
+         * @brief Update invulnerability timers for entities
+         * @param deltaTime Time elapsed since last frame
+         *
+         * Decrements invulnerability duration for recently damaged entities.
+         */
+        void updateInvulnerabilitySystem(float deltaTime);
+
+        /**
+         * @brief Update animation system for all animated sprites
+         * @param deltaTime Time elapsed since last frame
+         *
+         * Advances animation frames for entities with Animation component.
+         */
+        void updateAnimationSystem(float deltaTime);
+
+        /**
+         * @brief Update player-specific animation state
+         * @param entity Entity ID of the player
+         * @param animation Animation component pointer
+         * @param sprite Sprite component pointer
+         * @param isMovingUp Whether the player is moving upward
+         *
+         * Adjusts player sprite animation based on movement direction.
+         */
+        void updatePlayerAnimation(ECS::EntityID entity, rtype::client::components::Animation* animation, rtype::client::components::Sprite* sprite, bool isMovingUp);
+
+        /**
+         * @brief Update cleanup system for out-of-bounds entities
+         * @param deltaTime Time elapsed since last frame
+         *
+         * Destroys entities that have left the playable area.
          */
         void updateCleanupSystem(float deltaTime);
-        
+
         /**
-         * @brief Collision System - Detect and handle all collisions
-         * @note Wrapper around rtype::client::collision::updateCollisionSystem()
+         * @brief Update collision detection and resolution
+         *
+         * Orchestrates all collision checks between different entity types.
          */
         void updateCollisionSystem();
-        
+
+        /* === Gameplay Logic === */
         /**
-         * @brief Check player vs enemies collision
-         * @note Wrapper around rtype::client::collision::checkPlayerVsEnemiesCollision()
-         */
-        void checkPlayerVsEnemiesCollision(
-            ECS::ComponentArray<rtype::common::components::Position>& positions,
-            const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds);
-        
-        /**
-         * @brief Check player projectiles vs enemies collision
-         * @note Wrapper around rtype::client::collision::checkPlayerProjectilesVsEnemiesCollision()
-         */
-        void checkPlayerProjectilesVsEnemiesCollision(
-            ECS::ComponentArray<rtype::common::components::Position>& positions,
-            const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds,
-            std::vector<ECS::EntityID>& toDestroy);
-        
-        /**
-         * @brief Check enemy projectiles vs player collision
-         * @note Wrapper around rtype::client::collision::checkEnemyProjectilesVsPlayerCollision()
-         */
-        void checkEnemyProjectilesVsPlayerCollision(
-            ECS::ComponentArray<rtype::common::components::Position>& positions,
-            const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds,
-            std::vector<ECS::EntityID>& toDestroy);
-        
-        /**
-         * @brief Handle player firing a projectile
-         * 
-         * Called when space bar is pressed and fire cooldown allows.
-         * Creates a player projectile entity at player's position.
+         * @brief Handle player firing action
+         *
+         * Creates projectile if fire cooldown allows, either normal or charged shot.
          */
         void handlePlayerFire();
-        
+
         /**
-         * @brief Handle player taking damage
-         * @param damage Amount of damage to apply
-         * 
-         * Reduces player health, grants invulnerability, checks for game over.
-         * Only applies damage if player is not currently invulnerable.
+         * @brief Apply damage to the player
+         * @param damage Amount of damage (default: 1)
+         *
+         * Reduces player HP, grants invulnerability period, triggers game over if HP reaches 0.
          */
         void damagePlayer(int damage = 1);
-        
+
         /**
-         * @brief Get the player's current number of lives
-         * @return Number of hit points remaining (0 if player is dead/doesn't exist)
-         * 
-         * Helper method to access player health for HUD rendering.
+         * @brief Get current player lives/health
+         * @return Current HP of the player entity
          */
         int getPlayerLives() const;
-        
+
         /**
-         * @brief Check if a boss is currently active in the game
-         * @return True if a boss entity exists, false otherwise
-         * 
-         * Pure ECS approach: queries the world for entities with Boss type.
-         * Replaces the need for a m_bossActive flag.
+         * @brief Get maximum player lives/health
+         * @return Maximum HP of the player entity
+         */
+        int getPlayerMaxLives() const;
+
+        /**
+         * @brief Check if a boss entity is currently active
+         * @return true if a boss enemy exists in the world
          */
         bool isBossActive();
-        
+
         /**
-         * @brief Reset the game to initial state
-         * 
-         * Resets player position, lives to 3, and clears all enemies and projectiles.
-         * Called when starting a new game or when player loses all lives.
+         * @brief Reset the game state to initial conditions
+         *
+         * Clears all entities and reinitializes the player.
          */
         void resetGame();
-        
+
+        /* === Rendering === */
         /**
-         * @brief Render System - Draw all entities with Sprite components
-         * @param window The render window to draw to
-         * 
-         * Iterates all entities with Position + Sprite components.
-         * Draws each entity as a rectangle with appropriate color.
-         * Handles invulnerability blinking for entities with Invulnerability component.
+         * @brief Render all game entities to the window
+         * @param window SFML RenderWindow to draw into
+         *
+         * Draws all entities with Sprite components in the correct order.
          */
         void renderEntities(sf::RenderWindow& window);
-        
+
         /**
-         * @brief Render the player's lives/HUD
-         * @param window The render window to draw to
-         * 
-         * Draws the player's remaining lives count in the top-left corner.
+         * @brief Render heads-up display (health, score, etc.)
+         * @param window SFML RenderWindow to draw into
          */
         void renderHUD(sf::RenderWindow& window);
-        
+
         /**
-         * @brief Render the game over menu
-         * @param window The render window to draw to
-         * 
-         * Draws the game over screen with options to restart or return to menu.
+         * @brief Render game over menu overlay
+         * @param window SFML RenderWindow to draw into
          */
         void renderGameOverMenu(sf::RenderWindow& window);
-        
+
+    /* === Victory Effects (Confetti) === */
+    /**
+     * @brief Spawn/initialize confetti effect for victory screen
+     * @param initialBurst Number of particles to spawn immediately
+     */
+    void spawnVictoryConfetti(std::size_t initialBurst = 150);
+    /**
+     * @brief Update victory effects (particles) each frame
+     */
+    void updateVictoryEffects(float deltaTime);
+    /**
+     * @brief Render victory effects below UI (after overlay)
+     */
+    void renderVictoryEffects(sf::RenderWindow& window);
+    /**
+     * @brief Clear and disable confetti effects
+     */
+    void clearVictoryEffects();
+
+        /* === UI and Resource Management === */
         /**
-         * @brief Initialize the In-Game Menu UI elements (text, buttons)
-         * 
-         * Sets up the sf::Text objects for the in-game menu using the
-         * centralized GUIHelper utilities for consistent styling.
-         * Called once in the constructor.
+         * @brief Set up game over UI text elements
+         *
+         * Initializes fonts, positions, and styles for game over screen.
          */
         void setupGameOverUI();
-        
+
         /**
-         * @brief Show the in-game menu (pause or game over)
-         * 
-         * Transitions to in-game menu state and displays menu options.
-         * Resets all input states to prevent stuck keys.
-         * 
-         * @param isGameOver True if player died (game over), false if paused
+         * @brief Load HUD textures (hearts, etc.)
+         *
+         * Preloads sprites used in the heads-up display.
+         */
+        void loadHUDTextures();
+
+        /**
+         * @brief Show the in-game menu overlay
+         * @param isGameOver Whether this is the game over menu (default: false)
+         *
+         * Pauses gameplay and displays menu options.
          */
         void showInGameMenu(bool isGameOver = false);
-        
+
         /**
-         * @brief Resume the game from in-game menu
+         * @brief Show the victory screen (YOU WON)
          * 
-         * Returns to playing state and resets all input states to ensure
-         * no keys remain in "pressed" state from the menu.
+         * Displays a simplified end screen with a victory title, score,
+         * and a single Quit button. Plays victory music.
+         */
+        void showVictoryScreen();
+
+        /**
+         * @brief Resume gameplay from paused/menu state
+         *
+         * Hides menu and resumes normal game update loop.
          */
         void resumeGame();
-        
+
+        /* === Audio Management === */
         /**
-         * @brief Reference to the state manager for state transitions
+         * @brief Update boss music state based on boss presence
+         *
+         * Switches between normal and boss music tracks as needed.
          */
+        void updateBossMusicState();
+
+        /**
+         * @brief Advance to the next level after boss death
+         *
+         * Switches between all music, paralax and assets depending on the level.
+         */
+        void advanceLevel();
+
+        /**
+         * @brief Load level background music
+         *
+         * Initializes and starts playing the level music track.
+         */
+        void loadLevelMusic();
+
+        /* === State Members === */
+        /// Reference to the owning StateManager for state transitions
         StateManager& m_stateManager;
-        
+        /// Music manager for background music playback
+        MusicManager m_musicManager;
+        /// Flag indicating whether boss music is currently playing
+        bool m_bossMusicActive{false};
+        /// Sound manager for sound effects playback
+        SoundManager m_soundManager;
+
         /**
-         * @brief Current game status (Playing or InGameMenu)
+         * @brief Load game sound effects
+         * @return true if sounds loaded successfully
+         *
+         * Preloads all sound effects used during gameplay.
          */
+        bool loadGameSounds();
+
+        /* === UI State === */
+        /// Current gameplay/UI status (Playing or InGameMenu)
         GameStatus m_gameStatus{GameStatus::Playing};
-        
-        /**
-         * @brief Flag indicating if menu is shown due to game over (true) or pause (false)
-         */
+        /// Flag indicating game over condition
         bool m_isGameOver{false};
-        
-        /**
-         * @brief Selected menu option in in-game menu (0 = Restart/Resume, 1 = Menu)
-         */
+        // Flag indicating victory condition
+        bool m_isVictory{false};
+        /// Currently selected menu option index
         int m_selectedMenuOption{0};
-        
-        /**
-         * @brief Text object for "GAME OVER" title displayed in game over menu
-         */
+        /// SFML text element for game over title
         sf::Text m_gameOverTitleText;
-        
-        /**
-         * @brief Text object for "Restart" button in game over menu
-         */
+        /// SFML text element for restart option
         sf::Text m_restartText;
-        
-        /**
-         * @brief Text object for "Return to Menu" button in game over menu
-         */
+        /// SFML text element for menu option
         sf::Text m_menuText;
-        
-        /**
-         * @brief Texture for heart sprites (HUD lives display)
-         */
+
+        /* === HUD Resources === */
+        /// Texture for heart sprite (health display)
         sf::Texture m_heartTexture;
-        
-        /**
-         * @brief Sprite for full heart (alive)
-         */
+        /// Flag indicating whether HUD textures have been loaded
+        bool m_texturesLoaded{false};
+        /// Sprite for full health heart
         sf::Sprite m_fullHeartSprite;
-        
-        /**
-         * @brief Sprite for empty heart (lost life)
-         */
+        /// Sprite for empty/lost health heart
         sf::Sprite m_emptyHeartSprite;
-        
-        /**
-         * @brief Parallax background system for space environment
-         */
+        /// Texture for shield effect
+        sf::Texture m_shieldTexture;
+        /// Sprite for shield effect
+        sf::Sprite m_shieldSprite;
+        /// Player score value
+        int m_score{0};
+        /// HUD text for score rendering
+        sf::Text m_scoreText;
+        /// Prevent duplicate save on repeated game-over triggers
+        bool m_scoreSaved{false};
+
+        /* === Rendering === */
+        /// Parallax background system for scrolling layers
         ParallaxSystem m_parallaxSystem;
-        
-        /**
-         * @brief Timer for enemy spawning
-         * 
-         * Accumulates delta time. When it exceeds ENEMY_SPAWN_INTERVAL,
-         * a new enemy is spawned and the timer resets.
-         */
-        float m_enemySpawnTimer{0.0f};
-        
-        /**
-         * @brief Timer for boss spawning
-         * 
-         * Accumulates delta time. When it exceeds BOSS_SPAWN_INTERVAL (180s = 3 min),
-         * a boss is spawned and the timer resets.
-         */
-        float m_bossSpawnTimer{0.0f};
-        
-        /**
-         * @brief Interval between enemy spawns in seconds
-         */
-        static constexpr float ENEMY_SPAWN_INTERVAL{2.0f};
-        
-        /**
-         * @brief Interval between boss spawns in seconds (3 minutes)
-         */
-        static constexpr float BOSS_SPAWN_INTERVAL{180.0f};
-        
-        /**
-         * @brief Interval between enemy shots in seconds
-         */
+
+        /* === Settings Configuration === */
+        /// Settings configuration manager for keybinds and network settings
+        SettingsConfig m_config;
+
+        /// Current level index (0 = level1, 1 = level2, 2 = level3, 3 = main menu/finished game)
+        int m_levelIndex{0};
+        /// If true, render a plain white background instead of parallax (TEMP testing)
+        bool m_forceWhiteBackground{false};
+
+        /* === Victory Confetti Data === */
+        struct ConfettiParticle {
+            sf::Vector2f pos;
+            sf::Vector2f vel;
+            float rotation{0.f};
+            float angular{0.f};
+            sf::Color color{255,255,255,255};
+            float size{6.f};
+            float age{0.f};
+            float life{4.f};
+        };
+        std::vector<ConfettiParticle> m_confetti;
+        bool m_confettiActive{false};
+        float m_confettiSpawnAccum{0.f};
+        float m_confettiSpawnRate{120.f}; // particles per second while on victory
+        std::size_t m_confettiMax{350};
+
+        /* === Game Constants === */
+        /// Interval in seconds between enemy projectile shots
         static constexpr float ENEMY_FIRE_INTERVAL{2.5f};
-        
-        /**
-         * @brief Duration of player invulnerability after taking damage (seconds)
-         */
+        /// Duration in seconds of player invulnerability after taking damage
         static constexpr float INVULNERABILITY_DURATION{2.0f};
-        
-        /**
-         * @brief Minimum time between shots in seconds
-         */
+        /// Cooldown in seconds between player shots
         static constexpr float FIRE_COOLDOWN{0.2f};
-        
-        /**
-         * @brief Maximum number of simultaneous enemies
-         * 
-         * Prevents excessive enemy spawning that could impact performance.
-         */
+        /// Maximum number of simultaneous enemies allowed
         static constexpr size_t MAX_ENEMIES{10};
-        
-        /**
-         * @brief Input state: Up key (Z or Arrow Up) is pressed
-         */
+
+        /* === Input State === */
+        /// Flag for up arrow key state
         bool m_keyUp{false};
-        
-        /**
-         * @brief Input state: Down key (S or Arrow Down) is pressed
-         */
+        /// Flag for down arrow key state
         bool m_keyDown{false};
-        
-        /**
-         * @brief Input state: Left key (Q or Arrow Left) is pressed
-         */
+        /// Flag for left arrow key state
         bool m_keyLeft{false};
-        
-        /**
-         * @brief Input state: Right key (D or Arrow Right) is pressed
-         */
+        /// Flag for right arrow key state
         bool m_keyRight{false};
-        
-        /**
-         * @brief Input state: Fire key (Space) is pressed
-         * 
-         * Used to trigger projectile firing with rate limiting via FIRE_COOLDOWN.
-         */
+        /// Flag for fire key state
         bool m_keyFire{false};
-        
-        /**
-         * @brief Screen width in pixels
-         */
+
+        /* === Screen Dimensions === */
+        /// Screen width in pixels
         static constexpr float SCREEN_WIDTH{1280.0f};
-        
-        /**
-         * @brief Screen height in pixels
-         */
+        /// Screen height in pixels
         static constexpr float SCREEN_HEIGHT{720.0f};
     };
-    
+
+    // Global pointer to the active GameState (set when GameState constructed)
+    extern GameState* g_gameState;
+
 } // namespace rtype::client::gui
 
 #endif // CLIENT_GAME_STATE_HPP

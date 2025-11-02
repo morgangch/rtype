@@ -1,0 +1,1516 @@
+```
+Network Working Group                                    R-Type Dev Team
+Request for Comments: XXXX                                    Anthropic
+Category: Informational                                   November 2025
+
+
+                   R-Type Network Protocol Specification
+
+Status of This Memo
+
+   This memo provides information for the Internet community. It does
+   not specify an Internet standard of any kind. Distribution of this
+   memo is unlimited.
+
+Copyright Notice
+
+   Copyright (C) R-Type Development Team (2025). All Rights Reserved.
+
+Abstract
+
+   This document specifies the R-Type multiplayer game network protocol.
+   It defines packet structures, communication patterns, and
+   implementation requirements for creating compatible R-Type clients
+   and servers. The protocol uses UDP for low-latency communication with
+   a custom reliability layer and zlib compression for optimal real-time
+   game state synchronization.
+
+Table of Contents
+
+   1. Introduction ....................................................3
+      1.1. Purpose ....................................................3
+      1.2. Scope ......................................................3
+      1.3. Conventions ................................................3
+      1.4. Terminology ................................................4
+   2. Architecture Overview ...........................................4
+      2.1. Network Model ..............................................4
+      2.2. Game Flow ..................................................5
+   3. Transport Layer .................................................5
+      3.1. Reliability Mechanism ......................................5
+      3.2. Packet Delivery ............................................6
+   4. Packet Structure ................................................6
+      4.1. Packet Header ..............................................6
+      4.2. Complete Packet ............................................7
+   5. Compression .....................................................8
+      5.1. Compression Algorithm ......................................8
+      5.2. Compression Behavior .......................................8
+      5.3. Compression Detection ......................................8
+      5.4. Decompression ..............................................8
+   6. Packet Types ....................................................9
+      6.1. Packet Type Enumeration ....................................9
+      6.2. JOIN_ROOM .................................................10
+      6.3. JOIN_ROOM_ACCEPTED ........................................10
+      6.4. PLAYER_JOIN ...............................................11
+      6.5. PLAYER_READY ..............................................11
+      6.6. LOBBY_STATE ...............................................12
+      6.7. GAME_START_REQUEST ........................................12
+      6.8. GAME_START ................................................13
+      6.9. PLAYER_INPUT ..............................................13
+      6.10. PLAYER_SHOOT .............................................14
+      6.11. SPAWN_PROJECTILE .........................................14
+      6.12. SPAWN_ENEMY ..............................................15
+      6.13. PLAYER_STATE .............................................16
+      6.14. ENTITY_DESTROY ...........................................16
+      6.15. PLAYER_DISCONNECT ........................................17
+      6.16. ROOM_ADMIN_UPDATE ........................................17
+      6.17. SPAWN_BOSS_REQUEST .......................................18
+      6.18. PLAYER_SCORE_UPDATE ......................................18
+   7. Connection Flow ................................................19
+      7.1. Initial Connection ........................................19
+      7.2. Lobby Phase ...............................................19
+      7.3. Gameplay Loop .............................................20
+   8. Client Implementation Guide ....................................20
+      8.1. Prerequisites .............................................20
+      8.2. Core Components ...........................................21
+      8.3. PacketManager Implementation ..............................21
+      8.4. NetworkManager Implementation .............................23
+      8.5. Game State Machine ........................................25
+      8.6. Packet Handlers ...........................................25
+      8.7. Input Handling ............................................27
+      8.8. Complete Minimal Client Example ...........................28
+   9. Security Considerations ........................................29
+      9.1. Authentication ............................................29
+      9.2. Validation ................................................29
+      9.3. Cheating Prevention .......................................30
+   10. IANA Considerations ...........................................30
+   11. References ....................................................30
+      11.1. Normative References .....................................30
+      11.2. Informative References ...................................31
+   Appendix A. Quick Reference Table .................................31
+   Appendix B. Glossary ..............................................32
+   Appendix C. Example Implementations ...............................33
+
+1. Introduction
+
+1.1. Purpose
+
+   This document specifies the R-Type multiplayer game network protocol.
+   It defines the packet structures, communication patterns, and
+   implementation requirements for creating compatible R-Type clients
+   and servers.
+
+   The protocol is designed to support real-time multiplayer gameplay
+   with minimal latency while ensuring reliable delivery of critical
+   game events.
+
+1.2. Scope
+
+   This protocol covers the following aspects:
+
+   o  UDP-based reliable packet transmission
+   o  Game state synchronization
+   o  Player input handling
+   o  Entity lifecycle management
+   o  Room and lobby management
+   o  Score tracking and leaderboards
+
+   This protocol does NOT cover:
+
+   o  Voice communication
+   o  Text chat systems
+   o  Matchmaking algorithms
+   o  Anti-cheat systems (implementation-specific)
+
+1.3. Conventions
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in RFC 2119 [RFC2119].
+
+   Additional conventions used in this document:
+
+   o  Client -> Server: Packet sent from client to server
+   o  Server -> Client: Packet sent from server to specific client
+   o  Server -> All: Broadcast packet sent to all clients in a room
+   o  All multi-byte integers use network byte order (big-endian)
+   o  All floating-point values are IEEE 754 single-precision (32-bit)
+
+1.4. Terminology
+
+   This document uses the following terms:
+
+   Entity: A game object such as a player, enemy, or projectile.
+
+   Room: A game lobby or match instance where players gather.
+
+   Admin: The player who has control over room settings and game start.
+
+   Sequence ID: A unique identifier for packets requiring reliable
+   delivery.
+
+   ACK: Acknowledgment packet confirming receipt.
+
+   Client Prediction: Local simulation on client for responsiveness.
+
+   Reconciliation: Server correction of client predictions.
+
+2. Architecture Overview
+
+2.1. Network Model
+
+   The R-Type protocol uses a client-server architecture with the
+   following characteristics:
+
+   o  Transport: UDP for low-latency communication
+   o  Reliability: Custom layer for critical packets
+   o  Ordering: Sequence numbering for packet ordering
+   o  Confirmation: Acknowledgment system for delivery confirmation
+   o  Compression: zlib compression for payloads over 32 bytes
+
+   The server acts as the authoritative source for all game state.
+   Clients send input and receive state updates. This design prevents
+   most forms of cheating and ensures consistency across all clients.
+
+2.2. Game Flow
+
+   A typical game session follows this flow:
+
+   1. Client connects and joins room
+   2. Lobby phase with player ready states
+   3. Game start and entity spawning
+   4. Active gameplay with input and state updates
+   5. Game end or player disconnect and cleanup
+
+   Each phase has specific packet types and behaviors defined in
+   Section 6.
+
+3. Transport Layer
+
+3.1. Reliability Mechanism
+
+   The protocol implements reliability over UDP through the following
+   mechanisms:
+
+   Sequence IDs: Each important packet receives a unique sequence
+   number (seqid). The sender increments this counter for each reliable
+   packet sent.
+
+   Acknowledgments: Receivers MUST send ACK packets for received
+   sequences. If a gap is detected in sequence numbers, the receiver
+   SHOULD track missed sequences.
+
+   Retransmission: Senders MUST retransmit unacknowledged packets after
+   a timeout period. The RECOMMENDED timeout is 100-500 milliseconds
+   depending on measured RTT.
+
+   Packet History: Senders SHOULD maintain a history of the last 512
+   packets for potential retransmission.
+
+3.2. Packet Delivery
+
+   Packets are classified into two categories:
+
+   Important Packets (seqid != 0): These packets MUST be tracked and
+   retransmitted if lost. Examples include player join, game start, and
+   entity spawn packets.
+
+   Unimportant Packets (seqid == 0): These packets are fire-and-forget
+   with no retransmission. They are typically sent at high frequency
+   where occasional loss is acceptable. Examples include player input
+   and position updates.
+
+4. Packet Structure
+
+4.1. Packet Header
+
+   All packets begin with a 31-byte header with the following structure:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         Entity ID                             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |            Reason             |                               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Fields:
+
+   entityId (4 bytes): Server entity ID to destroy.
+   reason (2 bytes): Destruction reason:
+      0 = out of bounds
+      1 = killed
+      2 = disconnected
+
+   Behavior: Client removes entity from world and ID mapping. Client MAY
+   play death animation based on reason.
+
+6.15. PLAYER_DISCONNECT (Type 1)
+
+   Direction: Server -> Client
+   Reliability: Important
+
+   Purpose: Notify client of player disconnection.
+
+   Payload Structure:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         Player ID                             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Fields:
+
+   playerId (4 bytes): Entity ID of disconnecting player.
+
+   Behavior: Server sends to both disconnecting client and room members.
+   Client cleans up player entity. If own player, client MAY return to
+   main menu.
+
+6.16. ROOM_ADMIN_UPDATE (Type 5)
+
+   Direction: Server -> All
+   Reliability: Important
+
+   Purpose: Notify admin change.
+
+   Payload Structure:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                     New Admin Player ID                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Fields:
+
+   newAdminPlayerId (4 bytes): New admin's entity ID.
+
+   Behavior: Sent when admin leaves and another player becomes admin.
+   Client updates UI to show admin status.
+
+6.17. SPAWN_BOSS_REQUEST (Type 16)
+
+   Direction: Client -> Server
+   Reliability: Important
+
+   Purpose: Admin requests boss spawn.
+
+   Payload: Empty (header only)
+
+   Behavior: Only accepted from admin during active game. Server spawns
+   boss enemy and broadcasts SPAWN_ENEMY with boss type.
+
+6.18. PLAYER_SCORE_UPDATE (Type 17)
+
+   Direction: Server -> Client
+   Reliability: Important
+
+   Purpose: Update player score.
+
+   Payload Structure:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         Player ID                             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           Score                               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Fields:
+
+   playerId (4 bytes): Player entity ID.
+   score (4 bytes): New absolute score value (signed integer).
+
+   Behavior: Sent when player scores points (enemy kill, bonus pickup).
+   Client updates score display.
+
+7. Connection Flow
+
+7.1. Initial Connection
+
+   The initial connection sequence proceeds as follows:
+
+   Client                                    Server
+     |                                         |
+     |--- JOIN_ROOM (name, joinCode) -------->|
+     |                                         |
+     |                                         | [Validate request]
+     |                                         | [Create/join room]
+     |                                         |
+     |<-- JOIN_ROOM_ACCEPTED (roomCode) ------|
+     |                                         |
+     |<-- PLAYER_JOIN (existing players) ------|
+     |                                         |
+
+   The server MUST respond with JOIN_ROOM_ACCEPTED within a reasonable
+   timeout (RECOMMENDED 5 seconds). If no response is received, the
+   client SHOULD retry or report connection failure.
+
+7.2. Lobby Phase
+
+   Once in a room, players enter the lobby phase:
+
+   Client                                    Server
+     |                                         |
+     |--- PLAYER_READY (true) ---------------->|
+     |                                         |
+     |                                         | [Update ready state]
+     |                                         |
+     |<-- LOBBY_STATE (2/4 ready) ------------|
+     |                                         |
+     |                                         | [All players ready]
+     |                                         |
+     |--- GAME_START_REQUEST ----------------->| (Admin only)
+     |                                         |
+     |                                         | [Validate & transition]
+     |                                         |
+     |<-- GAME_START --------------------------|
+     |                                         |
+
+   Only the admin client MAY send GAME_START_REQUEST. The server MUST
+   verify all players are ready before processing this request.
+
+7.3. Gameplay Loop
+
+   During active gameplay, the following pattern repeats:
+
+   Client                                    Server
+     |                                         |
+     |--- PLAYER_INPUT (60Hz) ---------------->|
+     |                                         | [Process input]
+     |                                         | [Update game state]
+     |<-- PLAYER_STATE (20Hz) ----------------|
+     |<-- SPAWN_ENEMY -------------------------|
+     |                                         |
+     |--- PLAYER_SHOOT ----------------------->|
+     |                                         | [Validate & create]
+     |<-- SPAWN_PROJECTILE --------------------|
+     |                                         |
+     |                                         | [Collision detection]
+     |<-- ENTITY_DESTROY ----------------------|
+     |                                         |
+
+   The server acts as the authoritative game state manager. All game
+   logic executes server-side to prevent cheating.
+
+8. Client Implementation Guide
+
+8.1. Prerequisites
+
+   A conforming R-Type client implementation requires:
+
+   o  zlib library for compression/decompression
+   o  Network library supporting UDP sockets
+   o  Game engine or rendering framework
+   o  Entity management system
+   o  State machine for game phases
+
+8.2. Core Components
+
+   A well-structured client consists of these components:
+
+   PacketManager: Handles packet serialization, deserialization,
+   compression, and reliability tracking.
+
+   NetworkManager: Manages UDP socket, send/receive loops, and packet
+   queueing.
+
+   StateManager: Manages game states (menu, lobby, game, game over) and
+   state transitions.
+
+   EntityManager: Manages game entities including players, enemies, and
+   projectiles.
+
+   InputHandler: Captures player input and sends to server at
+   appropriate frequency.
+
+8.3. PacketManager Implementation
+
+   The PacketManager is responsible for low-level packet operations.
+   A reference implementation includes:
+
+   class PacketManager {
+   private:
+       uint32_t send_seqid;
+       uint32_t recv_seqid;
+       bool compression_enabled;
+       std::map<uint32_t, packet_t> sent_history;
+       std::set<uint32_t> missed_packets;
+
+   public:
+       std::vector<uint8_t> serializePacket(const packet_t& packet);
+       packet_t deserializePacket(const uint8_t* data, size_t size);
+       std::unique_ptr<uint8_t[]> createPacket(
+           const void* data,
+           size_t data_size,
+           uint8_t type,
+           bool important
+       );
+       void handleReceivedPacket(const uint8_t* data, size_t size);
+       std::vector<uint8_t> compressData(
+           const void* data,
+           size_t size
+       );
+       std::vector<uint8_t> decompressData(
+           const void* data,
+           size_t compressed_size,
+           size_t original_size
+       );
+   };
+
+   Key compression implementation:
+
+   std::vector<uint8_t> PacketManager::compressData(
+       const void* data,
+       size_t size
+   ) {
+       if (size <= 32) {
+           return std::vector<uint8_t>();
+       }
+
+       uLongf max_compressed = compressBound(size);
+       std::vector<uint8_t> compressed(max_compressed);
+
+       uLongf compressed_size = max_compressed;
+       int result = compress2(
+           compressed.data(),
+           &compressed_size,
+           static_cast<const Bytef*>(data),
+           size,
+           Z_BEST_SPEED
+       );
+
+       if (result == Z_OK && compressed_size < size) {
+           compressed.resize(compressed_size);
+           return compressed;
+       }
+
+       return std::vector<uint8_t>();
+   }
+
+   std::vector<uint8_t> PacketManager::decompressData(
+       const void* data,
+       size_t compressed_size,
+       size_t original_size
+   ) {
+       std::vector<uint8_t> decompressed(original_size);
+
+       uLongf decompressed_size = original_size;
+       int result = uncompress(
+           decompressed.data(),
+           &decompressed_size,
+           static_cast<const Bytef*>(data),
+           compressed_size
+       );
+
+       if (result != Z_OK) {
+           throw std::runtime_error("Decompression failed");
+       }
+
+       return decompressed;
+   }
+
+8.4. NetworkManager Implementation
+
+   The NetworkManager handles socket operations and threading:
+
+   class NetworkManager {
+   private:
+       int socket_fd;
+       sockaddr_in server_addr;
+       PacketManager packet_manager;
+       std::thread recv_thread;
+       std::atomic<bool> running;
+       std::queue<packet_t> recv_queue;
+       std::mutex queue_mutex;
+
+   public:
+       bool connect(const std::string& ip, uint16_t port);
+       void sendPacket(const packet_t& packet);
+       void receiveLoop();
+       std::vector<packet_t> getReceivedPackets();
+       void disconnect();
+   };
+
+   Example implementation:
+
+   bool NetworkManager::connect(
+       const std::string& ip,
+       uint16_t port
+   ) {
+       socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
+       if (socket_fd < 0) {
+           return false;
+       }
+
+       memset(&server_addr, 0, sizeof(server_addr));
+       server_addr.sin_family = AF_INET;
+       server_addr.sin_port = htons(port);
+       inet_pton(AF_INET, ip.c_str(), &server_addr.sin_addr);
+
+       running = true;
+       recv_thread = std::thread(
+           &NetworkManager::receiveLoop,
+           this
+       );
+
+       return true;
+   }
+
+   void NetworkManager::sendPacket(const packet_t& packet) {
+       auto serialized = packet_manager.serializePacket(packet);
+
+       sendto(
+           socket_fd,
+           serialized.data(),
+           serialized.size(),
+           0,
+           (sockaddr*)&server_addr,
+           sizeof(server_addr)
+       );
+   }
+
+   void NetworkManager::receiveLoop() {
+       uint8_t buffer[2048];
+
+       while (running) {
+           sockaddr_in sender_addr;
+           socklen_t addr_len = sizeof(sender_addr);
+
+           int n = recvfrom(
+               socket_fd,
+               buffer,
+               sizeof(buffer),
+               0,
+               (sockaddr*)&sender_addr,
+               &addr_len
+           );
+
+           if (n > 0) {
+               packet_t pkt = packet_manager.deserializePacket(
+                   buffer,
+                   n
+               );
+
+               std::lock_guard<std::mutex> lock(queue_mutex);
+               recv_queue.push(pkt);
+           }
+       }
+   }
+
+8.5. Game State Machine
+
+   A state machine manages game phases:
+
+   enum class GameState {
+       MENU,
+       LOBBY,
+       GAME,
+       GAME_OVER
+   };
+
+   class StateManager {
+   private:
+       GameState current_state;
+       NetworkManager& network;
+       std::map<uint32_t, Entity> entities;
+       uint32_t my_player_id;
+       bool is_admin;
+
+   public:
+       void handlePacket(const packet_t& packet);
+       void update(float deltaTime);
+       void render();
+       void sendInput();
+   };
+
+8.6. Packet Handlers
+
+   Each packet type requires a handler:
+
+   void StateManager::handlePacket(const packet_t& packet) {
+       switch (packet.header.type) {
+           case JOIN_ROOM_ACCEPTED: {
+               auto* pkt = (JoinRoomAcceptedPacket*)packet.data;
+               my_player_id = pkt->playerServerId;
+               is_admin = pkt->admin;
+               current_state = GameState::LOBBY;
+               break;
+           }
+
+           case PLAYER_JOIN: {
+               auto* pkt = (PlayerJoinPacket*)packet.data;
+               addPlayerToLobby(pkt->newPlayerId, pkt->name);
+               break;
+           }
+
+           case GAME_START: {
+               current_state = GameState::GAME;
+               initializeGame();
+               break;
+           }
+
+           case SPAWN_PROJECTILE: {
+               auto* pkt = (SpawnProjectilePacket*)packet.data;
+               createProjectile(
+                   pkt->projectileId,
+                   pkt->x, pkt->y,
+                   pkt->vx, pkt->vy,
+                   pkt->damage,
+                   pkt->isCharged
+               );
+               break;
+           }
+
+           case SPAWN_ENEMY: {
+               auto* pkt = (SpawnEnemyPacket*)packet.data;
+               createEnemy(
+                   pkt->enemyId,
+                   pkt->enemyType,
+                   pkt->x, pkt->y,
+                   pkt->hp
+               );
+               break;
+           }
+
+           case PLAYER_STATE: {
+               auto* pkt = (PlayerStatePacket*)packet.data;
+               updatePlayerState(
+                   pkt->playerId,
+                   pkt->x, pkt->y,
+                   pkt->dir,
+                   pkt->hp,
+                   pkt->isAlive,
+                   pkt->invulnerable
+               );
+               break;
+           }
+
+           case ENTITY_DESTROY: {
+               auto* pkt = (EntityDestroyPacket*)packet.data;
+               destroyEntity(pkt->entityId, pkt->reason);
+               break;
+           }
+
+           case PLAYER_SCORE_UPDATE: {
+               auto* pkt = (PlayerScoreUpdatePacket*)packet.data;
+               updateScore(pkt->playerId, pkt->score);
+               break;
+           }
+
+           case LOBBY_STATE: {
+               auto* pkt = (LobbyStatePacket*)packet.data;
+               updateLobbyDisplay(
+                   pkt->totalPlayers,
+                   pkt->readyPlayers
+               );
+               break;
+           }
+       }
+   }
+
+8.7. Input Handling
+
+   Input should be sampled and sent at appropriate frequency:
+
+   void StateManager::update(float deltaTime) {
+       if (current_state != GameState::GAME) {
+           return;
+       }
+
+       bool moveUp = keyboard.isKeyPressed(Key::W);
+       bool moveDown = keyboard.isKeyPressed(Key::S);
+       bool moveLeft = keyboard.isKeyPressed(Key::A);
+       bool moveRight = keyboard.isKeyPressed(Key::D);
+
+       PlayerInputPacket input;
+       input.moveUp = moveUp;
+       input.moveDown = moveDown;
+       input.moveLeft = moveLeft;
+       input.moveRight = moveRight;
+       input.clientX = my_position.x;
+       input.clientY = my_position.y;
+
+       packet_t packet;
+       packet.header.type = PLAYER_INPUT;
+       packet.header.seqid = 0;
+       packet.data = &input;
+       packet.header.data_size = sizeof(input);
+
+       network.sendPacket(packet);
+
+       if (keyboard.isKeyPressed(Key::Space)) {
+           sendShootPacket(false);
+       }
+
+       if (keyboard.isKeyPressed(Key::LShift)) {
+           sendShootPacket(true);
+       }
+   }
+
+   void StateManager::sendShootPacket(bool charged) {
+       PlayerShootPacket shoot;
+       shoot.isCharged = charged;
+       shoot.playerX = my_position.x;
+       shoot.playerY = my_position.y;
+
+       packet_t packet;
+       packet.header.type = PLAYER_SHOOT;
+       packet.header.seqid = getNextSeqId();
+       packet.data = &shoot;
+       packet.header.data_size = sizeof(shoot);
+
+       network.sendPacket(packet);
+   }
+
+8.8. Complete Minimal Client Example
+
+   A minimal working client:
+
+   #include "NetworkManager.h"
+   #include "StateManager.h"
+   #include "packets.h"
+
+   int main() {
+       NetworkManager network;
+       StateManager state(network);
+
+       if (!network.connect("127.0.0.1", 8080)) {
+           std::cerr << "Connection failed" << std::endl;
+           return 1;
+       }
+
+       JoinRoomPacket joinPkt;
+       strncpy(joinPkt.name, "Player1", 32);
+       joinPkt.joinCode = 1;
+
+       packet_t packet;
+       packet.header.type = JOIN_ROOM;
+       packet.header.seqid = 1;
+       packet.data = &joinPkt;
+       packet.header.data_size = sizeof(joinPkt);
+
+       network.sendPacket(packet);
+
+       bool running = true;
+       auto lastTime = std::chrono::high_resolution_clock::now();
+
+       while (running) {
+           auto currentTime = std::chrono::high_resolution_clock::now();
+           float deltaTime = std::chrono::duration<float>(
+               currentTime - lastTime
+           ).count();
+           lastTime = currentTime;
+
+           auto packets = network.getReceivedPackets();
+           for (auto& pkt : packets) {
+               state.handlePacket(pkt);
+           }
+
+           state.update(deltaTime);
+           state.render();
+
+           std::this_thread::sleep_for(
+               std::chrono::milliseconds(16)
+           );
+       }
+
+       network.disconnect();
+       return 0;
+   }
+
+9. Security Considerations
+
+9.1. Authentication
+
+   The current protocol includes a placeholder auth field in the packet
+   header. Implementations SHOULD implement proper authentication:
+
+   o  Token-based authentication for session management
+   o  Secure token exchange during initial connection
+   o  Token validation on server for each critical packet
+
+   Future versions of this protocol MAY define a standardized
+   authentication mechanism.
+
+9.2. Validation
+
+   Servers MUST validate all received data:
+
+   o  Packet size limits (MAX_PACKET_SIZE = 2048 bytes)
+   o  Player identity for privileged actions
+   o  Input value ranges to prevent overflow
+   o  Rate limiting to prevent denial of service
+   o  Sequence ID validity
+
+   Clients SHOULD also validate received data to prevent malicious
+   server behavior in untrusted environments.
+
+9.3. Cheating Prevention
+
+   The protocol design includes several anti-cheat features:
+
+   Server Authority: All game logic executes server-side. The server
+   has final authority on all game state changes.
+
+   Input Validation: Server validates all player inputs against game
+   rules and physics constraints.
+
+   Client Prediction: Used only for smooth rendering, never for
+   authority. Server corrections override client predictions.
+
+   Position Reconciliation: Server compares client-reported positions
+   against server calculations to detect speed hacks or teleportation.
+
+   Implementations SHOULD implement additional measures such as:
+   o  Anomaly detection for suspicious input patterns
+   o  Player reporting systems
+   o  Replay analysis for post-game validation
+
+10. IANA Considerations
+
+   This protocol does not require IANA registration as it operates on
+   application-specific UDP ports chosen by server administrators.
+
+   Default port: No standardized default port is defined. Servers SHOULD
+   document their chosen port clearly.
+
+11. References
+
+11.1. Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [RFC768]   Postel, J., "User Datagram Protocol", STD 6, RFC 768,
+              August 1980.
+
+   [RFC1950]  Deutsch, P. and J-L. Gailly, "ZLIB Compressed Data Format
+              Specification version 3.3", RFC 1950, May 1996.
+
+   [RFC1951]  Deutsch, P., "DEFLATE Compressed Data Format Specification
+              version 1.3", RFC 1951, May 1996.
+
+   [IEEE754]  IEEE, "IEEE Standard for Floating-Point Arithmetic",
+              IEEE 754-2008, August 2008.
+
+11.2. Informative References
+
+   [GAFFERON] Fiedler, G., "Game Networking",
+              https://gafferongames.com/
+
+   [GAMBETTA] Gambetta, G., "Fast-Paced Multiplayer",
+              https://www.gabrielgambetta.com/
+
+Appendix A. Quick Reference Table
+
+   +-------+------------------------+-------------+------------+-------+
+   | Type  | Name                   | Direction   | Important  | Bytes |
+   +-------+------------------------+-------------+------------+-------+
+   | 1     | PLAYER_DISCONNECT      | S->C        | Yes        | 4     |
+   | 2     | JOIN_ROOM              | C->S        | Yes        | 36    |
+   | 3     | JOIN_ROOM_ACCEPTED     | S->C        | Yes        | 9     |
+   | 4     | GAME_START_REQUEST     | C->S        | Yes        | 0     |
+   | 5     | ROOM_ADMIN_UPDATE      | S->All      | Yes        | 4     |
+   | 6     | PLAYER_JOIN            | S->C        | Yes        | 36    |
+   | 7     | PLAYER_STATE           | S->All      | No         | 23    |
+   | 8     | ENTITY_DESTROY         | S->All      | Yes        | 6     |
+   | 9     | PLAYER_INPUT           | C->S        | No         | 14    |
+   | 10    | PLAYER_READY           | C->S        | Yes        | 1     |
+   | 11    | LOBBY_STATE            | S->All      | No         | 8     |
+   | 12    | GAME_START             | S->All      | Yes        | 0     |
+   | 13    | PLAYER_SHOOT           | C->S        | Yes        | 12    |
+   | 14    | SPAWN_PROJECTILE       | S->All      | Yes        | 27    |
+   | 15    | SPAWN_ENEMY            | S->All      | Yes        | 16    |
+   | 16    | SPAWN_BOSS_REQUEST     | C->S        | Yes        | 0     |
+   | 17    | PLAYER_SCORE_UPDATE    | S->C        | Yes        | 8     |
+   +-------+------------------------+-------------+------------+-------+
+
+Appendix B. Glossary
+
+   Authoritative: Server has final authority on game state.
+
+   Client Prediction: Client simulates game state locally for
+   responsiveness, subject to server correction.
+
+   Reconciliation: Process where server corrects client predictions.
+
+   Sequence ID (seqid): Unique packet identifier for reliable delivery
+   tracking.
+
+   ACK (Acknowledgment): Packet confirming receipt of a reliable packet.
+
+   Entity: Game object such as player, enemy, or projectile.
+
+   Room: Game lobby or match instance where players gather.
+
+   Admin: Player with control over room settings and game start.
+
+   Network Byte Order: Big-endian byte ordering for multi-byte integers.
+
+   Important Packet: Packet requiring reliable delivery (seqid != 0).
+
+   Unimportant Packet: Fire-and-forget packet (seqid == 0).
+
+Appendix C. Example Implementations
+
+C.1. Endianness Conversion
+
+   All multi-byte integers MUST be converted to network byte order:
+
+   /* Sending */
+   pkt.playerId = htonl(localPlayerId);    /* uint32_t */
+   pkt.damage = htons(localDamage);        /* uint16_t */
+   pkt.score = htonl((uint32_t)localScore); /* int32_t */
+
+   /* Receiving */
+   uint32_t playerId = ntohl(pkt.playerId);
+   uint16_t damage = ntohs(pkt.damage);
+   int32_t score = (int32_t)ntohl(pkt.score);
+
+C.2. Compression Example
+
+   void sendPacketWithCompression(
+       const void* data,
+       size_t size,
+       uint8_t type
+   ) {
+       packet_header_t header;
+       memset(&header, 0, sizeof(header));
+
+       header.type = type;
+       header.seqid = htonl(getNextSeqId());
+       header.original_size = 0;
+
+       std::vector<uint8_t> payload;
+
+       if (size > 32) {
+           auto compressed = compressData(data, size);
+           if (!compressed.empty() && compressed.size() < size) {
+               header.original_size = htonl(size);
+               header.data_size = htonl(compressed.size());
+               payload = compressed;
+           } else {
+               header.data_size = htonl(size);
+               payload.assign(
+                   (uint8_t*)data,
+                   (uint8_t*)data + size
+               );
+           }
+       } else {
+           header.data_size = htonl(size);
+           payload.assign((uint8_t*)data, (uint8_t*)data + size);
+       }
+
+       sendRawPacket(&header, payload.data(), payload.size());
+   }
+
+C.3. Reliable Transmission Example
+
+   std::map<uint32_t, SentPacket> sentPackets;
+
+   void sendReliablePacket(const packet_t& packet) {
+       SentPacket sent;
+       sent.packet = packet;
+       sent.timestamp = getCurrentTime();
+       sent.retries = 0;
+
+       sentPackets[packet.header.seqid] = sent;
+       sendRawPacket(packet);
+   }
+
+   void handleAck(uint32_t ackSeqId) {
+       sentPackets.erase(ackSeqId);
+   }
+
+   void checkRetransmissions() {
+       auto now = getCurrentTime();
+
+       for (auto& [seqid, sent] : sentPackets) {
+           if (now - sent.timestamp > RETRANSMIT_TIMEOUT) {
+               if (sent.retries < MAX_RETRIES) {
+                   sent.timestamp = now;
+                   sent.retries++;
+                   sendRawPacket(sent.packet);
+               } else {
+                   /* Connection lost */
+                   handleConnectionLost();
+                   break;
+               }
+           }
+       }
+   }
+
+Authors' Addresses
+
+   R-Type Development Team
+   Email: rtype-dev@example.com
+
+
+   This document expires May 1, 2026.
+```+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                      Sequence ID (seqid)                      |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                    Acknowledgment ID (ack)                    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |     Type      |                                               |
+   +-+-+-+-+-+-+-+-+                                               +
+   |                     Authentication (auth)                     |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                      Client Address (IPv4)                    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |          Client Port          |                               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               +
+   |                        Data Size                              |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                       Original Size                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Field Descriptions:
+
+   seqid (4 bytes): Sequence number for reliable delivery. A value of 0
+   indicates an unreliable packet that does not require acknowledgment.
+
+   ack (4 bytes): If non-zero, this field acknowledges receipt of the
+   packet with the specified sequence ID.
+
+   type (1 byte): Identifies the packet payload type. See Section 6.1
+   for valid values.
+
+   auth (4 bytes): Authentication token. Currently set to 0 and reserved
+   for future use.
+
+   client_addr (4 bytes): Sender's IPv4 address as four octets.
+
+   client_port (2 bytes): Sender's UDP port number.
+
+   data_size (4 bytes): Number of bytes in the payload. If the packet
+   is compressed, this is the compressed size.
+
+   original_size (4 bytes): If non-zero, the payload is compressed and
+   this field contains the uncompressed size.
+
+4.2. Complete Packet
+
+   A complete packet consists of the header followed by the payload:
+
+   +-----------------------+
+   | Packet Header         | 31 bytes
+   +-----------------------+
+   | Payload Data          | data_size bytes (possibly compressed)
+   +-----------------------+
+
+   The total packet size MUST NOT exceed 2048 bytes. Implementations
+   SHOULD validate this before processing.
+
+5. Compression
+
+5.1. Compression Algorithm
+
+   The protocol uses zlib compression as defined in RFC 1950 [RFC1950]
+   and RFC 1951 [RFC1951]. The compression level MUST be set to
+   Z_BEST_SPEED (level 1) to prioritize compression speed over ratio for
+   real-time performance.
+
+5.2. Compression Behavior
+
+   Compression is applied based on the following rules:
+
+   o  ENABLED by default for payloads larger than 32 bytes
+   o  SKIPPED if compressed size >= original size
+   o  TRANSPARENT to application layer
+
+5.3. Compression Detection
+
+   A packet is compressed if and only if header.original_size != 0.
+
+   When compressed:
+   o  data_size contains the compressed payload size
+   o  original_size contains the uncompressed payload size
+
+   When not compressed:
+   o  data_size contains the payload size
+   o  original_size is set to 0
+
+5.4. Decompression
+
+   Receivers MUST follow this procedure:
+
+   1. Check if original_size != 0
+   2. If compressed:
+      a. Allocate buffer of size original_size
+      b. Decompress data_size bytes into original_size bytes using zlib
+      c. Use decompressed data for application logic
+   3. If not compressed:
+      a. Use payload data directly
+
+   If decompression fails, the packet MUST be discarded and an error
+   SHOULD be logged.
+
+6. Packet Types
+
+6.1. Packet Type Enumeration
+
+   The following packet types are defined:
+
+   +-------+------------------------+-------------+------------+
+   | Value | Name                   | Direction   | Important  |
+   +-------+------------------------+-------------+------------+
+   | 1     | PLAYER_DISCONNECT      | S->C        | Yes        |
+   | 2     | JOIN_ROOM              | C->S        | Yes        |
+   | 3     | JOIN_ROOM_ACCEPTED     | S->C        | Yes        |
+   | 4     | GAME_START_REQUEST     | C->S        | Yes        |
+   | 5     | ROOM_ADMIN_UPDATE      | S->All      | Yes        |
+   | 6     | PLAYER_JOIN            | S->C        | Yes        |
+   | 7     | PLAYER_STATE           | S->All      | No         |
+   | 8     | ENTITY_DESTROY         | S->All      | Yes        |
+   | 9     | PLAYER_INPUT           | C->S        | No         |
+   | 10    | PLAYER_READY           | C->S        | Yes        |
+   | 11    | LOBBY_STATE            | S->All      | No         |
+   | 12    | GAME_START             | S->All      | Yes        |
+   | 13    | PLAYER_SHOOT           | C->S        | Yes        |
+   | 14    | SPAWN_PROJECTILE       | S->All      | Yes        |
+   | 15    | SPAWN_ENEMY            | S->All      | Yes        |
+   | 16    | SPAWN_BOSS_REQUEST     | C->S        | Yes        |
+   | 17    | PLAYER_SCORE_UPDATE    | S->C        | Yes        |
+   +-------+------------------------+-------------+------------+
+
+6.2. JOIN_ROOM (Type 2)
+
+   Direction: Client -> Server
+   Reliability: Important (seqid != 0)
+
+   Purpose: Request to join or create a game room.
+
+   Payload Structure:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                                                               |
+   +                                                               +
+   |                                                               |
+   +                      Player Name (32 bytes)                  +
+   |                                                               |
+   +                       (null-terminated)                      +
+   |                                                               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                          Join Code                            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Fields:
+
+   name (32 bytes): Player name as null-terminated ASCII string.
+
+   joinCode (4 bytes): Room identifier with special values:
+      0 = Create new private room
+      1 = Join public room (matchmaking)
+      Other = Join specific room by code
+
+   Response: Server sends JOIN_ROOM_ACCEPTED or connection timeout.
+
+6.3. JOIN_ROOM_ACCEPTED (Type 3)
+
+   Direction: Server -> Client
+   Reliability: Important
+
+   Purpose: Confirm successful room join and provide room information.
+
+   Payload Structure:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                          Room Code                            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    Admin      |                                               |
+   +-+-+-+-+-+-+-+-+                                               +
+   |                      Player Server ID                         |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Fields:
+
+   roomCode (4 bytes): Assigned room code.
+
+   admin (1 byte): Boolean flag. 1 if player is room admin, 0 otherwise.
+
+   playerServerId (4 bytes): Server entity ID for this player.
+
+   Behavior: Client stores roomCode and playerServerId for future use.
+   If admin flag is set, client enables admin controls.
+
+6.4. PLAYER_JOIN (Type 6)
+
+   Direction: Server -> Client
+   Reliability: Important
+
+   Purpose: Notify existing players about a new player joining.
+
+   Payload Structure:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                       New Player ID                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                                                               |
+   +                                                               +
+   |                                                               |
+   +                      Player Name (32 bytes)                  +
+   |                                                               |
+   +                       (null-terminated)                      +
+   |                                                               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Fields:
+
+   newPlayerId (4 bytes): Server entity ID of joining player.
+
+   name (32 bytes): Player name as null-terminated string.
+
+   Behavior: Client creates UI element for new player in lobby and
+   tracks player ID.
+
+6.5. PLAYER_READY (Type 10)
+
+   Direction: Client -> Server
+   Reliability: Important
+
+   Purpose: Toggle player's ready state in lobby.
+
+   Payload Structure:
+
+    0
+    0 1 2 3 4 5 6 7
+   +-+-+-+-+-+-+-+-+
+   |   isReady     |
+   +-+-+-+-+-+-+-+-+
+
+   Fields:
+
+   isReady (1 byte): Boolean flag. 1 = ready, 0 = not ready.
+
+   Behavior: Server updates player's ready state and broadcasts
+   LOBBY_STATE to all clients in the room.
+
+6.6. LOBBY_STATE (Type 11)
+
+   Direction: Server -> All
+   Reliability: Unimportant (frequent updates)
+
+   Purpose: Update lobby information for all players.
+
+   Payload Structure:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                       Total Players                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                       Ready Players                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Fields:
+
+   totalPlayers (4 bytes): Total number of players in room.
+
+   readyPlayers (4 bytes): Number of players marked as ready.
+
+   Behavior: Client updates lobby UI. When all players are ready, admin
+   can initiate game start.
+
+6.7. GAME_START_REQUEST (Type 4)
+
+   Direction: Client -> Server
+   Reliability: Important
+
+   Purpose: Admin requests game start.
+
+   Payload: Empty (header only)
+
+   Behavior: Server validates that sender is admin and all players are
+   ready. If valid, server transitions room to game state and sends
+   GAME_START to all clients.
+
+6.8. GAME_START (Type 12)
+
+   Direction: Server -> All
+   Reliability: Important
+
+   Purpose: Signal game start to all clients.
+
+   Payload: Empty (header only)
+
+   Behavior: Clients transition from lobby to game state and prepare to
+   receive entity spawn packets. Gameplay begins.
+
+6.9. PLAYER_INPUT (Type 9)
+
+   Direction: Client -> Server
+   Reliability: Unimportant (sent at ~60Hz)
+
+   Purpose: Send player input state.
+
+   Payload Structure:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |U|D|L|R|       |                                               |
+   +-+-+-+-+-+-+-+-+                                               +
+   |                         Client X (float)                      |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         Client Y (float)                      |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Fields:
+
+   moveUp (bit 0): Up movement (W or Up arrow)
+   moveDown (bit 1): Down movement (S or Down arrow)
+   moveLeft (bit 2): Left movement (A or Left arrow)
+   moveRight (bit 3): Right movement (D or Right arrow)
+
+   clientX (4 bytes): Client's predicted X position (float)
+   clientY (4 bytes): Client's predicted Y position (float)
+
+   Behavior: Sent every frame while input state changes. Server
+   processes input authoritatively. Client position used for prediction
+   validation and lag compensation.
+
+6.10. PLAYER_SHOOT (Type 13)
+
+   Direction: Client -> Server
+   Reliability: Important
+
+   Purpose: Player fires weapon.
+
+   Payload Structure:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | isCharged     |                                               |
+   +-+-+-+-+-+-+-+-+                                               +
+   |                        Player X (float)                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        Player Y (float)                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Fields:
+
+   isCharged (1 byte): Boolean. 1 = charged shot, 0 = normal shot.
+   playerX (4 bytes): Player X position when shooting (float).
+   playerY (4 bytes): Player Y position when shooting (float).
+
+   Behavior: Server validates shot (cooldown, alive state). If valid,
+   server creates projectile entity and broadcasts SPAWN_PROJECTILE.
+
+6.11. SPAWN_PROJECTILE (Type 14)
+
+   Direction: Server -> All
+   Reliability: Important
+
+   Purpose: Spawn a projectile entity.
+
+   Payload Structure:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                       Projectile ID                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         Owner ID                              |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           X (float)                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           Y (float)                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                          VX (float)                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                          VY (float)                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |           Damage              |Pier|Chrg|                     |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Fields:
+
+   projectileId (4 bytes): Server entity ID for projectile.
+   ownerId (4 bytes): Entity ID of shooter (0 = enemy projectile).
+   x, y (4 bytes each): Spawn position (float).
+   vx, vy (4 bytes each): Velocity vector (float).
+   damage (2 bytes): Damage value.
+   piercing (1 byte): Boolean. 1 = pierces enemies.
+   isCharged (1 byte): Boolean. 1 = charged shot visual.
+
+   Behavior: Client creates projectile entity with given parameters and
+   stores ID mapping. Visual rendering based on isCharged flag.
+
+6.12. SPAWN_ENEMY (Type 15)
+
+   Direction: Server -> All
+   Reliability: Important
+
+   Purpose: Spawn an enemy entity.
+
+   Payload Structure:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                          Enemy ID                             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |         Enemy Type            |                               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               +
+   |                           X (float)                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           Y (float)                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |              HP               |                               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Fields:
+
+   enemyId (4 bytes): Server entity ID.
+   enemyType (2 bytes): Enemy type (0=Basic, 1=Snake, 2=Suicide, 3=Boss)
+   x, y (4 bytes each): Spawn position (float).
+   hp (2 bytes): Initial health points.
+
+   Behavior: Client creates enemy entity with appropriate sprite and
+   behavior based on type. Stores ID mapping.
+
+6.13. PLAYER_STATE (Type 7)
+
+   Direction: Server -> All
+   Reliability: Unimportant (sent at ~20Hz)
+
+   Purpose: Update player entity state.
+
+   Payload Structure:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         Player ID                             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           X (float)                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           Y (float)                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         Dir (float)                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |              HP               |Alive|Invul|                   |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Fields:
+
+   playerId (4 bytes): Server entity ID.
+   x, y (4 bytes each): Position (float).
+   dir (4 bytes): Rotation/direction (float).
+   hp (2 bytes): Current health points.
+   isAlive (1 byte): Boolean. 1 = alive, 0 = dead.
+   invulnerable (1 byte): Boolean. 1 = invulnerable.
+
+   Behavior: Client updates entity position and state. Client MAY
+   interpolate between updates for smooth rendering.

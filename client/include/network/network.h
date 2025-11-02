@@ -7,11 +7,12 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 #include <string>
+
 #include "packethandler.h"
 #include "packetmanager.h"
 
 #define DEV_SERVER_IP "127.0.0.1"
-#define DEV_SERVER_PORT 8080
+#define DEV_SERVER_PORT 4242
 
 namespace rtype::client::network {
     /**
@@ -33,10 +34,11 @@ namespace rtype::client::network {
      * @param server_port The server port.
      * @param player_name The player name.
      * @param room_code The room code to join.
+     * @param vessel_type The vessel type selected by the player (0-3).
      * @return fd of the UDP socket, or -1 on error.
      */
     int start_room_connection(const std::string &server_ip, int server_port, const std::string &player_name,
-                              uint32_t room_code);
+                              uint32_t room_code, uint8_t vessel_type = 0);
 
     /**
      * @brief Initializes a UDP socket for communication with the server.
