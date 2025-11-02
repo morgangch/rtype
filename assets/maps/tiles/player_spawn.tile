@@ -1,0 +1,19 @@
+/// Player spawn point tile definition
+/// Marks where players can spawn
+
+sprite: ./assets/sprites/markers/spawn_point.png
+
+/// Metadata
+visible: false
+spawn_delay: 2.0
+
+SCRIPT_BEGIN
+/// No movement or behavior
+/// This tile is just a marker for spawn position
+
+/// Optional: Show visual indicator for debugging
+DEBUG_MARKER color:GREEN size:32
+
+/// Players spawn with temporary invulnerability
+ON_PLAYER_SPAWN GRANT_INVULNERABILITY duration:3.0
+SCRIPT_END

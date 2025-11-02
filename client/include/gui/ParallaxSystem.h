@@ -22,6 +22,7 @@
 
 #include <SFML/Graphics.hpp>
 #include <vector>
+#include <mapparser.h>
 
 namespace rtype::client::gui {
     
@@ -48,6 +49,16 @@ namespace rtype::client::gui {
          * @param screenHeight Height of the screen in pixels
          */
         ParallaxSystem(float screenWidth, float screenHeight);
+        
+        /**
+         * @brief Load parallax layers from a map definition
+         * @param mapDir Path to map directory (e.g., "assets/maps/space-corridor")
+         * @return true if loaded successfully, false otherwise
+         * 
+         * Loads parallax background layers from the map's .def file.
+         * This replaces the hardcoded parallax initialization.
+         */
+        bool loadFromMap(const std::string& mapDir);
         
         /**
          * @brief Update all parallax layers
@@ -239,6 +250,30 @@ namespace rtype::client::gui {
         
         /** @brief Close, fast-moving foreground stars (120 px/s) */
         ParallaxLayer m_nearStars;
+        
+        /** @} */
+        
+        /**
+         * @name Map-Based Parallax Layers
+         * @brief Texture-based parallax layers loaded from map definitions
+         * @{
+         */
+        
+        /**
+         * @brief Texture-based parallax layer for map backgrounds
+         */
+        struct TextureParallaxLayer {
+            sf::Texture texture;        ///< Loaded texture
+            sf::Sprite sprite;          ///< Sprite for rendering
+            float scroll_speed;         ///< Scroll speed multiplier
+            float depth;                ///< Depth (0=far, 1=near)
+            bool repeat_x;              ///< Horizontal tiling
+            bool repeat_y;              ///< Vertical tiling
+            float offset_x;             ///< Current X offset for scrolling
+        };
+        
+        /** @brief Loaded texture layers from map definition */
+        std::vector<TextureParallaxLayer> m_textureLayers;
         
         /** @} */
         

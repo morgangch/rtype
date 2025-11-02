@@ -2,62 +2,31 @@
 ** EPITECH PROJECT, 2025
 ** rtype
 ** File description:
-** ServerEnemySystem - Spawns enemies and bosses, broadcasts player states
+** ServerEnemySystem - Tile-driven enemy spawning system
 */
 #ifndef SERVER_ENEMY_SYSTEM_H
 #define SERVER_ENEMY_SYSTEM_H
 
 #include "ECS/System.h"
 #include "rtype.h"
-
-/**
- * @brief System responsible for enemy spawning and player state broadcasting
- * 
- * This system handles three main responsibilities:
- * 1. Spawns regular enemies every 2 seconds for active game rooms
- * 2. Spawns bosses every 3 minutes (only if no boss exists)
- * 3. Broadcasts player states to all clients at 20Hz for active games
- * 4. Cleans up dead entities and broadcasts destruction
- * 
- * All enemy spawns are server-authoritative and broadcast via SPAWN_ENEMY
- * packets to ensure all clients see the same enemies at the same time.
- * 
- * @note Priority: 5 (medium priority, gameplay system)
- */
-
+#include <mapparser.h>
 #include <map>
+#include <vector>
 #include <common/components/EnemyType.h>
-
-enum class EnemySpawnPhase {
-    OnlyBasic,          // 0-60s: Basic enemies only
-    BasicAndAdvanced,   // 60-180s: Basic + Advanced enemies
-    BossPhase           // 180s+: Boss + Basic + Advanced enemies
-};
-
-struct EnemySpawnConfig {
-    rtype::common::components::EnemyType type;
-    float interval; // seconds between spawns
-    float timer;    // current timer for this type
-};
-
-struct LevelDefinition {
-    rtype::common::components::EnemyType basicEnemy;
-    rtype::common::components::EnemyType advancedEnemy;
-    rtype::common::components::EnemyType bossEnemy;
-};
-
 
 /**
  * @class ServerEnemySystem
- * @brief System responsible for enemy spawning and player state broadcasting
+ * @brief System responsible for tile-driven enemy spawning and player state broadcasting
  *
- * Handles enemy and boss spawning, player state broadcasting, and entity cleanup.
+ * This system uses the mapparser library to load enemy spawn locations from .tile files.
+ * All enemy stats, types, and behaviors are defined in the tile metadata, making the
+ * spawning system fully data-driven and eliminating hardcoded enemy configurations.
  */
 class ServerEnemySystem : public ECS::System {
 public:
     /**
      * @brief Constructor for ServerEnemySystem
-     * Initializes timers and spawn phase.
+     * Initializes spawn timers and tile-driven spawning system.
      */
     ServerEnemySystem();
 
@@ -65,57 +34,39 @@ public:
      * @brief Main update loop for the system
      * @param world Reference to the ECS world
      * @param deltaTime Time elapsed since last update
-     * Spawns enemies/bosses, broadcasts player states, and cleans up entities.
+     * 
+     * Handles tile-driven enemy spawning, player state broadcasting, and dead entity cleanup.
      */
     void Update(ECS::World &world, float deltaTime) override;
 
     /**
-     * @brief Spawns a regular enemy in the given room
-     * @param world Reference to the ECS world
-     * @param room Room entity ID
-     * @param type Enemy type to spawn
+     * @brief Load enemy spawn locations from a map directory
+     * @param mapDir Path to the map directory containing .def, .map, and .tile files
+     * @return True if loaded successfully, false otherwise
+     * 
+     * Loads and categorizes all enemy spawn tiles by type (Classic, Elite, Boss).
+     * Each tile contains complete enemy definition including type, stats, and behavior.
+     * Uses MapParser to load tile definitions and classify them by type.
+     * Classic, Elite, and Boss spawns are extracted and cached for round-robin spawning.
      */
-    void spawnEnemy(ECS::World& world, ECS::EntityID room, rtype::common::components::EnemyType type);
-
-    /**
-     * @brief Spawns a boss enemy in the given room
-     * @param world Reference to the ECS world
-     * @param room Room entity ID
-     * @param bossType Boss type to spawn
-     */
-    void spawnBoss(ECS::World& world, ECS::EntityID room, rtype::common::components::EnemyType bossType);
-
-    /**
-     * @brief Force the starting level for the enemy spawner.
-     * @param index Level index (0..3). Values out of range will be clamped.
-     * Resets timers and phase so the level begins from OnlyBasic phase.
-     */
-    void setStartLevel(int index);
-
-    /**
-     * @brief Get the current level index used by the spawner
-     * @return Current level index (0..3)
-     */
-    int getCurrentLevel() const { return _currentLevel; }
-
-    /**
-     * @brief Get the boss type corresponding to the current level
-     * @return EnemyType of the current level's boss
-     */
-    rtype::common::components::EnemyType getCurrentBossType() const;
+    bool loadMap(const std::string& mapDir);
 
 private:
-    float _levelTimer; ///< Timer for current level (resets each level)
-    int _currentLevel; ///< Current level index (0-3 for 4 sub-levels)
-    EnemySpawnPhase _phase; ///< Current enemy spawn phase
-    bool _bossSpawned; ///< Whether a boss is currently spawned for this level
-    bool _gameFinished; ///< Whether the current game has finished (stop spawns)
-
-    std::vector<LevelDefinition> _levelDefinitions; ///< Enemy definitions for each level
-    std::map<rtype::common::components::EnemyType, EnemySpawnConfig> _enemyConfigs; ///< Enemy spawn configs
-
     float _stateTick; ///< Timer for player state broadcast
-    static constexpr float STATE_TICK_INTERVAL = 0.03f; // 30ms for better responsiveness
+    static constexpr float STATE_TICK_INTERVAL = 0.03f; // 30ms for smooth updates
+
+    // Map-driven spawning state
+    bool _mapLoaded; ///< Whether a map has been successfully loaded
+    std::vector<Tile> _classicEnemySpawns; ///< Tiles for basic/classic enemies
+    std::vector<Tile> _eliteEnemySpawns; ///< Tiles for advanced/elite enemies
+    std::vector<Tile> _bossSpawns; ///< Tiles for boss enemies
+    size_t _nextClassicIndex; ///< Round-robin index for classic spawns
+    size_t _nextEliteIndex; ///< Round-robin index for elite spawns
+    size_t _nextBossIndex; ///< Round-robin index for boss spawns
+    
+    // Spawn timing
+    std::map<TileType, float> _spawnTimers; ///< Current timer for each tile type
+    std::map<TileType, float> _spawnIntervals; ///< Spawn interval for each tile type
 
     // Obstacle spawn timers (randomized per interval)
     float _meteoriteTimer{0.0f};
@@ -124,14 +75,85 @@ private:
     float _debrisNext{7.0f};
 
     // Update helpers
-    void updatePhase(float deltaTime);
+    /**
+     * @brief Update enemy spawning logic based on timers and loaded tiles
+     * @param world Reference to the ECS world
+     * @param deltaTime Time elapsed since last update
+     * 
+     * Cycles through loaded tiles and spawns enemies when timers elapse.
+     */
     void updateEnemySpawning(ECS::World& world, float deltaTime);
-    void updateBossSpawning(ECS::World& world, float deltaTime);
+    
+    /**
+     * @brief Spawn obstacle entities (meteorites and debris)
+     * @param world Reference to the ECS world
+     * @param deltaTime Time elapsed since last update
+     */
     void updateObstacleSpawning(ECS::World& world, float deltaTime);
+    
+    /**
+     * @brief Spawn a row of debris entities
+     * @param world Reference to the ECS world
+     * @param room Room entity ID
+     * @param count Number of debris entities to spawn
+     */
     void spawnDebrisRow(ECS::World& world, ECS::EntityID room, int count);
+    
+    /**
+     * @brief Broadcast player positions and health to all clients
+     * @param world Reference to the ECS world
+     * @param deltaTime Time elapsed since last update
+     */
     void updatePlayerStateBroadcast(ECS::World& world, float deltaTime);
+    
+    /**
+     * @brief Remove dead entities and broadcast destroy packets
+     * @param world Reference to the ECS world
+     */
     void cleanupDeadEntities(ECS::World& world);
-    void checkBossDeathAndAdvanceLevel(ECS::World& world);
+    
+    // Tile-driven spawning helpers
+    /**
+     * @brief Spawn an enemy from a tile definition
+     * @param world Reference to the ECS world
+     * @param room Room entity ID where enemy will spawn
+     * @param tile Tile containing complete enemy definition
+     * 
+     * Reads all enemy properties from tile metadata:
+     * - enemy_type: Enum value (Basic, Snake, Shielded, TankDestroyer, etc.)
+     * - health: Hit points
+     * - speed: Movement speed
+     * - damage: Damage dealt to players
+     * - fire_rate: Shooting interval
+     * - has_shield: Shield type (cyclic, red, etc.)
+     * 
+     * Creates entity with all components and broadcasts spawn to clients.
+     */
+    void spawnEnemyFromTile(ECS::World& world, ECS::EntityID room, const Tile& tile);
+    
+    /**
+     * @brief Parse enemy type from tile metadata
+     * @param tile Tile to read from
+     * @return Corresponding EnemyType enum value
+     * 
+     * Reads the "enemy_type" key from tile.definition.metadata and converts
+     * the string value to the appropriate enum (e.g., "Snake" -> EnemyType::Snake).
+     */
+    rtype::common::components::EnemyType getEnemyTypeFromTile(const Tile& tile) const;
+    
+    /**
+     * @brief Read all combat stats from tile metadata
+     * @param tile Tile to read from
+     * @param outHp Output health points
+     * @param outVx Output horizontal velocity (negative = moves left)
+     * @param outDamage Output damage value
+     * @param outFireRate Output fire rate (seconds between shots)
+     * 
+     * Reads metadata keys: "health", "speed", "damage", "fire_rate".
+     * Falls back to defaults if keys are missing or invalid.
+     */
+    void readTileStats(const Tile& tile, int& outHp, float& outVx, 
+                       int& outDamage, float& outFireRate) const;
 };
 
 #endif // SERVER_ENEMY_SYSTEM_H

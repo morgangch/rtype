@@ -33,7 +33,7 @@ message(STATUS "SFML_INCLUDE_DIR: ${SFML_INCLUDE_DIR}")
 message(STATUS "SFML_LIBRARIES: ${SFML_LIBRARIES}")
 
 # Link with ECS and common libraries
-target_link_libraries(client PRIVATE ecs common packethandler packetmanager)
+target_link_libraries(client PRIVATE ecs common packethandler packetmanager mapparser)
 
 target_include_directories(client PRIVATE include)
 

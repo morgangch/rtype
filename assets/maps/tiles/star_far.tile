@@ -1,0 +1,11 @@
+/// Far star layer - slowest, smallest, translucent
+shape: particles
+layer: far
+count: 60
+speed: 20.0
+min_size: 0.5
+max_size: 1.5
+base_color_r: 200
+base_color_g: 200
+base_color_b: 200
+base_color_a: 120

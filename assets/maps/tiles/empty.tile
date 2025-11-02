@@ -1,0 +1,11 @@
+/// Empty tile - represents empty space in map
+/// No sprite, no collision, purely decorative placeholder
+
+sprite: 
+
+/// Metadata
+tile_type: Empty
+
+SCRIPT_BEGIN
+/// No behavior - this is empty space
+SCRIPT_END

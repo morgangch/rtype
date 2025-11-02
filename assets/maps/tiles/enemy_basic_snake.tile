@@ -1,0 +1,16 @@
+/// Snake enemy - moves in sine wave pattern
+sprite: ./assets/sprites/BasicEnemy/snake_enemy.png
+
+/// Metadata
+enemy_type: Snake
+health: 2
+damage: 1
+speed: 120
+fire_rate: 3.0
+
+SCRIPT_BEGIN
+MOVE LEFT 120
+MOVE_PATTERN SINE amplitude:30 frequency:1.5
+FIRE LEFT 3.0
+ON_DEATH SPAWN_ITEM power_up 0.15
+SCRIPT_END

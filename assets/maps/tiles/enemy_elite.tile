@@ -1,0 +1,26 @@
+/// Elite enemy tile definition
+/// Tougher enemy with more complex movement pattern
+
+sprite: ./assets/sprites/BasicEnemy/shooter_enemy.png
+
+/// Metadata
+enemy_type: Shielded
+health: 3
+damage: 2
+speed: 120
+fire_rate: 1.5
+has_shield: cyclic
+
+SCRIPT_BEGIN
+/// Sine wave movement pattern
+MOVE LEFT 120
+MOVE_PATTERN SINE amplitude:50 frequency:2
+
+/// Burst fire pattern
+FIRE LEFT 1.5
+FIRE_PATTERN BURST count:3 delay:0.2
+
+/// Drop better rewards
+ON_DEATH SPAWN_ITEM power_up 0.3
+ON_DEATH SPAWN_ITEM shield 0.2
+SCRIPT_END

@@ -1,0 +1,18 @@
+inf,7
+Space station corridor with enemies and obstacles
+
+/// Parallax background layers (back to front)
+PARALLAX_BEGIN
+./assets/backgrounds/stars_far.png 0.2 0.1 true false
+./assets/backgrounds/stars_mid.png 0.5 0.3 true false
+./assets/backgrounds/stars_near.png 1.0 0.6 true false
+./assets/backgrounds/station_wall.png 1.5 0.9 true true
+PARALLAX_END
+
+/// Tile definitions: character TileType tile_path
+P PlayerSpawn ./assets/maps/tiles/player_spawn.tile
+E EnemyClassic ./assets/maps/tiles/enemy_basic.tile
+S EnemyElite ./assets/maps/tiles/enemy_elite.tile
+B EnemyBoss ./assets/maps/tiles/enemy_boss.tile
+# Obstacle ./assets/maps/tiles/obstacle_asteroid.tile
+* BackgroundElement ./assets/maps/tiles/background_debris.tile

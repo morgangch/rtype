@@ -1,0 +1,30 @@
+/// Tank Destroyer Boss - First boss encounter
+sprite: ./assets/sprites/BasicEnemy/boss_tank.png
+
+/// Metadata
+enemy_type: TankDestroyer
+health: 50
+damage: 3
+speed: 0
+fire_rate: 1.0
+scale: 3.0
+
+SCRIPT_BEGIN
+/// Stationary tank boss
+MOVE LEFT 0
+
+/// Multi-directional fire
+FIRE LEFT 1.0
+FIRE DIAGONAL_DOWN_LEFT 1.2
+FIRE DIAGONAL_UP_LEFT 1.2
+
+/// Phase changes
+ON_HEALTH_BELOW 25 CHANGE_PATTERN AGGRESSIVE
+
+PHASE AGGRESSIVE {
+    FIRE_RATE 0.6
+    FIRE_PATTERN SPREAD angle:30 count:3
+}
+
+ON_DEATH SPAWN_ITEM mega_power_up 1.0
+SCRIPT_END

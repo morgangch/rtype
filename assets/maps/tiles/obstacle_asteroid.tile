@@ -1,0 +1,20 @@
+/// Obstacle tile definition
+/// Moving asteroid that damages on collision
+
+sprite: ./assets/sprites/obstacles/asteroid.png
+
+/// Metadata
+health: 999
+damage: 2
+destructible: false
+
+SCRIPT_BEGIN
+/// Slow rotation for visual effect
+ROTATE speed:30
+
+/// Move left at constant speed
+MOVE LEFT 80
+
+/// No collision with enemies
+COLLISION_MASK PLAYER PLAYER_PROJECTILE
+SCRIPT_END

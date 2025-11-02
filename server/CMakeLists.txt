@@ -11,7 +11,7 @@ target_include_directories(server PRIVATE
 )
 
 # Link with ECS library
-target_link_libraries(server PRIVATE ecs packetmanager packethandler)
+target_link_libraries(server PRIVATE ecs packetmanager packethandler mapparser)
 
 # Set output directory - handle both single and multi-config generators
 if(CMAKE_CONFIGURATION_TYPES)

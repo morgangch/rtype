@@ -1,0 +1,17 @@
+/// Flanker enemy - diagonal movement with perpendicular shots
+sprite: ./assets/sprites/BasicEnemy/flanker_enemy.png
+
+/// Metadata
+enemy_type: Flanker
+health: 3
+damage: 2
+speed: 90
+fire_rate: 2.5
+
+SCRIPT_BEGIN
+/// Diagonal movement pattern
+MOVE DIAGONAL_DOWN_LEFT 90
+/// Fires perpendicular to force vertical dodging
+FIRE DOWN 2.5
+ON_DEATH SPAWN_ITEM power_up 0.25
+SCRIPT_END

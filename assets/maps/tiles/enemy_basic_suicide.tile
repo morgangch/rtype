@@ -1,0 +1,16 @@
+/// Suicide enemy - rushes player and explodes
+sprite: ./assets/sprites/BasicEnemy/suicide_enemy.png
+
+/// Metadata
+enemy_type: Suicide
+health: 1
+damage: 2
+speed: 150
+fire_rate: 0.0
+
+SCRIPT_BEGIN
+/// Rushes towards player at high speed
+MOVE LEFT 150
+/// Explodes on contact
+ON_DEATH SPAWN_PARTICLES explosion 10
+SCRIPT_END

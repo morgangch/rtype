@@ -1,0 +1,30 @@
+/// Serpent Boss - multi-segment wave movement
+sprite: ./assets/sprites/BasicEnemy/boss_serpent.png
+
+/// Metadata
+enemy_type: Serpent
+health: 80
+damage: 3
+speed: 60
+fire_rate: 1.5
+scale: 3.5
+
+SCRIPT_BEGIN
+MOVE LEFT 60
+/// Wave movement pattern
+MOVE_PATTERN SINE amplitude:100 frequency:1
+/// Head shoots spread pattern
+FIRE LEFT 1.5
+FIRE_PATTERN SPREAD angle:30 count:3
+
+ON_HEALTH_BELOW 40 CHANGE_PATTERN AGGRESSIVE
+
+PHASE AGGRESSIVE {
+    SPEED 80
+    FIRE_RATE 1.0
+    FIRE_PATTERN SPREAD angle:45 count:5
+}
+
+ON_DEATH SPAWN_ITEM mega_power_up 1.0
+ON_DEATH SPAWN_ITEM shield 0.8
+SCRIPT_END

@@ -1,15 +1,16 @@
 80,40
-Default tile assets.
-. ./assets/sprites/default/empty.png
-# ./assets/sprites/default/block.png
-* ./assets/sprites/default/star.png
-W ./assets/sprites/letters/W.png
-E ./assets/sprites/letters/E.png
-L ./assets/sprites/letters/L.png
-C ./assets/sprites/letters/C.png
-O ./assets/sprites/letters/O.png
-M ./assets/sprites/letters/M.png
-T ./assets/sprites/letters/T.png
-R ./assets/sprites/letters/R.png
-Y ./assets/sprites/letters/Y.png
-P ./assets/sprites/letters/P.png
+Default tile assets for letters and basic elements
+
+. BackgroundElement assets/tiles/default/empty.tile
+# Obstacle assets/tiles/default/block.tile
+* BackgroundElement assets/tiles/default/star.tile
+W BackgroundElement assets/sprites/letters/W.png
+E BackgroundElement assets/sprites/letters/E.png
+L BackgroundElement assets/sprites/letters/L.png
+C BackgroundElement assets/sprites/letters/C.png
+O BackgroundElement assets/sprites/letters/O.png
+M BackgroundElement assets/sprites/letters/M.png
+T BackgroundElement assets/sprites/letters/T.png
+R BackgroundElement assets/sprites/letters/R.png
+Y BackgroundElement assets/sprites/letters/Y.png
+P BackgroundElement assets/sprites/letters/P.png

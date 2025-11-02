@@ -31,6 +31,7 @@ MapParser::~MapParser() {
 void MapParser::clear() {
     _tiles.clear();
     _current_definition.tile_mapping.clear();
+    _current_definition.parallax_layers.clear();
     _current_definition.width = 0;
     _current_definition.height = 0;
     _current_definition.description.clear();
@@ -40,6 +41,24 @@ void MapParser::clear() {
 
 const std::vector<Tile>& MapParser::getTiles() const {
     return _tiles;
+}
+
+std::vector<Tile> MapParser::getTilesByType(TileType type) const {
+    std::vector<Tile> filtered;
+    for (const auto& tile : _tiles) {
+        if (tile.type == type) {
+            filtered.push_back(tile);
+        }
+    }
+    return filtered;
+}
+
+std::vector<Tile> MapParser::getPlayerSpawns() const {
+    return getTilesByType(TileType::PlayerSpawn);
+}
+
+const std::vector<ParallaxLayer>& MapParser::getParallaxLayers() const {
+    return _current_definition.parallax_layers;
 }
 
 const MapDefinition& MapParser::getMapDefinition() const {
@@ -71,6 +90,16 @@ void MapParser::validateLine(const std::string &line, int line_number) {
     }
 }
 
+void MapParser::validatePlayerSpawns() {
+    auto spawns = getPlayerSpawns();
+    if (spawns.size() < 1 || spawns.size() > 4) {
+        throw std::invalid_argument(
+            "Invalid number of player spawns: " + std::to_string(spawns.size()) + 
+            ". Must be between 1 and 4."
+        );
+    }
+}
+
 void MapParser::loadDefaultDefinitions(MapDefinition &map_def) {
     const std::string default_def_path = DEFAULT_DEF_PATH;
     
@@ -96,6 +125,85 @@ void MapParser::mergeDefinitions(MapDefinition &map_def, const MapDefinition &de
             map_def.tile_mapping[pair.first] = pair.second;
         }
     }
+    
+    // Merge parallax layers (defaults first, then map-specific)
+    if (map_def.parallax_layers.empty() && !default_def.parallax_layers.empty()) {
+        map_def.parallax_layers = default_def.parallax_layers;
+    }
+}
+
+TileDefinition MapParser::parseTileFile(const std::string &filepath) {
+    TileDefinition tile_def;
+    std::ifstream file(filepath);
+    
+    if (!file.is_open()) {
+        throw std::runtime_error("Cannot open .tile file: " + filepath);
+    }
+    
+    std::string line;
+    int line_number = 0;
+    bool in_script_block = false;
+    std::ostringstream script_content;
+    
+    while (std::getline(file, line)) {
+        line_number++;
+        validateLine(line, line_number);
+        line = trim(line);
+        
+        // Skip empty lines and comments
+        if (line.empty() || line.rfind("///", 0) == 0) {
+            continue;
+        }
+        
+        // Handle script blocks
+        if (line == "SCRIPT_BEGIN") {
+            in_script_block = true;
+            continue;
+        }
+        
+        if (line == "SCRIPT_END") {
+            in_script_block = false;
+            tile_def.script = script_content.str();
+            continue;
+        }
+        
+        if (in_script_block) {
+            script_content << line << "\n";
+            continue;
+        }
+        
+        // Parse key-value pairs
+        size_t colon_pos = line.find(':');
+        if (colon_pos == std::string::npos) {
+            throw std::invalid_argument(
+                "Invalid line format at line " + std::to_string(line_number) + 
+                " in " + filepath + ". Expected 'key: value'"
+            );
+        }
+        
+        std::string key = trim(line.substr(0, colon_pos));
+        std::string value = trim(line.substr(colon_pos + 1));
+        
+        if (key == "sprite") {
+            tile_def.sprite_path = value;
+        } else if (key == "shape") {
+            // Parse shape type
+            if (value == "circle") {
+                tile_def.shape_type = ShapeType::Circle;
+            } else if (value == "rectangle") {
+                tile_def.shape_type = ShapeType::Rectangle;
+            } else if (value == "particles") {
+                tile_def.shape_type = ShapeType::Particles;
+            } else {
+                tile_def.shape_type = ShapeType::None;
+            }
+        } else {
+            tile_def.metadata[key] = value;
+        }
+    }
+    
+    file.close();
+    return tile_def;
 }
 
 void MapParser::parseDefFile(const std::string &filepath, MapDefinition &map_def, bool is_default) {
@@ -106,6 +214,7 @@ void MapParser::parseDefFile(const std::string &filepath, MapDefinition &map_def
     
     std::string line;
     int line_number = 0;
+    bool in_parallax_section = false;
     
     // Line 1: dimensions (width,height or inf,height)
     if (!std::getline(file, line)) {
@@ -162,7 +271,7 @@ void MapParser::parseDefFile(const std::string &filepath, MapDefinition &map_def
     validateLine(line, line_number);
     map_def.description = trim(line);
     
-    // Remaining lines: tile definitions (character asset_path)
+    // Remaining lines: tile definitions, parallax layers, etc.
     while (std::getline(file, line)) {
         line_number++;
         validateLine(line, line_number);
@@ -173,17 +282,48 @@ void MapParser::parseDefFile(const std::string &filepath, MapDefinition &map_def
             continue;
         }
         
-        // Find first space to separate character from asset path
-        size_t space_pos = line.find(' ');
-        if (space_pos == std::string::npos || space_pos == 0) {
-            throw std::invalid_argument(
-                "Invalid tile definition at line " + std::to_string(line_number) + 
-                " in " + filepath + ". Expected format: 'character asset_path'"
-            );
+        // Check for section markers
+        if (line == "PARALLAX_BEGIN") {
+            in_parallax_section = true;
+            continue;
         }
         
-        std::string char_str = line.substr(0, space_pos);
-        std::string asset_path = trim(line.substr(space_pos + 1));
+        if (line == "PARALLAX_END") {
+            in_parallax_section = false;
+            continue;
+        }
+        
+        // Parse parallax layers
+        if (in_parallax_section) {
+            // Format: texture_path speed depth repeat_x repeat_y
+            std::istringstream iss(line);
+            ParallaxLayer layer;
+            std::string repeat_x_str, repeat_y_str;
+            
+            if (!(iss >> layer.texture_path >> layer.scroll_speed >> layer.depth >> repeat_x_str >> repeat_y_str)) {
+                throw std::invalid_argument(
+                    "Invalid parallax layer format at line " + std::to_string(line_number) + 
+                    " in " + filepath + ". Expected: 'texture_path speed depth repeat_x repeat_y'"
+                );
+            }
+            
+            layer.repeat_x = (repeat_x_str == "true" || repeat_x_str == "1");
+            layer.repeat_y = (repeat_y_str == "true" || repeat_y_str == "1");
+            
+            map_def.parallax_layers.push_back(layer);
+            continue;
+        }
+        
+        // Parse tile definitions: character TileType tile_path
+        std::istringstream iss(line);
+        std::string char_str, type_str, tile_path;
+        
+        if (!(iss >> char_str >> type_str >> tile_path)) {
+            throw std::invalid_argument(
+                "Invalid tile definition at line " + std::to_string(line_number) + 
+                " in " + filepath + ". Expected format: 'character TileType tile_path'"
+            );
+        }
         
         if (char_str.length() != 1) {
             throw std::invalid_argument(
@@ -193,15 +333,33 @@ void MapParser::parseDefFile(const std::string &filepath, MapDefinition &map_def
         }
         
         char tile_char = char_str[0];
+        TileType type = stringToTileType(type_str);
         
-        if (asset_path.empty()) {
+        if (type == TileType::Unknown) {
             throw std::invalid_argument(
-                "Empty asset path at line " + std::to_string(line_number) + 
+                "Invalid TileType '" + type_str + "' at line " + 
+                std::to_string(line_number) + " in " + filepath
+            );
+        }
+        
+        if (tile_path.empty()) {
+            throw std::invalid_argument(
+                "Empty tile path at line " + std::to_string(line_number) + 
                 " in " + filepath
             );
         }
         
-        map_def.tile_mapping[tile_char] = asset_path;
+        // Check for duplicate character definitions
+        if (map_def.tile_mapping.find(tile_char) != map_def.tile_mapping.end()) {
+            if (!is_default) {
+                throw std::invalid_argument(
+                    "Duplicate tile character '" + std::string(1, tile_char) + 
+                    "' at line " + std::to_string(line_number) + " in " + filepath
+                );
+            }
+        }
+        
+        map_def.tile_mapping[tile_char] = TileMapping(type, tile_path);
     }
     
     file.close();
@@ -209,7 +367,7 @@ void MapParser::parseDefFile(const std::string &filepath, MapDefinition &map_def
 
 char MapParser::selectRandomTile(const std::vector<char> &candidates) {
     if (candidates.empty()) {
-        throw std::runtime_error("Cannot select random tile from empty candidates list");
+        throw std::runtime_error("Cannot select from empty candidate list");
     }
     
     static std::random_device rd;
@@ -227,14 +385,25 @@ void MapParser::processTileCharacter(char c, int x, int y, const MapDefinition &
         actual_char = selectRandomTile(random_candidates);
     }
     
-    // Look up the asset path for this character
+    // Look up the tile mapping for this character
     auto it = map_def.tile_mapping.find(actual_char);
     if (it != map_def.tile_mapping.end()) {
         Tile tile;
         tile.x = x;
         tile.y = y;
-        tile.asset_path = it->second;
         tile.character = actual_char;
+        tile.type = it->second.type;
+        
+        // Load the .tile definition file
+        try {
+            tile.definition = parseTileFile(it->second.tile_path);
+        } catch (const std::exception &e) {
+            throw std::runtime_error(
+                "Failed to load tile definition from '" + it->second.tile_path + 
+                "' for character '" + std::string(1, actual_char) + "': " + e.what()
+            );
+        }
+        
         _tiles.push_back(tile);
     }
     // If character not found in mapping, it's treated as empty (no tile created)
@@ -253,91 +422,72 @@ void MapParser::parseMapFile(const std::string &filepath, const MapDefinition &m
     while (std::getline(file, line)) {
         line_number++;
         validateLine(line, line_number);
+        line = trim(line);
         
-        // Skip comments
-        if (trim(line).rfind("///", 0) == 0) {
+        // Skip empty lines and comments
+        if (line.empty() || line.rfind("///", 0) == 0) {
             continue;
         }
         
-        // Check for tabs (not allowed)
-        if (line.find('\t') != std::string::npos) {
-            throw std::invalid_argument(
-                "Tab characters are not allowed at line " + 
-                std::to_string(line_number) + " in " + filepath + 
-                ". Use spaces only."
-            );
-        }
-        
+        // Parse tiles with spaces as separators
         int x = 0;
-        size_t i = 0;
+        bool in_random_group = false;
+        std::vector<char> random_candidates;
         
-        while (i < line.length()) {
+        for (size_t i = 0; i < line.length(); ++i) {
             char c = line[i];
-            
-            // Skip spaces
-            if (c == ' ') {
-                i++;
-                continue;
-            }
             
             // Handle random groups [...]
             if (c == '[') {
-                size_t closing_bracket = line.find(']', i);
-                if (closing_bracket == std::string::npos) {
-                    throw std::invalid_argument(
-                        "Unclosed random group '[' at line " + 
-                        std::to_string(line_number) + ", column " + 
-                        std::to_string(i + 1) + " in " + filepath
-                    );
-                }
-                
-                // Extract characters between brackets
-                std::vector<char> candidates;
-                for (size_t j = i + 1; j < closing_bracket; j++) {
-                    if (line[j] != ' ') {
-                        candidates.push_back(line[j]);
-                    }
-                }
-                
-                if (candidates.empty()) {
-                    throw std::invalid_argument(
-                        "Empty random group '[]' at line " + 
-                        std::to_string(line_number) + " in " + filepath
-                    );
-                }
-                
-                processTileCharacter(candidates[0], x, y, map_def, true, candidates);
-                
-                i = closing_bracket + 1;
-                x++;
-            } else {
-                // Regular character
-                std::vector<char> dummy;
-                processTileCharacter(c, x, y, map_def, false, dummy);
-                i++;
-                x++;
+                in_random_group = true;
+                random_candidates.clear();
+                continue;
             }
+            
+            if (c == ']') {
+                in_random_group = false;
+                if (!random_candidates.empty()) {
+                    processTileCharacter('\0', x, y, map_def, true, random_candidates);
+                    x++;
+                }
+                continue;
+            }
+            
+            if (in_random_group) {
+                if (c != ' ') {
+                    random_candidates.push_back(c);
+                }
+                continue;
+            }
+            
+            // Skip spaces outside of random groups
+            if (c == ' ') {
+                continue;
+            }
+            
+            // Regular tile character
+            processTileCharacter(c, x, y, map_def, false, {});
+            x++;
         }
         
         // Validate width for finite maps
-        if (!map_def.is_infinite && x > 0 && x != map_def.width) {
+        if (!map_def.is_infinite && x != map_def.width) {
             throw std::invalid_argument(
-                "Line " + std::to_string(line_number) + " has " + 
-                std::to_string(x) + " tiles, but map width is " + 
-                std::to_string(map_def.width) + " in " + filepath
+                "Map width mismatch at line " + std::to_string(line_number) + 
+                " in " + filepath + ". Expected " + std::to_string(map_def.width) + 
+                " tiles, found " + std::to_string(x)
             );
         }
         
-        if (x > 0) {
-            y++;
-        }
+        y++;
     }
     
     // Validate height
     if (y != map_def.height) {
         throw std::invalid_argument(
-            "Map has " + std::to_string(y) + " rows, but height is " + 
-            std::to_string(map_def.height) + " in " + filepath
+            "Map height mismatch in " + filepath + 
+            ". Expected " + std::to_string(map_def.height) + 
+            " rows, found " + std::to_string(y)
         );
     }
     
@@ -351,7 +501,7 @@ const std::vector<Tile>& MapParser::loadFromDirectory(const std::string &dirname
     // Check if directory exists
     fs::path dir_path(dirname);
     if (!fs::exists(dir_path) || !fs::is_directory(dir_path)) {
-        throw std::runtime_error("Directory does not exist: " + dirname);
+        throw std::runtime_error("Directory not found: " + dirname);
     }
     
     // Find .def and .map files
@@ -360,12 +510,10 @@ const std::vector<Tile>& MapParser::loadFromDirectory(const std::string &dirname
     
     for (const auto &entry : fs::directory_iterator(dir_path)) {
         if (entry.is_regular_file()) {
-            std::string filename = entry.path().filename().string();
-            std::string extension = entry.path().extension().string();
-            
-            if (extension == ".def") {
+            std::string ext = entry.path().extension().string();
+            if (ext == ".def") {
                 def_file = entry.path().string();
-            } else if (extension == ".map") {
+            } else if (ext == ".map") {
                 map_file = entry.path().string();
             }
         }
@@ -391,6 +539,9 @@ const std::vector<Tile>& MapParser::loadFromDirectory(const std::string &dirname
     
     // Parse the .map file
     parseMapFile(map_file, _current_definition);
+    
+    // Validate player spawns
+    validatePlayerSpawns();
     
     _map_loaded = true;
     

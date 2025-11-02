@@ -1,0 +1,25 @@
+/// Basic enemy tile definition
+/// Simple enemy that moves left and shoots occasionally
+
+sprite: ./assets/sprites/BasicEnemy/basic_enemy.png
+
+/// Metadata
+enemy_type: Basic
+health: 1
+damage: 1
+speed: 100
+fire_rate: 2.5
+
+SCRIPT_BEGIN
+/// Simple server-interpreted scripting language
+/// Commands are executed line by line by the server
+
+/// Movement: move in direction at speed
+MOVE LEFT 100
+
+/// Fire pattern: FIRE direction interval
+FIRE LEFT 2.5
+
+/// On death: spawn item with probability
+ON_DEATH SPAWN_ITEM power_up 0.1
+SCRIPT_END

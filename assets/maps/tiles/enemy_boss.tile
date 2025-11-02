@@ -1,0 +1,45 @@
+/// Boss enemy tile definition
+/// Large boss with multiple phases and complex AI
+
+sprite: ./assets/sprites/BasicEnemy/boss.png
+
+/// Metadata
+enemy_type: TankDestroyer
+health: 50
+damage: 3
+speed: 50
+fire_rate: 1.0
+scale: 5.0
+
+SCRIPT_BEGIN
+/// Boss movement: alternating up/down
+MOVE LEFT 50
+MOVE_PATTERN ALTERNATE direction:VERTICAL distance:200 duration:3
+
+/// Multi-directional fire pattern
+FIRE LEFT 1.0
+FIRE DIAGONAL_DOWN_LEFT 1.2
+FIRE DIAGONAL_UP_LEFT 1.2
+
+/// Phase transitions based on health
+ON_HEALTH_BELOW 20 CHANGE_PATTERN AGGRESSIVE
+ON_HEALTH_BELOW 10 CHANGE_PATTERN DESPERATE
+
+/// Aggressive phase
+PHASE AGGRESSIVE {
+    FIRE_RATE 0.5
+    SPEED 80
+    FIRE_PATTERN SPREAD angle:45 count:5
+}
+
+/// Desperate phase
+PHASE DESPERATE {
+    FIRE_RATE 0.3
+    SPEED 120
+    FIRE_PATTERN SPIRAL count:8 rotation_speed:2
+}
+
+/// Boss always drops rewards
+ON_DEATH SPAWN_ITEM mega_power_up 1.0
+ON_DEATH SPAWN_ITEM shield 0.8
+SCRIPT_END

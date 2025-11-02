@@ -12,6 +12,7 @@
 #include "components/PlayerConn.h"
 #include "components/RoomProperties.h"
 #include "components/LobbyState.h"
+#include "systems/ServerEnemySystem.h"
 #include "ECS/Types.h"
 #include "services/PlayerService.h"
 #include "services/RoomService.h"
@@ -38,8 +39,8 @@
     #include <winsock2.h>
     #include <ws2tcpip.h>
 #else
-#include <netinet/in.h>
-#include <arpa/inet.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
 #endif
 
 #include <common/utils/bytes_printer.h>
@@ -593,19 +594,29 @@ void room_controller::handleGameStartRequest(const packet_t &packet) {
 
     rp->isGameStarted = true;
     std::cout << "✓ Game started for room " << rp->joinCode << " by admin player " << player << std::endl;
+    
+    // Load tile-driven map for enemy spawning
+    auto* enemySystem = root.world.GetSystem<ServerEnemySystem>();
+    if (enemySystem) {
+        // Load the comprehensive R-Type mission map with all enemy types
+        if (enemySystem->loadMap("assets/maps/rtype-mission")) {
+            std::cout << "✓ SERVER: Loaded tile-driven map 'rtype-mission' for room " << rp->joinCode << std::endl;
+        } else {
+            std::cerr << "⚠ SERVER: Failed to load tile-driven map 'rtype-mission'" << std::endl;
+            // Try fallback to space-corridor
+            if (enemySystem->loadMap("assets/maps/space-corridor")) {
+                std::cout << "✓ SERVER: Loaded fallback map 'space-corridor' for room " << rp->joinCode << std::endl;
+            } else {
+                std::cerr << "✗ SERVER: All map loading failed - enemies will not spawn!" << std::endl;
+            }
+        }
+    }
+    
 
     // Use extracted helper functions
     markPlayersAsInGame(room);
     broadcastGameStart(room);
     broadcastPlayerRoster(room);
-
-    // Apply lobby debug start level to the enemy spawner
-    if (rp) {
-        if (auto* sys = root.world.GetSystem<ServerEnemySystem>()) {
-            int forcedLevel = static_cast<int>(rp->startLevelIndex); // 0=Lvl1,1=Lvl2
-            sys->setStartLevel(forcedLevel);
-        }
-    }
 
     // Spawn an AI assistant only if there is exactly 1 human player in the room and AI assist is enabled
     {
@@ -974,14 +985,8 @@ void room_controller::handleSpawnBossRequest(const packet_t &packet) {
         return;
     }
 
-        // Spawn the appropriate boss for the current level using the enemy system
-        if (auto* sys = root.world.GetSystem<ServerEnemySystem>()) {
-            auto type = sys->getCurrentBossType();
-            std::cout << "✓ Admin spawning level-appropriate boss type=" << static_cast<int>(type) << " in room " << room << std::endl;
-            sys->spawnBoss(root.world, room, type);
-        } else {
-            std::cerr << "ERROR: ServerEnemySystem not available; cannot spawn boss" << std::endl;
-        }
+    // TODO: Tile-driven system - Boss spawning needs to be implemented from tiles
+    std::cout << "INFO: Boss spawning currently disabled - will be tile-driven in future" << std::endl;
 }
 
 // Register all packet callbacks on a player's packet handler

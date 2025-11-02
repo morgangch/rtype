@@ -1,0 +1,19 @@
+/// Waver enemy - erratic zigzag with triple bursts
+sprite: ./assets/sprites/BasicEnemy/waver_enemy.png
+
+/// Metadata
+enemy_type: Waver
+health: 4
+damage: 2
+speed: 110
+fire_rate: 2.0
+
+SCRIPT_BEGIN
+MOVE LEFT 110
+/// Erratic zigzag movement
+MOVE_PATTERN ALTERNATE direction:VERTICAL distance:100 duration:1.5
+/// Triple burst fire
+FIRE LEFT 2.0
+FIRE_PATTERN BURST count:3 delay:0.2
+ON_DEATH SPAWN_ITEM power_up 0.3
+SCRIPT_END
