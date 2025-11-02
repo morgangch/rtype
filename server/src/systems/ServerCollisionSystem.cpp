@@ -16,6 +16,10 @@
 #include <common/systems/FortressShieldSystem.h>
 #include <common/components/Score.h>
 #include <common/components/Shield.h>
+#include <common/components/VesselClass.h>
+#include <common/components/ForgeAugment.h>
+#include <common/components/Position.h>
+#include <common/components/Team.h>
 #include <iostream>
 #include <cmath>
 #include <algorithm>
@@ -169,6 +173,8 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
 
         enemyHealth->currentHp -= projData->damage;
 
+        // ChainLightning augment removed
+
         if (enemyHealth->currentHp <= 0) {
             enemyHealth->isAlive = false;
             std::cout << "[COLLISION] Enemy " << enemy << " DESTROYED" << std::endl;
@@ -190,6 +196,33 @@ void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
 
                 // Send score update to the player
                 network::senders::send_player_score(shooter, shooterPlayer->serverId, shooterScore->points);
+            }
+
+            // If the destroyed enemy is a boss, grant forge augment to the shooter based on vessel class
+            if (auto* enemyType = world.GetComponent<rtype::common::components::EnemyTypeComponent>(enemy)) {
+                using ET = rtype::common::components::EnemyType;
+                if (enemyType->type == ET::TankDestroyer || enemyType->type == ET::Serpent ||
+                    enemyType->type == ET::Fortress || enemyType->type == ET::Core) {
+                    if (auto* vessel = world.GetComponent<rtype::common::components::VesselClass>(shooter)) {
+                        using VC = rtype::common::components::VesselType;
+                        using FA = rtype::common::components::ForgeAugmentType;
+                        FA aug = FA::None;
+                        switch (vessel->type) {
+                            case VC::CrimsonStriker: aug = FA::DualLaser; break;
+                            case VC::AzurePhantom:   aug = FA::BouncySplit; break;
+                            case VC::EmeraldTitan:   aug = FA::ShortSpread; break;
+                            case VC::SolarGuardian:  aug = FA::GuardianTriBeam; break;
+                        }
+                        auto* forge = world.GetComponent<rtype::common::components::ForgeAugment>(shooter);
+                        if (!forge) {
+                            world.AddComponent<rtype::common::components::ForgeAugment>(shooter, aug, true);
+                        } else {
+                            forge->type = aug;
+                            forge->unlocked = true;
+                        }
+                        std::cout << "[FORGE] Player " << shooter << " unlocked augment type " << static_cast<int>(aug) << std::endl;
+                    }
+                }
             }
 
             toDestroy.push_back(enemy);

@@ -27,6 +27,8 @@
 #include <common/components/Explosion.h>
 #include <common/components/Homing.h>
 #include <common/components/Shield.h>
+#include <common/components/ForgeAugment.h>
+#include <common/components/Bounce.h>
 #include <iostream>
 #include <cstring>
 #include <cmath>
@@ -54,6 +56,81 @@ using namespace rtype::server::services;
 // ============================================================================
 // HELPER FUNCTIONS - Game Start Flow
 // ============================================================================
+
+// Forge helper: spawn extra projectiles based on player's unlocked augment
+static void spawnForgeExtras(ECS::EntityID room, ECS::EntityID owner, float x, float y) {
+    auto* forge = root.world.GetComponent<rtype::common::components::ForgeAugment>(owner);
+    if (!forge || !forge->unlocked || forge->type == rtype::common::components::ForgeAugmentType::None) return;
+
+    using FA = rtype::common::components::ForgeAugmentType;
+
+    switch (forge->type) {
+        case FA::DualLaser: {
+            // Crimson Striker: Dual laser beams (≈1.5 -> rounded to 2 dmg), straight and fast
+            const float speed = 700.f;
+            const int dmg = 2;
+            const float offY = 6.f;
+            auto p1 = room_controller::createSingleProjectile(room, owner, x + 32.f, y - offY, speed, dmg, false, false);
+            auto p2 = room_controller::createSingleProjectile(room, owner, x + 32.f, y + offY, speed, dmg, false, false);
+            room_controller::broadcastProjectileSpawn(p1, owner, room, false);
+            room_controller::broadcastProjectileSpawn(p2, owner, room, false);
+            break;
+        }
+        case FA::BouncySplit: {
+            // Azure Phantom: two angled bouncing shots, 1 dmg each, bounce on top/bottom borders
+            const float speed = 520.f;
+            const float angle = 10.f * 3.1415926f / 180.f;
+            float vx = speed * std::cos(0.f);
+            float vyUp = speed * std::sin(angle);
+            float vyDown = -vyUp;
+
+            auto pUp = room_controller::createSingleProjectile(room, owner, x + 32.f, y, vx, vyUp, speed, 1, false, false);
+            auto pDn = room_controller::createSingleProjectile(room, owner, x + 32.f, y, vx, vyDown, speed, 1, false, false);
+            // Add Bounce (Y only)
+            root.world.AddComponent<rtype::common::components::Bounce>(pUp, 6, false, true);
+            root.world.AddComponent<rtype::common::components::Bounce>(pDn, 6, false, true);
+            room_controller::broadcastProjectileSpawn(pUp, owner, room, false);
+            room_controller::broadcastProjectileSpawn(pDn, owner, room, false);
+            break;
+        }
+        case FA::ShortSpread: {
+            // Shotgun: 5 pellets in a cone, short lifetime (~0.5s)
+            const int count = 5;
+            const float angleSpread = 30.f;
+            const float angleStep = angleSpread / (count - 1);
+            const float startDeg = -angleSpread / 2.f;
+            const float baseSpeed = 600.f;
+            const int dmg = 1; // 0.5 -> rounded to 1
+            for (int i = 0; i < count; ++i) {
+                float deg = startDeg + i * angleStep;
+                float rad = deg * 3.1415926f / 180.f;
+                float vx = baseSpeed * std::cos(rad);
+                float vy = baseSpeed * std::sin(rad);
+                auto p = room_controller::createSingleProjectile(room, owner, x + 32.f, y, vx, vy, baseSpeed, dmg, false, false);
+                if (auto* pr = root.world.GetComponent<rtype::common::components::Projectile>(p)) {
+                    pr->maxDistance = baseSpeed * 0.5f; // ~0.5s travel
+                }
+                room_controller::broadcastProjectileSpawn(p, owner, room, false);
+            }
+            break;
+        }
+        case FA::GuardianTriBeam: {
+            // Solar Guardian: triple forward beams, short to mid range
+            const float speed = 560.f;
+            const int dmg = 1;
+            const float offsets[3] = {-8.f, 0.f, 8.f};
+            for (float offY : offsets) {
+                auto p = room_controller::createSingleProjectile(room, owner, x + 32.f, y + offY, speed, dmg, false, false);
+                if (auto* pr = root.world.GetComponent<rtype::common::components::Projectile>(p)) {
+                    pr->maxDistance = 380.f; // moderate range
+                }
+                room_controller::broadcastProjectileSpawn(p, owner, room, false);
+            }
+            break;
+        }
+        default: break;
+    }
+}
 
 void room_controller::markPlayersAsInGame(ECS::EntityID room) {
     auto players_in_room = player_service::findPlayersByRoom(room);
@@ -308,13 +385,28 @@ ECS::EntityID room_controller::createServerProjectile(ECS::EntityID room, ECS::E
     
     switch (weaponMode) {
         case rtype::common::components::WeaponMode::Single: {
-            // TODO: SolarGuardian charged shot: Re-implement shield with new ShieldComponent system
-            // if (vesselClass->type == rtype::common::components::VesselType::SolarGuardian && isCharged) {
-            //     // Apply shield to the player
-            //     // Don't create projectile, just return 0
-            //     return 0;
-            // }
-            
+            // Solar Guardian charged: Solar Pulse (radial burst)
+            if (vesselClass->type == rtype::common::components::VesselType::SolarGuardian && isCharged) {
+                const int count = 12;
+                const float baseSpeed = 480.0f;
+                const int dmg = 1;
+                const float step = 360.0f / count;
+                ECS::EntityID first = 0;
+                for (int i = 0; i < count; ++i) {
+                    float deg = i * step;
+                    float rad = deg * 3.1415926f / 180.f;
+                    float vx = baseSpeed * std::cos(rad);
+                    float vy = baseSpeed * std::sin(rad);
+                    auto proj = createSingleProjectile(room, owner, x, y, vx, vy, baseSpeed, dmg, false, true);
+                    if (auto* pr = root.world.GetComponent<rtype::common::components::Projectile>(proj)) {
+                        pr->maxDistance = 260.0f; // short-lived pulse
+                    }
+                    broadcastProjectileSpawn(proj, owner, room, true);
+                    if (i == 0) first = proj;
+                }
+                return first; // Done
+            }
+
             // Normal single projectile (CrimsonStriker normal, EmeraldTitan)
             firstProjectile = createSingleProjectile(room, owner, projectileX, y, baseSpeed, baseDamage, piercing, isCharged);
             broadcastProjectileSpawn(firstProjectile, owner, room, isCharged);
@@ -399,6 +491,8 @@ ECS::EntityID room_controller::createServerProjectile(ECS::EntityID room, ECS::E
         }
     }
     
+    // After base projectile(s), append forge extras if unlocked
+    spawnForgeExtras(room, owner, x, y);
     return firstProjectile;
 }
 
