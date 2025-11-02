@@ -145,7 +145,7 @@ namespace rtype::common::components {
                     chargedWeaponMode = WeaponMode::Burst;
                     normalShotDamage = 1; // 0.5 per projectile, but dual
                     chargedShotDamage = 1; // 1 per dart, 3 darts
-                    chargedShotPiercing = false;
+                    chargedShotPiercing = true;
                     projectileCount = 3; // 3 homing darts
                     chargeTime = 1.0f;
                     break;
@@ -158,7 +158,7 @@ namespace rtype::common::components {
                     chargedWeaponMode = WeaponMode::Single; // Large plasma bomb
                     normalShotDamage = 2;
                     chargedShotDamage = 4;
-                    chargedShotPiercing = false;
+                    chargedShotPiercing = true;
                     projectileCount = 1;
                     chargeTime = 2.5f;
                     break;
@@ -171,7 +171,7 @@ namespace rtype::common::components {
                     chargedWeaponMode = WeaponMode::Single; // Shield (special)
                     normalShotDamage = 1; // 0.5 per pellet, 4 pellets
                     chargedShotDamage = 0; // Shield doesn't damage
-                    chargedShotPiercing = false;
+                    chargedShotPiercing = true;
                     projectileCount = 4; // 4 shotgun pellets
                     chargeTime = 2.0f;
                     break;
