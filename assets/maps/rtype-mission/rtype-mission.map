@@ -1,0 +1,18 @@
+/// R-Type Mission Map - Progressive difficulty layout
+/// This infinite scrolling map gradually introduces harder enemies
+/// Enemies distributed evenly across all 7 rows (0-6)
+
+/// Row 0 (Top): Player spawn + basic enemies
+P . . 1 . . . . 2 . . . 1 . . .
+/// Row 1: Snake and basic enemies  
+. . . . 2 . . . . 1 . . . 3 . .
+/// Row 2: Mix with elite enemies
+. . 1 . . . A . . . 2 . . . . .
+/// Row 3 (Center): Varied enemies
+. 2 . . . 1 . . A . . . . 2 . B
+/// Row 4: Elite enemies appearing
+. . . A . . . 2 . . C . . . 1 .
+/// Row 5: More advanced enemies
+. 1 . . . . 2 . . . A . . . . D
+/// Row 6 (Bottom): Turrets and wavers
+. . . . D . . . E . . . . E . .

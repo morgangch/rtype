@@ -1,0 +1,34 @@
+/// Fortress Boss - Heavily armored stationary boss
+sprite: ./assets/sprites/BasicEnemy/boss_fortress.png
+
+/// Metadata
+enemy_type: Fortress
+health: 100
+damage: 4
+speed: 0
+fire_rate: 0.8
+scale: 4.0
+has_shield: red
+
+SCRIPT_BEGIN
+/// Fortress never moves - stationary defense
+MOVE LEFT 0
+
+/// Heavy firepower
+FIRE LEFT 0.8
+FIRE DIAGONAL_DOWN_LEFT 0.9
+FIRE DIAGONAL_UP_LEFT 0.9
+FIRE_PATTERN SPREAD angle:45 count:5
+
+/// Shield requires charged shots
+ON_HEALTH_BELOW 50 CHANGE_PATTERN DESPERATE
+
+PHASE DESPERATE {
+    FIRE_RATE 0.5
+    FIRE_PATTERN BURST count:4 delay:0.15
+    FIRE_PATTERN SPIRAL count:6 rotation_speed:3
+}
+
+ON_DEATH SPAWN_ITEM mega_power_up 1.0
+ON_DEATH SPAWN_ITEM shield 1.0
+SCRIPT_END

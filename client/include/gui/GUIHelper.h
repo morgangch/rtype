@@ -148,7 +148,7 @@ namespace rtype::client::gui {
             
             // Font sizes
             static constexpr int TITLE_FONT_SIZE = 64;              ///< Large font for main titles
-            static constexpr int BUTTON_FONT_SIZE = 28;             ///< Standard button text size
+            static constexpr int BUTTON_FONT_SIZE = 23;             ///< Standard button text size
             static constexpr int RETURN_BUTTON_FONT_SIZE = 24;      ///< Return button text size
             static constexpr int INPUT_FONT_SIZE = 24;              ///< Input field text size
             static constexpr int HINT_FONT_SIZE = 20;               ///< Placeholder/hint text size

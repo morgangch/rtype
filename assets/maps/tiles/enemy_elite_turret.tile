@@ -1,0 +1,20 @@
+/// Turret enemy - stationary with burst fire
+sprite: ./assets/sprites/BasicEnemy/turret_enemy.png
+
+/// Metadata
+enemy_type: Turret
+health: 4
+damage: 2
+speed: 0
+fire_rate: 3.0
+has_shield: cyclic
+
+SCRIPT_BEGIN
+/// Stationary turret
+MOVE LEFT 0
+/// 3-shot burst aimed at player
+FIRE LEFT 3.0
+FIRE_PATTERN BURST count:3 delay:0.15
+ON_DEATH SPAWN_ITEM power_up 0.3
+ON_DEATH SPAWN_ITEM shield 0.15
+SCRIPT_END

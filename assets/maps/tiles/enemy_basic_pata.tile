@@ -1,0 +1,18 @@
+/// Pata enemy - rapid vertical oscillation
+sprite: ./assets/sprites/BasicEnemy/pata_enemy.png
+
+/// Metadata
+enemy_type: Pata
+health: 2
+damage: 1
+speed: 100
+fire_rate: 2.0
+
+SCRIPT_BEGIN
+MOVE LEFT 100
+/// Rapid vertical oscillation
+MOVE_PATTERN SINE amplitude:80 frequency:3
+FIRE LEFT 2.0
+FIRE_PATTERN BURST count:2 delay:0.1
+ON_DEATH SPAWN_ITEM power_up 0.15
+SCRIPT_END

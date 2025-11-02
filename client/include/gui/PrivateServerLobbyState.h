@@ -100,6 +100,12 @@ namespace rtype::client::gui {
         void onEnter() override;
 
         /**
+         * @brief Called when exiting this state
+         * Ensures global lobby pointer is cleared to avoid dangling references.
+         */
+        void onExit() override;
+
+        /**
          * @brief Destroy the PrivateServerLobbyState
          *
          * Destructor defined in the .cpp so unique_ptr<ParallaxSystem>
@@ -116,13 +122,25 @@ namespace rtype::client::gui {
         
         // UI Text Elements
         sf::Text playersWaitingText;    ///< "Waiting for room host" for non-admin players
-        sf::Text actionButton;          ///< "Start Game" button (admin only)
+        sf::Text actionButton;          ///< Deprecated: text hidden when using sprite (admin only)
         sf::Text returnButton;          ///< "Return" button text for navigation back
         sf::Text serverCodeDisplay;     ///< Shows server code for sharing with others
         
         // UI Visual Elements
-        sf::RectangleShape actionButtonRect;  ///< Clickable area for start game button (admin only)
+    sf::RectangleShape actionButtonRect;  ///< Clickable area for start game button (sprite drawn instead)
         sf::RectangleShape returnButtonRect;  ///< Clickable area for return button
+    // Return sprite resources (replaces text)
+    sf::Texture returnTexture;      ///< Texture for return button sprite
+    sf::Sprite returnSprite;        ///< Sprite for return button
+    bool returnSpriteLoaded{false}; ///< True if return texture loaded
+    bool returnHovered{false};      ///< Hover state for return button
+
+        // Start game (admin) button sprite resources
+        sf::Texture actionTexture;       ///< Texture for start game sprite (uses Ready.png)
+        sf::Sprite actionSprite;         ///< Sprite for start game
+        bool actionSpriteLoaded{false};  ///< True if action texture loaded
+        bool actionHovered{false};       ///< Hover state for start game
+        bool actionPressed{false};       ///< Mouse is pressed on the start button (for glow)
                 
         // UI Management Methods
         /**
@@ -203,6 +221,65 @@ namespace rtype::client::gui {
          * @param window Render window used to size/create the parallax
          */
         void ensureParallaxInitialized(const sf::RenderWindow& window);
+        /** @} */
+
+        /**
+         * @name Lobby Settings (Admin-only)
+         * Panel accessible via a settings gear in the bottom-left.
+         * Contains three columns: Gameplay, AI, Cheats.
+         * - Gameplay: Difficulty (cycles Easy/Normal/Hard), Friendly fire toggle (cosmetic)
+         * - AI: AI assist toggle (visible only when exactly one player is in the lobby)
+         * - Cheats: Mega damage (+1000 dmg) (applies to admin only)
+         * @{ */
+        // Access icon (bottom-left)
+        sf::Texture m_settingsTexture;
+        sf::Sprite  m_settingsSprite;
+        bool        m_settingsSpriteLoaded{false};
+        bool        m_settingsHovered{false};
+        sf::RectangleShape m_settingsRect; // fallback/click zone and hover hit area
+
+        // Panel visibility and background
+        bool m_showSettings{false};
+        sf::RectangleShape m_settingsPanelRect;
+
+        // Section titles
+        sf::Text m_gameplayTitle;
+        sf::Text m_aiTitle;
+        sf::Text m_cheatsTitle;
+
+        // Gameplay controls
+        sf::Text m_difficultyLabel;
+        sf::Text m_difficultyValue;
+        sf::RectangleShape m_rectDifficulty; // invisible clickable area
+
+        sf::Text m_friendlyFireLabel;
+        sf::RectangleShape m_rectFriendlyFire; // invisible clickable area
+
+        // AI controls (shown only when exactly 1 player in lobby)
+        sf::Text m_aiAssistLabel;
+        sf::RectangleShape m_rectAIAssist; // invisible clickable area
+        sf::RectangleShape m_sqAIAssist;   // visual toggle square
+
+        // Cheats controls
+        sf::Text m_megaDamageLabel;
+        sf::RectangleShape m_rectMegaDamage; // invisible clickable area
+        sf::RectangleShape m_sqMegaDamage;   // visual toggle square
+
+        // Settings values (cosmetic except cheats to be applied to admin later)
+        int  m_difficultyIndex{1}; // 0=Easy, 1=Normal, 2=Hard
+        bool m_friendlyFire{false};
+        bool m_aiAssist{true};
+        bool m_megaDamage{false};
+        // Visual squares for toggles
+        sf::RectangleShape m_sqFriendlyFire;
+
+        // Track players to control AI section visibility
+        uint32_t m_totalPlayersInLobby{1};
+
+        // Helpers
+        void renderSettingsPanel(sf::RenderWindow& window);
+        void updateSettingsTexts();
+        void updateSettingsLayout(const sf::Vector2u& windowSize);
         /** @} */
         
     public:

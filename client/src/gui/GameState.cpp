@@ -26,9 +26,16 @@
 #include "gui/GUIHelper.h"
 #include "gui/AssetPaths.h"
 #include "gui/TextureCache.h"
+#include <common/systems/MovementSystem.h>
+#include <common/systems/FortressShieldSystem.h>
+#include <common/components/Shield.h>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include "gui/Accessibility.h"
+
+// Global username defined in client/src/network/network.cpp
+extern std::string g_username;
 
 namespace rtype::client::gui {
 
@@ -51,16 +58,50 @@ ECS::EntityID GameState::createEnemyFromServer(uint32_t serverId, float x, float
     // Create a new enemy based on enemyType
     ECS::EntityID e;
     auto type = static_cast<rtype::common::components::EnemyType>(enemyType);
-    
+
     switch (type) {
-        case rtype::common::components::EnemyType::Boss: {
-            e = createBoss(x, y);            
-            break;
-        }
-        case rtype::common::components::EnemyType::Shooter:
-            e = createShooterEnemy(x, y);
-            break;
+        // Basic enemies
         case rtype::common::components::EnemyType::Basic:
+            e = createEnemy(x, y);
+            break;
+        case rtype::common::components::EnemyType::Snake:
+            e = createSnakeEnemy(x, y);
+            break;
+        case rtype::common::components::EnemyType::Suicide:
+            e = createSuicideEnemy(x, y);
+            break;
+        case rtype::common::components::EnemyType::Pata:
+            e = createPataEnemy(x, y);
+            break;
+
+        // Advanced enemies
+        case rtype::common::components::EnemyType::Shielded:
+            e = createShieldedEnemy(x, y);
+            break;
+        case rtype::common::components::EnemyType::Flanker:
+            e = createFlankerEnemy(x, y);
+            break;
+        case rtype::common::components::EnemyType::Turret:
+            e = createTurretEnemy(x, y);
+            break;
+        case rtype::common::components::EnemyType::Waver:
+            e = createWaverEnemy(x, y);
+            break;
+
+        // Boss enemies
+        case rtype::common::components::EnemyType::TankDestroyer:
+            e = createTankDestroyer(x, y);
+            break;
+        case rtype::common::components::EnemyType::Serpent:
+            e = createSerpentBoss(x, y);
+            break;
+        case rtype::common::components::EnemyType::Fortress:
+            e = createFortressBoss(x, y);
+            break;
+        case rtype::common::components::EnemyType::Core:
+            e = createCoreBoss(x, y);
+            break;
+
         default:
             e = createEnemy(x, y);
             break;
@@ -164,12 +205,12 @@ ECS::EntityID GameState::createProjectileFromServer(uint32_t serverId, uint32_t 
     return entity;
 }
 
-void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp) {
+void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable) {
     // Skip updates for local player (controlled by client input)
     if (serverId == m_localPlayerServerId) {
         return;
     }
-    
+
     auto it = m_serverEntityMap.find(serverId);
     if (it == m_serverEntityMap.end()) {
         std::cout << "[GameState] Cannot update entity with serverId=" << serverId << " - not found in map" << std::endl;
@@ -180,7 +221,10 @@ void GameState::updateEntityStateFromServer(uint32_t serverId, float x, float y,
     auto* pos = m_world.GetComponent<rtype::common::components::Position>(e);
     if (pos) { pos->x = x; pos->y = y; }
     auto* health = m_world.GetComponent<rtype::common::components::Health>(e);
-    if (health) { health->currentHp = hp; }
+    if (health) {
+        health->currentHp = hp;
+        health->invulnerable = invulnerable;
+    }
 }
 
 void GameState::setLocalPlayerServerId(uint32_t serverId) {
@@ -222,8 +266,16 @@ GameState::GameState(StateManager& stateManager)
     : m_stateManager(stateManager), m_parallaxSystem(SCREEN_WIDTH, SCREEN_HEIGHT) {
     // Load keybinds and settings from config file
     m_config.load();
+    // Apply daltonism mode globally
+    rtype::client::gui::Accessibility::instance().setMode(m_config.getDaltonismMode());
     
     setupGameOverUI();
+    // Setup HUD score text/defaults
+    m_score = 0;
+    m_scoreSaved = false;
+    m_scoreText.setFont(GUIHelper::getFont());
+    m_scoreText.setCharacterSize(24);
+    m_scoreText.setFillColor(GUIHelper::Colors::TEXT);
     // set global pointer so network handlers can access the active GameState
     g_gameState = this;
 }
@@ -361,6 +413,15 @@ void GameState::showInGameMenu(bool isGameOver) {
         } else {
             std::cerr << "GameState: could not load game over music: " << gameOverMusic << std::endl;
         }
+        // Persist highscore once when game over triggers
+        if (!m_scoreSaved) {
+            HighscoreManager mgr;
+            mgr.load();
+            HighscoreEntry e{::g_username, 1, m_score, 0};
+            mgr.add(e);
+            mgr.save();
+            m_scoreSaved = true;
+        }
     } else {
         // Pause background music while paused
         m_musicManager.setMuted(true);
@@ -391,6 +452,8 @@ void GameState::resetGame() {
     // Reset flags
     m_isGameOver = false;
     m_gameStatus = GameStatus::Playing;
+    m_score = 0;
+    m_scoreSaved = false;
 
     // Clear boss music/flag so a prior boss state doesn't trigger level advance
     m_bossMusicActive = false;
@@ -458,7 +521,7 @@ bool GameState::isBossActive() {
     if (!enemyTypes) return false;
     
     for (auto& [entity, enemyTypePtr] : *enemyTypes) {
-        if (enemyTypePtr->type == rtype::common::components::EnemyType::Boss) {
+        if (enemyTypePtr->type == rtype::common::components::EnemyType::TankDestroyer) {
             // Check if the boss is still alive (has Health component with HP > 0)
             auto* health = m_world.GetComponent<rtype::common::components::Health>(entity);
             if (health && health->currentHp > 0) {
@@ -484,13 +547,14 @@ void GameState::update(float deltaTime) {
     // Run ECS systems in order
     updateInputSystem(deltaTime);
     updateFireRateSystem(deltaTime);
+    updateEnemyAISystem(deltaTime);
     updateChargedShotSystem(deltaTime);
     updateInvulnerabilitySystem(deltaTime);
     updateAnimationSystem(deltaTime);
-    updateMovementSystem(deltaTime);
-    updateEnemyAISystem(deltaTime);
-    updateCleanupSystem(deltaTime);
+    rtype::common::systems::MovementSystem::update(m_world, deltaTime); // shared movement system
+    rtype::common::systems::FortressShieldSystem::update(m_world, deltaTime); // shield sync system
     updateCollisionSystem();
+    updateCleanupSystem(deltaTime);
 }
 
 void GameState::updateBossMusicState() {
@@ -520,6 +584,8 @@ void GameState::advanceLevel() {
     if (m_levelIndex >= 3) {
         std::cout << "[GameState] Final level cleared. Returning to main menu." << std::endl;
         m_musicManager.stop();
+        // Persist last level index for menu parallax
+        m_stateManager.setLastLevelIndex(m_levelIndex);
         m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
         return;
     }
@@ -572,6 +638,28 @@ void GameState::render(sf::RenderWindow& window) {
     if (m_gameStatus == GameStatus::InGameMenu) {
         renderGameOverMenu(window);
     }
+
+    // Apply colorblind post-process over the whole frame
+    if (Accessibility::instance().isEnabled()) {
+        static sf::Texture screenTexture;
+        sf::Vector2u size = window.getSize();
+        if (screenTexture.getSize() != size) {
+            screenTexture.create(size.x, size.y);
+        }
+        screenTexture.update(window);
+        sf::Sprite screenSprite(screenTexture);
+        if (auto* shader = Accessibility::instance().getShader()) {
+            sf::RenderStates states;
+            states.shader = shader;
+            window.draw(screenSprite, states);
+        }
+    }
+}
+
+void GameState::setScoreFromServer(int newScore) {
+    m_score = newScore;
+    // m_scoreText string is updated during renderHUD, but we can pre-update for immediate reads
+    m_scoreText.setString("score " + std::to_string(m_score));
 }
 
 } // namespace rtype::client::gui

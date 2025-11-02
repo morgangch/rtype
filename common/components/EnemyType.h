@@ -19,20 +19,23 @@ namespace rtype::common::components {
      * @brief Different types of enemies with varying behaviors
      */
     enum class EnemyType {
-        // Basic enemy
+        // Basic enemies (4 types)
         Basic,      ///< Basic enemy - moves left, shoots straight
-        Snake,     ///< Snake enemy - moves in a sine wave pattern
+        Snake,      ///< Snake enemy - moves in a sine wave pattern
         Suicide,    ///< Suicide enemy - moves towards player and explodes on contact or death
-        Turret,     ///< Turret enemy - stays in place and shoots at player
+        Pata,       ///< Pata enemy - rapid vertical oscillation, fires double shots
 
-        // Advanced enemies
-        // to do add 3 advanced enemies
-        Shooter,    ///< shooter enemy - moves left and shoots at player
-        Shielded,    ///< shielded enemy - protected by a shield; only damaged by charged shots
+        // Advanced enemies (4 types)
+        Shielded,   ///< Shielded enemy - cyclic invulnerability shield, vulnerable in intervals
+        Flanker,    ///< Flanker enemy - diagonal movement, fires perpendicular shots to force vertical dodging
+        Turret,     ///< Turret enemy - stationary turret, fires 3-shot burst aimed at player
+        Waver,      ///< Waver enemy - erratic zigzag movement, fires triple bursts
 
-        // Boss enemies
-        // to do add 3 boss enemies
-        Boss        /// TO DO change name
+        // Boss enemies (4 types)
+        TankDestroyer,  ///< Tank destroyer boss - vertical bounce, fires 3-projectile spread
+        Serpent,        ///< Serpent boss - multi-segment body with wave movement, head shoots spread
+        Fortress,       ///< Fortress boss - stationary core with RED shield requiring 2 charged shots to break, fires 2 charged projectiles
+        Core,           ///< Core boss (FINAL) - multi-phase evolution: circular->spiral+adds->chaotic pattern
     };
     
     /**
@@ -41,8 +44,9 @@ namespace rtype::common::components {
      */
     struct EnemyTypeComponent {
         EnemyType type;
-        
-        EnemyTypeComponent(EnemyType t = EnemyType::Basic) : type(t) {}
+        float lifeTime; ///< Time since spawn (for movement patterns)
+
+        EnemyTypeComponent(EnemyType t = EnemyType::Basic) : type(t), lifeTime(0.0f) {}
     };
     
 } // namespace rtype::common::components

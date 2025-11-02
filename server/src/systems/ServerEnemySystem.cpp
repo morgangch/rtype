@@ -1,5 +1,8 @@
 /*
-** Minimal server-side enemy spawner implementation
+** EPITECH PROJECT, 2025
+** rtype
+** File description:
+** ServerEnemySystem - Tile-driven enemy spawning implementation
 */
 #include "systems/ServerEnemySystem.h"
 #include "rtype.h"
@@ -7,284 +10,359 @@
 #include "services/RoomService.h"
 #include "services/PlayerService.h"
 #include <iostream>
-// Use project-relative includes like other server files
+#include <cstdlib>
 #include <common/components/Position.h>
 #include <common/components/Velocity.h>
 #include <common/components/Health.h>
 #include <common/components/Team.h>
 #include <common/components/EnemyType.h>
-// Server components
+#include <common/components/Shield.h>
 #include "components/RoomProperties.h"
 #include "components/PlayerConn.h"
-// Common player component
 #include <common/components/Player.h>
+#include "senders.h"
+#include "components/LinkedRoom.h"
 
-void ServerEnemySystem::Update(ECS::World &world, float deltaTime) {
-    updatePhase(deltaTime);
-    updateEnemySpawning(world, deltaTime);
-    updateBossSpawning(world, deltaTime);
-    updatePlayerStateBroadcast(world, deltaTime);
-    cleanupDeadEntities(world);
-}
+// ============================================================================
+// CONSTRUCTOR & INITIALIZATION
+// ============================================================================
 
 ServerEnemySystem::ServerEnemySystem()
     : ECS::System("ServerEnemySystem", 5), 
-      _levelTimer(0.0f), 
-      _phase(EnemySpawnPhase::OnlyBasic), 
-      _bossSpawned(false), 
       _stateTick(0.0f),
       _mapLoaded(false),
       _nextClassicIndex(0),
       _nextEliteIndex(0),
       _nextBossIndex(0)
 {
-    // Example: configure spawn intervals for each type
-    _enemyConfigs[rtype::common::components::EnemyType::Basic] = {rtype::common::components::EnemyType::Basic, 2.0f, 0.0f};
-    _enemyConfigs[rtype::common::components::EnemyType::Snake] = {rtype::common::components::EnemyType::Snake, 2.0f, 0.0f};
-    _enemyConfigs[rtype::common::components::EnemyType::Suicide] = {rtype::common::components::EnemyType::Suicide, 3.0f, 0.0f};
-    _enemyConfigs[rtype::common::components::EnemyType::Turret] = {rtype::common::components::EnemyType::Turret, 4.0f, 0.0f};
-    _enemyConfigs[rtype::common::components::EnemyType::Shooter] = {rtype::common::components::EnemyType::Shooter, 4.0f, 0.0f};
-    // Add more types as needed
+    // Initialize spawn intervals for different tile types
+    _spawnIntervals[TileType::EnemyClassic] = 2.5f;  // Spawn every 2.5 seconds
+    _spawnIntervals[TileType::EnemyElite] = 5.0f;    // Spawn every 5 seconds
+    _spawnIntervals[TileType::EnemyBoss] = 0.0f;     // Manual trigger only
+    
+    // Initialize timers
+    _spawnTimers[TileType::EnemyClassic] = 0.0f;
+    _spawnTimers[TileType::EnemyElite] = 0.0f;
+    _spawnTimers[TileType::EnemyBoss] = 0.0f;
+    
+    std::cout << "[ServerEnemySystem] Initialized with tile-driven spawning system" << std::endl;
 }
 
-bool ServerEnemySystem::loadMap(const std::string& mapDir) {
+// ============================================================================
+// MAP LOADING
+// ============================================================================
+
+bool ServerEnemySystem::loadMap(const std::string &mapName) {
+    std::cout << "[ServerEnemySystem] loadMap() called with: " << mapName << std::endl;
+    
     try {
-        auto& parser = MapParser::getInstance();
-        parser.loadFromDirectory(mapDir);
+        auto &parser = MapParser::getInstance();
+        std::cout << "[ServerEnemySystem] Calling MapParser::loadFromDirectory()..." << std::endl;
+        const auto& allTiles = parser.loadFromDirectory(mapName);
         
-        // Get all tiles by type
+        if (allTiles.empty()) {
+            std::cerr << "[ServerEnemySystem] MapParser returned no tiles for map: " << mapName << std::endl;
+            return false;
+        }
+        
+        std::cout << "[ServerEnemySystem] MapParser succeeded (" << allTiles.size() << " total tiles), extracting enemy spawns..." << std::endl;
+
+        // Classify enemy spawns by type
         _classicEnemySpawns = parser.getTilesByType(TileType::EnemyClassic);
         _eliteEnemySpawns = parser.getTilesByType(TileType::EnemyElite);
         _bossSpawns = parser.getTilesByType(TileType::EnemyBoss);
         
-        std::cout << "SERVER: Loaded map " << mapDir << " with:"
-                  << "\n  Classic enemy spawns: " << _classicEnemySpawns.size()
-                  << "\n  Elite enemy spawns: " << _eliteEnemySpawns.size()
-                  << "\n  Boss spawns: " << _bossSpawns.size() << std::endl;
+        std::cout << "[ServerEnemySystem] Loaded map '" << mapName << "' successfully:" << std::endl;
+        std::cout << "  - Classic enemy spawns: " << _classicEnemySpawns.size() << std::endl;
+        std::cout << "  - Elite enemy spawns: " << _eliteEnemySpawns.size() << std::endl;
+        std::cout << "  - Boss spawns: " << _bossSpawns.size() << std::endl;
+        
+        // Log sample metadata from first classic enemy if available
+        if (!_classicEnemySpawns.empty()) {
+            const auto& tile = _classicEnemySpawns[0];
+            std::cout << "  - Sample Classic Enemy Metadata:" << std::endl;
+            for (const auto& [key, value] : tile.definition.metadata) {
+                std::cout << "      " << key << ": " << value << std::endl;
+            }
+        }
         
         _mapLoaded = true;
-        _nextClassicIndex = 0;
-        _nextEliteIndex = 0;
-        _nextBossIndex = 0;
-        
         return true;
-    } catch (const std::exception& e) {
-        std::cerr << "SERVER: Error loading map: " << e.what() << std::endl;
-        _mapLoaded = false;
+        
+    } catch (const std::exception &e) {
+        std::cerr << "[ServerEnemySystem] Exception loading map '" << mapName << "': " << e.what() << std::endl;
         return false;
     }
 }
 
-std::pair<float, float> ServerEnemySystem::getSpawnPosition(
-    const std::vector<Tile>& tiles,
-    size_t& index,
-    float defaultX,
-    float defaultY
-) {
-    if (tiles.empty()) {
-        // Fallback: return default position
-        return {defaultX, defaultY};
-    }
-    
-    // Get tile at current index
-    const auto& tile = tiles[index];
-    
-    // Increment and wrap index for next spawn
-    index = (index + 1) % tiles.size();
-    
-    // Convert tile coordinates to screen position
-    // Assuming each tile is 32x32 pixels (adjust as needed)
-    constexpr float TILE_SIZE = 32.0f;
-    // Place tile X relative to a default spawn X (typically off-screen to the right)
-    // This ensures map-defined tiles (which are column indices) spawn off-screen instead
-    // of at the left edge (x==0).
-    float x = defaultX + tile.x * TILE_SIZE;
-    // For Y, use defaultY as the top offset and add tile row * TILE_SIZE so map rows
-    // map to vertical positions relative to the playable area.
-    float y = defaultY + tile.y * TILE_SIZE;
-    
-    return {x, y};
-}
+// ============================================================================
+// MAIN UPDATE LOOP
+// ============================================================================
 
-void ServerEnemySystem::readEnemyStats(const Tile& tile, int& outHp, float& outVx) {
-    // Default values
-    outHp = 1;
-    outVx = -100.0f;
-    
-    // Read from tile metadata if available
-    auto& metadata = tile.definition.metadata;
-    
-    auto hpIt = metadata.find("health");
-    if (hpIt != metadata.end()) {
-        try {
-            outHp = std::stoi(hpIt->second);
-        } catch (...) {
-            std::cerr << "SERVER: Invalid health value in tile metadata: " << hpIt->second << std::endl;
+void ServerEnemySystem::Update(ECS::World &world, float deltaTime) {
+    // Check if there's at least one active game room
+    auto *rooms = world.GetAllComponents<rtype::server::components::RoomProperties>();
+    bool hasActiveGame = false;
+    if (rooms) {
+        for (auto &pair : *rooms) {
+            if (pair.second && pair.second->isGameStarted) {
+                hasActiveGame = true;
+                break;
+            }
         }
     }
-    
-    auto speedIt = metadata.find("speed");
-    if (speedIt != metadata.end()) {
-        try {
-            outVx = -std::stof(speedIt->second); // Negative for left movement
-        } catch (...) {
-            std::cerr << "SERVER: Invalid speed value in tile metadata: " << speedIt->second << std::endl;
+
+    // Debug: Log state periodically (every 5 seconds)
+    static float debugTimer = 0.0f;
+    debugTimer += deltaTime;
+    if (debugTimer >= 5.0f) {
+        debugTimer = 0.0f;
+        std::cout << "[ServerEnemySystem] Status:" << std::endl;
+        std::cout << "  - Map loaded: " << (_mapLoaded ? "YES" : "NO") << std::endl;
+        std::cout << "  - Active game: " << (hasActiveGame ? "YES" : "NO") << std::endl;
+        if (_mapLoaded) {
+            std::cout << "  - Classic spawns: " << _classicEnemySpawns.size() << std::endl;
+            std::cout << "  - Elite spawns: " << _eliteEnemySpawns.size() << std::endl;
+            std::cout << "  - Classic timer: " << _spawnTimers[TileType::EnemyClassic] 
+                      << "/" << _spawnIntervals[TileType::EnemyClassic] << std::endl;
+            std::cout << "  - Elite timer: " << _spawnTimers[TileType::EnemyElite] 
+                      << "/" << _spawnIntervals[TileType::EnemyElite] << std::endl;
         }
     }
-}
 
-void ServerEnemySystem::updatePhase(float deltaTime)
-{
-    _levelTimer += deltaTime;
-    if (_levelTimer < 60.0f) {
-        _phase = EnemySpawnPhase::OnlyBasic;
-    } else if (_levelTimer < 180.0f) {
-        _phase = EnemySpawnPhase::BasicAndAdvanced;
-    } else {
-        _phase = EnemySpawnPhase::BossAndAll;
+    // Only run enemy spawning logic if game is active and map is loaded
+    if (hasActiveGame && _mapLoaded) {
+        updateEnemySpawning(world, deltaTime);
+    } else if (hasActiveGame && !_mapLoaded) {
+        static bool warnedOnce = false;
+        if (!warnedOnce) {
+            std::cerr << "[ServerEnemySystem] WARNING: Game is active but no map is loaded!" << std::endl;
+            warnedOnce = true;
+        }
     }
+
+    // Always update player state broadcast (needed even in lobby)
+    updatePlayerStateBroadcast(world, deltaTime);
+    cleanupDeadEntities(world);
 }
 
 // ============================================================================
-// PRIVATE METHODS - Boss Spawning
+// TILE-DRIVEN ENEMY SPAWNING
 // ============================================================================
 
-void ServerEnemySystem::spawnBoss(ECS::World& world, ECS::EntityID room, rtype::common::components::EnemyType bossType) {
-    // Determine spawn position based on map or fallback to default
-    float spawnX, spawnY;
-    int hp = 50;
-    float vx = -50.0f;
-    
-    if (_mapLoaded && !_bossSpawns.empty()) {
-        // Use map-driven boss spawn
-        auto pos = getSpawnPosition(_bossSpawns, _nextBossIndex, 1280.0f - 100.0f, 360.0f);
-        spawnX = pos.first;
-        spawnY = pos.second;
-        
-        // Read stats from tile if available
-        size_t tileIdx = (_nextBossIndex == 0) ? _bossSpawns.size() - 1 : _nextBossIndex - 1;
-        readEnemyStats(_bossSpawns[tileIdx], hp, vx);
-    } else {
-        // Fallback: use hardcoded center position
-        spawnX = 1280.0f - 100.0f;
-        spawnY = 360.0f; // Center Y of 720p screen
-    }
-
-    // Create boss entity on server world
-    auto boss = world.CreateEntity();
-    world.AddComponent<rtype::common::components::Position>(boss, spawnX, spawnY, 0.0f);
-    world.AddComponent<rtype::common::components::Velocity>(boss, vx, 0.0f, std::abs(vx));
-    world.AddComponent<rtype::common::components::Health>(boss, hp);
-    world.AddComponent<rtype::common::components::Team>(boss, rtype::common::components::TeamType::Enemy);
-    world.AddComponent<rtype::common::components::EnemyTypeComponent>(boss, rtype::common::components::EnemyType::Boss);
-
-    std::cout << "SERVER: Spawning boss (id=" << boss << ") in room " << room 
-              << " at (" << spawnX << ", " << spawnY << ") with " << hp << " HP" << std::endl;
-
-    // Build SpawnEnemyPacket for boss
-    SpawnEnemyPacket pkt{};
-    pkt.enemyId = static_cast<uint32_t>(boss);
-    pkt.enemyType = static_cast<uint16_t>(rtype::common::components::EnemyType::Boss);
-    pkt.x = spawnX;
-    pkt.y = spawnY;
-    pkt.hp = hp;
-
-    // Send to all players in the room
-    auto players = world.GetAllComponents<rtype::common::components::Player>();
-    if (!players) return;
-    for (auto &pp : *players) {
-        ECS::EntityID pid = pp.first;
-        auto *pconn = world.GetComponent<rtype::server::components::PlayerConn>(pid);
-        if (!pconn) continue;
-        if (pconn->room_code != room) continue;
-        pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), SPAWN_ENEMY, nullptr, true);
-        std::cout << "SERVER: Sent boss spawn packet to player " << pid << std::endl;
-    }
-}
-
-void ServerEnemySystem::updateBossSpawning(ECS::World& world, float deltaTime) {
-    // Only spawn boss if phase is BossAndAll and not already spawned
-    if (_phase != EnemySpawnPhase::BossAndAll || _bossSpawned)
-        return;
-
-    auto *rooms = root.world.GetAllComponents<rtype::server::components::RoomProperties>();
+void ServerEnemySystem::updateEnemySpawning(ECS::World& world, float deltaTime) {
+    // Get all active game rooms
+    auto *rooms = world.GetAllComponents<rtype::server::components::RoomProperties>();
     if (!rooms) return;
+
+    // Update spawn timers ONCE per update, not per room
+    for (auto& [tileType, timer] : _spawnTimers) {
+        timer += deltaTime;
+    }
+
+    // Check if we should spawn classic enemies
+    bool shouldSpawnClassic = !_classicEnemySpawns.empty() && 
+                               _spawnTimers[TileType::EnemyClassic] >= _spawnIntervals[TileType::EnemyClassic];
+    
+    // Check if we should spawn elite enemies
+    bool shouldSpawnElite = !_eliteEnemySpawns.empty() && 
+                             _spawnTimers[TileType::EnemyElite] >= _spawnIntervals[TileType::EnemyElite];
+
+    // If nothing to spawn, return early
+    if (!shouldSpawnClassic && !shouldSpawnElite) return;
+
+    // Spawn enemies for each active room
     for (auto &pair : *rooms) {
         ECS::EntityID room = pair.first;
         if (!pair.second) continue;
         auto *rp = pair.second.get();
         if (!rp || !rp->isGameStarted) continue;
 
-        // Check if a boss already exists in this room
-        bool bossExists = false;
-        auto* enemyTypes = root.world.GetAllComponents<rtype::common::components::EnemyTypeComponent>();
-        if (enemyTypes) {
-            for (auto& etPair : *enemyTypes) {
-                auto* et = etPair.second.get();
-                if (et && et->type == rtype::common::components::EnemyType::Boss) {
-                    auto* health = root.world.GetComponent<rtype::common::components::Health>(etPair.first);
-                    if (health && health->isAlive && health->currentHp > 0) {
-                        bossExists = true;
-                        break;
-                    }
-                }
-            }
+        // Spawn classic enemy in this room
+        if (shouldSpawnClassic) {
+            const Tile& tile = _classicEnemySpawns[_nextClassicIndex];
+            spawnEnemyFromTile(world, room, tile);
         }
-        if (!bossExists) {
-            spawnBoss(world, room, rtype::common::components::EnemyType::Boss);
-            _bossSpawned = true;
+
+        // Spawn elite enemy in this room
+        if (shouldSpawnElite) {
+            const Tile& tile = _eliteEnemySpawns[_nextEliteIndex];
+            spawnEnemyFromTile(world, room, tile);
+        }
+    }
+
+    // Reset timers and advance indices AFTER spawning in all rooms
+    if (shouldSpawnClassic) {
+        _nextClassicIndex = (_nextClassicIndex + 1) % _classicEnemySpawns.size();
+        _spawnTimers[TileType::EnemyClassic] = 0.0f;
+        std::cout << "[ServerEnemySystem] Classic spawn timer reset, next index: " << _nextClassicIndex << std::endl;
+    }
+
+    if (shouldSpawnElite) {
+        _nextEliteIndex = (_nextEliteIndex + 1) % _eliteEnemySpawns.size();
+        _spawnTimers[TileType::EnemyElite] = 0.0f;
+        std::cout << "[ServerEnemySystem] Elite spawn timer reset, next index: " << _nextEliteIndex << std::endl;
+    }
+}
+
+void ServerEnemySystem::spawnEnemyFromTile(ECS::World& world, ECS::EntityID room, const Tile& tile) {
+    // Read all stats from tile metadata
+    int hp = 1;
+    float vx = -100.0f;
+    int damage = 1;
+    float fireRate = 2.5f;
+    readTileStats(tile, hp, vx, damage, fireRate);
+    
+    // Determine enemy type from metadata
+    rtype::common::components::EnemyType enemyType = getEnemyTypeFromTile(tile);
+    
+    // Calculate spawn position
+    // Tile coordinates are used as base, but we add some randomization
+    constexpr float TILE_SIZE = 32.0f;
+    constexpr float SPAWN_X_BASE = 1280.0f + 24.0f; // Right edge + padding
+    constexpr float SCREEN_MIN_Y = 50.0f;
+    constexpr float SCREEN_MAX_Y = 670.0f;
+    
+    float spawnX = SPAWN_X_BASE;
+    
+    // Use tile.y as a guide, but add randomization for variety
+    // This prevents all enemies from spawning at exact tile boundaries
+    float baseY = 100.0f + tile.y * (SCREEN_MAX_Y - SCREEN_MIN_Y) / 7.0f; // Distribute across 7 rows
+    float randomOffset = (static_cast<float>(std::rand() % 60) - 30.0f); // ±30px random
+    float spawnY = baseY + randomOffset;
+    
+    // Clamp Y position to screen bounds (assuming 720p)
+    if (spawnY < SCREEN_MIN_Y) spawnY = SCREEN_MIN_Y;
+    if (spawnY > SCREEN_MAX_Y) spawnY = SCREEN_MAX_Y;
+    
+    // Create enemy entity
+    auto enemy = world.CreateEntity();
+    world.AddComponent<rtype::common::components::Position>(enemy, spawnX, spawnY, 0.0f);
+    world.AddComponent<rtype::common::components::Velocity>(enemy, vx, 0.0f, std::abs(vx));
+    world.AddComponent<rtype::common::components::Health>(enemy, hp);
+    world.AddComponent<rtype::common::components::Team>(enemy, rtype::common::components::TeamType::Enemy);
+    world.AddComponent<rtype::common::components::EnemyTypeComponent>(enemy, enemyType);
+    world.AddComponent<rtype::server::components::LinkedRoom>(enemy, room);
+    
+    // Add shield if specified in metadata
+    auto& metadata = tile.definition.metadata;
+    auto shieldIt = metadata.find("has_shield");
+    if (shieldIt != metadata.end()) {
+        if (shieldIt->second == "cyclic") {
+            world.AddComponent<rtype::common::components::ShieldComponent>(
+                enemy, rtype::common::components::ShieldType::Cyclic, true
+            );
+            std::cout << "[ServerEnemySystem] Added cyclic shield to enemy " << enemy << std::endl;
+        } else if (shieldIt->second == "red") {
+            // Red shield requires charged shots
+            world.AddComponent<rtype::common::components::ShieldComponent>(
+                enemy, rtype::common::components::ShieldType::Red, true, 2
+            );
+            std::cout << "[ServerEnemySystem] Added red shield to enemy " << enemy 
+                      << " (requires 2 charged hits)" << std::endl;
+        }
+    }
+    
+    std::cout << "[ServerEnemySystem] Spawned " << tileTypeToString(tile.type) 
+              << " enemy type=" << (int)enemyType 
+              << " id=" << enemy 
+              << " at (" << spawnX << ", " << spawnY << ")"
+              << " hp=" << hp 
+              << " in room " << room << std::endl;
+    
+    // Broadcast spawn to all clients in the room
+    rtype::server::network::senders::broadcast_enemy_spawn(
+        room, static_cast<uint32_t>(enemy), enemyType, spawnX, spawnY, hp
+    );
+}
+
+// ============================================================================
+// TILE METADATA PARSING
+// ============================================================================
+
+rtype::common::components::EnemyType ServerEnemySystem::getEnemyTypeFromTile(const Tile& tile) const {
+    auto& metadata = tile.definition.metadata;
+    auto typeIt = metadata.find("enemy_type");
+    
+    if (typeIt == metadata.end()) {
+        std::cerr << "[ServerEnemySystem] WARNING: No enemy_type in tile metadata, defaulting to Basic" << std::endl;
+        return rtype::common::components::EnemyType::Basic;
+    }
+    
+    const std::string& typeStr = typeIt->second;
+    
+    // Map string to enum
+    if (typeStr == "Basic") return rtype::common::components::EnemyType::Basic;
+    if (typeStr == "Snake") return rtype::common::components::EnemyType::Snake;
+    if (typeStr == "Suicide") return rtype::common::components::EnemyType::Suicide;
+    if (typeStr == "Pata") return rtype::common::components::EnemyType::Pata;
+    if (typeStr == "Shielded") return rtype::common::components::EnemyType::Shielded;
+    if (typeStr == "Flanker") return rtype::common::components::EnemyType::Flanker;
+    if (typeStr == "Turret") return rtype::common::components::EnemyType::Turret;
+    if (typeStr == "Waver") return rtype::common::components::EnemyType::Waver;
+    if (typeStr == "TankDestroyer") return rtype::common::components::EnemyType::TankDestroyer;
+    if (typeStr == "Serpent") return rtype::common::components::EnemyType::Serpent;
+    if (typeStr == "Fortress") return rtype::common::components::EnemyType::Fortress;
+    if (typeStr == "Core") return rtype::common::components::EnemyType::Core;
+    
+    std::cerr << "[ServerEnemySystem] WARNING: Unknown enemy_type '" << typeStr 
+              << "', defaulting to Basic" << std::endl;
+    return rtype::common::components::EnemyType::Basic;
+}
+
+void ServerEnemySystem::readTileStats(const Tile& tile, int& outHp, float& outVx, 
+                                       int& outDamage, float& outFireRate) const {
+    // Default values
+    outHp = 1;
+    outVx = -100.0f;
+    outDamage = 1;
+    outFireRate = 2.5f;
+    
+    auto& metadata = tile.definition.metadata;
+    
+    // Read health
+    auto hpIt = metadata.find("health");
+    if (hpIt != metadata.end()) {
+        try {
+            outHp = std::stoi(hpIt->second);
+        } catch (...) {
+            std::cerr << "[ServerEnemySystem] Invalid health value: " << hpIt->second << std::endl;
+        }
+    }
+    
+    // Read speed (negative for left movement)
+    auto speedIt = metadata.find("speed");
+    if (speedIt != metadata.end()) {
+        try {
+            outVx = -std::stof(speedIt->second);
+        } catch (...) {
+            std::cerr << "[ServerEnemySystem] Invalid speed value: " << speedIt->second << std::endl;
+        }
+    }
+    
+    // Read damage
+    auto damageIt = metadata.find("damage");
+    if (damageIt != metadata.end()) {
+        try {
+            outDamage = std::stoi(damageIt->second);
+        } catch (...) {
+            std::cerr << "[ServerEnemySystem] Invalid damage value: " << damageIt->second << std::endl;
+        }
+    }
+    
+    // Read fire rate
+    auto fireRateIt = metadata.find("fire_rate");
+    if (fireRateIt != metadata.end()) {
+        try {
+            outFireRate = std::stof(fireRateIt->second);
+        } catch (...) {
+            std::cerr << "[ServerEnemySystem] Invalid fire_rate value: " << fireRateIt->second << std::endl;
         }
     }
 }
 
 // ============================================================================
-// PRIVATE METHODS - Regular Enemy Spawning
-// ============================================================================
-
-void ServerEnemySystem::updateEnemySpawning(ECS::World& world, float deltaTime) {
-    // For each enemy type in config, check timer and spawn if needed
-    for (auto& [type, config] : _enemyConfigs) {
-        config.timer += deltaTime;
-        if (config.timer < config.interval)
-            continue;
-        config.timer = 0.0f;
-
-        // Only spawn types allowed in current phase
-        bool spawnAllowed = false;
-        switch (_phase) {
-            case EnemySpawnPhase::OnlyBasic:
-                // TO DO: change basic enemy type
-                spawnAllowed = (type == rtype::common::components::EnemyType::Basic);
-                //spawnAllowed = (type == rtype::common::components::EnemyType::Snake);
-                //spawnAllowed = (type == rtype::common::components::EnemyType::Suicide);
-                //spawnAllowed = (type == rtype::common::components::EnemyType::Turret);
-                break;
-            case EnemySpawnPhase::BasicAndAdvanced:
-                // TO DO: change advanced enemy type
-                spawnAllowed = (type == rtype::common::components::EnemyType::Basic || type == rtype::common::components::EnemyType::Shooter);
-                break;
-            case EnemySpawnPhase::BossAndAll:
-                // TO DO: change boss type
-                spawnAllowed = (type != rtype::common::components::EnemyType::Boss);
-                break;
-        }
-        if (!spawnAllowed) continue;
-
-        // For each room that has started the game, spawn enemy of this type
-        auto *rooms = root.world.GetAllComponents<rtype::server::components::RoomProperties>();
-        if (!rooms) continue;
-        for (auto &pair : *rooms) {
-            ECS::EntityID room = pair.first;
-            if (!pair.second) continue;
-            auto *rp = pair.second.get();
-            if (!rp || !rp->isGameStarted) continue;
-            spawnEnemy(world, room, type);
-        }
-    }
-}
-
-// ============================================================================
-// PRIVATE METHODS - Player State Broadcasting
+// PLAYER STATE BROADCASTING
 // ============================================================================
 
 void ServerEnemySystem::updatePlayerStateBroadcast(ECS::World& world, float deltaTime)
@@ -301,44 +379,51 @@ void ServerEnemySystem::updatePlayerStateBroadcast(ECS::World& world, float delt
     for (auto &roomPair : *rooms) {
         ECS::EntityID room = roomPair.first;
         auto *rp = roomPair.second.get();
-        if (!rp || !rp->isGameStarted) continue; // Skip rooms still in lobby
+        if (!rp || !rp->isGameStarted) continue;
 
         auto players = world.GetAllComponents<rtype::common::components::Player>();
         if (!players) continue;
         
         for (auto &pair : *players) {
             ECS::EntityID pid = pair.first;
+
+            // Determine the room for this player entity
+            ECS::EntityID playerRoom = 0;
             auto* pconn = world.GetComponent<rtype::server::components::PlayerConn>(pid);
-            if (!pconn || pconn->room_code != room) continue; // Skip players not in this room
+            if (pconn) {
+                playerRoom = pconn->room_code;
+            } else {
+                auto* linked = world.GetComponent<rtype::server::components::LinkedRoom>(pid);
+                if (linked) playerRoom = linked->room_id;
+            }
+            if (playerRoom != room) continue;
 
             auto* pos = world.GetComponent<rtype::common::components::Position>(pid);
             auto* health = world.GetComponent<rtype::common::components::Health>(pid);
+            if (!pos || !health) continue;
 
-            PlayerStatePacket s{};
-            s.playerId = static_cast<uint32_t>(pid);
-            s.x = pos ? pos->x : 0.0f;
-            s.y = pos ? pos->y : 0.0f;
-            s.dir = pos ? pos->rotation : 0.0f;
-            s.hp = health ? static_cast<uint16_t>(health->currentHp) : 0;
-            s.isAlive = health ? health->isAlive : false;
-
-            // Send this player's state to everyone in the same room
+            // Send this player's state to every networked client in the same room
             auto allPlayers = world.GetAllComponents<rtype::common::components::Player>();
             if (!allPlayers) continue;
             for (auto &pp : *allPlayers) {
                 ECS::EntityID other = pp.first;
+                auto* other_room = world.GetComponent<rtype::server::components::LinkedRoom>(other);
+                if (!other_room) continue;
+                if (other_room->room_id != room) continue;
+
                 auto* otherConn = world.GetComponent<rtype::server::components::PlayerConn>(other);
                 if (!otherConn) continue;
-                // restrict to same room
-                if (otherConn->room_code != room) continue;
-                otherConn->packet_manager.sendPacketBytesSafe(&s, sizeof(s), PLAYER_STATE, nullptr, true);
+
+                rtype::server::network::senders::send_player_state(
+                    other, pid, pos->x, pos->y, pos->rotation, health->currentHp, health->isAlive
+                );
             }
         }
     }
 }
 
 // ============================================================================
-// PRIVATE METHODS - Entity Cleanup
+// ENTITY CLEANUP
 // ============================================================================
 
 void ServerEnemySystem::cleanupDeadEntities(ECS::World& world) {
@@ -351,129 +436,15 @@ void ServerEnemySystem::cleanupDeadEntities(ECS::World& world) {
         auto* h = pair.second.get();
         if (!h) continue;
         if (!h->isAlive || h->currentHp <= 0) {
-            EntityDestroyPacket pkt{};
-            pkt.entityId = static_cast<uint32_t>(eid);
-            pkt.reason = 1; // killed
-
-            // Broadcast destroy packet to all players in the world (could restrict by room)
-            auto allPlayers = world.GetAllComponents<rtype::common::components::Player>();
-            if (allPlayers) {
-                for (auto &pp : *allPlayers) {
-                    ECS::EntityID pid = pp.first;
-                    auto* pconn = world.GetComponent<rtype::server::components::PlayerConn>(pid);
-                    if (!pconn) continue;
-                    pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), ENTITY_DESTROY, nullptr, true);
-                }
-            }
-
+            auto room = world.GetComponent<rtype::server::components::LinkedRoom>(eid);
+            if (room)
+                rtype::server::network::senders::broadcast_entity_destroy(
+                    room->room_id, static_cast<uint32_t>(eid), 1
+                );
             toDestroy.push_back(eid);
         }
     }
     for (auto e : toDestroy) {
         world.DestroyEntity(e);
-    }
-}
-
-// ============================================================================
-// PRIVATE METHODS - Boss Spawning Helper
-// ============================================================================
-
-void ServerEnemySystem::spawnEnemy(ECS::World& world, ECS::EntityID room, rtype::common::components::EnemyType type) {
-    // Determine spawn position based on map or fallback to defaults
-    float spawnX, spawnY;
-    int hp = 1;
-    float vx = -100.0f;
-    
-    if (_mapLoaded) {
-        // Use map-driven spawning
-        switch (type) {
-            case rtype::common::components::EnemyType::Basic:
-            case rtype::common::components::EnemyType::Snake:
-            case rtype::common::components::EnemyType::Suicide: {
-                // Use classic enemy spawns
-                // Use a fixed vertical base (100.0f) so tile.row maps deterministically to screen Y
-                auto pos = getSpawnPosition(_classicEnemySpawns, _nextClassicIndex, 1280.0f + 24.0f, 100.0f);
-                spawnX = pos.first;
-                spawnY = pos.second;
-                
-                // Read stats from tile if available
-                if (!_classicEnemySpawns.empty()) {
-                    size_t tileIdx = (_nextClassicIndex == 0) ? _classicEnemySpawns.size() - 1 : _nextClassicIndex - 1;
-                    readEnemyStats(_classicEnemySpawns[tileIdx], hp, vx);
-                }
-                break;
-            }
-            case rtype::common::components::EnemyType::Turret:
-            case rtype::common::components::EnemyType::Shooter: {
-                // Use elite enemy spawns
-                auto pos = getSpawnPosition(_eliteEnemySpawns, _nextEliteIndex, 1280.0f + 24.0f, 100.0f);
-                spawnX = pos.first;
-                spawnY = pos.second;
-                
-                // Read stats from tile if available
-                if (!_eliteEnemySpawns.empty()) {
-                    size_t tileIdx = (_nextEliteIndex == 0) ? _eliteEnemySpawns.size() - 1 : _nextEliteIndex - 1;
-                    readEnemyStats(_eliteEnemySpawns[tileIdx], hp, vx);
-                }
-                break;
-            }
-            default:
-                // Fallback for unknown types
-                spawnX = 1280.0f + 24.0f;
-                spawnY = 100.0f + (rand() % 520);
-                break;
-        }
-    } else {
-        // Fallback: use hardcoded positions and stats
-        spawnX = 1280.0f + 24.0f;
-        spawnY = 100.0f + (rand() % 520);
-        
-        // Hardcoded stats for each mob type
-        switch (type) {
-            case rtype::common::components::EnemyType::Basic:
-                hp = 1; vx = -100.0f;
-                break;
-            case rtype::common::components::EnemyType::Snake:
-                hp = 2; vx = -110.0f;
-                break;
-            case rtype::common::components::EnemyType::Suicide:
-                hp = 1; vx = -130.0f;
-                break;
-            case rtype::common::components::EnemyType::Turret:
-                hp = 3; vx = -80.0f;
-                break;
-            case rtype::common::components::EnemyType::Shooter:
-                hp = 3; vx = -120.0f;
-                break;
-            case rtype::common::components::EnemyType::Boss:
-                hp = 50; vx = -50.0f;
-                break;
-            default:
-                break;
-        }
-    }
-
-    auto enemy = root.world.CreateEntity();
-    root.world.AddComponent<rtype::common::components::Position>(enemy, spawnX, spawnY, 0.0f);
-    root.world.AddComponent<rtype::common::components::Velocity>(enemy, vx, 0.0f, std::abs(vx));
-    root.world.AddComponent<rtype::common::components::Health>(enemy, hp);
-    root.world.AddComponent<rtype::common::components::Team>(enemy, rtype::common::components::TeamType::Enemy);
-    root.world.AddComponent<rtype::common::components::EnemyTypeComponent>(enemy, type);
-
-    SpawnEnemyPacket pkt{};
-    pkt.enemyId = static_cast<uint32_t>(enemy);
-    pkt.enemyType = static_cast<uint16_t>(type);
-    pkt.x = spawnX;
-    pkt.y = spawnY;
-    pkt.hp = hp;
-
-    auto players = root.world.GetAllComponents<rtype::common::components::Player>();
-    if (!players) return;
-    for (auto &pp : *players) {
-        ECS::EntityID pid = pp.first;
-        auto *pconn = root.world.GetComponent<rtype::server::components::PlayerConn>(pid);
-        if (!pconn) continue;
-        if (pconn->room_code != room) continue;
-        pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), SPAWN_ENEMY, nullptr, true);
     }
 }

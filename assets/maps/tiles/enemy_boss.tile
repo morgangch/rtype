@@ -4,7 +4,8 @@
 sprite: ./assets/sprites/BasicEnemy/boss.png
 
 /// Metadata
-health: 30
+enemy_type: TankDestroyer
+health: 50
 damage: 3
 speed: 50
 fire_rate: 1.0

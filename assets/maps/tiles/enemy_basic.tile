@@ -4,6 +4,7 @@
 sprite: ./assets/sprites/BasicEnemy/basic_enemy.png
 
 /// Metadata
+enemy_type: Basic
 health: 1
 damage: 1
 speed: 100

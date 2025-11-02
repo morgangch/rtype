@@ -1,0 +1,18 @@
+/// Shielded enemy - has cyclic shield protection
+sprite: ./assets/sprites/BasicEnemy/shielded_enemy.png
+
+/// Metadata
+enemy_type: Shielded
+health: 4
+damage: 2
+speed: 90
+fire_rate: 2.0
+has_shield: cyclic
+
+SCRIPT_BEGIN
+MOVE LEFT 90
+FIRE LEFT 2.0
+COLLISION_MASK PLAYER PLAYER_PROJECTILE
+ON_DEATH SPAWN_ITEM power_up 0.3
+ON_DEATH SPAWN_ITEM shield 0.2
+SCRIPT_END

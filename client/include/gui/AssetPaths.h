@@ -36,10 +36,21 @@ namespace rtype::client::assets {
      * @brief Enemy sprite paths
      */
     namespace enemies {
-        constexpr const char* BASIC_ENEMY_1 = "assets/sprites/BasicEnemy/BASICENEMY_1.gif";
-        constexpr const char* BASIC_ENEMY_2 = "assets/sprites/BasicEnemy/BASICENEMY_2.gif";
-        constexpr const char* BASIC_ENEMY_3 = "assets/sprites/BasicEnemy/BASICENEMY_3.gif";
-        constexpr const char* BASIC_ENEMY_4 = "assets/sprites/BasicEnemy/BASICENEMY_4.gif";
+        // Basic enemies
+        constexpr const char* BASIC_ENEMY_1 = "assets/sprites/BasicEnemy/BASIC_ENEMY_1.gif";  // Basic
+        constexpr const char* BASIC_ENEMY_2 = "assets/sprites/BasicEnemy/BASIC_ENEMY_2.gif";  // Snake, Suicide
+        constexpr const char* BASIC_ENEMY_3 = "assets/sprites/BasicEnemy/BASIC_ENEMY_1.gif";  // Pata (reuse BASIC_1)
+
+        // Advanced enemies
+        constexpr const char* ADVANCED_ENEMY_1 = "assets/sprites/BasicEnemy/ADVANCED_ENEMY_1.gif";  // Shielded, Waver
+        constexpr const char* ADVANCED_ENEMY_2 = "assets/sprites/BasicEnemy/BASIC_ENEMY_2.gif";     // Flanker (reuse BASIC_2)
+        constexpr const char* ADVANCED_ENEMY_3 = "assets/sprites/BasicEnemy/ADVANCED_ENEMY_1.gif";  // Bomber (reuse ADVANCED_1)
+
+        // Boss enemies
+        constexpr const char* BOSS_ENEMY_1 = "assets/sprites/BasicEnemy/BOSS_ENEMY_1.gif";  // TankDestroyer
+        constexpr const char* BOSS_ENEMY_2 = "assets/sprites/BasicEnemy/BOSS_ENEMY_1.gif";  // Serpent (reuse BOSS_1)
+        constexpr const char* BOSS_ENEMY_3 = "assets/sprites/BasicEnemy/BOSS_ENEMY_1.gif";  // Fortress (reuse BOSS_1)
+        constexpr const char* BOSS_ENEMY_4 = "assets/sprites/BasicEnemy/BOSS_ENEMY_1.gif";  // Core (reuse BOSS_1)
     }
 
     /**
@@ -71,6 +82,16 @@ namespace rtype::client::assets {
      */
     namespace maps {
         constexpr const char* DEFAULT_MAP = "assets/maps/default.def";
+    }
+
+    /**
+     * @brief UI icon paths
+     */
+    namespace ui {
+        constexpr const char* SETTINGS_GEAR = "assets/sprites/Settings/MetalGear.png";
+        constexpr const char* BUTTON = "assets/sprites/Buttons/Button.png";
+        constexpr const char* RETURN_BUTTON = "assets/sprites/Buttons/Return.png";
+        constexpr const char* READY_BUTTON = "assets/sprites/Buttons/Ready.png";
     }
 
 } // namespace rtype::client::assets

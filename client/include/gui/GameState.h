@@ -35,6 +35,7 @@
 #include <functional>
 #include "MusicManager.h"
 #include "SoundManager.h"
+#include "HighscoreManager.h"
 
 namespace rtype::client::gui {
 
@@ -89,20 +90,94 @@ namespace rtype::client::gui {
         /**
          * @brief Handle a key pressed event
          * @param key SFML key code
+         * 
+         * Maps keys to configured actions via SettingsConfig. Uses helper methods
+         * for charged shot workflow. Handles reserved keys (Escape for pause, B for boss spawn).
          */
         void handleKeyPressed(sf::Keyboard::Key key);
 
         /**
          * @brief Handle a key released event
          * @param key SFML key code
+         * 
+         * Maps keys to configured actions via SettingsConfig. Uses helper methods
+         * for charged shot release workflow.
          */
         void handleKeyReleased(sf::Keyboard::Key key);
 
         /**
          * @brief Handle input specific to in-game menus
          * @param event The SFML event to handle
+         * 
+         * Processes keyboard and mouse input for pause/game-over menu navigation.
          */
         void handleMenuInput(const sf::Event& event);
+
+        /**
+         * @brief Handle joystick axis movement with deadzone and secondary binding support
+         * @param event The joystick axis movement event
+         * 
+         * Encodes axis movements as 30000 + axisIndex*10 + dir(0=neg,1=pos) and checks
+         * against secondary bindings. Falls back to common X/Y mapping if not consumed.
+         */
+        void handleJoystickAxis(const sf::Event& event);
+
+        /**
+         * @brief Handle joystick button press events
+         * @param event The joystick button pressed event
+         * 
+         * Encodes buttons as 10000 + button and checks secondary bindings for action mapping.
+         * Button 9 is hardcoded as pause/menu fallback.
+         */
+        void handleJoystickButtonPressed(const sf::Event& event);
+
+        /**
+         * @brief Handle joystick button release events
+         * @param event The joystick button released event
+         * 
+         * Releases mapped actions based on secondary binding configuration.
+         * Triggers charged shot release if mapped to shoot action.
+         */
+        void handleJoystickButtonReleased(const sf::Event& event);
+
+        /**
+         * @brief Handle mouse button press events
+         * @param event The mouse button pressed event
+         * 
+         * Encodes mouse buttons as 20000 + button. Left mouse button always acts
+         * as shoot fallback regardless of secondary binding configuration.
+         */
+        void handleMouseButtonPressed(const sf::Event& event);
+
+        /**
+         * @brief Handle mouse button release events
+         * @param event The mouse button released event
+         * 
+         * Triggers charged shot release workflow for configured or fallback mouse buttons.
+         */
+        void handleMouseButtonReleased(const sf::Event& event);
+
+        /**
+         * @brief Start charging all player charged shots
+         * 
+         * Iterates through all player entities and calls startCharge() on their
+         * ChargedShot component. Helper method to eliminate code duplication across
+         * keyboard, joystick, and mouse input handlers.
+         */
+        void startChargedShot();
+
+        /**
+         * @brief Release charged shots for all players and send to server
+         * 
+         * Handles the complete charged shot release workflow:
+         * - Releases charge and queries if fully charged
+         * - Checks fire rate cooldown
+         * - Sends shoot packet to server with current position
+         * - Plays appropriate sound effect (charged vs regular)
+         * 
+         * Helper method to eliminate code duplication across input handlers.
+         */
+        void releaseChargedShot();
 
         /**
          * @brief Per-frame update called by the StateManager
@@ -175,8 +250,9 @@ namespace rtype::client::gui {
          * @param x X position
          * @param y Y position
          * @param hp Health value
+         * @param invulnerable Invulnerability state from server
          */
-        void updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp);
+        void updateEntityStateFromServer(uint32_t serverId, float x, float y, uint16_t hp, bool invulnerable);
 
         /**
          * @brief Destroy a local entity corresponding to a server entity id
@@ -195,6 +271,12 @@ namespace rtype::client::gui {
          * @param isAdmin True to mark as admin
          */
         void setIsAdmin(bool isAdmin); // Set whether the local player is room admin
+
+        /**
+         * @brief Set in-game score from server and update HUD text
+         * @param newScore Absolute score value as sent by the server
+         */
+        void setScoreFromServer(int newScore);
 
         /**
          * @brief Mute/unmute music
@@ -242,14 +324,22 @@ namespace rtype::client::gui {
         ECS::EntityID createEnemy(float x, float y);
 
         /**
-         * @brief Create a shooter enemy entity
+         * @brief Create a snake-type enemy entity
          * @param x X position
          * @param y Y position
-         * @return Entity ID of the created shooter enemy
+         * @return Entity ID of the created snake enemy
          *
-         * Creates a shooter-type enemy with 3 HP that fires projectiles at regular intervals.
+         * Creates a snake-type enemy with 1 HP that moves in a sine wave pattern.
          */
-        ECS::EntityID createShooterEnemy(float x, float y);
+        ECS::EntityID createSnakeEnemy(float x, float y);
+
+        /**
+         * @brief Create a suicide enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created suicide enemy
+         */
+        ECS::EntityID createSuicideEnemy(float x, float y);
 
         /**
          * @brief Create a boss enemy entity
@@ -259,7 +349,87 @@ namespace rtype::client::gui {
          *
          * Creates a large boss entity with high HP (30) and alternating movement pattern.
          */
-        ECS::EntityID createBoss(float x, float y);
+        ECS::EntityID createTankDestroyer(float x, float y);
+
+        /**
+         * @brief Create a Pata enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Pata enemy
+         *
+         * Creates a Pata-type enemy with moderate HP and unique movement pattern.
+         */
+        ECS::EntityID createPataEnemy(float x, float y);
+
+        /**
+         * @brief Create a Shielded enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Shielded enemy
+         *
+         * Creates a Shielded enemy with protective shield mechanics and higher durability.
+         */
+        ECS::EntityID createShieldedEnemy(float x, float y);
+
+        /**
+         * @brief Create a Flanker enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Flanker enemy
+         *
+         * Creates a Flanker enemy that attempts to outmaneuver the player with agile movement.
+         */
+        ECS::EntityID createFlankerEnemy(float x, float y);
+
+        /**
+         * @brief Create a Turret enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Turret enemy
+         *
+         * Creates a stationary Turret enemy that fires 3-shot bursts aimed at the player.
+         */
+        ECS::EntityID createTurretEnemy(float x, float y);
+
+        /**
+         * @brief Create a Waver enemy entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Waver enemy
+         *
+         * Creates a Waver enemy with wave-pattern movement similar to snake but with distinct behavior.
+         */
+        ECS::EntityID createWaverEnemy(float x, float y);
+
+        /**
+         * @brief Create a Serpent Boss entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Serpent Boss
+         *
+         * Creates a large Serpent boss with segmented body mechanics and high HP pool.
+         */
+        ECS::EntityID createSerpentBoss(float x, float y);
+
+        /**
+         * @brief Create a Fortress Boss entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Fortress Boss
+         *
+         * Creates a stationary Fortress boss with heavy armor and multiple attack patterns.
+         */
+        ECS::EntityID createFortressBoss(float x, float y);
+
+        /**
+         * @brief Create a Core Boss entity
+         * @param x X position
+         * @param y Y position
+         * @return Entity ID of the created Core Boss
+         *
+         * Creates the final Core boss with complex attack phases and maximum difficulty.
+         */
+        ECS::EntityID createCoreBoss(float x, float y);
 
         /**
          * @brief Create a player projectile entity
@@ -293,15 +463,6 @@ namespace rtype::client::gui {
          */
         ECS::EntityID createEnemyProjectile(float x, float y, float vx = -300.0f, float vy = 0.0f);
 
-        /* === ECS System Updates === */
-        /**
-         * @brief Update movement system for all entities with Position and Velocity
-         * @param deltaTime Time elapsed since last frame
-         *
-         * Applies velocity to position for all moving entities.
-         */
-        void updateMovementSystem(float deltaTime);
-
         /**
          * @brief Update input system for player control
          * @param deltaTime Time elapsed since last frame
@@ -317,6 +478,15 @@ namespace rtype::client::gui {
          * Decrements cooldown timers for firing mechanics.
          */
         void updateFireRateSystem(float deltaTime);
+
+        /**
+         * @brief Update enemy AI shooting system with local prediction
+         * @param deltaTime Time elapsed since last frame
+         *
+         * Handles enemy shooting logic locally for immediate feedback.
+         * Server remains authoritative via SPAWN_PROJECTILE packets.
+         */
+        void updateEnemyAISystem(float deltaTime);
 
         /**
          * @brief Update charged shot system for player
@@ -354,14 +524,6 @@ namespace rtype::client::gui {
         void updatePlayerAnimation(ECS::EntityID entity, rtype::client::components::Animation* animation, rtype::client::components::Sprite* sprite, bool isMovingUp);
 
         /**
-         * @brief Update enemy AI behaviors
-         * @param deltaTime Time elapsed since last frame
-         *
-         * Controls enemy firing patterns and movement logic.
-         */
-        void updateEnemyAISystem(float deltaTime);
-
-        /**
          * @brief Update cleanup system for out-of-bounds entities
          * @param deltaTime Time elapsed since last frame
          *
@@ -375,36 +537,6 @@ namespace rtype::client::gui {
          * Orchestrates all collision checks between different entity types.
          */
         void updateCollisionSystem();
-
-        /* === Collision Detection Helpers === */
-        /**
-         * @brief Check collisions between player and enemies
-         * @param positions Component array of all positions
-         * @param getBounds Function to get bounding box from entity and position
-         *
-         * Damages player on enemy collision and handles invulnerability.
-         */
-        void checkPlayerVsEnemiesCollision(ECS::ComponentArray<rtype::common::components::Position>& positions, const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds);
-
-        /**
-         * @brief Check collisions between player projectiles and enemies
-         * @param positions Component array of all positions
-         * @param getBounds Function to get bounding box from entity and position
-         * @param toDestroy Vector to accumulate entities to destroy
-         *
-         * Damages enemies hit by player projectiles and destroys non-piercing projectiles.
-         */
-        void checkPlayerProjectilesVsEnemiesCollision(ECS::ComponentArray<rtype::common::components::Position>& positions, const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds, std::vector<ECS::EntityID>& toDestroy);
-
-        /**
-         * @brief Check collisions between enemy projectiles and player
-         * @param positions Component array of all positions
-         * @param getBounds Function to get bounding box from entity and position
-         * @param toDestroy Vector to accumulate entities to destroy
-         *
-         * Damages player hit by enemy projectiles and destroys the projectiles.
-         */
-        void checkEnemyProjectilesVsPlayerCollision(ECS::ComponentArray<rtype::common::components::Position>& positions, const std::function<sf::FloatRect(ECS::EntityID, const rtype::common::components::Position&)>& getBounds, std::vector<ECS::EntityID>& toDestroy);
 
         /* === Gameplay Logic === */
         /**
@@ -555,6 +687,12 @@ namespace rtype::client::gui {
         sf::Sprite m_fullHeartSprite;
         /// Sprite for empty/lost health heart
         sf::Sprite m_emptyHeartSprite;
+        /// Player score value
+        int m_score{0};
+        /// HUD text for score rendering
+        sf::Text m_scoreText;
+        /// Prevent duplicate save on repeated game-over triggers
+        bool m_scoreSaved{false};
 
         /* === Rendering === */
         /// Parallax background system for scrolling layers

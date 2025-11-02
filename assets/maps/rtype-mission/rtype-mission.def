@@ -1,0 +1,39 @@
+inf,7
+R-Type Mission - Progressive difficulty with all enemy types
+
+/// Parallax background layers (back to front)
+PARALLAX_BEGIN
+./assets/backgrounds/stars_far.png 0.2 0.1 true false
+./assets/backgrounds/stars_mid.png 0.5 0.3 true false
+./assets/backgrounds/stars_near.png 1.0 0.6 true false
+./assets/backgrounds/station_wall.png 1.5 0.9 true true
+PARALLAX_END
+
+/// Player spawn
+P PlayerSpawn ./assets/maps/tiles/player_spawn.tile
+
+/// Empty space (used for dots in map layout)
+. BackgroundElement ./assets/maps/tiles/empty.tile
+
+/// Basic enemies (Classic tier) - These spawn frequently
+1 EnemyClassic ./assets/maps/tiles/enemy_basic.tile
+2 EnemyClassic ./assets/maps/tiles/enemy_basic_snake.tile
+3 EnemyClassic ./assets/maps/tiles/enemy_basic_suicide.tile
+4 EnemyClassic ./assets/maps/tiles/enemy_basic_pata.tile
+
+/// Advanced enemies (Elite tier) - These spawn less frequently
+A EnemyElite ./assets/maps/tiles/enemy_elite.tile
+B EnemyElite ./assets/maps/tiles/enemy_elite_shielded.tile
+C EnemyElite ./assets/maps/tiles/enemy_elite_flanker.tile
+D EnemyElite ./assets/maps/tiles/enemy_elite_turret.tile
+E EnemyElite ./assets/maps/tiles/enemy_elite_waver.tile
+
+/// Boss enemies - Manually triggered or event-based
+T EnemyBoss ./assets/maps/tiles/enemy_boss_tank_destroyer.tile
+S EnemyBoss ./assets/maps/tiles/enemy_boss_serpent.tile
+F EnemyBoss ./assets/maps/tiles/enemy_boss_fortress.tile
+Z EnemyBoss ./assets/maps/tiles/enemy_boss_core.tile
+
+/// Environment
+# Obstacle ./assets/maps/tiles/obstacle_asteroid.tile
+* BackgroundElement ./assets/maps/tiles/background_debris.tile

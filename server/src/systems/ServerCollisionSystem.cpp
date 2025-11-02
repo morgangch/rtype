@@ -12,180 +12,321 @@
 #include "services/PlayerService.h"
 #include "rtype.h"
 #include "packetmanager.h"
-#include <common/components/EnemyType.h>
+#include <common/systems/CollisionSystem.h>
+#include <common/systems/FortressShieldSystem.h>
+#include <common/components/Score.h>
+#include <common/components/Shield.h>
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include <unordered_map>
+#include <unordered_set>
+
+#include "senders.h"
+#include "components/LinkedRoom.h"
 
 namespace rtype::server::systems {
 
+// Helper function to get score points for enemy type
+static int getScoreForEnemyType(rtype::common::components::EnemyType type) {
+    switch (type) {
+        // Basic enemies
+        case rtype::common::components::EnemyType::Basic:
+            return 10;
+        case rtype::common::components::EnemyType::Snake:
+            return 15;
+        case rtype::common::components::EnemyType::Suicide:
+            return 20;
+        case rtype::common::components::EnemyType::Pata:
+            return 25;
+
+        // Advanced enemies
+        case rtype::common::components::EnemyType::Shielded:
+            return 50;
+        case rtype::common::components::EnemyType::Flanker:
+            return 40;
+        case rtype::common::components::EnemyType::Turret:
+            return 45;
+        case rtype::common::components::EnemyType::Waver:
+            return 55;
+
+        // Boss enemies
+        case rtype::common::components::EnemyType::TankDestroyer:
+            return 500;
+        case rtype::common::components::EnemyType::Serpent:
+            return 750;
+        case rtype::common::components::EnemyType::Fortress:
+            return 1000;
+        case rtype::common::components::EnemyType::Core:
+            return 2000;
+
+        default:
+            return 10;
+    }
+}
+
 void ServerCollisionSystem::Update(ECS::World& world, float deltaTime) {
+    rtype::common::systems::CollisionHandlers handlers;
     std::vector<ECS::EntityID> toDestroy;
-    
-    // Check all collision types
-    checkProjectileVsEnemyCollisions(world, toDestroy);
-    
-    // Remove duplicates from toDestroy list
+
+    // Track projectile-enemy pairs that have already collided this frame
+    std::unordered_map<ECS::EntityID, std::unordered_set<ECS::EntityID>> piercingCollisions;
+
+    handlers.onPlayerVsEnemy = [this, &toDestroy](ECS::EntityID player, ECS::EntityID enemy, ECS::World& world) {
+        auto* playerHealth = world.GetComponent<rtype::common::components::Health>(player);
+        auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemy);
+        if (!playerHealth || !enemyHealth) return;
+
+        if (playerHealth->invulnerable || !playerHealth->isAlive || playerHealth->currentHp <= 0) return;
+
+        std::cout << "[COLLISION] Player " << player << " hit enemy " << enemy << " - HP: " << playerHealth->currentHp << " -> " << (playerHealth->currentHp - 1) << std::endl;
+
+        playerHealth->currentHp -= 1;
+        playerHealth->invulnerable = true;
+        playerHealth->invulnerabilityTimer = 1.0f;
+
+        if (playerHealth->currentHp <= 0) {
+            playerHealth->isAlive = false;
+            std::cout << "[COLLISION] Player " << player << " DIED from enemy contact" << std::endl;
+            
+            // DEBUG: Check player components after death
+            auto* pconn = world.GetComponent<rtype::server::components::PlayerConn>(player);
+            auto* linkedRoom = world.GetComponent<rtype::server::components::LinkedRoom>(player);
+            auto* playerComp = world.GetComponent<rtype::common::components::Player>(player);
+            std::cout << "[DEBUG] Dead player " << player << " components: "
+                      << "PlayerConn=" << (pconn != nullptr)
+                      << " LinkedRoom=" << (linkedRoom != nullptr) 
+                      << " Player=" << (playerComp != nullptr) << std::endl;
+            if (linkedRoom) {
+                std::cout << "[DEBUG] Player's room_id: " << linkedRoom->room_id << std::endl;
+            }
+        }
+
+        broadcastPlayerStateImmediate(world, player);
+    };
+
+    handlers.onPlayerProjectileVsEnemy = [this, &toDestroy, &piercingCollisions](ECS::EntityID proj, ECS::EntityID enemy, ECS::World& world) {
+        auto* projData = world.GetComponent<rtype::common::components::Projectile>(proj);
+        auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemy);
+        if (!projData || !enemyHealth) return;
+
+        // For piercing projectiles, check if we've already hit this enemy this frame
+        if (projData->piercing) {
+            if (piercingCollisions[proj].count(enemy) > 0) {
+                // Already hit this enemy this frame, skip
+                std::cout << "[COLLISION] ⚠️ Piercing projectile " << proj << " already hit enemy " << enemy << " this frame, SKIPPING" << std::endl;
+                return;
+            }
+            // Mark this collision as processed
+            piercingCollisions[proj].insert(enemy);
+            std::cout << "[COLLISION] 🎯 First hit: Piercing projectile " << proj << " hitting enemy " << enemy << std::endl;
+        }
+
+        // Check for active shields (Fortress boss or shielded enemies)
+        auto* shield = world.GetComponent<rtype::common::components::ShieldComponent>(enemy);
+        if (shield && shield->isActive) {
+            // Red shield (Fortress boss) - requires charged hits to break
+            if (shield->type == rtype::common::components::ShieldType::Red) {
+                if (!projData->piercing) {
+                    // Normal projectile - blocked completely
+                    std::cout << "[COLLISION] 🔴 Normal shot BLOCKED by RED SHIELD on boss " << enemy << "! (needs charged shot)" << std::endl;
+                    toDestroy.push_back(proj);
+                    return;
+                } else {
+                    // Charged shot - count the hit
+                    shield->currentHits++;
+                    std::cout << "[COLLISION] ⚡ CHARGED shot hit RED SHIELD on boss " << enemy << "! (" << shield->currentHits << "/" << shield->hitsToBreak << " hits)" << std::endl;
+                    
+                    if (shield->currentHits >= shield->hitsToBreak) {
+                        // Shield broken!
+                        shield->isActive = false;
+                        std::cout << "[COLLISION] 💥 RED SHIELD BROKEN on boss " << enemy << "! Boss is now vulnerable!" << std::endl;
+                    }
+                    toDestroy.push_back(proj);
+                    return; // No damage yet, just shield hit
+                }
+            }
+            
+            // Blue shield - visual effect only, takes damage normally
+            if (shield->type == rtype::common::components::ShieldType::Blue) {
+                std::cout << "[COLLISION] 🔵 Projectile " << proj << " hits BLUE SHIELD on enemy " << enemy << " - taking damage!" << std::endl;
+                // Blue shields take damage, just visual indicator
+            }
+            
+            // Cyclic shield (Shielded enemy & Turret normal) - only piercing shots work
+            if (shield->type == rtype::common::components::ShieldType::Cyclic) {
+                if (!projData->piercing) {
+                    std::cout << "[COLLISION] 🛡️ Projectile " << proj << " BLOCKED by shield on enemy " << enemy << "! (needs charged/piercing shot)" << std::endl;
+                    toDestroy.push_back(proj);
+                    return;
+                } else {
+                    std::cout << "[COLLISION] ⚡ PIERCING shot " << proj << " BREAKS through cyclic shield of enemy " << enemy << "!" << std::endl;
+                }
+            }
+        }
+
+        std::cout << "[COLLISION] Projectile " << proj << " hit enemy " << enemy << " - Enemy HP: " << enemyHealth->currentHp << " -> " << (enemyHealth->currentHp - projData->damage) << std::endl;
+
+        enemyHealth->currentHp -= projData->damage;
+
+        if (enemyHealth->currentHp <= 0) {
+            enemyHealth->isAlive = false;
+            std::cout << "[COLLISION] Enemy " << enemy << " DESTROYED" << std::endl;
+
+            // Award score to the player who shot the projectile
+            ECS::EntityID shooter = projData->ownerId;
+            auto* shooterPlayer = world.GetComponent<rtype::common::components::Player>(shooter);
+            auto* shooterScore = world.GetComponent<rtype::common::components::Score>(shooter);
+
+            if (shooterPlayer && shooterScore) {
+                // Get enemy type to determine points
+                auto* enemyType = world.GetComponent<rtype::common::components::EnemyTypeComponent>(enemy);
+                int points = enemyType ? getScoreForEnemyType(enemyType->type) : 10;
+
+                shooterScore->points += points;
+                shooterScore->kills++;
+
+                std::cout << "[SCORE] Player " << shooter << " earned " << points << " points (Total: " << shooterScore->points << ")" << std::endl;
+
+                // Send score update to the player
+                network::senders::send_player_score(shooter, shooterPlayer->serverId, shooterScore->points);
+            }
+
+            toDestroy.push_back(enemy);
+        }
+
+        if (!projData->piercing) {
+            toDestroy.push_back(proj);
+        }
+    };
+
+    handlers.onEnemyProjectileVsPlayer = [this, &toDestroy](ECS::EntityID proj, ECS::EntityID player, ECS::World& world) {
+        auto* projData = world.GetComponent<rtype::common::components::Projectile>(proj);
+        auto* playerHealth = world.GetComponent<rtype::common::components::Health>(player);
+        if (!projData || !playerHealth) return;
+
+        std::cout << "[COLLISION] Enemy projectile " << proj << " hit player " << player << " - Player HP: " << playerHealth->currentHp << " -> " << (playerHealth->currentHp - projData->damage) << std::endl;
+
+        playerHealth->currentHp -= projData->damage;
+        playerHealth->invulnerable = true;
+        playerHealth->invulnerabilityTimer = 1.0f;
+
+        if (playerHealth->currentHp <= 0) {
+            playerHealth->isAlive = false;
+            std::cout << "[COLLISION] Player " << player << " DIED from enemy projectile" << std::endl;
+        }
+
+        broadcastPlayerStateImmediate(world, player);
+        toDestroy.push_back(proj);
+    };
+
+    handlers.onSuicideExplosion = [this, &toDestroy](ECS::EntityID suicideEnemy, ECS::World& world) {
+        auto* enemyPos = world.GetComponent<rtype::common::components::Position>(suicideEnemy);
+        if (!enemyPos) return;
+
+        const float EXPLOSION_RADIUS = 100.0f;
+        const int EXPLOSION_DAMAGE = 2;
+
+        auto* players = world.GetAllComponents<rtype::common::components::Player>();
+        if (players) {
+            for (auto& [playerEntity, playerPtr] : *players) {
+                auto* playerPos = world.GetComponent<rtype::common::components::Position>(playerEntity);
+                auto* playerHealth = world.GetComponent<rtype::common::components::Health>(playerEntity);
+
+                if (!playerPos || !playerHealth || playerHealth->invulnerable) continue;
+
+                float dx = playerPos->x - enemyPos->x;
+                float dy = playerPos->y - enemyPos->y;
+                float distance = std::sqrt(dx * dx + dy * dy);
+
+                if (distance <= EXPLOSION_RADIUS) {
+                    playerHealth->currentHp -= EXPLOSION_DAMAGE;
+                    playerHealth->invulnerable = true;
+                    playerHealth->invulnerabilityTimer = 1.0f;
+
+                    if (playerHealth->currentHp <= 0) {
+                        playerHealth->isAlive = false;
+                    }
+
+                    broadcastPlayerStateImmediate(world, playerEntity);
+                }
+            }
+        }
+
+        toDestroy.push_back(suicideEnemy);
+    };
+
+    rtype::common::systems::CollisionSystem::update(world, deltaTime, handlers);
+
     std::sort(toDestroy.begin(), toDestroy.end());
     toDestroy.erase(std::unique(toDestroy.begin(), toDestroy.end()), toDestroy.end());
-    
-    // Broadcast destruction to all clients before destroying locally
-    // We need to find which room these entities belong to
-    // For now, broadcast to ALL active game rooms (simpler approach)
+
+    // Broadcast destruction before actually destroying entities
     for (auto entity : toDestroy) {
-        // Determine what type of entity this is for logging
-        auto* projComp = world.GetComponent<rtype::common::components::Projectile>(entity);
-        auto* healthComp = world.GetComponent<rtype::common::components::Health>(entity);
-        
-        if (projComp) {
-            std::cout << "[ServerCollisionSystem] Broadcasting destruction of PROJECTILE entity " << entity << " (piercing=" << projComp->piercing << ")" << std::endl;
-        } else if (healthComp) {
-            std::cout << "[ServerCollisionSystem] Broadcasting destruction of ENEMY entity " << entity << " (hp=" << healthComp->currentHp << ")" << std::endl;
-        } else {
-            std::cout << "[ServerCollisionSystem] Broadcasting destruction of UNKNOWN entity " << entity << std::endl;
-        }
-        
         broadcastEntityDestroyToAllRooms(world, entity);
+    }
+    
+    // Now destroy the entities
+    for (auto entity : toDestroy) {
         world.DestroyEntity(entity);
     }
-}
-
-void ServerCollisionSystem::checkProjectileVsEnemyCollisions(
-    ECS::World& world, 
-    std::vector<ECS::EntityID>& toDestroy) {
-    
-    auto* projectilePositions = world.GetAllComponents<rtype::common::components::Position>();
-    if (!projectilePositions) return;
-    
-    // Check each projectile against all enemies
-    for (const auto& [projEntity, projPosPtr] : *projectilePositions) {
-        auto* projTeam = world.GetComponent<rtype::common::components::Team>(projEntity);
-        auto* projData = world.GetComponent<rtype::common::components::Projectile>(projEntity);
-        
-        // Skip if not a player projectile
-        if (!projTeam || !projData) continue;
-        if (projTeam->team != rtype::common::components::TeamType::Player) continue;
-        
-        // CRITICAL FIX: Skip projectiles that just spawned (haven't moved yet)
-        // This prevents immediate collision with enemies that are being destroyed in the same frame
-        if (projData->distanceTraveled < 1.0f) {
-            // Skip silently (no log spam)
-            continue;
-        }
-        
-        // Projectile bounds (simple 10x10 box for now)
-        float projX = projPosPtr->x;
-        float projY = projPosPtr->y;
-        float projW = 20.0f; // Projectile width
-        float projH = 10.0f; // Projectile height
-        
-        // Check against all enemies
-        auto* enemyPositions = world.GetAllComponents<rtype::common::components::Position>();
-        if (!enemyPositions) continue;
-        
-        for (const auto& [enemyEntity, enemyPosPtr] : *enemyPositions) {
-            if (enemyEntity == projEntity) continue;
-            
-            auto* enemyTeam = world.GetComponent<rtype::common::components::Team>(enemyEntity);
-            auto* enemyHealth = world.GetComponent<rtype::common::components::Health>(enemyEntity);
-            
-            // Check if this is an enemy
-            if (!enemyTeam || !enemyHealth) continue;
-            if (enemyTeam->team != rtype::common::components::TeamType::Enemy) continue;
-            
-            // Enemy bounds - adjust based on enemy type
-            float enemyX = enemyPosPtr->x;
-            float enemyY = enemyPosPtr->y;
-            float enemyW = 33.0f;
-            float enemyH = 36.0f;
-            
-            // Boss has much larger hitbox (5x scale)
-            auto* enemyType = world.GetComponent<rtype::common::components::EnemyTypeComponent>(enemyEntity);
-            if (enemyType && enemyType->type == rtype::common::components::EnemyType::Boss) {
-                enemyW = 33.0f * 5.0f; // 165 pixels
-                enemyH = 36.0f * 5.0f; // 180 pixels
-            }
-            
-            // Check AABB collision
-            if (checkAABB(projX, projY, projW, projH, enemyX, enemyY, enemyW, enemyH)) {
-                std::cout << "[ServerCollisionSystem] Projectile " << projEntity << " hit enemy " << enemyEntity << std::endl;
-                std::cout << "  Projectile pos: (" << projX << "," << projY << ") piercing: " << (projData->piercing ? "YES" : "NO") << std::endl;
-                std::cout << "  Enemy pos: (" << enemyX << "," << enemyY << ")" << std::endl;
-                
-                // Damage enemy
-                enemyHealth->currentHp -= projData->damage;
-                std::cout << "  Enemy health: " << enemyHealth->currentHp << "/" << enemyHealth->maxHp << std::endl;
-                
-                if (enemyHealth->currentHp <= 0) {
-                    std::cout << "  ✓ Enemy destroyed!" << std::endl;
-                    enemyHealth->isAlive = false;
-                    toDestroy.push_back(enemyEntity);
-                }
-                
-                // Destroy projectile if not piercing
-                if (!projData->piercing) {
-                    std::cout << "  → Projectile destroyed (non-piercing)" << std::endl;
-                    toDestroy.push_back(projEntity);
-                    break; // Projectile destroyed, stop checking
-                } else {
-                    std::cout << "  → Projectile continues (piercing)" << std::endl;
-                    // Piercing projectile continues through enemies
-                }
-            }
-        }
-    }
-}
-
-bool ServerCollisionSystem::checkAABB(
-    float x1, float y1, float w1, float h1,
-    float x2, float y2, float w2, float h2) {
-    
-    // Convert center positions to top-left corners
-    float left1 = x1 - w1 / 2.0f;
-    float right1 = x1 + w1 / 2.0f;
-    float top1 = y1 - h1 / 2.0f;
-    float bottom1 = y1 + h1 / 2.0f;
-    
-    float left2 = x2 - w2 / 2.0f;
-    float right2 = x2 + w2 / 2.0f;
-    float top2 = y2 - h2 / 2.0f;
-    float bottom2 = y2 + h2 / 2.0f;
-    
-    // Check overlap
-    return !(right1 < left2 || right2 < left1 || bottom1 < top2 || bottom2 < top1);
 }
 
 void ServerCollisionSystem::broadcastEntityDestroyToAllRooms(
     ECS::World& world,
     ECS::EntityID entityId) {
+
+    // Check if entity has a LinkedRoom component (projectiles, enemies)
+    auto* linkedRoom = world.GetComponent<rtype::server::components::LinkedRoom>(entityId);
+    if (linkedRoom) {
+        // Entity belongs to a specific room - only broadcast to that room
+        std::cout << "[DEBUG] Broadcasting destroy for entity " << entityId << " to room " << linkedRoom->room_id << std::endl;
+        rtype::server::network::senders::broadcast_entity_destroy(linkedRoom->room_id, static_cast<uint32_t>(entityId), 1);
+        return;
+    }
+
+    // For entities without LinkedRoom (like players), check if they have a PlayerConn
+    auto* pconn = world.GetComponent<rtype::server::components::PlayerConn>(entityId);
+    if (pconn && pconn->room_code != 0) {
+        // Player entity - find their room and broadcast to it
+        auto* roomProps = world.GetAllComponents<rtype::server::components::RoomProperties>();
+        if (roomProps) {
+            for (const auto& [roomEntity, roomPtr] : *roomProps) {
+                if (roomPtr->joinCode == pconn->room_code) {
+                    rtype::server::network::senders::broadcast_entity_destroy(roomEntity, static_cast<uint32_t>(entityId), 1);
+                    return;
+                }
+            }
+        }
+    }
+
+    // Fallback: entity doesn't belong to any specific room (shouldn't happen normally)
+    std::cerr << "WARNING: Entity " << entityId << " destroyed but has no room association" << std::endl;
+}
+
+void ServerCollisionSystem::broadcastPlayerStateImmediate(ECS::World& world, ECS::EntityID playerId) {
+    auto* pos = world.GetComponent<rtype::common::components::Position>(playerId);
+    auto* health = world.GetComponent<rtype::common::components::Health>(playerId);
+    auto* proom = world.GetComponent<rtype::server::components::LinkedRoom>(playerId);
+
+    if (!pos || !health || !proom) {
+        return;
+    }
+
+    auto* allPlayers = world.GetAllComponents<rtype::common::components::Player>();
+    if (!allPlayers) {
+        return;
+    }
     
-    // Get all rooms
-    auto* roomProps = world.GetAllComponents<rtype::server::components::RoomProperties>();
-    if (!roomProps) return;
-    
-    EntityDestroyPacket pkt{};
-    pkt.entityId = static_cast<uint32_t>(entityId);
-    
-    std::cout << "[ServerCollisionSystem] Broadcasting ENTITY_DESTROY for entity " << entityId << std::endl;
-    
-    // For each room, send to all players in game
-    for (const auto& [roomEntity, roomPtr] : *roomProps) {
-        if (!roomPtr->isGameStarted) continue; // Skip rooms not in game
-        
-        // Find all players in this room
-        auto players = rtype::server::services::player_service::findPlayersByRoomCode(roomEntity);
-        
-        for (auto playerId : players) {
-            auto* lobbyState = world.GetComponent<rtype::server::components::LobbyState>(playerId);
-            if (!lobbyState || !lobbyState->isInGame) continue; // Only send to in-game players
-            
-            auto* pconn = world.GetComponent<rtype::server::components::PlayerConn>(playerId);
-            if (!pconn) continue;
-            
-            pconn->packet_manager.sendPacketBytesSafe(&pkt, sizeof(pkt), ENTITY_DESTROY, nullptr, false);
+    for (auto& [otherPid, playerPtr] : *allPlayers) {
+        if (!playerPtr) {
+            continue;
         }
         
-        std::cout << "  ✓ Sent ENTITY_DESTROY to " << players.size() << " players in room " << roomPtr->joinCode << std::endl;
+        auto otherRoom = world.GetComponent<rtype::server::components::LinkedRoom>(otherPid);
+        if (!otherRoom || otherRoom->room_id != proom->room_id) continue;
+
+        network::senders::send_player_state(otherPid, playerId, pos->x, pos->y, pos->rotation, static_cast<uint16_t>(health->currentHp), health->isAlive);
     }
 }
 

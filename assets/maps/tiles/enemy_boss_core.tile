@@ -1,0 +1,40 @@
+/// Core Boss - FINAL BOSS with multi-phase evolution
+sprite: ./assets/sprites/BasicEnemy/boss_core.png
+
+/// Metadata
+enemy_type: Core
+health: 150
+damage: 5
+speed: 40
+fire_rate: 0.8
+scale: 5.0
+
+SCRIPT_BEGIN
+MOVE LEFT 40
+/// Multi-phase boss with evolving patterns
+
+/// Phase 1: Circular patterns
+FIRE_PATTERN CIRCLE radius:150 speed:50
+FIRE LEFT 0.8
+
+ON_HEALTH_BELOW 100 CHANGE_PATTERN PHASE2
+ON_HEALTH_BELOW 50 CHANGE_PATTERN PHASE3
+
+/// Phase 2: Spiral + adds
+PHASE PHASE2 {
+    FIRE_RATE 0.6
+    FIRE_PATTERN SPIRAL count:8 rotation_speed:3
+    SPEED 60
+}
+
+/// Phase 3: Chaotic final phase
+PHASE PHASE3 {
+    FIRE_RATE 0.4
+    SPEED 80
+    FIRE_PATTERN SPREAD angle:60 count:7
+    FIRE_PATTERN SPIRAL count:12 rotation_speed:5
+}
+
+ON_DEATH SPAWN_ITEM mega_power_up 1.0
+ON_DEATH SPAWN_ITEM shield 1.0
+SCRIPT_END

@@ -30,6 +30,7 @@ namespace rtype::client::gui {
  * - Default values if config file doesn't exist
  * - Keybinds mapping (Up, Down, Left, Right, Shoot)
  * - Network settings (IP and Port)
+ * - Accessibility settings (Daltonism mode)
  *
  * JSON Structure:
  * {
@@ -81,6 +82,20 @@ public:
     void setKeybind(const std::string& action, sf::Keyboard::Key key);
 
     /**
+     * @brief Get the secondary binding for an action (opaque int).
+     *
+     * Secondary bindings are an opaque integer that can encode other input
+     * devices (joystick buttons, mouse buttons, etc.). The primary API
+     * remains keyboard-oriented for backward compatibility.
+     */
+    int getSecondaryKeybind(const std::string& action) const;
+
+    /**
+     * @brief Set the secondary binding for an action (opaque int).
+     */
+    void setSecondaryKeybind(const std::string& action, int code);
+
+    /**
      * @brief Get the server IP address
      * @return The configured server IP address as a string
      */
@@ -109,11 +124,25 @@ public:
      */
     void resetToDefaults();
 
+    /**
+     * @brief Get the daltonism mode index
+     * @return int mode index (0=None, 1=Protanopia, 2=Deuteranopia, 3=Tritanopia, 4=Achromatopsia)
+     */
+    int getDaltonismMode() const { return daltonismMode; }
+
+    /**
+     * @brief Set the daltonism mode index
+     * @param mode Index to set (will be stored as-is)
+     */
+    void setDaltonismMode(int mode) { daltonismMode = mode; }
+
 private:
     std::string configPath;  ///< Path to the configuration file
     std::map<std::string, sf::Keyboard::Key> keybinds;  ///< Map of action names to keyboard keys
+    std::map<std::string, int> secondaryKeybinds;       ///< Secondary, opaque bindings (joystick/mouse encoded)
     std::string ip;   ///< Server IP address for network connection
     std::string port; ///< Server port number for network connection
+    int daltonismMode{0}; ///< Accessibility: daltonism filter index
 
     /**
      * @brief Initialize default settings

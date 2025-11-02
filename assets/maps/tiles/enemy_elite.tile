@@ -4,10 +4,12 @@
 sprite: ./assets/sprites/BasicEnemy/shooter_enemy.png
 
 /// Metadata
+enemy_type: Shielded
 health: 3
 damage: 2
 speed: 120
 fire_rate: 1.5
+has_shield: cyclic
 
 SCRIPT_BEGIN
 /// Sine wave movement pattern
