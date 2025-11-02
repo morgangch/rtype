@@ -1,5 +1,6 @@
 /// Near star layer - fastest, largest, brightest
 shape: particles
+layer: near
 count: 25
 speed: 120.0
 min_size: 1.5

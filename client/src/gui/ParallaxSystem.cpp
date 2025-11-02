@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <cmath>
+#include <random>
 #include <algorithm>
 #include <iostream>
 
@@ -23,7 +24,7 @@ ParallaxSystem::ParallaxSystem(float screenWidth, float screenHeight)
     // Seed random number generator
     static bool seeded = false;
     if (!seeded) {
-        std::srand(static_cast<unsigned int>(std::time(nullptr)));
+        std::mt19937(static_cast<unsigned int>(std::time(nullptr)));
         seeded = true;
     }
     
@@ -121,20 +122,45 @@ bool ParallaxSystem::loadFromMap(const std::string& mapDir) {
                     std::stoi(def.metadata.at("base_color_a"))
                 );
                 
-                // Determine which layer to initialize based on speed (only once per type)
-                // IMPORTANT: Pass member variable DIRECTLY to initializeStarLayer
-                if (speed < 50.0f && !farStarsLoaded) {
-                    initializeStarLayer(m_farStars, count, speed, minSize, maxSize, baseColor);
-                    farStarsLoaded = true;
-                    std::cout << "  Loaded far stars (count=" << count << ", speed=" << speed << ")" << std::endl;
-                } else if (speed < 100.0f && !mediumStarsLoaded) {
-                    initializeStarLayer(m_mediumStars, count, speed, minSize, maxSize, baseColor);
-                    mediumStarsLoaded = true;
-                    std::cout << "  Loaded medium stars (count=" << count << ", speed=" << speed << ")" << std::endl;
-                } else if (speed >= 100.0f && !nearStarsLoaded) {
-                    initializeStarLayer(m_nearStars, count, speed, minSize, maxSize, baseColor);
-                    nearStarsLoaded = true;
-                    std::cout << "  Loaded near stars (count=" << count << ", speed=" << speed << ")" << std::endl;
+                // Determine which layer to initialize based on explicit layer identifier
+                // This is more explicit and avoids ambiguity from hardcoded speed thresholds
+                auto layerIt = def.metadata.find("layer");
+                if (layerIt != def.metadata.end()) {
+                    const std::string& layerType = layerIt->second;
+                    
+                    if (layerType == "far" && !farStarsLoaded) {
+                        initializeStarLayer(m_farStars, count, speed, minSize, maxSize, baseColor);
+                        farStarsLoaded = true;
+                        std::cout << "  Loaded far stars (count=" << count << ", speed=" << speed << ")" << std::endl;
+                    } else if (layerType == "medium" && !mediumStarsLoaded) {
+                        initializeStarLayer(m_mediumStars, count, speed, minSize, maxSize, baseColor);
+                        mediumStarsLoaded = true;
+                        std::cout << "  Loaded medium stars (count=" << count << ", speed=" << speed << ")" << std::endl;
+                    } else if (layerType == "near" && !nearStarsLoaded) {
+                        initializeStarLayer(m_nearStars, count, speed, minSize, maxSize, baseColor);
+                        nearStarsLoaded = true;
+                        std::cout << "  Loaded near stars (count=" << count << ", speed=" << speed << ")" << std::endl;
+                    } else if (!farStarsLoaded || !mediumStarsLoaded || !nearStarsLoaded) {
+                        // Warn about unknown or duplicate layer type
+                        std::cerr << "  Warning: Unknown or duplicate layer type '" << layerType 
+                                  << "' (expected 'far', 'medium', or 'near')" << std::endl;
+                    }
+                } else {
+                    // Fallback: Use speed-based classification if 'layer' metadata is missing
+                    std::cerr << "  Warning: Particle tile missing 'layer' metadata, using speed-based fallback" << std::endl;
+                    if (speed < 50.0f && !farStarsLoaded) {
+                        initializeStarLayer(m_farStars, count, speed, minSize, maxSize, baseColor);
+                        farStarsLoaded = true;
+                        std::cout << "  Loaded far stars (count=" << count << ", speed=" << speed << ") [fallback]" << std::endl;
+                    } else if (speed < 100.0f && !mediumStarsLoaded) {
+                        initializeStarLayer(m_mediumStars, count, speed, minSize, maxSize, baseColor);
+                        mediumStarsLoaded = true;
+                        std::cout << "  Loaded medium stars (count=" << count << ", speed=" << speed << ") [fallback]" << std::endl;
+                    } else if (speed >= 100.0f && !nearStarsLoaded) {
+                        initializeStarLayer(m_nearStars, count, speed, minSize, maxSize, baseColor);
+                        nearStarsLoaded = true;
+                        std::cout << "  Loaded near stars (count=" << count << ", speed=" << speed << ") [fallback]" << std::endl;
+                    }
                 }
                 
             } else if (def.shape_type == ShapeType::Rectangle && !debrisLoaded) {

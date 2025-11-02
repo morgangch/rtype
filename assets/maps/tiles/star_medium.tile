@@ -1,5 +1,6 @@
 /// Medium star layer - medium speed and size
 shape: particles
+layer: medium
 count: 40
 speed: 60.0
 min_size: 1.0
