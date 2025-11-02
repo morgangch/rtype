@@ -46,11 +46,13 @@ void print_map_definition(const MapDefinition &map_def) {
     std::cout << "  Height:      " << map_def.height << std::endl;
     
     std::cout << "\n[Tile Definitions] (" << map_def.tile_mapping.size() << " total)" << std::endl;
-    std::cout << std::left << std::setw(12) << "  Character" << "Asset Path" << std::endl;
+    std::cout << std::left << std::setw(12) << "  Character" << std::setw(20) << "Type" << "Tile Path" << std::endl;
     std::cout << "  " << std::string(70, '-') << std::endl;
     
     for (const auto &pair : map_def.tile_mapping) {
-        std::cout << "  '" << pair.first << "'       -> " << pair.second << std::endl;
+        std::cout << "  '" << pair.first << "'       -> " 
+                  << std::setw(20) << tileTypeToString(pair.second.type)
+                  << pair.second.tile_path << std::endl;
     }
 }
 
@@ -74,7 +76,8 @@ void print_tiles(const std::vector<Tile> &tiles, size_t max_tiles = 0) {
               << std::setw(6) << "X"
               << std::setw(6) << "Y"
               << std::setw(10) << "Char"
-              << "Asset Path" << std::endl;
+              << std::setw(18) << "Type"
+              << "Sprite Path" << std::endl;
     std::cout << "  " << std::string(70, '-') << std::endl;
     
     for (size_t i = 0; i < count; i++) {
@@ -83,7 +86,8 @@ void print_tiles(const std::vector<Tile> &tiles, size_t max_tiles = 0) {
                   << std::setw(6) << tile.x
                   << std::setw(6) << tile.y
                   << "'" << tile.character << "'       "
-                  << tile.asset_path << std::endl;
+                  << std::setw(18) << tileTypeToString(tile.type)
+                  << tile.definition.sprite_path << std::endl;
     }
     
     if (max_tiles > 0 && tiles.size() > max_tiles) {
