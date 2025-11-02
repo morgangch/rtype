@@ -9,7 +9,12 @@
 
 #include <cstdint>
 #include <cstring>
-#include <arpa/inet.h> // For htons, htonl
+#ifdef _WIN32
+    #include <winsock2.h>
+#else
+    #include <arpa/inet.h>
+#endif
+// For htons, htonl
 
 /**
  * @brief Convert a value to network endian (big-endian) in place.
