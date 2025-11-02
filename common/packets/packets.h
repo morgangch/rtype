@@ -36,6 +36,7 @@ enum Packets {
     SPAWN_BOSS_REQUEST = 16,
     PLAYER_SCORE_UPDATE = 17,
     LOBBY_SETTINGS_UPDATE = 18,
+    SHIELD_STATE = 19,
 };
 
 
@@ -44,10 +45,12 @@ enum Packets {
  * Client → Server
  * @param name Player name (max 32 bytes)
  * @param joinCode Room ID to join. Use 0 to create a new room, 1 to join a public room.
+ * @param vesselType Vessel class selected by player (0=CrimsonStriker, 1=AzurePhantom, 2=EmeraldTitan, 3=SolarGuardian)
  */
 struct JoinRoomPacket {
     char name[32];
     uint32_t joinCode;
+    uint8_t vesselType; // 0-3 for the 4 vessel classes
 };
 
 /**
@@ -56,11 +59,13 @@ struct JoinRoomPacket {
  * @param roomCode The ID of the room the player joined
  * @param admin If the user is an admin, the value is true.
  * @param playerServerId The server-side entity ID for this player
+ * @param vesselType The vessel class assigned to this player (0-3)
  */
 struct JoinRoomAcceptedPacket {
     uint32_t roomCode;
     bool admin;
     uint32_t playerServerId; // NEW: server entity ID for this player
+    uint8_t vesselType; // Vessel class (0=CrimsonStriker, 1=AzurePhantom, 2=EmeraldTitan, 3=SolarGuardian)
 };
 
 /**
@@ -103,6 +108,7 @@ struct PongPacket {
 struct PlayerJoinPacket {
     uint32_t newPlayerId;
     char name[32];
+    uint8_t vesselType;  // Vessel class (0=CrimsonStriker, 1=AzurePhantom, 2=EmeraldTitan, 3=SolarGuardian)
 };
 
 // Serveur → All
@@ -150,8 +156,10 @@ struct PlayerStatePacket {
     float x, y;
     float dir;
     uint16_t hp;
+    uint16_t maxHp; // Maximum HP (varies by vessel type)
     bool isAlive;
     bool invulnerable; // Server-authoritative invulnerability state
+    uint8_t vesselType; // Vessel class (0-3) for visual sync
 };
 
 // Server → All: Spawn a new enemy
@@ -232,6 +240,16 @@ struct LobbySettingsUpdatePacket {
     bool aiAssist;        // functional
     bool megaDamage;      // functional
     uint8_t startLevel;   // debug start level: 0=Lvl1, 1=Lvl2
+};
+
+/**
+ * Server → All: Update shield state for a player
+ * Sent when a player activates or deactivates their shield
+ */
+struct ShieldStatePacket {
+    uint32_t playerId;    // Player entity ID
+    bool isActive;        // true = shield activated, false = shield deactivated
+    float duration;       // Remaining duration in seconds (if active)
 };
 
 #endif //PACKETS_H

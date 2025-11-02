@@ -39,6 +39,12 @@ namespace rtype::client::network {
 
 // Global player info (shared with game_controller.cpp and lobby)
 std::string g_username = "Player";
+
+// Global to track the selected vessel across state transition to GameState
+// Defined in the GUI namespace so GameState can link to it
+namespace rtype::client::gui {
+    uint8_t g_selectedVessel = 0; // 0 = CrimsonStriker (default)
+}
 uint32_t g_playerServerId = 0;
 
 void network::loop_recv() {
@@ -150,14 +156,16 @@ int network::init_udp_socket(const std::string &server_ip, int server_port) {
     return rtype::client::network::udp_fd;
 }
 
-int network::start_room_connection(const std::string &ip, int port, const std::string &player_name, uint32_t room_code) {
+int network::start_room_connection(const std::string &ip, int port, const std::string &player_name, uint32_t room_code, uint8_t vessel_type) {
     init_udp_socket(ip, port);
     
     // Store username globally so JOIN_ROOM_ACCEPTED handler can use it
     g_username = player_name;
     g_playerServerId = 0; // Reset on new connection
     
-    senders::send_join_room_request(player_name, room_code);
+    // Persist selection so GameState can create the local entity with correct vessel
+    rtype::client::gui::g_selectedVessel = vessel_type;
+    senders::send_join_room_request(player_name, room_code, vessel_type);
     return 0;
 }
 
