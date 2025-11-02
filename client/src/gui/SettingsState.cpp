@@ -281,6 +281,26 @@ void SettingsState::ensureParallaxInitialized(const sf::RenderWindow& window) {
  * @param event The SFML event to process
  */
 void SettingsState::handleEvent(const sf::Event& event) {
+    // 1) While editing a keybind, consume key presses first to avoid global handlers (like ESC) firing
+    if (event.type == sf::Event::KeyPressed && editingKeybind != -1) {
+        // Validate against reserved keys
+        if (event.key.code == sf::Keyboard::Escape) {
+            keybindHintText.setString("Escape is reserved for menu navigation.");
+            keybindHintText.setFillColor(sf::Color::Red);
+            return; // consume; do NOT navigate away
+        } else if (event.key.code == sf::Keyboard::B) {
+            keybindHintText.setString("B is reserved for admin commands.");
+            keybindHintText.setFillColor(sf::Color::Red);
+            return; // consume
+        } else {
+            // Valid key - assign it and exit edit mode
+            keybinds[editingKeybind] = event.key.code;
+            editingKeybind = -1;
+            keybindHintText.setString("");
+            return; // consume
+        }
+    }
+
     if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
         sf::Vector2f mousePos(event.mouseButton.x, event.mouseButton.y);
         // Check return button click
@@ -322,7 +342,8 @@ void SettingsState::handleEvent(const sf::Event& event) {
             Accessibility::instance().setMode(currentDaltonismIndex);
         }
     }
-    if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
+    // 2) Global navigation: only when NOT editing a keybind
+    if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape && editingKeybind == -1) {
         stateManager.changeState(std::make_unique<MainMenuState>(stateManager));
     }
     if (event.type == sf::Event::TextEntered) {
@@ -335,23 +356,6 @@ void SettingsState::handleEvent(const sf::Event& event) {
             if (event.text.unicode == 8 && !box2Value.empty()) box2Value.pop_back();
             else if (event.text.unicode >= 32 && event.text.unicode < 127 && box2Value.size() < 5)
                 box2Value += static_cast<char>(event.text.unicode);
-        }
-    }
-    // Keybind assignment: use KeyPressed event to correctly capture sf::Keyboard::Key values
-    if (event.type == sf::Event::KeyPressed && editingKeybind != -1) {
-        // Validate against reserved keys
-        if (event.key.code == sf::Keyboard::Escape) {
-            keybindHintText.setString("Escape is reserved for menu navigation.");
-            keybindHintText.setFillColor(sf::Color::Red);
-            // Do not close the keybind editor; let user pick another key
-        } else if (event.key.code == sf::Keyboard::B) {
-            keybindHintText.setString("B is reserved for admin commands.");
-            keybindHintText.setFillColor(sf::Color::Red);
-        } else {
-            // Valid key - assign it
-            keybinds[editingKeybind] = event.key.code;
-            editingKeybind = -1;
-            keybindHintText.setString("");
         }
     }
 }
