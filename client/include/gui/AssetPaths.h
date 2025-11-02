@@ -51,6 +51,14 @@ namespace rtype::client::assets {
         constexpr const char* BOSS_ENEMY_2 = "assets/sprites/BasicEnemy/BOSS_ENEMY_1.gif";  // Serpent (reuse BOSS_1)
         constexpr const char* BOSS_ENEMY_3 = "assets/sprites/BasicEnemy/BOSS_ENEMY_1.gif";  // Fortress (reuse BOSS_1)
         constexpr const char* BOSS_ENEMY_4 = "assets/sprites/BasicEnemy/BOSS_ENEMY_1.gif";  // Core (reuse BOSS_1)
+
+        // PNG Ships - Alternative sprites for variety
+        constexpr const char* SHIP_1 = "assets/sprites/BasicEnemy/Ship1.png";
+        constexpr const char* SHIP_2 = "assets/sprites/BasicEnemy/Ship2.png";
+        constexpr const char* SHIP_3 = "assets/sprites/BasicEnemy/Ship3.png";
+        constexpr const char* SHIP_4 = "assets/sprites/BasicEnemy/Ship4.png";
+        constexpr const char* SHIP_5 = "assets/sprites/BasicEnemy/Ship5.png";
+        constexpr const char* SHIP_6 = "assets/sprites/BasicEnemy/Ship6.png";
     }
 
     /**

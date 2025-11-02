@@ -113,17 +113,15 @@ ECS::EntityID GameState::createEnemy(float x, float y) {
     // Health - 1 HP (dies in one hit)
     m_world.AddComponent<rtype::common::components::Health>(entity, 1);
     
-    // Sprite - Basic enemy with texture (first frame: 33x36 from 533x36 spritesheet)
-    // Enemy spritesheet has ~16 frames: 533/33 = ~16 frames
-    // Preload enemy sprite
-    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BASIC_ENEMY_1);
+    // Sprite - Basic enemy with Ship1 PNG sprite
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::SHIP_1);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        rtype::client::assets::enemies::BASIC_ENEMY_1,
-        sf::Vector2f(33.0f, 36.0f),
+        rtype::client::assets::enemies::SHIP_1,
+        sf::Vector2f(32.0f, 32.0f),
         true,
-        sf::IntRect(0, 0, 33, 36),  // First frame
-        2.5f);  // Scale 2.5x (33*2.5 = 82 pixels)
+        sf::IntRect(0, 0, 32, 32),  // Full sprite
+        2.5f);  // Scale 2.5x (32*2.5 = 80 pixels)
     
     // Team - Enemy team
     m_world.AddComponent<rtype::common::components::Team>(
@@ -157,15 +155,15 @@ ECS::EntityID GameState::createSnakeEnemy(float x, float y) {
     // Health - 1 HP (dies in one hit)
     m_world.AddComponent<rtype::common::components::Health>(entity, 1);
     
-    // TODO: Replace with a unique snake enemy sprite and animation
-    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BASIC_ENEMY_2);
+    // Sprite - Snake enemy with Ship2 PNG sprite
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::SHIP_2);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        rtype::client::assets::enemies::BASIC_ENEMY_2,
-        sf::Vector2f(33.0f, 36.0f),
+        rtype::client::assets::enemies::SHIP_2,
+        sf::Vector2f(32.0f, 32.0f),
         true,
-        sf::IntRect(0, 0, 33, 36),  // First frame
-        2.5f);  // Scale 2.5x
+        sf::IntRect(0, 0, 32, 32),  // Full sprite
+        2.5f);  // Scale 2.5x (32*2.5 = 80 pixels)
     
     // Team - Enemy team
     m_world.AddComponent<rtype::common::components::Team>(
@@ -191,14 +189,15 @@ ECS::EntityID GameState::createSuicideEnemy(float x, float y) {
     m_world.AddComponent<rtype::common::components::Velocity>(entity, -150.0f, 0.0f, 200.0f);
     m_world.AddComponent<rtype::common::components::Health>(entity, 1);
 
-    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BASIC_ENEMY_2);
+    // Sprite - Suicide enemy with Ship3 PNG sprite (kamikaze look)
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::SHIP_3);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        rtype::client::assets::enemies::BASIC_ENEMY_2,
-        sf::Vector2f(33.0f, 36.0f),
+        rtype::client::assets::enemies::SHIP_3,
+        sf::Vector2f(32.0f, 32.0f),
         true,
-        sf::IntRect(0, 0, 33, 36),
-        2.5f);
+        sf::IntRect(0, 0, 32, 32),
+        2.5f);  // Scale 2.5x (32*2.5 = 80 pixels)
 
     m_world.AddComponent<rtype::common::components::Team>(
         entity, rtype::common::components::TeamType::Enemy);
@@ -354,14 +353,15 @@ ECS::EntityID GameState::createPataEnemy(float x, float y) {
     m_world.AddComponent<rtype::common::components::Velocity>(entity, -100.0f, 0.0f, 100.0f);
     m_world.AddComponent<rtype::common::components::Health>(entity, 2);
 
-    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::BASIC_ENEMY_3);
+    // Sprite - Pata enemy with Ship4 PNG sprite
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::SHIP_4);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        rtype::client::assets::enemies::BASIC_ENEMY_3,
-        sf::Vector2f(33.0f, 36.0f),
+        rtype::client::assets::enemies::SHIP_4,
+        sf::Vector2f(32.0f, 32.0f),
         true,
-        sf::IntRect(0, 0, 33, 36),
-        2.5f);
+        sf::IntRect(0, 0, 32, 32),
+        2.5f);  // Scale 2.5x (32*2.5 = 80 pixels)
 
     m_world.AddComponent<rtype::common::components::Team>(
         entity, rtype::common::components::TeamType::Enemy);
@@ -383,14 +383,15 @@ ECS::EntityID GameState::createShieldedEnemy(float x, float y) {
     m_world.AddComponent<rtype::common::components::Velocity>(entity, -90.0f, 0.0f, 90.0f);
     m_world.AddComponent<rtype::common::components::Health>(entity, 4);
 
-    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::ADVANCED_ENEMY_1);
+    // Sprite - Shielded enemy with Ship5 PNG sprite
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::SHIP_5);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        rtype::client::assets::enemies::ADVANCED_ENEMY_1,
-        sf::Vector2f(33.0f, 36.0f),
+        rtype::client::assets::enemies::SHIP_5,
+        sf::Vector2f(32.0f, 32.0f),
         true,
-        sf::IntRect(0, 0, 33, 36),
-        2.5f);
+        sf::IntRect(0, 0, 32, 32),
+        2.5f);  // Scale 2.5x (32*2.5 = 80 pixels)
 
     m_world.AddComponent<rtype::common::components::Team>(
         entity, rtype::common::components::TeamType::Enemy);
@@ -494,14 +495,15 @@ ECS::EntityID GameState::createWaverEnemy(float x, float y) {
     m_world.AddComponent<rtype::common::components::Velocity>(entity, -110.0f, 0.0f, 150.0f);
     m_world.AddComponent<rtype::common::components::Health>(entity, 4);
 
-    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::ADVANCED_ENEMY_1);
+    // Sprite - Waver enemy with Ship6 PNG sprite
+    rtype::client::gui::TextureCache::getInstance().loadTexture(rtype::client::assets::enemies::SHIP_6);
     m_world.AddComponent<rtype::client::components::Sprite>(
         entity,
-        rtype::client::assets::enemies::ADVANCED_ENEMY_1,
-        sf::Vector2f(33.0f, 36.0f),
+        rtype::client::assets::enemies::SHIP_6,
+        sf::Vector2f(64.0f, 64.0f),
         true,
-        sf::IntRect(0, 0, 33, 36),
-        2.5f);
+        sf::IntRect(0, 0, 64, 64),
+        1.25f);  // Scale 1.25x (64*1.25 = 80 pixels)
 
     m_world.AddComponent<rtype::common::components::Team>(
         entity, rtype::common::components::TeamType::Enemy);
