@@ -163,7 +163,7 @@ ECS::EntityID GameState::createRemotePlayer(const std::string &name, uint32_t se
             baseHp = 3;
             break;
         case rtype::common::components::VesselType::AzurePhantom:
-            baseHp = 3;
+            baseHp = 2; // Agile (low defense, only 2 hearts)
             break;
         case rtype::common::components::VesselType::EmeraldTitan:
             baseHp = 4;
