@@ -1,10 +1,10 @@
 <div align="center">
 
-# R-TYPE — Modern C++ Multiplayer Arcade Shooter
+# THE TOP R-TYPE — Modern C++ Multiplayer Arcade Shooter
 
 Fast-paced co-op arcade shooter, ECS-powered, with boss fights, forge augments, items, and buttery-smooth netcode.
 
-![Image Placeholder – Game Menu](assets/fotos/menu_placeholder.png)
+![Image Placeholder – Game Menu](assets/fotos/frontpage_placeholder.png)
 ![Image Placeholder – Gameplay](assets/fotos/gameplay_placeholder.png)
 
 </div>
