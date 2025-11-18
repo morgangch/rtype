@@ -1,0 +1,5 @@
+<map id="rtype::client::gui::HighscoresState" name="rtype::client::gui::HighscoresState">
+<area shape="rect" id="Node000001" title="State implementation responsible for displaying highscores." alt="" coords="5,93,141,133"/>
+<area shape="rect" id="Node000002" href="$classrtype_1_1client_1_1gui_1_1State.html" title="Abstract base class for all GUI states." alt="" coords="9,5,137,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="76,59,76,93,71,93,71,59"/>
+</map>

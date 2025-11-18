@@ -1,0 +1,9 @@
+<map id="server/include/network.h" name="server/include/network.h">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,5,188,31"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="22,79,81,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="91,32,68,69,64,66,87,30"/>
+<area shape="rect" id="Node000003" href="$packet_8h.html" title="Core packet structures for network communication." alt="" coords="105,79,182,104"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="107,30,130,66,126,69,102,32"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="110,152,177,177"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="146,104,146,138,141,138,141,104"/>
+</map>

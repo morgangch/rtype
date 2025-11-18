@@ -1,0 +1,5 @@
+<map id="rtype::client::gui::PrivateServerState" name="rtype::client::gui::PrivateServerState">
+<area shape="rect" id="Node000001" title="Manages the private server connection interface." alt="" coords="5,93,157,133"/>
+<area shape="rect" id="Node000002" href="$classrtype_1_1client_1_1gui_1_1State.html" title="Abstract base class for all GUI states." alt="" coords="17,5,145,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="84,59,84,93,79,93,79,59"/>
+</map>

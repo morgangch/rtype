@@ -1,0 +1,29 @@
+<map id="client/components/Animation.h" name="client/components/Animation.h">
+<area shape="rect" id="Node000001" title="Animation component for sprite frame management." alt="" coords="1197,5,1422,31"/>
+<area shape="rect" id="Node000002" href="$Components_8h.html" title="Convenience header including all client components." alt="" coords="1189,79,1429,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1312,44,1312,79,1307,79,1307,44"/>
+<area shape="rect" id="Node000003" href="$GameState_8h.html" title="Space Invaders game state implementation for R&#45;TYPE using ECS." alt="" coords="1243,152,1376,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="1312,118,1312,152,1307,152,1307,118"/>
+<area shape="rect" id="Node000004" href="$EntityFactory_8cpp.html" title="Entity factory methods for creating game entities." alt="" coords="5,247,224,273"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="1229,178,804,198,522,217,236,243,182,250,181,245,236,237,522,211,804,193,1229,173"/>
+<area shape="rect" id="Node000005" href="$GameLogicSystems_8cpp.html" title="ECS systems implementation for game logic." alt="" coords="249,240,431,280"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="1229,179,886,200,666,218,443,243,432,244,431,239,442,237,665,213,886,194,1229,174"/>
+<area shape="rect" id="Node000006" href="$GameRenderer_8cpp.html" title="Rendering systems for game visualization." alt="" coords="455,247,689,273"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="1229,184,992,209,700,243,647,250,646,245,700,237,992,203,1229,179"/>
+<area shape="rect" id="Node000007" href="$GameState_8cpp.html" title="Core GameState implementation &#45; Orchestration and lifecycle." alt="" coords="713,247,922,273"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="1230,190,883,250,882,245,1229,185"/>
+<area shape="rect" id="Node000008" href="$InputHandler_8cpp.html" title="Input event processing for gameplay and menus." alt="" coords="947,247,1165,273"/>
+<area shape="poly" id="edge7_Node000003_Node000008" title=" " alt="" coords="1242,199,1091,250,1089,245,1240,194"/>
+<area shape="rect" id="Node000009" href="$MainMenuState_8cpp.html" title="Implementation of the MainMenuState class." alt="" coords="1190,247,1429,273"/>
+<area shape="poly" id="edge8_Node000003_Node000009" title=" " alt="" coords="1312,206,1312,247,1307,247,1307,206"/>
+<area shape="rect" id="Node000010" href="$PrivateServerLobbyState_8cpp.html" title="Implementation of the private server lobby state for the R&#45;Type client GUI." alt="" coords="1453,240,1651,280"/>
+<area shape="poly" id="edge9_Node000003_Node000010" title=" " alt="" coords="1376,194,1500,237,1498,242,1374,199"/>
+<area shape="rect" id="Node000011" href="$PrivateServerState_8cpp.html" title="Implementation of the private server connection state for the R&#45;Type client GUI." alt="" coords="1675,240,1872,280"/>
+<area shape="poly" id="edge10_Node000003_Node000011" title=" " alt="" coords="1390,185,1675,238,1674,243,1389,191"/>
+<area shape="rect" id="Node000012" href="$PublicServerState_8cpp.html" title="Implementation of the public server lobby state for the R&#45;Type client GUI." alt="" coords="1897,240,2087,280"/>
+<area shape="poly" id="edge11_Node000003_Node000012" title=" " alt="" coords="1390,179,1613,203,1884,237,1897,239,1896,245,1884,243,1612,208,1389,184"/>
+<area shape="rect" id="Node000013" href="$SettingsState_8cpp.html" title="Implementation of the settings menu state for the R&#45;TYPE client." alt="" coords="2111,247,2334,273"/>
+<area shape="poly" id="edge12_Node000003_Node000013" title=" " alt="" coords="1390,176,1701,199,1900,216,2100,237,2154,245,2153,250,2100,243,1900,221,1701,204,1389,181"/>
+<area shape="rect" id="Node000014" href="$game__controller_8cpp.html" title=" " alt="" coords="2358,240,2589,280"/>
+<area shape="poly" id="edge13_Node000003_Node000014" title=" " alt="" coords="1390,174,1801,194,2072,212,2347,237,2358,239,2357,244,2346,243,2072,218,1800,199,1390,179"/>
+</map>

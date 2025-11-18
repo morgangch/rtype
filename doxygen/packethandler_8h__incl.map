@@ -1,0 +1,13 @@
+<map id="lib/packethandler/include/packethandler.h" name="lib/packethandler/include/packethandler.h">
+<area shape="rect" id="Node000001" title="Packet Handler System for routing network packets to registered callbacks." alt="" coords="148,5,333,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,92,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="196,48,90,91,88,86,194,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="116,93,240,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="228,47,198,84,194,81,223,44"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="265,93,342,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="258,44,287,81,283,84,254,47"/>
+<area shape="rect" id="Node000005" href="$packet_8h.html" title="Core packet structures for network communication." alt="" coords="366,93,443,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="281,43,370,85,367,90,279,48"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="371,167,438,192"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="407,119,407,153,402,153,402,119"/>
+</map>

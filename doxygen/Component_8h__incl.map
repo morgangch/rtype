@@ -1,0 +1,7 @@
+<map id="lib/ecs/include/ECS/Component.h" name="lib/ecs/include/ECS/Component.h">
+<area shape="rect" id="Node000001" title="Base component classes and type registration system for the ECS." alt="" coords="5,5,149,45"/>
+<area shape="rect" id="Node000002" href="$Types_8h.html" title="Core type definitions for the Entity Component System (ECS)" alt="" coords="42,93,113,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="80,46,80,79,75,79,75,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="44,167,111,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="80,119,80,153,75,153,75,119"/>
+</map>

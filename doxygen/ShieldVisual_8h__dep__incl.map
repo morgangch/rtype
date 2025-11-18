@@ -1,0 +1,9 @@
+<map id="client/components/ShieldVisual.h" name="client/components/ShieldVisual.h">
+<area shape="rect" id="Node000001" title=" " alt="" coords="247,5,433,45"/>
+<area shape="rect" id="Node000002" href="$EntityFactory_8cpp.html" title="Entity factory methods for creating game entities." alt="" coords="5,101,224,126"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="278,53,146,103,144,98,277,48"/>
+<area shape="rect" id="Node000003" href="$GameLogicSystems_8cpp.html" title="ECS systems implementation for game logic." alt="" coords="249,93,431,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="343,59,343,93,337,93,337,59"/>
+<area shape="rect" id="Node000004" href="$GameRenderer_8cpp.html" title="Rendering systems for game visualization." alt="" coords="455,101,689,126"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="405,48,542,98,540,103,403,53"/>
+</map>

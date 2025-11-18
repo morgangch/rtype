@@ -1,0 +1,27 @@
+<map id="client/include/gui/HighscoresState.h" name="client/include/gui/HighscoresState.h">
+<area shape="rect" id="Node000001" title="SFML state that renders the Highscores screen (top scores list)." alt="" coords="165,5,309,45"/>
+<area shape="rect" id="Node000002" href="$State_8h.html" title="Abstract base class for the state pattern implementation in R&#45;TYPE GUI." alt="" coords="22,167,90,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="166,45,122,65,101,79,83,95,68,123,60,153,55,152,63,121,79,92,98,74,119,60,164,41"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="59,240,205,265"/>
+<area shape="poly" id="edge14_Node000001_Node000003" title=" " alt="" coords="166,46,114,66,64,95,31,126,12,168,8,180,11,191,36,216,68,233,65,238,33,220,7,193,3,180,7,166,26,123,61,91,111,62,164,42"/>
+<area shape="rect" id="Node000004" href="$StateManager_8h.html" title="State management system for the R&#45;TYPE client GUI." alt="" coords="94,93,218,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="219,47,180,85,176,82,216,44"/>
+<area shape="rect" id="Node000007" href="$HighscoreManager_8h.html" title="Minimal JSON&#45;backed highscores persistence utility." alt="" coords="243,93,397,119"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="259,44,300,82,296,86,255,47"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="431,167,494,192"/>
+<area shape="poly" id="edge15_Node000001_Node000009" title=" " alt="" coords="310,41,362,61,411,91,437,121,455,153,450,156,433,124,407,95,360,66,309,46"/>
+<area shape="rect" id="Node000010" href="$ParallaxSystem_8h.html" title="Parallax background system for space&#45;themed games." alt="" coords="473,93,607,119"/>
+<area shape="poly" id="edge11_Node000001_Node000010" title=" " alt="" coords="310,43,483,87,482,92,309,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="70,190,111,229,108,232,66,194"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="141,121,85,161,82,156,138,117"/>
+<area shape="poly" id="edge7_Node000004_Node000003" title=" " alt="" coords="167,118,184,151,188,172,185,193,173,214,158,232,154,229,169,211,180,191,183,172,179,153,162,120"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="247,167,324,192"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="178,116,253,157,250,162,175,121"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="114,167,171,192"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="156,119,150,154,145,153,151,119"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="348,167,407,192"/>
+<area shape="poly" id="edge9_Node000007_Node000008" title=" " alt="" coords="331,117,361,154,357,158,327,121"/>
+<area shape="poly" id="edge10_Node000007_Node000009" title=" " alt="" coords="344,116,428,158,426,163,342,121"/>
+<area shape="poly" id="edge12_Node000010_Node000003" title=" " alt="" coords="541,119,533,156,523,177,508,194,487,206,458,217,383,233,299,244,220,250,219,245,299,238,383,228,456,212,485,202,505,190,519,174,528,155,536,118"/>
+<area shape="poly" id="edge13_Node000010_Node000009" title=" " alt="" coords="529,121,487,159,484,155,526,117"/>
+</map>

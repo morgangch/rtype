@@ -1,0 +1,23 @@
+<map id="lib/ecs/include/ECS/SystemManager.h" name="lib/ecs/include/ECS/SystemManager.h">
+<area shape="rect" id="Node000001" title="System management for the Entity Component System (ECS)" alt="" coords="215,5,359,45"/>
+<area shape="rect" id="Node000002" href="$System_8h.html" title="Base system class for the Entity Component System (ECS)" alt="" coords="45,93,127,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="240,48,129,91,127,86,238,43"/>
+<area shape="rect" id="Node000003" href="$Types_8h.html" title="Core type definitions for the Entity Component System (ECS)" alt="" coords="5,167,76,192"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="215,38,108,60,62,76,46,85,35,95,28,108,27,123,33,153,27,154,21,123,23,107,31,92,43,81,60,71,106,55,214,33"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="118,167,177,192"/>
+<area shape="poly" id="edge9_Node000001_Node000005" title=" " alt="" coords="253,48,221,69,192,95,172,125,158,155,153,153,167,122,188,92,218,64,250,43"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="202,93,279,119"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="278,47,257,83,252,80,274,44"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="304,93,367,119"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="301,44,323,80,319,83,297,47"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="391,93,515,119"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="328,43,417,85,415,90,326,48"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="539,93,625,119"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="359,43,526,87,525,92,357,48"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="649,93,736,119"/>
+<area shape="poly" id="edge11_Node000001_Node000010" title=" " alt="" coords="360,38,636,91,635,96,359,43"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="81,120,58,157,53,154,76,118"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="98,117,130,154,126,158,94,121"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="7,240,74,265"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="43,192,43,226,38,226,38,192"/>
+</map>

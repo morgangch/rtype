@@ -1,0 +1,17 @@
+<map id="client/src/gui/SoundManager.cpp" name="client/src/gui/SoundManager.cpp">
+<area shape="rect" id="Node000001" title=" " alt="" coords="262,5,494,31"/>
+<area shape="rect" id="Node000002" href="$SoundManager_8h.html" title="Small helper that owns and plays short sound effects (SFX)." alt="" coords="230,79,385,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="368,33,330,71,326,67,364,29"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="409,79,489,104"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="392,29,430,67,426,71,388,33"/>
+<area shape="rect" id="Node000003" href="$AudioFactory_8h.html" title="Centralized location for audio asset identifiers and paths." alt="" coords="5,152,145,177"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="271,107,127,151,125,145,269,101"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="169,152,296,177"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="297,106,257,144,253,141,294,102"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="320,152,444,177"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="321,102,362,141,358,144,317,106"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="468,152,531,177"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="339,102,456,144,454,149,337,107"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="46,225,105,251"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="78,178,78,212,73,212,73,178"/>
+</map>

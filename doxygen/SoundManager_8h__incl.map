@@ -1,0 +1,13 @@
+<map id="client/include/gui/SoundManager.h" name="client/include/gui/SoundManager.h">
+<area shape="rect" id="Node000001" title="Small helper that owns and plays short sound effects (SFX)." alt="" coords="240,5,375,45"/>
+<area shape="rect" id="Node000002" href="$AudioFactory_8h.html" title="Centralized location for audio asset identifiers and paths." alt="" coords="5,93,145,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="253,48,123,91,121,86,251,43"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="169,93,296,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="291,47,255,85,251,81,287,44"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="320,93,444,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="327,44,363,81,359,85,323,47"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="468,93,531,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="354,43,460,86,458,91,352,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="46,167,105,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="78,119,78,153,73,153,73,119"/>
+</map>

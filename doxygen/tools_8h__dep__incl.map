@@ -1,0 +1,15 @@
+<map id="server/include/tools.h" name="server/include/tools.h">
+<area shape="rect" id="Node000001" title=" " alt="" coords="439,5,601,31"/>
+<area shape="rect" id="Node000002" href="$PacketHandlingSystem_8h.html" title=" " alt="" coords="5,79,192,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="446,36,193,83,192,77,445,30"/>
+<area shape="rect" id="Node000004" href="$PlayerDisconnectSystem_8h.html" title=" " alt="" coords="216,79,416,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="479,38,366,81,364,76,477,33"/>
+<area shape="rect" id="Node000005" href="$RoomController_8cpp.html" title=" " alt="" coords="441,79,599,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="523,44,523,79,517,79,517,44"/>
+<area shape="rect" id="Node000006" href="$get__timestamp_8cpp.html" title=" " alt="" coords="624,79,771,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="559,34,656,76,654,81,557,39"/>
+<area shape="rect" id="Node000007" href="$ip__to__string_8cpp.html" title=" " alt="" coords="795,79,933,119"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="585,31,783,76,795,79,794,84,782,81,584,36"/>
+<area shape="rect" id="Node000003" href="$server_2src_2main_8cpp.html" title=" " alt="" coords="23,167,174,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="101,132,101,166,96,166,96,132"/>
+</map>

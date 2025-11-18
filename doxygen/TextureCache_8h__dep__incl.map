@@ -1,0 +1,13 @@
+<map id="client/include/gui/TextureCache.h" name="client/include/gui/TextureCache.h">
+<area shape="rect" id="Node000001" title="Thread&#45;safe texture cache for the client GUI." alt="" coords="544,5,677,45"/>
+<area shape="rect" id="Node000002" href="$EntityFactory_8cpp.html" title="Entity factory methods for creating game entities." alt="" coords="5,101,224,126"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="531,43,181,103,180,98,530,38"/>
+<area shape="rect" id="Node000003" href="$GameRenderer_8cpp.html" title="Rendering systems for game visualization." alt="" coords="249,101,482,126"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="545,52,399,103,397,98,543,47"/>
+<area shape="rect" id="Node000004" href="$GameState_8cpp.html" title="Core GameState implementation &#45; Orchestration and lifecycle." alt="" coords="506,101,715,126"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="613,59,613,100,608,100,608,59"/>
+<area shape="rect" id="Node000005" href="$TextureCache_8cpp.html" title="Implementation of a simple texture cache." alt="" coords="740,101,964,126"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="677,47,821,98,819,103,675,52"/>
+<area shape="rect" id="Node000006" href="$VesselSelectionState_8cpp.html" title="Implementation of the vessel selection interface." alt="" coords="988,93,1199,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="691,38,988,91,987,96,690,43"/>
+</map>

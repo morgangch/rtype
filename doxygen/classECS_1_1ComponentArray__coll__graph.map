@@ -1,0 +1,5 @@
+<map id="ECS::ComponentArray&lt; T &gt;" name="ECS::ComponentArray&lt; T &gt;">
+<area shape="rect" id="Node000001" title="Template class for storing components of a specific type." alt="" coords="5,79,208,104"/>
+<area shape="rect" id="Node000002" href="$classECS_1_1IComponentArray.html" title="Abstract base class for component storage arrays." alt="" coords="22,5,191,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="109,44,109,79,104,79,104,44"/>
+</map>

@@ -1,0 +1,26 @@
+var RoomController_8h =
+[
+    [ "broadcastGameStart", "RoomController_8h.html#a4017ec6562e2ff14935cab47c1387047", null ],
+    [ "broadcastLobbyState", "RoomController_8h.html#a8c2e406479628df1739dacb926609ce9", null ],
+    [ "broadcastPlayerRoster", "RoomController_8h.html#a05bba7f4f717402e27477779f374ea9b", null ],
+    [ "broadcastProjectileSpawn", "RoomController_8h.html#ad6ec5c0079ef05de4adf4c2e88e95289", null ],
+    [ "createEnemyProjectile", "RoomController_8h.html#a6a2689b71497b2bc30437975a0f1a209", null ],
+    [ "createServerProjectile", "RoomController_8h.html#af2adc3ab74edefa19d13ff6df8dbeed0", null ],
+    [ "createSingleProjectile", "RoomController_8h.html#ae1703a7b18a70f9fa01e395380edc9e4", null ],
+    [ "createSingleProjectile", "RoomController_8h.html#a54fc07250b658e9f8eb4d470d5cbf886", null ],
+    [ "findOrCreatePlayer", "RoomController_8h.html#abff221294dd4a312203c656ab8d45eca", null ],
+    [ "findOrCreateRoom", "RoomController_8h.html#a9296a246af6f15d7396c29e1789667d0", null ],
+    [ "handleGameStartRequest", "RoomController_8h.html#ad31cfb1964a9a0f688d852cd6370de66", null ],
+    [ "handleJoinRoomPacket", "RoomController_8h.html#abe6f40c96be38c6f3cdb2a97e7e0b440", null ],
+    [ "handleLobbySettingsUpdate", "RoomController_8h.html#a187093d0fb0d629b21ae35db2450f388", null ],
+    [ "handlePlayerInput", "RoomController_8h.html#a81c8612e29db397db863dad8a9b706af", null ],
+    [ "handlePlayerReady", "RoomController_8h.html#a7c1af43c14c4882a1caeff883929de9c", null ],
+    [ "handlePlayerShoot", "RoomController_8h.html#a0451eeec6b1b1aad9e09716439294063", null ],
+    [ "handleSpawnBossRequest", "RoomController_8h.html#a83389e064ba86a8e202624e5d7522688", null ],
+    [ "initializeLobbyState", "RoomController_8h.html#aebbbe98f2bdbfafcf077524a436c35c7", null ],
+    [ "markPlayersAsInGame", "RoomController_8h.html#a181d283888081a7e6fa6e39305cb11c0", null ],
+    [ "notifyExistingPlayersOfNewJoin", "RoomController_8h.html#a06b2ce8ceb27d3c69709f0e287b2ddc9", null ],
+    [ "notifyJoiningPlayerOfExisting", "RoomController_8h.html#ac72951c20ef417b1727197d9aa602ff3", null ],
+    [ "registerPlayerCallbacks", "RoomController_8h.html#a161f869d766be1077c0bdac9d599c17f", null ],
+    [ "sendJoinAccepted", "RoomController_8h.html#ad12c7c2b6a6643bf60ff7c845bf92167", null ]
+];

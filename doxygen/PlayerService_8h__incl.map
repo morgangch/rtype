@@ -1,0 +1,17 @@
+<map id="server/include/services/PlayerService.h" name="server/include/services/PlayerService.h">
+<area shape="rect" id="Node000001" title="Service layer for player entity management." alt="" coords="197,5,369,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,101,64,126"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="221,48,78,96,73,98,71,93,76,91,219,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="89,101,151,126"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="248,48,155,97,152,92,246,43"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="176,101,272,126"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="272,47,242,90,238,87,267,44"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="297,101,389,126"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="298,44,329,87,324,90,294,47"/>
+<area shape="rect" id="Node000006" href="$Types_8h.html" title="Core type definitions for the Entity Component System (ECS)" alt="" coords="413,101,513,126"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="323,43,428,93,425,97,321,48"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="537,93,746,133"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="362,43,550,88,549,93,361,48"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="429,181,496,207"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="465,126,465,167,460,167,460,126"/>
+</map>
