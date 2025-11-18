@@ -122,6 +122,7 @@ jobs:
           copy build\bin\server${{ matrix.executable_extension }} release\rtype-${{ matrix.platform }}\
           copy build\bin\client${{ matrix.executable_extension }} release\rtype-${{ matrix.platform }}\
           copy C:\SFML\bin\*.dll release\rtype-${{ matrix.platform }}\
+          copy C:\ZLIB\bin\*.dll release\rtype-${{ matrix.platform }}\
 
       - name: Copy assets directory (Linux/macOS)
         if: matrix.os != 'windows-latest'
